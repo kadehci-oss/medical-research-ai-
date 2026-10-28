@@ -90,7 +90,8 @@ def api_generate_report(req: ReportRequest):
     )
     audit = perform_red_team_audit(req.query, req.articles)
     html_report = generate_html_report(req.query, req.articles, report_md)
-    pico = extract_pico(req.query, req.articles[0].get("abstract", "") if req.articles else "")
+    combined_abstracts = " ".join([a.get("abstract", "") for a in req.articles if a.get("abstract")])
+    pico = extract_pico(req.query, combined_abstracts)
     risk_of_bias_list = [assess_risk_of_bias(art) for art in req.articles]
 
     return {

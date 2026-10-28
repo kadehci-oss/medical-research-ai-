@@ -5,6 +5,7 @@ from report_generator import (
     generate_turkish_evidence_report,
     _classify_evidence_level,
     classify_study_design,
+    extract_pico,
     assess_risk_of_bias,
     generate_evidence_table_markdown,
     generate_evidence_table_html,
@@ -64,13 +65,54 @@ class TestReportGenerator(unittest.TestCase):
         self.assertEqual(res["level"], "Seviye 3")
         self.assertEqual(res["design"], "Kohort Çalışması (Gözlemsel)")
 
+    def test_extract_pico_heuristics(self):
+        pico1 = extract_pico("SGLT2 inhibitors in heart failure with preserved ejection fraction", "PRIMARY OUTCOME: Reduced risk of cardiovascular death.")
+        self.assertEqual(pico1["intervention"], "SGLT2 inhibitors")
+        self.assertIn("heart failure", pico1["population"].lower())
+        self.assertEqual(pico1["comparison"], "Plasebo / Standart Tedavi / Kontrol Grubu")
+        self.assertIn("cardiovascular death", pico1["outcome"].lower())
+
+        pico2 = extract_pico("Empagliflozin vs Placebo in patients with type 2 diabetes", "RESULTS: Efficacy was demonstrated.")
+        self.assertEqual(pico2["intervention"], "Empagliflozin")
+        self.assertEqual(pico2["comparison"], "Placebo")
+        self.assertIn("type 2 diabetes", pico2["population"].lower())
+
     def test_assess_risk_of_bias_not_assessed(self):
         art = SAMPLE_ARTICLES[0]
         rob = assess_risk_of_bias(art)
         self.assertEqual(rob["overall_rating"], "Değerlendirilmedi (Not Assessed)")
+        self.assertEqual(rob["tool"], "RoB 2 (Cochrane Risk of Bias for RCTs)")
         self.assertIn("tam metin (full-text) incelemesi gereklidir", rob["note"])
         for domain_val in rob["domains"].values():
             self.assertIn("Değerlendirilmedi", domain_val)
+
+        cohort_art = {
+            "title": "Prospective Cohort Study of Diabetes",
+            "publication_types": ["Observational Study"],
+            "abstract": "We followed a cohort of 1000 patients."
+        }
+        rob_cohort = assess_risk_of_bias(cohort_art)
+        self.assertEqual(rob_cohort["overall_rating"], "Değerlendirilmedi (Not Assessed)")
+        self.assertEqual(rob_cohort["tool"], "ROBINS-I (Risk of Bias in Non-Randomized Studies)")
+
+    def test_assess_risk_of_bias_non_primary_not_applicable(self):
+        non_primary_types = [
+            ("Systematic Review", ["Systematic Review"]),
+            ("Narrative Review", ["Review"]),
+            ("Case Report", ["Case Reports"]),
+            ("Practice Guideline", ["Practice Guideline"]),
+            ("Editorial", ["Editorial"])
+        ]
+        for name, pub_types in non_primary_types:
+            art = {
+                "title": f"Test {name}",
+                "publication_types": pub_types,
+                "abstract": "Test abstract"
+            }
+            rob = assess_risk_of_bias(art)
+            self.assertEqual(rob["overall_rating"], "Uygulanamaz (Not Applicable)", f"Failed for {name}")
+            self.assertEqual(rob["tool"], "Uygulanamaz (Not Applicable)", f"Failed tool for {name}")
+            self.assertEqual(len(rob["domains"]), 0, f"Failed domains for {name}")
 
     def test_classify_evidence_level(self):
         level_rct = _classify_evidence_level(["Randomized Controlled Trial"], "Title", "Abstract")
