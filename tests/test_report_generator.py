@@ -91,8 +91,10 @@ class TestReportGenerator(unittest.TestCase):
 
         # Check required sections
         self.assertIn("Türkçe Kanıt Raporu", report)
-        self.assertIn("1. 🔍 Klinik Özet ve Sentez", report)
+        self.assertIn("1. 🔍 PICO Yapısı ve Klinik Özet Sentezi", report)
         self.assertIn("2. 📊 Yapılandırılmış Kanıt Tablosu", report)
+        self.assertIn("📋 Klinik PICO Çerçevesi", report)
+        self.assertIn("Yanlılık Riski Değerlendirmesi", report)
         self.assertIn("3. ⚠️ Metodolojik Sınırlılıklar ve Klinik Uyarılar", report)
         self.assertIn("4. 🛡️ Red Team Denetimi ve Atıf Dürüstlüğü Analizi", report)
         self.assertIn("5. 📚 Doğrulanmış Kaynaklar ve Literatür Listesi", report)
