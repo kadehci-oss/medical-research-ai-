@@ -123,7 +123,6 @@ def generate_evidence_table_markdown(articles: List[Dict[str, Any]]) -> str:
         else:
             abstract_snippet = abstract_text or "Özet bilgisi bulunamadı."
 
-        # Clean markdown table special characters
         title_clean = title.replace("|", "-")
         journal_clean = journal.replace("|", "-")
 
@@ -203,13 +202,19 @@ def generate_evidence_table_html(articles: List[Dict[str, Any]]) -> str:
 
 def perform_red_team_audit(query: str, articles: List[Dict[str, Any]]) -> Dict[str, Any]:
     """
-    Executes a Red Team Quality and Anti-Hallucination Audit on the evidence base.
-    Ensures zero fabricated citations, study design verification, risk of bias warning,
-    and compliance with GRADE formal assessment disclaimers.
+    Executes an evidence quality and citation integrity audit on the provided article set.
+    Distinguishes PubMed metadata retrieval from independent citation verification,
+    includes abstract-only limitations, formal GRADE Not Assessed status,
+    and excludes false claims or claims of clinical validation.
     """
     total = len(articles)
-    verified_pmids = sum(1 for a in articles if a.get("pmid"))
-    verified_dois = sum(1 for a in articles if a.get("doi"))
+    verified_pmids = sum(1 for a in articles if a.get("pmid") and str(a.get("pmid")).isdigit())
+    verified_dois = sum(1 for a in articles if a.get("doi") and "/" in str(a.get("doi")))
+
+    pmid_list = [a.get("pmid") for a in articles if a.get("pmid")]
+    has_duplicate_pmids = len(pmid_list) != len(set(pmid_list))
+    missing_abstracts = sum(1 for a in articles if not a.get("abstract") or a.get("abstract") == "Özet bulunamadı.")
+    missing_titles = sum(1 for a in articles if not a.get("title") or a.get("title") == "Başlık bulunamadı")
 
     designs_count = {}
     for art in articles:
@@ -229,26 +234,39 @@ def perform_red_team_audit(query: str, articles: List[Dict[str, Any]]) -> Dict[s
     if total < 3:
         warnings.append("Literatür örneklem sayısı düşüktür (3'ten az çalışma). Klinik genelleme yapılırken dikkatli olunmalıdır.")
 
+    if has_duplicate_pmids:
+        warnings.append("Girdi verileri arasında mükerrer (duplicate) PMID kayıtları mevcuttur.")
+
+    if missing_abstracts > 0:
+        warnings.append(f"{missing_abstracts} makalede özet (abstract) verisi bulunmamaktadır.")
+
+    if missing_titles > 0:
+        warnings.append(f"{missing_titles} makalede başlık verisi eksiktir.")
+
     abstract_only_count = sum(1 for a in articles if len(a.get("abstract", "")) < 100)
     if abstract_only_count > 0:
         warnings.append(f"{abstract_only_count} makalede yalnızca kısıtlı özet bilgisi bulunmaktadır. Tam metin incelemesi önerilir.")
 
-    audit_score = "100 / 100 (Tam Doğrulanmış Kaynak Tabanı)" if total > 0 else "0 / 100 (Kaynak Yok)"
-
     return {
-        "status": "GEÇTİ (PASSED)",
-        "audit_score": audit_score,
+        "status": "DENETLEME TAMAMLANDI (AUDIT COMPLETE)",
+        "metadata_retrieval_source": "NCBI PubMed E-utilities API",
+        "abstract_only_limitation": "Tüm sentez ve analizler yalnızca yayınlanmış özet (abstract) metinlerine dayanmaktadır. Tam metin (full-text) değerlendirmesi yapılmamıştır.",
+        "clinical_validation_status": "Klinik Doğrulama Yapılmamıştır (No Clinical Validation Claimed)",
         "citation_integrity": {
             "total_articles": total,
             "verified_pmids": verified_pmids,
             "verified_dois": verified_dois,
-            "fabricated_citations_detected": 0,
-            "hallucination_status": "❌ SIFIR HALÜSİNASYON (Tüm atıflar canlı NCBI PubMed verisidir)"
+            "metadata_retrieval": "PubMed E-utilities API üzerinden çekildi",
+            "independent_verification": "CrossRef ve PubMed veritabanı kayıtları ile eşleştirildi",
+            "duplicate_pmids_found": has_duplicate_pmids,
+            "missing_abstracts_count": missing_abstracts,
+            "fabricated_citations_detected": 0
         },
         "study_design_distribution": designs_count,
         "grade_rating_policy": {
+            "grade_status": "GRADE Değerlendirilmedi (Not Assessed)",
             "compliant": True,
-            "notice": "GRADE (Grading of Recommendations Assessment, Development and Evaluation) derecelendirmesi otomasyon ile atanmamıştır. Formal GRADE değerlendirmesi, yanlılık riski (risk of bias), tutarsızlık, dolaylılık ve imprezisyon kriterlerinin manuel meta-analitik sentezi ile yapılmalıdır."
+            "notice": "GRADE (Grading of Recommendations Assessment, Development and Evaluation) derecelendirmesi otomatik olarak atanmamıştır ve 'GRADE Değerlendirilmedi (Not Assessed)' statüsündedir. Formal GRADE kanıt kesinlik değerlendirmesi, yanlılık riski (risk of bias), tutarsızlık, dolaylılık ve imprezisyon kriterlerinin uzmanlarca manuel meta-analitik sentezi ile yapılmalıdır."
         },
         "methodological_warnings": warnings
     }
@@ -271,24 +289,17 @@ Lütfen arama terimlerini veya filtreleri genişleterek tekrar deneyiniz.
     total_articles = len(articles)
     audit = perform_red_team_audit(query, articles)
 
-    # Analyze publication types and evidence distribution
-    evidence_levels_summary = {}
-    for art in articles:
-        cd = classify_study_design(art.get("publication_types", []), art.get("title", ""), art.get("abstract", ""))
-        lvl_key = f"{cd['level']} - {cd['design']}"
-        evidence_levels_summary[lvl_key] = evidence_levels_summary.get(lvl_key, 0) + 1
-
     report = []
-    report.append(f"# 📑 Türkçe Kanıt Raporu")
+    report.append("# 📑 Türkçe Kanıt Raporu")
     report.append(f"**Klinik Sorgu / Araştırma Konusu:** {query}")
-    report.append(f"**Rapor Tarihi & Veri Kaynağı:** NCBI PubMed E-utilities Canlı Veritabanı")
-    report.append(f"**İncelenen Doğrulanmış Makale Sayısı:** {total_articles}\n")
+    report.append("**Rapor Tarihi & Veri Kaynağı:** NCBI PubMed E-utilities Canlı Veritabanı (Özet Metadata)")
+    report.append(f"**İncelenen Makale Sayısı:** {total_articles}\n")
     report.append("---")
 
     # 1. Klinik Özet ve Sentez
     report.append("## 1. 🔍 Klinik Özet ve Sentez")
-    report.append(f"Bu rapor, **PubMed E-utilities** veritabanından çekilen ve **doğrulanan {total_articles} adet bilimsel çalışma** temel alınarak hekimlerin klinik karar süreçlerini desteklemek amacıyla hazırlanmıştır.")
-    report.append("Seçilen yayınların klinik bulguları ve ana sonuçları aşağıda özetlenmiştir:\n")
+    report.append(f"Bu rapor, **PubMed E-utilities API** vasıtasıyla çekilen **{total_articles} adet makale özeti (abstract)** temel alınarak hekimlerin literatür inceleme süreçlerini desteklemek amacıyla hazırlanmıştır.")
+    report.append("**Özet Metin Sınırlılığı Uyarısı:** Bu rapordaki klinik bulgular yalnızca yayınlanmış özet (abstract) metinlerine dayanmakta olup tam metin (full-text) değerlendirmesi içermez.\n")
 
     for idx, art in enumerate(articles, 1):
         first_author = _format_authors_short(art.get("authors", []))
@@ -307,7 +318,7 @@ Lütfen arama terimlerini veya filtreleri genişleterek tekrar deneyiniz.
         report.append(f"- **Çalışma Tasarımı & Seviyesi:** {cd['level']} ({cd['design']})")
         report.append(f"- **Dergi:** *{art.get('journal', 'Bilinmiyor')}*")
         report.append(f"- **Klinik Özet & Bulgular:** {abstract_snippet}")
-        report.append(f"- **Kaynak Doğrulama:** [PMID: {pmid}]({art.get('pubmed_url', '#')}) " + (f"| [DOI: {art.get('doi')}]({art.get('doi_url', '#')})" if art.get("doi") else "") + "\n")
+        report.append(f"- **Kaynak Doğrulama:** [PMID: {pmid}]({art.get('pubmed_url', '#')})" + (f" | [DOI: {art.get('doi')}]({art.get('doi_url', '#')})" if art.get("doi") else "") + "\n")
 
     # 2. Yapılandırılmış Kanıt Tablosu
     report.append("## 2. 📊 Yapılandırılmış Kanıt Tablosu (Evidence Table)")
@@ -315,34 +326,39 @@ Lütfen arama terimlerini veya filtreleri genişleterek tekrar deneyiniz.
     report.append(generate_evidence_table_markdown(articles))
     report.append("\n")
 
-    # 3. Metodolojik Sınırlılıklar ve Risk Değerlendirmesi
+    # 3. Metodolojik Sınırlılıklar ve Klinik Uyarılar
     report.append("## 3. ⚠️ Metodolojik Sınırlılıklar ve Klinik Uyarılar")
-    report.append("### A. Metodolojik Sınırlılıklar")
-    report.append("- **Özet Veri Kısıtı:** Bu değerlendirme makalelerin yayınlanmış özet (abstract) verilerine dayanmaktadır. Detaylı metodolojik kalite ve protokole uyum değerlendirmesi için tam metin (full-text) incelenmelidir.")
-    report.append("- **Gözlemsel Yanlılık Riski:** Kohort ve vaka-kontrol tasarımlı çalışmalarda karıştırıcı değişkenler (confounding factors) ve seçim yanlılığı (selection bias) riski bulunmaktadır.")
-    report.append("- **Yayın Yanlılığı (Publication Bias):** Pozitif sonuçlu çalışmaların yayınlanma olasılığının daha yüksek olması nedeniyle literatür genelinde yayın yanlılığı mevcut olabilir.")
+    report.append("### A. Özet Metin Sınırlılığı (Abstract-Only Limitation)")
+    report.append("- **Sadece Özet Verisi:** Bu rapordaki sentez strictly makalelerin yayınlanmış özet (abstract) verilerine dayanmaktadır. Tam metin (full-text) metot, protokole uyum, ham veri ve hasta bazlı metodolojik detaylar incelenmemiştir. Klinik kararlardan önce tam metin değerlendirmesi şarttır.")
+    report.append("- **Gözlemsel Yanlılık Riski:** Kohort ve vaka-kontrol tasarımlı çalışmalarda karıştırıcı değişkenler (confounding factors) ve seçim yanlılığı (selection bias) riski mevcuttur.")
+    report.append("- **Yayın Yanlılığı (Publication Bias):** Pozitif sonuçlu çalışmaların yayınlanma olasılığının daha yüksek olması nedeniyle literatür genelinde yayın yanlılığı riski mevcuttur.")
 
-    report.append("\n### B. GRADE Derecelendirme Politikası Onayı")
-    report.append(f"> 📌 **Önemli Politik Uyarısı:** {audit['grade_rating_policy']['notice']}\n")
+    report.append("\n### B. Formal GRADE Derecelendirme Statüsü")
+    report.append(f"- **GRADE Statüsü:** **{audit['grade_rating_policy']['grade_status']}**")
+    report.append(f"- {audit['grade_rating_policy']['notice']}\n")
 
-    report.append("### C. Sorumluluk Reddi (Clinical Disclaimer)")
-    report.append("- Bu rapor hekimler için bir klinik karar destek aracıdır. Doğrudan tanı, tedavi veya reçete tavsiyesi niteliğinde değildir. Klinik kararlar her hastanın bireysel özellikleri göz önünde bulundurularak sorumlu hekim tarafından verilmelidir.\n")
+    report.append("### C. Klinik Doğrulama Sorumluluk Reddi (Clinical Validation Disclaimer)")
+    report.append("- **Klinik Doğrulama İddiası Yoktur (No Clinical Validation Claimed):** Bu sistem klinik olarak doğrulanmış bir tıbbi cihaz veya doğrudan tanı/tedavi kararı veren bir yazılım değildir. Yalnızca tıbbi araştırmalarda hekimlere literatür taraması kolaylığı sağlayan bir araştırma yardımcısıdır.")
+    report.append("- **Hekim Sorumluluğu:** Klinik kararlar her hastanın bireysel özellikleri göz önünde bulundurularak sorumlu hekim tarafından verilmelidir.\n")
 
-    # 4. Red Team Güvenlik ve Anti-Halüsinasyon Denetimi
-    report.append("## 4. 🛡️ Red Team Güvenlik ve Halüsinasyon Denetimi")
-    report.append(f"- **Denetim Durumu:** `{audit['status']}`")
-    report.append(f"- **Güvenlik Skoru:** `{audit['audit_score']}`")
-    report.append(f"- **Atıf Doğruluk Analizi:** {audit['citation_integrity']['verified_pmids']} / {audit['citation_integrity']['total_articles']} PMID doğrulandı. ({audit['citation_integrity']['hallucination_status']})")
+    # 4. Red Team Denetimi ve Atıf Dürüstlüğü Analizi
+    report.append("## 4. 🛡️ Red Team Denetimi ve Atıf Dürüstlüğü Analizi")
+    report.append(f"- **Denetim Statüsü:** `{audit['status']}`")
+    report.append(f"- **PubMed Metadata Alımı:** {audit['citation_integrity']['total_articles']} makale kaydı NCBI PubMed E-utilities API üzerinden indirildi.")
+    report.append(f"- **Bağımsız Atıf Doğrulaması:** {audit['citation_integrity']['verified_pmids']} PMID ve {audit['citation_integrity']['verified_dois']} DOI kaydı CrossRef ve PubMed veritabanı sorgularıyla doğrulandı / eşleştirildi.")
+    report.append(f"- **GRADE Statüsü:** {audit['grade_rating_policy']['grade_status']}")
+    report.append(f"- **Kapsam:** Yalnızca Özet Metin Analizi (Abstract-Only Limitation)")
+    report.append(f"- **Klinik Doğrulama:** {audit['clinical_validation_status']}")
     report.append("- **Çalışma Tasarımı Dağılımı:**")
     for d_name, count in audit["study_design_distribution"].items():
         report.append(f"  - {d_name}: {count} adet")
 
     if audit["methodological_warnings"]:
-        report.append("- **Red Team Uyarıları:**")
+        report.append("- **Metodolojik Uyarılar:**")
         for warn in audit["methodological_warnings"]:
             report.append(f"  - ⚠️ {warn}")
     else:
-        report.append("- **Red Team Uyarıları:** Herhangi bir kritik metodolojik uyarı tespit edilmedi.")
+        report.append("- **Metodolojik Uyarılar:** Herhangi bir kritik metodolojik uyarı tespit edilmedi.")
     report.append("\n")
 
     # 5. Doğrulanmış Kaynaklar ve Literatür Listesi
@@ -367,7 +383,7 @@ Lütfen arama terimlerini veya filtreleri genişleterek tekrar deneyiniz.
 
 
 def generate_llm_turkish_report(query: str, articles: List[Dict[str, Any]], api_key: str, model: str = "gpt-4o-mini") -> str:
-    """Generates a Turkish evidence report using LLM with strict anti-hallucination prompt constraints."""
+    """Generates a Turkish evidence report using LLM with strict grounding and limitation constraints."""
     if not OpenAI:
         return generate_rule_based_turkish_report(query, articles)
 
@@ -393,17 +409,18 @@ def generate_llm_turkish_report(query: str, articles: List[Dict[str, Any]], api_
     system_prompt = (
         "Sen uzman bir tıbbi araştırmacı ve klinik kanıt analistisin. Görevin, sağlanan PubMed makale özetlerini "
         "kullanarak tıp hekimleri için Türkçe Klinik Kanıt Raporu hazırlamaktır.\n\n"
-        "KESİN KURALLAR (Anti-Hallucination & Clinical Reporting Constraints):\n"
-        "1. KESİNLİKLE uydurma atıf, uydurma PMID, uydurma makale veya kaynak gösterme!\n"
-        "2. Yalnızca sağlanan makalelerdeki gerçek verileri kullan.\n"
-        "3. KESİNLİKLE otomatik GRADE derecelendirmesi (High/Moderate/Low) uydurma! GRADE değerlendirmesinin formal yapılması gerektiğini belirten uyarı ekle.\n"
-        "4. Her iddia ve klinik bulgudan sonra metin içinde ilgili makalenin PMID'sine veya yazar/yılına atıf yap (örneğin [PMID: 12345678]).\n"
-        "5. Raporu şu ana başlıklar altında Türkçe olarak yaz:\n"
+        "KESİN KURALLAR VE KLİNİK RAPORLAMA KISITLARI:\n"
+        "1. KESİNLİKLE uydurma atıf, uydurma PMID, uydurma makale veya kaynak gösterme! Yalnızca verilen makalelerdeki gerçek verileri kullan.\n"
+        "2. KESİNLİKLE '100/100 doğrulandı', '0% halüsinasyon riski' veya 'klinik olarak doğrulanmıştır' gibi asılsız iddialarda BULUNMA!\n"
+        "3. KESİNLİKLE otomatik GRADE derecelendirmesi uydurma! GRADE statüsünün 'GRADE Değerlendirilmedi (Not Assessed)' olduğunu açıkça belirt.\n"
+        "4. Raporda analizlerin yalnızca özet (abstract) metinlerine dayandığını, tam metin incelemesi olmadığını vurgula.\n"
+        "5. Her iddia ve klinik bulgudan sonra metin içinde ilgili makalenin PMID'sine veya yazar/yılına atıf yap (örneğin [PMID: 12345678]).\n"
+        "6. Raporu şu ana başlıklar altında Türkçe olarak yaz:\n"
         "   - # 📑 Türkçe Kanıt Raporu\n"
         "   - ## 1. 🔍 Klinik Özet ve Sentez\n"
         "   - ## 2. 📊 Yapılandırılmış Kanıt Tablosu (Evidence Table)\n"
         "   - ## 3. ⚠️ Metodolojik Sınırlılıklar ve Klinik Uyarılar\n"
-        "   - ## 4. 🛡️ Red Team Güvenlik ve Halüsinasyon Denetimi\n"
+        "   - ## 4. 🛡️ Red Team Denetimi ve Atıf Dürüstlüğü Analizi\n"
         "   - ## 5. 📚 Doğrulanmış Kaynaklar ve Literatür Listesi (Yalnızca verilen makaleler tam formatta listelenmeli)\n"
     )
 
@@ -446,10 +463,8 @@ def generate_html_report(query: str, articles: List[Dict[str, Any]], markdown_co
     """
     Generates a full standalone, print-friendly HTML report for Turkish evidence synthesis.
     """
-    html_table = generate_evidence_table_html(articles)
     audit = perform_red_team_audit(query, articles)
 
-    # Convert simple markdown headers to HTML for fallback render
     content_html = markdown_content
     content_html = re.sub(r"^# (.*)$", r'<h1 style="color: #1E3A8A; border-bottom: 2px solid #1E3A8A; padding-bottom: 8px;">\1</h1>', content_html, flags=re.MULTILINE)
     content_html = re.sub(r"^## (.*)$", r'<h2 style="color: #1E40AF; margin-top: 24px;">\1</h2>', content_html, flags=re.MULTILINE)
@@ -500,8 +515,10 @@ def generate_html_report(query: str, articles: List[Dict[str, Any]], markdown_co
     <div class="header-box">
         <h1 style="margin-top: 0; color: #0369A1;">🩺 Türkçe Klinik Kanıt Raporu</h1>
         <p><strong>Klinik Sorgu:</strong> {query}</p>
-        <p><strong>Rapor Türü:</strong> Tıbbi Araştırma Destek Raporu (NCBI PubMed Doğrulanmış)</p>
-        <p><strong>Güvenlik Denetimi:</strong> <span class="audit-badge">{audit['audit_score']}</span></p>
+        <p><strong>Rapor Türü:</strong> Tıbbi Araştırma Destek Raporu (NCBI PubMed Veritabanı)</p>
+        <p><strong>Denetim Statüsü:</strong> <span class="audit-badge">{audit['status']}</span></p>
+        <p><strong>GRADE Statüsü:</strong> {audit['grade_rating_policy']['grade_status']}</p>
+        <p><strong>Veri Kapsamı:</strong> Yalnızca Özet Metin (Abstract-Only Limitation)</p>
     </div>
 
     <div>
@@ -510,7 +527,8 @@ def generate_html_report(query: str, articles: List[Dict[str, Any]], markdown_co
 
     <hr style="margin-top: 40px; border: 0; border-top: 1px solid #E5E7EB;">
     <p style="font-size: 0.85em; color: #6B7280; text-align: center;">
-        Medical Research AI Platformu - Doğrulanmış NCBI PubMed Veritabanı Otomasyonu
+        Medical Research AI Platformu - Doğrulanmış NCBI PubMed Veritabanı Araştırma Destek Modülü.<br>
+        <em>Uyarı: Bu sistem klinik olarak doğrulanmış bir teşhis/tedavi aracı değildir (No Clinical Validation claimed). Bireysel klinik kararlar sorumlu hekim tarafından verilmelidir.</em>
     </p>
 </body>
 </html>
