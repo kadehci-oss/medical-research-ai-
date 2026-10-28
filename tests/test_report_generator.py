@@ -6,6 +6,7 @@ from report_generator import (
     _classify_evidence_level,
     classify_study_design,
     assess_risk_of_bias,
+    extract_pico,
     generate_evidence_table_markdown,
     generate_evidence_table_html,
     perform_red_team_audit,
@@ -71,6 +72,67 @@ class TestReportGenerator(unittest.TestCase):
         self.assertIn("tam metin (full-text) incelemesi gereklidir", rob["note"])
         for domain_val in rob["domains"].values():
             self.assertIn("Değerlendirilmedi", domain_val)
+
+    def test_assess_risk_of_bias_tool_assignment_by_article_type(self):
+        # 1. Systematic Review / Meta-Analysis -> AMSTAR 2 / ROBIS
+        meta_art = {
+            "title": "Empagliflozin in Heart Failure: A Systematic Review and Meta-Analysis",
+            "publication_types": ["Meta-Analysis", "Systematic Review"],
+            "abstract": "We performed a systematic review and meta-analysis of RCTs."
+        }
+        rob_meta = assess_risk_of_bias(meta_art)
+        self.assertEqual(rob_meta["overall_rating"], "Uygulanamaz (Not Applicable)")
+        self.assertEqual(rob_meta["tool"], "AMSTAR 2 / ROBIS (Sistematik Derleme)")
+
+        # 2. Narrative Review -> Uygulanamaz
+        review_art = {
+            "title": "Recent advances in heart failure therapy",
+            "publication_types": ["Review"],
+            "abstract": "In this review we summarize recent developments."
+        }
+        rob_rev = assess_risk_of_bias(review_art)
+        self.assertEqual(rob_rev["overall_rating"], "Uygulanamaz (Not Applicable)")
+        self.assertEqual(rob_rev["tool"], "Uygulanamaz (Not Applicable)")
+
+        # 3. Case Report -> Uygulanamaz
+        case_art = {
+            "title": "SGLT2 inhibitor induced ketoacidosis: a case report",
+            "publication_types": ["Case Reports"],
+            "abstract": "We present a case of euglycemic ketoacidosis."
+        }
+        rob_case = assess_risk_of_bias(case_art)
+        self.assertEqual(rob_case["overall_rating"], "Uygulanamaz (Not Applicable)")
+        self.assertEqual(rob_case["tool"], "Uygulanamaz (Not Applicable)")
+
+        # 4. RCT -> RoB 2
+        rct_art = {
+            "title": "Randomized trial of empagliflozin",
+            "publication_types": ["Randomized Controlled Trial"],
+            "abstract": "Patients were randomly assigned..."
+        }
+        rob_rct = assess_risk_of_bias(rct_art)
+        self.assertEqual(rob_rct["overall_rating"], "Değerlendirilmedi (Not Assessed)")
+        self.assertEqual(rob_rct["tool"], "RoB 2 (Cochrane Risk of Bias for RCTs)")
+
+        # 5. Cohort Study -> ROBINS-I
+        cohort_art = {
+            "title": "A prospective cohort study of SGLT2 inhibitors",
+            "publication_types": ["Observational Study"],
+            "abstract": "We followed a prospective cohort..."
+        }
+        rob_cohort = assess_risk_of_bias(cohort_art)
+        self.assertEqual(rob_cohort["overall_rating"], "Değerlendirilmedi (Not Assessed)")
+        self.assertEqual(rob_cohort["tool"], "ROBINS-I (Risk of Bias in Non-Randomized Studies)")
+
+    def test_extract_pico_multi_part_query_and_abstract(self):
+        query = "SGLT2 inhibitors vs placebo in heart failure with preserved ejection fraction"
+        abstract = "RESULTS: Empagliflozin reduced the primary outcome of cardiovascular death or hospitalization."
+
+        pico = extract_pico(query, abstract)
+        self.assertEqual(pico["intervention"], "SGLT2 inhibitors")
+        self.assertEqual(pico["comparison"], "Placebo")
+        self.assertEqual(pico["population"], "Heart failure with preserved ejection fraction")
+        self.assertIn("cardiovascular death", pico["outcome"])
 
     def test_classify_evidence_level(self):
         level_rct = _classify_evidence_level(["Randomized Controlled Trial"], "Title", "Abstract")
