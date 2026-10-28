@@ -1,0 +1,6 @@
+requests
+streamlit
+fastapi
+uvicorn
+openai
+pytest
