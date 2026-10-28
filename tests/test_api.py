@@ -79,6 +79,19 @@ class TestFastAPIApp(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTrue(response.json()["valid"])
 
+    @patch("api.verify_citation")
+    def test_api_verify_citation(self, mock_verify_citation):
+        mock_verify_citation.return_value = {
+            "status": "verified",
+            "verified": True,
+            "pmid": "35771962",
+            "reason": "match"
+        }
+
+        response = client.post("/api/verify/citation", json={"pmid": "35771962", "title": "Test Title"})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["status"], "verified")
+
     @patch("api.generate_turkish_evidence_report")
     def test_api_generate_report(self, mock_generate):
         mock_generate.return_value = "# 📑 Türkçe Kanıt Raporu\n\nTest report content."

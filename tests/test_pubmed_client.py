@@ -1,6 +1,6 @@
 import unittest
 from unittest.mock import patch, MagicMock
-from pubmed_client import parse_pubmed_xml, search_pubmed, verify_pmid, verify_doi
+from pubmed_client import parse_pubmed_xml, search_pubmed, verify_pmid, verify_doi, normalize_title, normalize_doi, verify_citation
 
 SAMPLE_PUBMED_XML = """<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE PubmedArticleSet PUBLIC "-//NLM//DTD PubMedArticle, 1st January 2019//EN" "https://dtd.nlm.nih.gov/ncbi/pubmed/out/pubmed_190101.dtd">
@@ -124,6 +124,100 @@ class TestPubMedClient(unittest.TestCase):
         res = verify_pmid("invalid_pmid_123abc")
         self.assertFalse(res["valid"])
         self.assertIn("yalnızca rakamlardan oluşmalıdır", res["error"])
+
+    def test_normalize_title(self):
+        self.assertEqual(normalize_title(" <b>Empagliflozin</b> in Heart Failure! "), "empagliflozin in heart failure")
+        self.assertEqual(normalize_title(None), "")
+
+    def test_normalize_doi(self):
+        self.assertEqual(normalize_doi("https://doi.org/10.1056/NEJMoa2022190 "), "10.1056/nejmoa2022190")
+        self.assertEqual(normalize_doi("doi: 10.1056/NEJMoa2022190"), "10.1056/nejmoa2022190")
+        self.assertEqual(normalize_doi(None), "")
+
+    @patch("pubmed_client.verify_pmid")
+    def test_verify_citation_valid_match(self, mock_verify_pmid):
+        mock_verify_pmid.return_value = {
+            "valid": True,
+            "pmid": "33264510",
+            "title": "Empagliflozin in Heart Failure with a Preserved Ejection Fraction",
+            "doi": "10.1056/NEJMoa2022190"
+        }
+
+        citation = {
+            "pmid": "33264510",
+            "title": "Empagliflozin in Heart Failure with a Preserved Ejection Fraction",
+            "doi": "10.1056/NEJMoa2022190"
+        }
+
+        res = verify_citation(citation)
+        self.assertEqual(res["status"], "verified")
+        self.assertTrue(res["verified"])
+        self.assertEqual(res["reason"], "match")
+
+    @patch("pubmed_client.verify_pmid")
+    def test_verify_citation_title_mismatch_rejection(self, mock_verify_pmid):
+        mock_verify_pmid.return_value = {
+            "valid": True,
+            "pmid": "33264510",
+            "title": "Real PubMed Title Here",
+            "doi": "10.1056/NEJMoa2022190"
+        }
+
+        citation = {
+            "pmid": "33264510",
+            "title": "Fabricated Title Mismatch",
+            "doi": "10.1056/NEJMoa2022190"
+        }
+
+        res = verify_citation(citation)
+        self.assertEqual(res["status"], "rejected")
+        self.assertFalse(res["verified"])
+        self.assertEqual(res["reason"], "title_mismatch")
+        self.assertIn("Başlık uyuşmazlığı nedeniyle reddedildi", res["error"])
+
+    @patch("pubmed_client.verify_pmid")
+    def test_verify_citation_doi_mismatch_rejection(self, mock_verify_pmid):
+        mock_verify_pmid.return_value = {
+            "valid": True,
+            "pmid": "33264510",
+            "title": "Empagliflozin in Heart Failure",
+            "doi": "10.1056/NEJMoa2022190"
+        }
+
+        citation = {
+            "pmid": "33264510",
+            "title": "Empagliflozin in Heart Failure",
+            "doi": "10.9999/wrong-doi"
+        }
+
+        res = verify_citation(citation)
+        self.assertEqual(res["status"], "rejected")
+        self.assertFalse(res["verified"])
+        self.assertEqual(res["reason"], "doi_mismatch")
+        self.assertIn("DOI uyuşmazlığı nedeniyle reddedildi", res["error"])
+
+    @patch("pubmed_client.verify_pmid")
+    def test_verify_citation_api_failure_unverified(self, mock_verify_pmid):
+        mock_verify_pmid.return_value = {
+            "valid": False,
+            "pmid": "33264510",
+            "error": "Doğrulama sırasında hata oluştu: Connection timeout"
+        }
+
+        citation = {
+            "pmid": "33264510",
+            "title": "Empagliflozin in Heart Failure"
+        }
+
+        res = verify_citation(citation)
+        self.assertEqual(res["status"], "unverified")
+        self.assertFalse(res["verified"])
+        self.assertEqual(res["reason"], "api_failure")
+
+    def test_verify_citation_invalid_pmid_rejection(self):
+        res = verify_citation({"pmid": "abc"})
+        self.assertEqual(res["status"], "rejected")
+        self.assertEqual(res["reason"], "missing_or_invalid_pmid")
 
     @patch("requests.get")
     def test_verify_doi_crossref_success(self, mock_get):

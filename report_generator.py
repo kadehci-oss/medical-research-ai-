@@ -7,6 +7,8 @@ try:
 except ImportError:
     OpenAI = None
 
+from pubmed_client import verify_citation
+
 
 def _format_authors_short(authors: List[str]) -> str:
     if not authors:
@@ -348,13 +350,28 @@ def generate_evidence_table_html(articles: List[Dict[str, Any]]) -> str:
 def perform_red_team_audit(query: str, articles: List[Dict[str, Any]]) -> Dict[str, Any]:
     """
     Executes an evidence quality and citation integrity audit on the provided article set.
-    Distinguishes PubMed metadata retrieval from independent citation verification,
-    includes abstract-only limitations, formal GRADE Not Assessed status,
-    and excludes false claims or claims of clinical validation.
+    Re-fetches each PMID independently to compare normalized article titles and DOI values.
+    Rejects mismatches, shows API failures as unverified, includes abstract-only limitations,
+    formal GRADE Not Assessed status, and excludes false claims or claims of clinical validation.
     """
     total = len(articles)
-    verified_pmids = sum(1 for a in articles if a.get("pmid") and str(a.get("pmid")).isdigit())
-    verified_dois = sum(1 for a in articles if a.get("doi") and "/" in str(a.get("doi")))
+
+    verified_count = 0
+    rejected_count = 0
+    unverified_count = 0
+    verification_details = []
+
+    for art in articles:
+        v_res = verify_citation(art)
+        v_status = v_res.get("status", "unverified")
+        verification_details.append(v_res)
+
+        if v_status == "verified":
+            verified_count += 1
+        elif v_status == "rejected":
+            rejected_count += 1
+        else:
+            unverified_count += 1
 
     pmid_list = [a.get("pmid") for a in articles if a.get("pmid")]
     has_duplicate_pmids = len(pmid_list) != len(set(pmid_list))
@@ -388,6 +405,12 @@ def perform_red_team_audit(query: str, articles: List[Dict[str, Any]]) -> Dict[s
     if missing_titles > 0:
         warnings.append(f"{missing_titles} makalede başlık verisi eksiktir.")
 
+    if rejected_count > 0:
+        warnings.append(f"{rejected_count} atıf kaydı bağımsız PubMed doğrulamasında başlık/DOI uyuşmazlığı veya eksik PMID nedeniyle reddedilmiştir.")
+
+    if unverified_count > 0:
+        warnings.append(f"{unverified_count} atıf kaydı API/ağ hatası nedeniyle bağımsız olarak doğrulanamadı (Unverified / API Failure).")
+
     abstract_only_count = sum(1 for a in articles if len(a.get("abstract", "")) < 100)
     if abstract_only_count > 0:
         warnings.append(f"{abstract_only_count} makalede yalnızca kısıtlı özet bilgisi bulunmaktadır. Tam metin incelemesi önerilir.")
@@ -399,14 +422,16 @@ def perform_red_team_audit(query: str, articles: List[Dict[str, Any]]) -> Dict[s
         "clinical_validation_status": "Klinik Doğrulama Yapılmamıştır (No Clinical Validation Claimed)",
         "citation_integrity": {
             "total_articles": total,
-            "verified_pmids": verified_pmids,
-            "verified_dois": verified_dois,
+            "verified_citations": verified_count,
+            "rejected_citations": rejected_count,
+            "unverified_citations": unverified_count,
             "metadata_retrieval": "PubMed E-utilities API üzerinden çekildi",
-            "independent_verification": "CrossRef ve PubMed veritabanı kayıtları ile eşleştirildi",
+            "independent_verification": "NCBI PubMed E-utilities re-fetch ve title/DOI normalizasyon eşleştirmesi",
             "duplicate_pmids_found": has_duplicate_pmids,
             "missing_abstracts_count": missing_abstracts,
-            "fabricated_citations_detected": 0
+            "mismatch_or_invalid_citations_detected": rejected_count
         },
+        "verification_results": verification_details,
         "study_design_distribution": designs_count,
         "grade_rating_policy": {
             "grade_status": "GRADE Değerlendirilmedi (Not Assessed)",
@@ -499,7 +524,7 @@ Lütfen arama terimlerini veya filtreleri genişleterek tekrar deneyiniz.
     report.append("## 4. 🛡️ Red Team Denetimi ve Atıf Dürüstlüğü Analizi")
     report.append(f"- **Denetim Statüsü:** `{audit['status']}`")
     report.append(f"- **PubMed Metadata Alımı:** {audit['citation_integrity']['total_articles']} makale kaydı NCBI PubMed E-utilities API üzerinden indirildi.")
-    report.append(f"- **Bağımsız Atıf Doğrulaması:** {audit['citation_integrity']['verified_pmids']} PMID ve {audit['citation_integrity']['verified_dois']} DOI kaydı CrossRef ve PubMed veritabanı sorgularıyla doğrulandı / eşleştirildi.")
+    report.append(f"- **Bağımsız Atıf Doğrulaması (Re-Fetch & Matching):** {audit['citation_integrity']['verified_citations']} Doğrulanmış (Verified), {audit['citation_integrity']['rejected_citations']} Reddedilen (Rejected Mismatch), {audit['citation_integrity']['unverified_citations']} Doğrulanamadı (Unverified / API Failure)")
     report.append(f"- **GRADE Statüsü:** {audit['grade_rating_policy']['grade_status']}")
     report.append(f"- **Kapsam:** Yalnızca Özet Metin Analizi (Abstract-Only Limitation)")
     report.append(f"- **Klinik Doğrulama:** {audit['clinical_validation_status']}")

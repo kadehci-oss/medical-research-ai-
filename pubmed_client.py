@@ -250,6 +250,111 @@ def verify_pmid(pmid: str) -> Dict[str, Any]:
         }
 
 
+def normalize_title(title: Optional[str]) -> str:
+    """Normalizes article title for string comparison by stripping HTML tags, punctuation, and extra whitespace, and lowercasing."""
+    if not title:
+        return ""
+    clean = re.sub(r"<[^>]+>", "", str(title))
+    clean = re.sub(r"[^\w\s]", "", clean)
+    return " ".join(clean.lower().split())
+
+
+def normalize_doi(doi: Optional[str]) -> str:
+    """Normalizes DOI for comparison by stripping URL prefixes, 'doi:' prefix, whitespace, and lowercasing."""
+    if not doi:
+        return ""
+    clean = str(doi).strip()
+    clean = re.sub(r"^https?://(dx\.)?doi\.org/", "", clean, flags=re.IGNORECASE)
+    clean = re.sub(r"^doi:\s*", "", clean, flags=re.IGNORECASE).strip()
+    return clean.lower()
+
+
+def verify_citation(citation: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Independently verifies a citation by re-fetching its PMID directly from NCBI PubMed
+    and comparing normalized article title and DOI values.
+    Rejects mismatches and flags API failures as unverified.
+    """
+    if not isinstance(citation, dict):
+        return {
+            "status": "rejected",
+            "verified": False,
+            "reason": "invalid_input",
+            "error": "Girdi bir sözlük (dict) olmalıdır."
+        }
+
+    raw_pmid = str(citation.get("pmid") or "").strip()
+    clean_pmid = raw_pmid.lower().replace("pmid:", "").strip()
+
+    if not clean_pmid or not clean_pmid.isdigit():
+        return {
+            "status": "rejected",
+            "verified": False,
+            "pmid": raw_pmid,
+            "reason": "missing_or_invalid_pmid",
+            "error": "Geçersiz veya eksik PMID formatı."
+        }
+
+    fetched = verify_pmid(clean_pmid)
+
+    if not fetched.get("valid"):
+        err_msg = fetched.get("error", "")
+        if "bulunamadı" in err_msg or "Geçersiz" in err_msg:
+            return {
+                "status": "rejected",
+                "verified": False,
+                "pmid": clean_pmid,
+                "reason": "not_found",
+                "error": err_msg
+            }
+        else:
+            return {
+                "status": "unverified",
+                "verified": False,
+                "pmid": clean_pmid,
+                "reason": "api_failure",
+                "error": err_msg
+            }
+
+    # Compare normalized title if present in input citation
+    input_title = citation.get("title")
+    if input_title and str(input_title).strip() and str(input_title).strip() != "Başlık bulunamadı":
+        norm_input_title = normalize_title(str(input_title))
+        norm_fetched_title = normalize_title(fetched.get("title", ""))
+        if norm_input_title and norm_fetched_title and norm_input_title != norm_fetched_title:
+            return {
+                "status": "rejected",
+                "verified": False,
+                "pmid": clean_pmid,
+                "reason": "title_mismatch",
+                "error": f"Başlık uyuşmazlığı nedeniyle reddedildi: Girdi başlığı ('{input_title}') ile PubMed kaydı ('{fetched.get('title')}') eşleşmiyor.",
+                "fetched_article": fetched
+            }
+
+    # Compare normalized DOI if present in input citation and fetched record
+    input_doi = citation.get("doi")
+    if input_doi and str(input_doi).strip():
+        norm_input_doi = normalize_doi(str(input_doi))
+        norm_fetched_doi = normalize_doi(fetched.get("doi", ""))
+        if norm_input_doi and norm_fetched_doi and norm_input_doi != norm_fetched_doi:
+            return {
+                "status": "rejected",
+                "verified": False,
+                "pmid": clean_pmid,
+                "reason": "doi_mismatch",
+                "error": f"DOI uyuşmazlığı nedeniyle reddedildi: Girdi DOI ('{input_doi}') ile PubMed kaydı ('{fetched.get('doi')}') eşleşmiyor.",
+                "fetched_article": fetched
+            }
+
+    return {
+        "status": "verified",
+        "verified": True,
+        "pmid": clean_pmid,
+        "reason": "match",
+        "fetched_article": fetched
+    }
+
+
 def verify_doi(doi: str) -> Dict[str, Any]:
     """
     Verifies DOI existence against CrossRef API and PubMed.

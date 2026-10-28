@@ -1,4 +1,5 @@
 import unittest
+from unittest.mock import patch
 from report_generator import (
     generate_rule_based_turkish_report,
     generate_turkish_evidence_report,
@@ -68,12 +69,17 @@ class TestReportGenerator(unittest.TestCase):
         self.assertIn("Empagliflozin in Heart Failure", table_html)
         self.assertIn("PMID: 33264510", table_html)
 
-    def test_perform_red_team_audit(self) -> None:
+    @patch("report_generator.verify_citation")
+    def test_perform_red_team_audit(self, mock_verify_citation) -> None:
+        mock_verify_citation.side_effect = [
+            {"status": "verified", "verified": True, "pmid": "33264510", "reason": "match"},
+            {"status": "verified", "verified": True, "pmid": "31535829", "reason": "match"}
+        ]
         audit = perform_red_team_audit("Heart Failure SGLT2", SAMPLE_ARTICLES)
         self.assertIn("DENETLEME TAMAMLANDI", audit["status"])
-        self.assertEqual(audit["citation_integrity"]["verified_pmids"], 2)
-        self.assertEqual(audit["citation_integrity"]["verified_dois"], 2)
-        self.assertEqual(audit["citation_integrity"]["fabricated_citations_detected"], 0)
+        self.assertEqual(audit["citation_integrity"]["verified_citations"], 2)
+        self.assertEqual(audit["citation_integrity"]["rejected_citations"], 0)
+        self.assertEqual(audit["citation_integrity"]["mismatch_or_invalid_citations_detected"], 0)
         self.assertTrue(audit["grade_rating_policy"]["compliant"])
         self.assertEqual(audit["grade_rating_policy"]["grade_status"], "GRADE Değerlendirilmedi (Not Assessed)")
         self.assertIn("NCBI PubMed E-utilities API", audit["metadata_retrieval_source"])
