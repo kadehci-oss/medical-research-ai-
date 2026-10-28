@@ -37,6 +37,7 @@ SAMPLE_ARTICLES = [
     }
 ]
 
+
 class TestReportGenerator(unittest.TestCase):
 
     def test_classify_study_design(self):
@@ -69,11 +70,20 @@ class TestReportGenerator(unittest.TestCase):
 
     def test_perform_red_team_audit(self) -> None:
         audit = perform_red_team_audit("Heart Failure SGLT2", SAMPLE_ARTICLES)
-        self.assertEqual(audit["status"], "GEÇTİ (PASSED)")
+        self.assertIn("DENETLEME TAMAMLANDI", audit["status"])
         self.assertEqual(audit["citation_integrity"]["verified_pmids"], 2)
+        self.assertEqual(audit["citation_integrity"]["verified_dois"], 2)
         self.assertEqual(audit["citation_integrity"]["fabricated_citations_detected"], 0)
         self.assertTrue(audit["grade_rating_policy"]["compliant"])
-        self.assertIn("GRADE", audit["grade_rating_policy"]["notice"])
+        self.assertEqual(audit["grade_rating_policy"]["grade_status"], "GRADE Değerlendirilmedi (Not Assessed)")
+        self.assertIn("NCBI PubMed E-utilities API", audit["metadata_retrieval_source"])
+        self.assertIn("Klinik Doğrulama Yapılmamıştır", audit["clinical_validation_status"])
+
+        # Ensure no false claims in audit dictionary keys or string representations
+        audit_str = str(audit)
+        self.assertNotIn("100/100", audit_str)
+        self.assertNotIn("100 / 100", audit_str)
+        self.assertNotIn("0% (Sıfır)", audit_str)
 
     def test_generate_rule_based_turkish_report(self):
         query = "SGLT2 inhibitors in heart failure"
@@ -84,13 +94,30 @@ class TestReportGenerator(unittest.TestCase):
         self.assertIn("1. 🔍 Klinik Özet ve Sentez", report)
         self.assertIn("2. 📊 Yapılandırılmış Kanıt Tablosu", report)
         self.assertIn("3. ⚠️ Metodolojik Sınırlılıklar ve Klinik Uyarılar", report)
-        self.assertIn("4. 🛡️ Red Team Güvenlik ve Halüsinasyon Denetimi", report)
+        self.assertIn("4. 🛡️ Red Team Denetimi ve Atıf Dürüstlüğü Analizi", report)
         self.assertIn("5. 📚 Doğrulanmış Kaynaklar ve Literatür Listesi", report)
 
-        # Anti-hallucination check: ensure real PMIDs are present in the references
+        # Check for mandatory disclaimers and limitations
+        self.assertIn("Özet Metin Sınırlılığı Uyarısı", report)
+        self.assertIn("Abstract-Only Limitation", report)
+        self.assertIn("GRADE Değerlendirilmedi (Not Assessed)", report)
+        self.assertIn("Klinik Doğrulama İddiası Yoktur", report)
+        self.assertIn("No Clinical Validation Claimed", report)
+
+        # Check citation distinction
+        self.assertIn("PubMed Metadata Alımı", report)
+        self.assertIn("Bağımsız Atıf Doğrulaması", report)
+
+        # Ensure real PMIDs are present
         self.assertIn("PMID: [33264510]", report)
         self.assertIn("PMID: [31535829]", report)
         self.assertIn("Empagliflozin in Heart Failure", report)
+
+        # Check absence of false claims
+        self.assertNotIn("100/100", report)
+        self.assertNotIn("100 / 100", report)
+        self.assertNotIn("0% (Sıfır)", report)
+        self.assertNotIn("SIFIR HALÜSİNASYON", report)
 
     def test_generate_report_empty_articles(self):
         query = "Unknown condition xyz"
@@ -107,6 +134,15 @@ class TestReportGenerator(unittest.TestCase):
         html_rep = generate_html_report("SGLT2 inhibitors", SAMPLE_ARTICLES, markdown_rep)
         self.assertIn("<!DOCTYPE html>", html_rep)
         self.assertIn("Türkçe Klinik Kanıt Raporu", html_rep)
+        self.assertIn("GRADE Statüsü:", html_rep)
+        self.assertIn("GRADE Değerlendirilmedi", html_rep)
+        self.assertIn("Abstract-Only Limitation", html_rep)
+        self.assertIn("No Clinical Validation claimed", html_rep)
+
+        self.assertNotIn("100/100", html_rep)
+        self.assertNotIn("100 / 100", html_rep)
+        self.assertNotIn("0% (Sıfır)", html_rep)
+        self.assertNotIn("SIFIR HALÜSİNASYON", html_rep)
 
 
 if __name__ == "__main__":

@@ -105,7 +105,7 @@ class TestFastAPIApp(unittest.TestCase):
         self.assertIn("Türkçe Kanıt Raporu", data["report"])
         self.assertIn("html_report", data)
         self.assertIn("audit", data)
-        self.assertEqual(data["audit"]["status"], "GEÇTİ (PASSED)")
+        self.assertIn("DENETLEME TAMAMLANDI", data["audit"]["status"])
 
 
 if __name__ == "__main__":

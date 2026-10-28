@@ -104,9 +104,9 @@ def main():
 
     st.sidebar.markdown("---")
     st.sidebar.info(
-        "**🔍 Doğrulanmış Kaynak & Sıfır Halüsinasyon Garantisi:**\n"
-        "Bu sistem yalnızca canlı NCBI PubMed ve CrossRef E-utilities API verilerini kullanır. "
-        "Uydurma PMID, DOI veya makale kesinlikle üretilmez. Otomatik GRADE derecelendirmesi uydurulmaz."
+        "**🔍 Doğrulanmış Kaynak & Atıf Dürüstlüğü Politikası:**\n"
+        "Bu sistem canlı NCBI PubMed ve CrossRef E-utilities API verilerini kullanır. "
+        "Metin sentezi özet (abstract) verilerine dayanır; klinik doğrulama veya otomatik GRADE derecelendirmesi iddiasında bulunulmaz."
     )
 
     # Main Tabs
@@ -244,20 +244,20 @@ def main():
 
             audit_res = perform_red_team_audit(query, articles)
 
-            # Red Team Audit Summary Cards
+            # Audit Summary Cards
             col_a1, col_a2, col_a3, col_a4 = st.columns(4)
             with col_a1:
                 st.metric("Toplam Kaynak", len(articles))
             with col_a2:
                 st.metric("Doğrulanmış PMID", audit_res["citation_integrity"]["verified_pmids"])
             with col_a3:
-                st.metric("Halüsinasyon Riski", "0% (Sıfır)")
+                st.metric("Veri Kapsamı", "Yalnızca Özet (Abstract)")
             with col_a4:
-                st.metric("Güvenlik Skoru", "100/100")
+                st.metric("GRADE Statüsü", "Değerlendirilmedi")
 
             st.markdown(
                 f"""<div class="grade-notice-card">
-                📌 <strong>GRADE Politikası Onayı:</strong> {audit_res['grade_rating_policy']['notice']}
+                📌 <strong>GRADE Derecelendirme Politikası:</strong> {audit_res['grade_rating_policy']['notice']}
                 </div>""",
                 unsafe_allow_html=True
             )
