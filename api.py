@@ -2,7 +2,7 @@ from fastapi import FastAPI, Query, HTTPException, Body
 from typing import Optional, List, Dict, Any
 from pydantic import BaseModel, Field
 
-from pubmed_client import search_pubmed, verify_pmid, verify_doi
+from pubmed_client import search_pubmed, verify_pmid, verify_doi, verify_citation
 from report_generator import (
     generate_turkish_evidence_report,
     perform_red_team_audit,
@@ -68,6 +68,15 @@ def api_verify_doi(doi: str):
     if not result.get("valid"):
         raise HTTPException(status_code=404, detail=result.get("error", "DOI not found or invalid"))
     return result
+
+
+@app.post("/api/verify/citation")
+def api_verify_citation(citation: Dict[str, Any] = Body(...)):
+    """
+    Independently verifies a citation payload by re-fetching PMID from NCBI PubMed
+    and comparing normalized title and DOI values. Rejects mismatches and reports API failures as unverified.
+    """
+    return verify_citation(citation)
 
 
 @app.post("/api/report")

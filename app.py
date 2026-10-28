@@ -1,7 +1,7 @@
 import os
 import streamlit as st
 import pandas as pd
-from pubmed_client import search_pubmed, verify_pmid, verify_doi
+from pubmed_client import search_pubmed, verify_pmid, verify_doi, verify_citation
 from report_generator import (
     generate_turkish_evidence_report,
     generate_evidence_table_html,
@@ -213,7 +213,16 @@ def main():
             clean_input = identifier_input.strip()
             with st.spinner("Doğrulanıyor..."):
                 if clean_input.isdigit() or clean_input.lower().startswith("pmid:"):
-                    result = verify_pmid(clean_input)
+                    v_cit = verify_citation({"pmid": clean_input})
+                    if v_cit.get("status") == "verified":
+                        result = v_cit.get("fetched_article", {})
+                        result["valid"] = True
+                    else:
+                        result = {
+                            "valid": False,
+                            "status": v_cit.get("status"),
+                            "error": v_cit.get("error")
+                        }
                 else:
                     result = verify_doi(clean_input)
 
@@ -235,7 +244,11 @@ def main():
                 st.markdown("**Özet / Yayın Detayı:**")
                 st.info(result.get("abstract", "Özet bilgisi bulunamadı."))
             else:
-                st.error(f"❌ Doğrulama Başarısız: {result.get('error', 'Kayıt bulunamadı.')}")
+                status_label = result.get("status")
+                if status_label == "unverified":
+                    st.warning(f"⚠️ Doğrulama Tamamlanamadı (API Failure): {result.get('error', 'API yanıt vermedi.')}")
+                else:
+                    st.error(f"❌ Doğrulama Başarısız (Reddedildi): {result.get('error', 'Kayıt bulunamadı veya uyuşmazlık tespit edildi.')}")
 
     # Tab 3: Turkish Evidence Report Generator & Structured Evidence Module
     with tab3:
@@ -253,7 +266,7 @@ def main():
             with col_a1:
                 st.metric("Toplam Kaynak", len(articles))
             with col_a2:
-                st.metric("Doğrulanmış PMID", audit_res["citation_integrity"]["verified_pmids"])
+                st.metric("Doğrulanmış Atıf", audit_res["citation_integrity"]["verified_citations"])
             with col_a3:
                 st.metric("Veri Kapsamı", "Yalnızca Özet (Abstract)")
             with col_a4:
