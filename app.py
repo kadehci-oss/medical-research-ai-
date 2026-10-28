@@ -1,5 +1,6 @@
 import os
 import streamlit as st
+import streamlit.components.v1 as components
 import pandas as pd
 from pubmed_client import search_pubmed, verify_pmid, verify_doi
 from report_generator import (
@@ -290,7 +291,7 @@ def main():
                 with report_subtab2:
                     st.subheader("📊 Yapılandırılmış Tıbbi Kanıt Tablosu")
                     html_table = generate_evidence_table_html(articles)
-                    st.components.v1.html(html_table, height=500, scrolling=True)
+                    components.html(html_table, height=500, scrolling=True)
 
                 with report_subtab3:
                     st.subheader("🛡️ Red Team Denetimi & Metodolojik Değerlendirme")
