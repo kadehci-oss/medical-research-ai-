@@ -2,7 +2,12 @@ import unittest
 from report_generator import (
     generate_rule_based_turkish_report,
     generate_turkish_evidence_report,
-    _classify_evidence_level
+    _classify_evidence_level,
+    classify_study_design,
+    generate_evidence_table_markdown,
+    generate_evidence_table_html,
+    perform_red_team_audit,
+    generate_html_report
 )
 
 SAMPLE_ARTICLES = [
@@ -34,12 +39,41 @@ SAMPLE_ARTICLES = [
 
 class TestReportGenerator(unittest.TestCase):
 
+    def test_classify_study_design(self):
+        rct = classify_study_design(["Randomized Controlled Trial"], "Title", "Abstract")
+        self.assertEqual(rct["level"], "Seviye 2")
+        self.assertIn("Rastgele Kontrollü", rct["design"])
+
+        meta = classify_study_design(["Systematic Review"], "Meta-analysis title", "Abstract")
+        self.assertEqual(meta["level"], "Seviye 1")
+        self.assertIn("Sistematik Derleme", meta["design"])
+
+        cohort = classify_study_design([], "Prospective Cohort Study", "A cohort of patients")
+        self.assertEqual(cohort["level"], "Seviye 3")
+
     def test_classify_evidence_level(self):
         level_rct = _classify_evidence_level(["Randomized Controlled Trial"], "Title", "Abstract")
         self.assertIn("Seviye 2", level_rct)
 
-        level_sr = _classify_evidence_level(["Systematic Review"], "Meta-analysis of trial data", "Abstract")
-        self.assertIn("Seviye 1", level_sr)
+    def test_evidence_table_markdown_generation(self):
+        table_md = generate_evidence_table_markdown(SAMPLE_ARTICLES)
+        self.assertIn("| # | Çalışma / Yazar (Yıl) |", table_md)
+        self.assertIn("Stefan D Anker", table_md)
+        self.assertIn("PMID: 33264510", table_md)
+
+    def test_evidence_table_html_generation(self):
+        table_html = generate_evidence_table_html(SAMPLE_ARTICLES)
+        self.assertIn("<table", table_html)
+        self.assertIn("Empagliflozin in Heart Failure", table_html)
+        self.assertIn("PMID: 33264510", table_html)
+
+    def test_perform_red_team_audit(self) -> None:
+        audit = perform_red_team_audit("Heart Failure SGLT2", SAMPLE_ARTICLES)
+        self.assertEqual(audit["status"], "GEÇTİ (PASSED)")
+        self.assertEqual(audit["citation_integrity"]["verified_pmids"], 2)
+        self.assertEqual(audit["citation_integrity"]["fabricated_citations_detected"], 0)
+        self.assertTrue(audit["grade_rating_policy"]["compliant"])
+        self.assertIn("GRADE", audit["grade_rating_policy"]["notice"])
 
     def test_generate_rule_based_turkish_report(self):
         query = "SGLT2 inhibitors in heart failure"
@@ -48,9 +82,10 @@ class TestReportGenerator(unittest.TestCase):
         # Check required sections
         self.assertIn("Türkçe Kanıt Raporu", report)
         self.assertIn("1. 🔍 Klinik Özet ve Sentez", report)
-        self.assertIn("2. 📊 Kanıt Seviyeleri ve Metodolojik Dağılım", report)
-        self.assertIn("3. ⚠️ Klinik Uyarılar ve Sınırlılıklar", report)
-        self.assertIn("4. 📚 Doğrulanmış Kaynaklar ve Literatür Listesi", report)
+        self.assertIn("2. 📊 Yapılandırılmış Kanıt Tablosu", report)
+        self.assertIn("3. ⚠️ Metodolojik Sınırlılıklar ve Klinik Uyarılar", report)
+        self.assertIn("4. 🛡️ Red Team Güvenlik ve Halüsinasyon Denetimi", report)
+        self.assertIn("5. 📚 Doğrulanmış Kaynaklar ve Literatür Listesi", report)
 
         # Anti-hallucination check: ensure real PMIDs are present in the references
         self.assertIn("PMID: [33264510]", report)
@@ -63,10 +98,15 @@ class TestReportGenerator(unittest.TestCase):
         self.assertIn("Sonuç Bulunamadı", report)
 
     def test_generate_turkish_evidence_report_fallback(self):
-        # Even without LLM key, default generator should return valid Turkish report
         report = generate_turkish_evidence_report("SGLT2 inhibitors", SAMPLE_ARTICLES, api_key=None, use_llm=False)
         self.assertIn("Türkçe Kanıt Raporu", report)
         self.assertIn("33264510", report)
+
+    def test_generate_html_report(self):
+        markdown_rep = generate_rule_based_turkish_report("SGLT2 inhibitors", SAMPLE_ARTICLES)
+        html_rep = generate_html_report("SGLT2 inhibitors", SAMPLE_ARTICLES, markdown_rep)
+        self.assertIn("<!DOCTYPE html>", html_rep)
+        self.assertIn("Türkçe Klinik Kanıt Raporu", html_rep)
 
 
 if __name__ == "__main__":

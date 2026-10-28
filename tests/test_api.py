@@ -103,6 +103,9 @@ class TestFastAPIApp(unittest.TestCase):
         data = response.json()
         self.assertEqual(data["query"], "diabetes")
         self.assertIn("Türkçe Kanıt Raporu", data["report"])
+        self.assertIn("html_report", data)
+        self.assertIn("audit", data)
+        self.assertEqual(data["audit"]["status"], "GEÇTİ (PASSED)")
 
 
 if __name__ == "__main__":

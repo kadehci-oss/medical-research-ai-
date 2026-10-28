@@ -3,12 +3,17 @@ from typing import Optional, List, Dict, Any
 from pydantic import BaseModel, Field
 
 from pubmed_client import search_pubmed, verify_pmid, verify_doi
-from report_generator import generate_turkish_evidence_report
+from report_generator import (
+    generate_turkish_evidence_report,
+    perform_red_team_audit,
+    generate_evidence_table_html,
+    generate_html_report
+)
 
 app = FastAPI(
     title="Medical Research AI API",
     description="Physician Medical Research AI REST API backed by NCBI PubMed E-utilities and CrossRef.",
-    version="1.0.0"
+    version="1.1.0"
 )
 
 
@@ -72,7 +77,12 @@ def api_generate_report(req: ReportRequest):
         use_llm=req.use_llm,
         model=req.model
     )
+    audit = perform_red_team_audit(req.query, req.articles)
+    html_report = generate_html_report(req.query, req.articles, report_md)
+
     return {
         "query": req.query,
-        "report": report_md
+        "report": report_md,
+        "html_report": html_report,
+        "audit": audit
     }
