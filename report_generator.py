@@ -188,47 +188,115 @@ def _classify_evidence_level(pub_types: List[str], title: str, abstract: str) ->
     return f"{res['level']} ({res['design']})"
 
 
+def _clean_pico_str(s: str) -> str:
+    if not s:
+        return ""
+    s = s.strip()
+    s = re.sub(r"^[,\s.:;]+|[,\s.:;]+$", "", s).strip()
+    return s
+
+
 def extract_pico(query: str, abstract: str = "") -> Dict[str, str]:
     """
     Extracts PICO (Population, Intervention, Comparison, Outcome) framework components
     from clinical search query and/or study abstract text.
     """
-    text = (query + " " + abstract).strip()
+    q_clean = (query or "").strip()
+    abs_clean = (abstract or "").strip()
 
-    # Population extraction heuristics
-    population = "Belirtilmedi / Genel Hasta Grubu"
-    pop_matches = re.findall(r"\b(patients?|adults?|children|elderly|infants?|women|men|subjects?|cohort|cases?)\b.*?\b(with|having|diagnosed|suffering|in)\b\s+([^,.;]+)", text, re.IGNORECASE)
-    if pop_matches:
-        population = f"{pop_matches[0][0]} {pop_matches[0][1]} {pop_matches[0][2]}".strip()
-    elif "in " in query.lower():
-        parts = query.lower().split("in ")
-        if len(parts) > 1:
-            population = parts[1].strip().capitalize()
+    population = ""
+    intervention = ""
+    comparison = ""
+    outcome = ""
 
-    # Intervention extraction heuristics
-    intervention = "Belirtilmedi / Temel Müdahale"
-    if query:
-        words = query.split()
-        if len(words) >= 1:
-            intervention = query.strip()
+    # 1. Parse Query first for P, I, C
+    if q_clean:
+        pop_sep_pattern = re.compile(
+            r"\b(in patients with|in adults with|in children with|in elderly with|in|for|among|with)\b",
+            re.IGNORECASE
+        )
+        match = pop_sep_pattern.search(q_clean)
+        if match:
+            left_part = q_clean[:match.start()].strip()
+            right_part = q_clean[match.end():].strip()
+            if right_part:
+                population = right_part.capitalize()
+            if left_part:
+                comp_sep_pattern = re.compile(r"\b(versus|vs\.?|compared (?:to|with)|against)\b", re.IGNORECASE)
+                comp_match = comp_sep_pattern.search(left_part)
+                if comp_match:
+                    intervention = left_part[:comp_match.start()].strip()
+                    comparison = left_part[comp_match.end():].strip().capitalize()
+                else:
+                    intervention = left_part
+        else:
+            comp_sep_pattern = re.compile(r"\b(versus|vs\.?|compared (?:to|with)|against)\b", re.IGNORECASE)
+            comp_match = comp_sep_pattern.search(q_clean)
+            if comp_match:
+                intervention = q_clean[:comp_match.start()].strip()
+                comparison = q_clean[comp_match.end():].strip().capitalize()
+            else:
+                intervention = q_clean
 
-    # Comparison extraction heuristics
-    comparison = "Plasebo / Standart Tedavi / Kontrol Grubu"
-    comp_matches = re.search(r"\b(versus|vs\.?|compared (?:to|with)|against|placebo|standard care|control)\b\s+([^,.;]+)", text, re.IGNORECASE)
-    if comp_matches:
-        comparison = comp_matches.group(0).strip()
+    # 2. Extract or Refine Population from Abstract if not set or generic
+    if abs_clean:
+        pop_sec_match = re.search(r"\b(PATIENTS|POPULATION|PARTICIPANTS)\b\s*:\s*([^.\n]+)", abs_clean, re.IGNORECASE)
+        if pop_sec_match:
+            population = _clean_pico_str(pop_sec_match.group(2))
+        elif not population:
+            pop_matches = re.findall(
+                r"\b(\d+[\d,]*\s+)?(patients?|adults?|children|elderly|infants?|women|men|subjects?|participants?|cohort|cases?)\b.*?\b(with|having|diagnosed with|suffering from|undergoing|in)\b\s+([^,.;]+)",
+                abs_clean,
+                re.IGNORECASE
+            )
+            if pop_matches:
+                p_group = f"{pop_matches[0][0]}{pop_matches[0][1]} {pop_matches[0][2]} {pop_matches[0][3]}".strip()
+                population = p_group.capitalize()
 
-    # Outcome extraction heuristics
-    outcome = "Klinik Etkinlik, Güvenlilik ve Primer Sonlanım Noktaları"
-    out_matches = re.search(r"\b(reduced|increased|associated with|improved|mortality|survival|risk|hospitalization|events|endpoint|efficacy|safety|primary outcome)\b\s+([^,.;]+)", text, re.IGNORECASE)
-    if out_matches:
-        outcome = out_matches.group(0).strip()
+    # 3. Extract or Refine Comparison / Intervention from Abstract
+    if abs_clean and not comparison:
+        comp_matches = re.search(
+            r"\b(versus|vs\.?|compared (?:to|with)|against|placebo|standard care|control group|usual care)\b\s*([^,.;]+)?",
+            abs_clean,
+            re.IGNORECASE
+        )
+        if comp_matches:
+            comparison = _clean_pico_str(comp_matches.group(0)).capitalize()
+
+    if abs_clean and not intervention:
+        int_sec_match = re.search(r"\b(INTERVENTION|METHODS)\b\s*:\s*([^.\n]+)", abs_clean, re.IGNORECASE)
+        if int_sec_match:
+            intervention = _clean_pico_str(int_sec_match.group(2))
+
+    # 4. Extract Outcome from Abstract
+    if abs_clean:
+        out_sec_match = re.search(r"\b(PRIMARY OUTCOME|OUTCOME|RESULTS|CONCLUSIONS)\b\s*:\s*([^.\n]+)", abs_clean, re.IGNORECASE)
+        if out_sec_match:
+            outcome = _clean_pico_str(out_sec_match.group(2))
+        else:
+            out_matches = re.search(
+                r"\b(primary (?:outcome|endpoint)|primary end point|reduced (?:the risk of|mortality|hospitalization)|increased|associated with|improved|efficacy|safety|risk of)\b\s*([^,.;]+)?",
+                abs_clean,
+                re.IGNORECASE
+            )
+            if out_matches:
+                outcome = _clean_pico_str(out_matches.group(0))
+
+    # 5. Apply Defaults
+    if not population:
+        population = "Belirtilmedi / Genel Hasta Grubu"
+    if not intervention:
+        intervention = "Belirtilmedi / Temel Müdahale"
+    if not comparison:
+        comparison = "Plasebo / Standart Tedavi / Kontrol Grubu"
+    if not outcome:
+        outcome = "Klinik Etkinlik, Güvenlilik ve Primer Sonlanım Noktaları"
 
     return {
-        "population": population,
-        "intervention": intervention,
-        "comparison": comparison,
-        "outcome": outcome
+        "population": _clean_pico_str(population),
+        "intervention": _clean_pico_str(intervention),
+        "comparison": _clean_pico_str(comparison),
+        "outcome": _clean_pico_str(outcome)
     }
 
 
@@ -237,15 +305,46 @@ def assess_risk_of_bias(article: Dict[str, Any]) -> Dict[str, Any]:
     Evaluates Risk of Bias status for RoB 2 (RCTs) or ROBINS-I (Non-Randomized Studies).
     Formal risk of bias is marked as 'Değerlendirilmedi (Not Assessed)' because abstract-only
     data is insufficient for automated methodological bias scoring.
+    RoB 2 and ROBINS-I are not assigned to inappropriate article types (Systematic Reviews,
+    Narrative Reviews, Case Reports, Guidelines, Editorials, etc.).
     """
     pub_types = article.get("publication_types", [])
     title = article.get("title", "")
     abstract = article.get("abstract", "")
     design_info = classify_study_design(pub_types, title, abstract)
-
-    is_rct = "RCT" in design_info["design"] or "Rastgele" in design_info["design"] or "Randomized" in " ".join(pub_types)
+    design_name = design_info.get("design", "")
+    pts_str = " ".join([pt.lower() for pt in (pub_types or []) if pt])
 
     not_assessed_msg = "Değerlendirilmedi (Not Assessed - Tam Metin Gereklidir)"
+
+    # 1. Systematic Review / Meta-Analysis
+    if "Sistematik Derleme" in design_name or "Meta-Analiz" in design_name or "meta-analysis" in pts_str or "systematic review" in pts_str:
+        return {
+            "tool": "AMSTAR 2 / ROBIS (Sistematik Derleme)",
+            "study_type": "Sistematik Derleme / Meta-Analiz",
+            "overall_rating": "Uygulanamaz (Not Applicable)",
+            "badge_color": "#6B7280",
+            "domains": {
+                "Metodolojik Araç Uygunluğu": "RoB 2 ve ROBINS-I yalnızca primer çalışmalar (RCT ve gözlemsel) içindir. Sistematik derlemeler için AMSTAR 2 veya ROBIS kullanılmalıdır."
+            },
+            "note": "Sistematik derlemeler ve meta-analizler için RoB 2 veya ROBINS-I araçları uygulanamaz. Tam metin üzerinden AMSTAR 2 veya ROBIS metodolojik değerlendirmesi yapılmalıdır."
+        }
+
+    # 2. Qualitative Reviews, Expert Opinions, Case Reports, Guidelines, Editorials, Letters
+    if any(k in design_name for k in ["Niteliksel Derleme", "Olgu Sunumu", "Vaka Serisi", "Derleme", "Uzman Görüşü"]) or any(pt in pts_str for pt in ["case reports", "review", "editorial", "letter", "guideline"]):
+        return {
+            "tool": "Uygulanamaz (Not Applicable)",
+            "study_type": design_name or "Derleme / Olgu Sunumu",
+            "overall_rating": "Uygulanamaz (Not Applicable)",
+            "badge_color": "#6B7280",
+            "domains": {
+                "Metodolojik Araç Uygunluğu": "Derleme, olgu sunumu veya uzman görüşü yayınları için RoB 2 veya ROBINS-I yanlılık riski araçları uygulanamaz."
+            },
+            "note": "Derleme, olgu sunumu veya uzman görüşü niteliğindeki yayınlar için RoB 2 veya ROBINS-I gibi deneysel/gözlemsel araçlar uygulanamaz."
+        }
+
+    # 3. RCT (Randomized Controlled Trial)
+    is_rct = "RCT" in design_name or "Rastgele" in design_name or "randomized controlled trial" in pts_str
 
     if is_rct:
         domains = {
@@ -263,24 +362,25 @@ def assess_risk_of_bias(article: Dict[str, Any]) -> Dict[str, Any]:
             "domains": domains,
             "note": "Resmi RoB 2 değerlendirmesi yalnızca özet (abstract) metnine dayanarak otomatik yapılamaz; tam metin (full-text) incelemesi gereklidir."
         }
-    else:
-        domains = {
-            "D1: Karıştırıcı Değişken Yanlılığı (Confounding)": not_assessed_msg,
-            "D2: Katılımcı Seçimi Yanlılığı": not_assessed_msg,
-            "D3: Müdahale Sınıflandırma Yanlılığı": not_assessed_msg,
-            "D4: Müdahaleden Sapma Yanlılığı": not_assessed_msg,
-            "D5: Eksik Veri Yanlılığı": not_assessed_msg,
-            "D6: Sonuç Ölçüm Yanlılığı": not_assessed_msg,
-            "D7: Bildirilen Sonuç Seçim Yanlılığı": not_assessed_msg
-        }
-        return {
-            "tool": "ROBINS-I (Risk of Bias in Non-Randomized Studies)",
-            "study_type": "Gözlemsel / Randomize Olmayan Çalışma",
-            "overall_rating": "Değerlendirilmedi (Not Assessed)",
-            "badge_color": "#6B7280",
-            "domains": domains,
-            "note": "Resmi ROBINS-I değerlendirmesi yalnızca özet (abstract) metnine dayanarak otomatik yapılamaz; tam metin (full-text) incelemesi gereklidir."
-        }
+
+    # 4. Non-Randomized Studies (ROBINS-I) for Cohort, Case-Control, Non-Randomized Clinical Trials
+    domains = {
+        "D1: Karıştırıcı Değişken Yanlılığı (Confounding)": not_assessed_msg,
+        "D2: Katılımcı Seçimi Yanlılığı": not_assessed_msg,
+        "D3: Müdahale Sınıflandırma Yanlılığı": not_assessed_msg,
+        "D4: Müdahaleden Sapma Yanlılığı": not_assessed_msg,
+        "D5: Eksik Veri Yanlılığı": not_assessed_msg,
+        "D6: Sonuç Ölçüm Yanlılığı": not_assessed_msg,
+        "D7: Bildirilen Sonucun Seçimi": not_assessed_msg
+    }
+    return {
+        "tool": "ROBINS-I (Risk of Bias in Non-Randomized Studies)",
+        "study_type": "Gözlemsel / Randomize Olmayan Çalışma",
+        "overall_rating": "Değerlendirilmedi (Not Assessed)",
+        "badge_color": "#6B7280",
+        "domains": domains,
+        "note": "Resmi ROBINS-I değerlendirmesi yalnızca özet (abstract) metnine dayanarak otomatik yapılamaz; tam metin (full-text) incelemesi gereklidir."
+    }
 
 
 def generate_evidence_table_markdown(articles: List[Dict[str, Any]]) -> str:
