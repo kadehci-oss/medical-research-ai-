@@ -7,7 +7,9 @@ from report_generator import (
     generate_evidence_table_html,
     generate_html_report,
     perform_red_team_audit,
-    classify_study_design
+    classify_study_design,
+    extract_pico,
+    assess_risk_of_bias
 )
 
 # Page config
@@ -171,10 +173,12 @@ def main():
                 st.markdown(f"**Bulunan Toplam Kayıt:** {total_count} | **Gösterilen:** {len(articles)}")
                 for idx, art in enumerate(articles, 1):
                     cd = classify_study_design(art.get("publication_types", []), art.get("title", ""), art.get("abstract", ""))
+                    rob = assess_risk_of_bias(art)
                     with st.expander(f"{idx}. {art['title']} ({art['pub_year']}) - [{cd['level']}]", expanded=(idx <= 3)):
                         st.markdown(f"**Yazarlar:** {', '.join(art['authors']) if art['authors'] else 'Bilinmiyor'}")
                         st.markdown(f"**Dergi:** {art['journal']} ({art['pub_year']})")
                         st.markdown(f"**Çalışma Tasarımı:** `{cd['design']}` ({cd['level']})")
+                        st.markdown(f"**Yanlılık Riski ({rob['tool']}):** `{rob['overall_rating']}`")
 
                         badges_html = []
                         if art['pmid']:
@@ -278,9 +282,12 @@ def main():
             if "generated_report" in st.session_state:
                 st.markdown("---")
 
-                report_subtab1, report_subtab2, report_subtab3 = st.tabs([
+                pico_res = extract_pico(query, articles[0].get("abstract", "") if articles else "")
+
+                report_subtab1, report_subtab2, report_subtab3, report_subtab4 = st.tabs([
                     "📄 Tam Kanıt Raporu (Markdown)",
-                    "📊 Yapılandırılmış Kanıt Tablosu (HTML View)",
+                    "📊 Yapılandırılmış Kanıt Tablosu",
+                    "🎯 PICO & RoB Değerlendirmesi",
                     "🛡️ Red Team Denetim Detayları"
                 ])
 
@@ -293,6 +300,28 @@ def main():
                     st.components.v1.html(html_table, height=500, scrolling=True)
 
                 with report_subtab3:
+                    st.subheader("🎯 Klinik PICO Çerçevesi")
+                    p1, p2, p3, p4 = st.columns(4)
+                    with p1:
+                        st.info(f"**P (Hasta Grubu):**\n\n{pico_res['population']}")
+                    with p2:
+                        st.success(f"**I (Müdahale):**\n\n{pico_res['intervention']}")
+                    with p3:
+                        st.warning(f"**C (Karşılaştırma):**\n\n{pico_res['comparison']}")
+                    with p4:
+                        st.error(f"**O (Sonlanım):**\n\n{pico_res['outcome']}")
+
+                    st.markdown("---")
+                    st.subheader("🔬 Yanlılık Riski (RoB 2 / ROBINS-I) İncelemesi")
+                    for a_idx, a_item in enumerate(articles, 1):
+                        a_rob = assess_risk_of_bias(a_item)
+                        with st.expander(f"Makale #{a_idx}: {a_item.get('title')} — {a_rob['overall_rating']}"):
+                            st.markdown(f"**Değerlendirme Aracı:** {a_rob['tool']}")
+                            st.markdown(f"**Genel Derecelendirme:** `{a_rob['overall_rating']}`")
+                            st.markdown("**Domain Detayları:**")
+                            st.json(a_rob["domains"])
+
+                with report_subtab4:
                     st.subheader("🛡️ Red Team Denetimi & Metodolojik Değerlendirme")
                     st.json(audit_res)
 

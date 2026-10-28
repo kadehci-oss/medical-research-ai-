@@ -294,10 +294,12 @@ def verify_doi(doi: str) -> Dict[str, Any]:
             pmid = None
             pubmed_url = None
             abstract = "Özet CrossRef API üzerinden sağlanmıyor."
+            pub_types = []
             if pubmed_search.get("articles"):
                 pm_article = pubmed_search["articles"][0]
                 pmid = pm_article.get("pmid")
                 pubmed_url = pm_article.get("pubmed_url")
+                pub_types = pm_article.get("publication_types", [])
                 if pm_article.get("abstract") and pm_article["abstract"] != "Özet bulunamadı.":
                     abstract = pm_article["abstract"]
 
@@ -308,6 +310,7 @@ def verify_doi(doi: str) -> Dict[str, Any]:
                 "authors": authors,
                 "journal": journal,
                 "pub_year": year,
+                "publication_types": pub_types,
                 "pmid": pmid,
                 "pubmed_url": pubmed_url,
                 "doi_url": f"https://doi.org/{clean_doi}",

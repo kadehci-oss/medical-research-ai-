@@ -88,13 +88,148 @@ def _classify_evidence_level(pub_types: List[str], title: str, abstract: str) ->
     return f"{res['level']} ({res['design']})"
 
 
+def extract_pico(query: str, abstract: str = "") -> Dict[str, str]:
+    """
+    Extracts PICO (Population, Intervention, Comparison, Outcome) framework components
+    from clinical search query and/or study abstract text.
+    """
+    text = (query + " " + abstract).strip()
+
+    # Population extraction heuristics
+    population = "Belirtilmedi / Genel Hasta Grubu"
+    pop_matches = re.findall(r"\b(patients?|adults?|children|elderly|infants?|women|men|subjects?|cohort|cases?)\b.*?\b(with|having|diagnosed|suffering|in)\b\s+([^,.;]+)", text, re.IGNORECASE)
+    if pop_matches:
+        population = f"{pop_matches[0][0]} {pop_matches[0][1]} {pop_matches[0][2]}".strip()
+    elif "in " in query.lower():
+        parts = query.lower().split("in ")
+        if len(parts) > 1:
+            population = parts[1].strip().capitalize()
+
+    # Intervention extraction heuristics
+    intervention = "Belirtilmedi / Temel Müdahale"
+    if query:
+        words = query.split()
+        if len(words) >= 1:
+            intervention = query.strip()
+
+    # Comparison extraction heuristics
+    comparison = "Plasebo / Standart Tedavi / Kontrol Grubu"
+    comp_matches = re.search(r"\b(versus|vs\.?|compared (?:to|with)|against|placebo|standard care|control)\b\s+([^,.;]+)", text, re.IGNORECASE)
+    if comp_matches:
+        comparison = comp_matches.group(0).strip()
+
+    # Outcome extraction heuristics
+    outcome = "Klinik Etkinlik, Güvenlilik ve Primer Sonlanım Noktaları"
+    out_matches = re.search(r"\b(reduced|increased|associated with|improved|mortality|survival|risk|hospitalization|events|endpoint|efficacy|safety|primary outcome)\b\s+([^,.;]+)", text, re.IGNORECASE)
+    if out_matches:
+        outcome = out_matches.group(0).strip()
+
+    return {
+        "population": population,
+        "intervention": intervention,
+        "comparison": comparison,
+        "outcome": outcome
+    }
+
+
+def assess_risk_of_bias(article: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Evaluates Risk of Bias using RoB 2 checklist for Randomized Controlled Trials (RCTs)
+    and ROBINS-I checklist for Non-Randomized Studies / Observational Studies.
+    """
+    pub_types = article.get("publication_types", [])
+    title = article.get("title", "")
+    abstract = article.get("abstract", "")
+    design_info = classify_study_design(pub_types, title, abstract)
+
+    abstract_lower = abstract.lower()
+    is_rct = "RCT" in design_info["design"] or "Rastgele" in design_info["design"] or "Randomized" in " ".join(pub_types)
+
+    if is_rct:
+        # RoB 2 (Risk of Bias in Randomized Trials)
+        d1 = "Düşük Risk" if "random" in abstract_lower or "rastgele" in abstract_lower else "Bazı Endişeler"
+        d2 = "Düşük Risk" if "double-blind" in abstract_lower or "masked" in abstract_lower or "blinded" in abstract_lower else "Bazı Endişeler"
+        d3 = "Düşük Risk" if "intention-to-treat" in abstract_lower or "complete" in abstract_lower or len(abstract_lower) > 200 else "Bazı Endişeler"
+        d4 = "Düşük Risk" if "blinded" in abstract_lower or "objective" in abstract_lower else "Düşük Risk"
+        d5 = "Düşük Risk" if "primary outcome" in abstract_lower or "endpoint" in abstract_lower else "Bazı Endişeler"
+
+        domains = {
+            "D1: Rastgeleleştirme Süreci": d1,
+            "D2: Öngörülen Müdahalelerden Sapmalar": d2,
+            "D3: Eksik Sonuç Verileri": d3,
+            "D4: Sonuç Ölçümü": d4,
+            "D5: Bildirilen Sonucun Seçimi": d5
+        }
+
+        some_concerns = sum(1 for v in domains.values() if v == "Bazı Endişeler")
+        high_risk = sum(1 for v in domains.values() if v == "Yüksek Risk")
+
+        if high_risk > 0:
+            overall = "Yüksek Yanlılık Riski (High Risk of Bias)"
+            badge_color = "#DC2626"
+        elif some_concerns >= 2:
+            overall = "Bazı Endişeler (Some Concerns)"
+            badge_color = "#D97706"
+        else:
+            overall = "Düşük Yanlılık Riski (Low Risk of Bias)"
+            badge_color = "#059669"
+
+        return {
+            "tool": "RoB 2 (Cochrane Risk of Bias for RCTs)",
+            "study_type": "Randomize Kontrollü Çalışma",
+            "overall_rating": overall,
+            "badge_color": badge_color,
+            "domains": domains,
+            "note": "RoB 2 değerlendirmesi makalenin yayınlanmış özet (abstract) metnindeki metodolojik bildirimlere dayanmaktadır."
+        }
+    else:
+        # ROBINS-I (Risk Of Bias In Non-randomized Studies - of Interventions)
+        d1 = "Orta Yanlılık Riski" if "adjusted" in abstract_lower or "multivariate" in abstract_lower or "propensity" in abstract_lower else "Ciddi Yanlılık Riski"
+        d2 = "Düşük Yanlılık Riski" if "consecutive" in abstract_lower or "cohort" in abstract_lower else "Orta Yanlılık Riski"
+        d3 = "Düşük Yanlılık Riski" if "classified" in abstract_lower or "defined" in abstract_lower else "Düşük Yanlılık Riski"
+        d4 = "Orta Yanlılık Riski"
+        d5 = "Düşük Yanlılık Riski" if len(abstract_lower) > 200 else "Orta Yanlılık Riski"
+        d6 = "Düşük Yanlılık Riski" if "outcome" in abstract_lower or "measured" in abstract_lower else "Orta Yanlılık Riski"
+        d7 = "Orta Yanlılık Riski"
+
+        domains = {
+            "D1: Karıştırıcı Değişken Yanlılığı (Confounding)": d1,
+            "D2: Katılımcı Seçimi Yanlılığı": d2,
+            "D3: Müdahale Sınıflandırma Yanlılığı": d3,
+            "D4: Müdahaleden Sapma Yanlılığı": d4,
+            "D5: Eksik Veri Yanlılığı": d5,
+            "D6: Sonuç Ölçüm Yanlılığı": d6,
+            "D7: Bildirilen Sonuç Seçim Yanlılığı": d7
+        }
+
+        serious_count = sum(1 for v in domains.values() if "Ciddi" in v)
+        if serious_count >= 2:
+            overall = "Ciddi Yanlılık Riski (Serious Risk)"
+            badge_color = "#DC2626"
+        elif serious_count == 1:
+            overall = "Orta-Ciddi Yanlılık Riski (Moderate-Serious Risk)"
+            badge_color = "#D97706"
+        else:
+            overall = "Orta Yanlılık Riski (Moderate Risk)"
+            badge_color = "#2563EB"
+
+        return {
+            "tool": "ROBINS-I (Risk of Bias in Non-Randomized Studies)",
+            "study_type": "Gözlemsel / Randomize Olmayan Çalışma",
+            "overall_rating": overall,
+            "badge_color": badge_color,
+            "domains": domains,
+            "note": "ROBINS-I değerlendirmesi gözlemsel çalışma özetindeki karıştırıcı değişken yönetimi ve seçim kriterlerine dayanmaktadır."
+        }
+
+
 def generate_evidence_table_markdown(articles: List[Dict[str, Any]]) -> str:
-    """Generates a structured Markdown table of evidence for the report."""
+    """Generates a structured Markdown table of evidence with PICO & Risk of Bias for the report."""
     if not articles:
         return "*Tablo için gösterilecek veri bulunamadı.*"
 
     rows = [
-        "| # | Çalışma / Yazar (Yıl) | Tasarım & Kanıt Seviyesi | Dergi | PMID / DOI | Klinik Özet ve Bulgular |",
+        "| # | Çalışma / Yazar (Yıl) | Tasarım & Kanıt Seviyesi | Yanlılık Riski (RoB 2 / ROBINS-I) | PMID / DOI | Klinik Bulgular |",
         "|---|---|---|---|---|---|"
     ]
 
@@ -113,21 +248,23 @@ def generate_evidence_table_markdown(articles: List[Dict[str, Any]]) -> str:
         )
         design_str = f"**{classification['level']}**<br>*{classification['design']}*"
 
+        rob = assess_risk_of_bias(art)
+        rob_str = f"**{rob['overall_rating']}**<br>*{rob['tool']}*"
+
         pmid_link = f"[PMID: {pmid}]({art.get('pubmed_url', '#')})" if pmid else "-"
         if doi:
             pmid_link += f"<br>[DOI: {doi}]({art.get('doi_url', '#')})"
 
         abstract_text = art.get("abstract", "").replace("|", "-").replace("\n", " ").strip()
-        if len(abstract_text) > 220:
-            abstract_snippet = abstract_text[:217] + "..."
+        if len(abstract_text) > 200:
+            abstract_snippet = abstract_text[:197] + "..."
         else:
             abstract_snippet = abstract_text or "Özet bilgisi bulunamadı."
 
         title_clean = title.replace("|", "-")
-        journal_clean = journal.replace("|", "-")
 
         rows.append(
-            f"| {idx} | **{first_author}** ({year})<br>*{title_clean}* | {design_str} | {journal_clean} | {pmid_link} | {abstract_snippet} |"
+            f"| {idx} | **{first_author}** ({year})<br>*{title_clean}* | {design_str} | {rob_str} | {pmid_link} | {abstract_snippet} |"
         )
 
     return "\n".join(rows)
@@ -153,9 +290,11 @@ def generate_evidence_table_html(articles: List[Dict[str, Any]]) -> str:
             art.get("abstract", "")
         )
 
+        rob = assess_risk_of_bias(art)
+
         abstract_text = art.get("abstract", "").replace("\n", " ").strip()
-        if len(abstract_text) > 250:
-            abstract_snippet = abstract_text[:247] + "..."
+        if len(abstract_text) > 220:
+            abstract_snippet = abstract_text[:217] + "..."
         else:
             abstract_snippet = abstract_text or "Özet bulunamadı."
 
@@ -167,7 +306,8 @@ def generate_evidence_table_html(articles: List[Dict[str, Any]]) -> str:
             <td style="padding: 10px; font-weight: bold; text-align: center;">{idx}</td>
             <td style="padding: 10px;">
                 <strong>{first_author}</strong> ({year})<br>
-                <span style="font-size: 0.9em; color: #374151;">{title}</span>
+                <span style="font-size: 0.9em; color: #374151;">{title}</span><br>
+                <small style="color: #6B7280;">{journal}</small>
             </td>
             <td style="padding: 10px; text-align: center;">
                 <span style="background-color: {classification['badge_color']}; color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.8em; font-weight: bold;">
@@ -175,7 +315,12 @@ def generate_evidence_table_html(articles: List[Dict[str, Any]]) -> str:
                 </span><br>
                 <small style="color: #4B5563;">{classification['design']}</small>
             </td>
-            <td style="padding: 10px; font-size: 0.9em;">{journal}</td>
+            <td style="padding: 10px; text-align: center;">
+                <span style="background-color: {rob['badge_color']}; color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.8em; font-weight: bold;">
+                    {rob['overall_rating']}
+                </span><br>
+                <small style="color: #4B5563;">{rob['tool']}</small>
+            </td>
             <td style="padding: 10px; font-size: 0.85em;">{pmid_html}{doi_html}</td>
             <td style="padding: 10px; font-size: 0.88em; color: #1F2937;">{abstract_snippet}</td>
         </tr>
@@ -186,9 +331,9 @@ def generate_evidence_table_html(articles: List[Dict[str, Any]]) -> str:
         <thead>
             <tr style="background-color: #F3F4F6; color: #1F2937; text-align: left; border-bottom: 2px solid #D1D5DB;">
                 <th style="padding: 10px; width: 4%;">#</th>
-                <th style="padding: 10px; width: 26%;">Çalışma / Yazar</th>
-                <th style="padding: 10px; width: 18%; text-align: center;">Tasarım & Kanıt</th>
-                <th style="padding: 10px; width: 14%;">Dergi</th>
+                <th style="padding: 10px; width: 24%;">Çalışma / Yazar</th>
+                <th style="padding: 10px; width: 16%; text-align: center;">Tasarım & Kanıt</th>
+                <th style="padding: 10px; width: 18%; text-align: center;">Yanlılık Riski</th>
                 <th style="padding: 10px; width: 12%;">Kimlik</th>
                 <th style="padding: 10px; width: 26%;">Klinik Bulgular</th>
             </tr>
@@ -296,10 +441,17 @@ Lütfen arama terimlerini veya filtreleri genişleterek tekrar deneyiniz.
     report.append(f"**İncelenen Makale Sayısı:** {total_articles}\n")
     report.append("---")
 
-    # 1. Klinik Özet ve Sentez
-    report.append("## 1. 🔍 Klinik Özet ve Sentez")
+    # 1. PICO Yapısı ve Klinik Özet
+    report.append("## 1. 🔍 PICO Yapısı ve Klinik Özet Sentezi")
     report.append(f"Bu rapor, **PubMed E-utilities API** vasıtasıyla çekilen **{total_articles} adet makale özeti (abstract)** temel alınarak hekimlerin literatür inceleme süreçlerini desteklemek amacıyla hazırlanmıştır.")
     report.append("**Özet Metin Sınırlılığı Uyarısı:** Bu rapordaki klinik bulgular yalnızca yayınlanmış özet (abstract) metinlerine dayanmakta olup tam metin (full-text) değerlendirmesi içermez.\n")
+
+    pico = extract_pico(query, articles[0].get("abstract", "") if articles else "")
+    report.append("### 📋 Klinik PICO Çerçevesi")
+    report.append(f"- **P (Population / Hasta Grubu):** {pico['population']}")
+    report.append(f"- **I (Intervention / Müdahale):** {pico['intervention']}")
+    report.append(f"- **C (Comparison / Karşılaştırma):** {pico['comparison']}")
+    report.append(f"- **O (Outcome / Klinik Sonlanım):** {pico['outcome']}\n")
 
     for idx, art in enumerate(articles, 1):
         first_author = _format_authors_short(art.get("authors", []))
@@ -308,6 +460,7 @@ Lütfen arama terimlerini veya filtreleri genişleterek tekrar deneyiniz.
         abstract = art.get("abstract", "Özet bilgisi mevcut değil.")
         pmid = art.get("pmid", "Yok")
         cd = classify_study_design(art.get("publication_types", []), title, abstract)
+        rob = assess_risk_of_bias(art)
 
         abstract_snippet = abstract.strip()
         if len(abstract_snippet) > 400:
@@ -316,6 +469,7 @@ Lütfen arama terimlerini veya filtreleri genişleterek tekrar deneyiniz.
         report.append(f"### {idx}. {title}")
         report.append(f"- **Yazar(lar) ve Yıl:** {first_author} ({year})")
         report.append(f"- **Çalışma Tasarımı & Seviyesi:** {cd['level']} ({cd['design']})")
+        report.append(f"- **Yanlılık Riski Değerlendirmesi:** {rob['overall_rating']} ({rob['tool']})")
         report.append(f"- **Dergi:** *{art.get('journal', 'Bilinmiyor')}*")
         report.append(f"- **Klinik Özet & Bulgular:** {abstract_snippet}")
         report.append(f"- **Kaynak Doğrulama:** [PMID: {pmid}]({art.get('pubmed_url', '#')})" + (f" | [DOI: {art.get('doi')}]({art.get('doi_url', '#')})" if art.get("doi") else "") + "\n")
