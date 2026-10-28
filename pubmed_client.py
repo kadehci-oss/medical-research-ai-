@@ -181,6 +181,13 @@ def search_pubmed(
         response.raise_for_status()
         data = response.json()
         esearch_result = data.get("esearchresult", {})
+
+        if "ERROR" in esearch_result:
+            return {"articles": [], "total_count": 0, "query": query, "error": esearch_result.get("ERROR")}
+        if "errorlist" in esearch_result:
+            err_list = esearch_result.get("errorlist", {})
+            return {"articles": [], "total_count": 0, "query": query, "error": f"PubMed esearch error: {err_list}"}
+
         id_list = esearch_result.get("idlist", [])
         total_count = int(esearch_result.get("count", "0"))
 

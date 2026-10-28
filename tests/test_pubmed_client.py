@@ -86,6 +86,29 @@ class TestPubMedClient(unittest.TestCase):
         self.assertEqual(res["articles"][0]["pmid"], "33264510")
 
     @patch("requests.get")
+    def test_search_pubmed_api_error(self, mock_get):
+        mock_esearch_resp = MagicMock()
+        mock_esearch_resp.json.return_value = {
+            "esearchresult": {
+                "ERROR": "Invalid search term"
+            }
+        }
+        mock_esearch_resp.raise_for_status.return_value = None
+        mock_get.return_value = mock_esearch_resp
+
+        res = search_pubmed("invalid_term")
+        self.assertIn("error", res)
+        self.assertEqual(res["error"], "Invalid search term")
+
+    @patch("requests.get")
+    def test_search_pubmed_network_exception(self, mock_get):
+        mock_get.side_effect = Exception("Connection timeout")
+
+        res = search_pubmed("diabetes")
+        self.assertIn("error", res)
+        self.assertEqual(res["error"], "Connection timeout")
+
+    @patch("requests.get")
     def test_verify_pmid_valid(self, mock_get):
         mock_resp = MagicMock()
         mock_resp.text = SAMPLE_PUBMED_XML

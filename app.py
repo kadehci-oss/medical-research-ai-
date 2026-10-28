@@ -111,9 +111,9 @@ def main():
 
         col_y1, col_y2, col_sort, col_btn = st.columns([1, 1, 1.5, 1])
         with col_y1:
-            start_year = st.number_input("Başlangıç Yılı", min_value=1950, max_value=2026, value=2018)
+            start_year = st.number_input("Başlangıç Yılı", min_value=1950, max_value=2026, value=None, placeholder="Örn: 2018")
         with col_y2:
-            end_year = st.number_input("Bitiş Yılı", min_value=1950, max_value=2026, value=2026)
+            end_year = st.number_input("Bitiş Yılı", min_value=1950, max_value=2026, value=None, placeholder="Örn: 2026")
         with col_sort:
             sort_by = st.selectbox("Sıralama", ["relevance", "pub_date"])
         with col_btn:
@@ -121,14 +121,16 @@ def main():
             search_submitted = st.button("🔍 Ara", use_container_width=True)
 
         if search_submitted and search_query:
+            start_yr = int(start_year) if start_year and not pd.isna(start_year) else None
+            end_yr = int(end_year) if end_year and not pd.isna(end_year) else None
             with st.spinner("PubMed veritabanı sorgulanıyor..."):
                 search_res = search_pubmed(
                     query=search_query,
                     max_results=max_results,
                     sort=sort_by,
                     publication_type=pub_type_filter,
-                    start_year=start_year,
-                    end_year=end_year
+                    start_year=start_yr,
+                    end_year=end_yr
                 )
                 st.session_state["search_results"] = search_res
                 st.session_state["active_query"] = search_query
@@ -137,12 +139,14 @@ def main():
             res = st.session_state["search_results"]
             articles = res.get("articles", [])
             total_count = res.get("total_count", 0)
+            error_msg = res.get("error")
 
-            st.markdown(f"**Bulunan Toplam Kayıt:** {total_count} | **Gösterilen:** {len(articles)}")
-
-            if not articles:
+            if error_msg:
+                st.error(f"❌ PubMed API Hatası: {error_msg}")
+            elif not articles:
                 st.warning("Belirtilen kriterlere uygun literatür kaydı bulunamadı.")
             else:
+                st.markdown(f"**Bulunan Toplam Kayıt:** {total_count} | **Gösterilen:** {len(articles)}")
                 for idx, art in enumerate(articles, 1):
                     with st.expander(f"{idx}. {art['title']} ({art['pub_year']})", expanded=(idx <= 3)):
                         st.markdown(f"**Yazarlar:** {', '.join(art['authors']) if art['authors'] else 'Bilinmiyor'}")
