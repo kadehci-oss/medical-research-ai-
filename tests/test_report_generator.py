@@ -5,6 +5,7 @@ from report_generator import (
     generate_turkish_evidence_report,
     _classify_evidence_level,
     classify_study_design,
+    assess_risk_of_bias,
     generate_evidence_table_markdown,
     generate_evidence_table_html,
     perform_red_team_audit,
@@ -53,6 +54,24 @@ class TestReportGenerator(unittest.TestCase):
         cohort = classify_study_design([], "Prospective Cohort Study", "A cohort of patients")
         self.assertEqual(cohort["level"], "Seviye 3")
 
+    def test_classify_study_design_nlm_preliminary_priority(self):
+        # NLM publication type Cohort Studies should take priority over background mention of "Systematic Review"
+        res = classify_study_design(
+            ["Cohort Studies"],
+            "Observational study on hypertension",
+            "A systematic review was previously conducted on this topic. In our cohort of 500 patients..."
+        )
+        self.assertEqual(res["level"], "Seviye 3")
+        self.assertEqual(res["design"], "Kohort Çalışması (Gözlemsel)")
+
+    def test_assess_risk_of_bias_not_assessed(self):
+        art = SAMPLE_ARTICLES[0]
+        rob = assess_risk_of_bias(art)
+        self.assertEqual(rob["overall_rating"], "Değerlendirilmedi (Not Assessed)")
+        self.assertIn("tam metin (full-text) incelemesi gereklidir", rob["note"])
+        for domain_val in rob["domains"].values():
+            self.assertIn("Değerlendirilmedi", domain_val)
+
     def test_classify_evidence_level(self):
         level_rct = _classify_evidence_level(["Randomized Controlled Trial"], "Title", "Abstract")
         self.assertIn("Seviye 2", level_rct)
@@ -90,6 +109,38 @@ class TestReportGenerator(unittest.TestCase):
         self.assertNotIn("100/100", audit_str)
         self.assertNotIn("100 / 100", audit_str)
         self.assertNotIn("0% (Sıfır)", audit_str)
+
+    @patch("report_generator.verify_citation")
+    def test_perform_red_team_audit_six_citation_reasons(self, mock_verify_citation):
+        six_articles = [
+            {"pmid": "10001", "title": "Paper 1"},
+            {"pmid": "10002", "title": "Paper 2"},
+            {"pmid": "10003", "title": "Paper 3"},
+            {"pmid": "abc", "title": "Paper 4"},
+            {"pmid": "99999", "title": "Paper 5"},
+            {"pmid": "10006", "title": "Paper 6"},
+        ]
+        mock_verify_citation.side_effect = [
+            {"status": "verified", "verified": True, "pmid": "10001", "reason": "match"},
+            {"status": "rejected", "verified": False, "pmid": "10002", "reason": "title_mismatch"},
+            {"status": "rejected", "verified": False, "pmid": "10003", "reason": "doi_mismatch"},
+            {"status": "rejected", "verified": False, "pmid": "abc", "reason": "missing_or_invalid_pmid"},
+            {"status": "rejected", "verified": False, "pmid": "99999", "reason": "not_found"},
+            {"status": "unverified", "verified": False, "pmid": "10006", "reason": "api_failure"}
+        ]
+
+        audit = perform_red_team_audit("Test Query", six_articles)
+        self.assertEqual(audit["citation_integrity"]["verified_citations"], 1)
+        self.assertEqual(audit["citation_integrity"]["rejected_citations"], 4)
+        self.assertEqual(audit["citation_integrity"]["unverified_citations"], 1)
+
+        breakdown = audit["citation_integrity"]["reason_breakdown"]
+        self.assertEqual(breakdown["match"], 1)
+        self.assertEqual(breakdown["title_mismatch"], 1)
+        self.assertEqual(breakdown["doi_mismatch"], 1)
+        self.assertEqual(breakdown["missing_or_invalid_pmid"], 1)
+        self.assertEqual(breakdown["not_found"], 1)
+        self.assertEqual(breakdown["api_failure"], 1)
 
     def test_generate_rule_based_turkish_report(self):
         query = "SGLT2 inhibitors in heart failure"

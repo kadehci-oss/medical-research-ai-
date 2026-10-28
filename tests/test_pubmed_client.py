@@ -219,6 +219,24 @@ class TestPubMedClient(unittest.TestCase):
         self.assertEqual(res["status"], "rejected")
         self.assertEqual(res["reason"], "missing_or_invalid_pmid")
 
+    @patch("pubmed_client.verify_pmid")
+    def test_verify_citation_not_found_rejection(self, mock_verify_pmid):
+        mock_verify_pmid.return_value = {
+            "valid": False,
+            "pmid": "999999999",
+            "error": "PMID 999999999 PubMed veritabanında bulunamadı."
+        }
+
+        citation = {
+            "pmid": "999999999",
+            "title": "Non-existent Paper Title"
+        }
+
+        res = verify_citation(citation)
+        self.assertEqual(res["status"], "rejected")
+        self.assertFalse(res["verified"])
+        self.assertEqual(res["reason"], "not_found")
+
     @patch("requests.get")
     def test_verify_doi_crossref_success(self, mock_get):
         mock_resp = MagicMock()
