@@ -55,6 +55,14 @@ class TestReportGenerator(unittest.TestCase):
         cohort = classify_study_design([], "Prospective Cohort Study", "A cohort of patients")
         self.assertEqual(cohort["level"], "Seviye 3")
 
+        guideline = classify_study_design(["Practice Guideline"], "Clinical Guideline", "Guideline statement")
+        self.assertEqual(guideline["level"], "Seviye 5")
+        self.assertEqual(guideline["design"], "Kılavuz / Klinik Rehber (Guideline)")
+
+        editorial = classify_study_design(["Editorial"], "Editorial Comment", "Editorial text")
+        self.assertEqual(editorial["level"], "Seviye 5")
+        self.assertEqual(editorial["design"], "Editöryal / Mektup / Görüş")
+
     def test_classify_study_design_nlm_preliminary_priority(self):
         # NLM publication type Cohort Studies should take priority over background mention of "Systematic Review"
         res = classify_study_design(
@@ -104,7 +112,26 @@ class TestReportGenerator(unittest.TestCase):
         self.assertEqual(rob_case["overall_rating"], "Uygulanamaz (Not Applicable)")
         self.assertEqual(rob_case["tool"], "Uygulanamaz (Not Applicable)")
 
-        # 4. RCT -> RoB 2
+        # 4. Guideline & Editorial -> Uygulanamaz
+        guideline_art = {
+            "title": "2023 ESC Guidelines for the management of cardiovascular disease",
+            "publication_types": ["Practice Guideline"],
+            "abstract": "Clinical practice guidelines for diagnosis and management."
+        }
+        rob_guide = assess_risk_of_bias(guideline_art)
+        self.assertEqual(rob_guide["overall_rating"], "Uygulanamaz (Not Applicable)")
+        self.assertEqual(rob_guide["tool"], "Uygulanamaz (Not Applicable)")
+
+        editorial_art = {
+            "title": "Comment on SGLT2 inhibitors in clinical practice",
+            "publication_types": ["Editorial"],
+            "abstract": "Editorial commentary on recent trial results."
+        }
+        rob_edit = assess_risk_of_bias(editorial_art)
+        self.assertEqual(rob_edit["overall_rating"], "Uygulanamaz (Not Applicable)")
+        self.assertEqual(rob_edit["tool"], "Uygulanamaz (Not Applicable)")
+
+        # 5. RCT -> RoB 2
         rct_art = {
             "title": "Randomized trial of empagliflozin",
             "publication_types": ["Randomized Controlled Trial"],
@@ -114,7 +141,7 @@ class TestReportGenerator(unittest.TestCase):
         self.assertEqual(rob_rct["overall_rating"], "Değerlendirilmedi (Not Assessed)")
         self.assertEqual(rob_rct["tool"], "RoB 2 (Cochrane Risk of Bias for RCTs)")
 
-        # 5. Cohort Study -> ROBINS-I
+        # 6. Cohort Study -> ROBINS-I
         cohort_art = {
             "title": "A prospective cohort study of SGLT2 inhibitors",
             "publication_types": ["Observational Study"],
@@ -123,6 +150,13 @@ class TestReportGenerator(unittest.TestCase):
         rob_cohort = assess_risk_of_bias(cohort_art)
         self.assertEqual(rob_cohort["overall_rating"], "Değerlendirilmedi (Not Assessed)")
         self.assertEqual(rob_cohort["tool"], "ROBINS-I (Risk of Bias in Non-Randomized Studies)")
+
+    def test_extract_pico_defaults_unstated(self):
+        pico = extract_pico("", "")
+        self.assertEqual(pico["population"], "Belirtilmedi (Not Specified)")
+        self.assertEqual(pico["intervention"], "Belirtilmedi (Not Specified)")
+        self.assertEqual(pico["comparison"], "Belirtilmedi (Not Specified)")
+        self.assertEqual(pico["outcome"], "Belirtilmedi (Not Specified)")
 
     def test_extract_pico_multi_part_query_and_abstract(self):
         query = "SGLT2 inhibitors vs placebo in heart failure with preserved ejection fraction"

@@ -22,8 +22,10 @@ def _format_authors_short(authors: List[str]) -> str:
 
 def classify_study_design(pub_types: List[str], title: str, abstract: str) -> Dict[str, Any]:
     """
-    Classifies study design and evidence level using NLM publication types for preliminary
-    classification, falling back to title and abstract heuristics.
+    Classifies study design and Study Design Hierarchy level (Level 1-5) using NLM
+    publication types for preliminary classification, falling back to title and abstract heuristics.
+    Note: Study Design Hierarchy (Level 1-5) reflects study design architecture and is strictly
+    distinct from GRADE Evidence Certainty, which is marked separately as 'GRADE Değerlendirilmedi (Not Assessed)'.
     """
     pts = [pt.lower() for pt in (pub_types or []) if pt]
 
@@ -69,6 +71,20 @@ def classify_study_design(pub_types: List[str], title: str, abstract: str) -> Di
             "level": "Seviye 4",
             "level_num": 4,
             "badge_color": "#DC2626"
+        }
+    if any("guideline" in pt or "practice guideline" in pt or "consensus development conference" in pt for pt in pts):
+        return {
+            "design": "Kılavuz / Klinik Rehber (Guideline)",
+            "level": "Seviye 5",
+            "level_num": 5,
+            "badge_color": "#4B5563"
+        }
+    if any("editorial" in pt or "letter" in pt or "comment" in pt or "news" in pt for pt in pts):
+        return {
+            "design": "Editöryal / Mektup / Görüş",
+            "level": "Seviye 5",
+            "level_num": 5,
+            "badge_color": "#4B5563"
         }
     if any("review" in pt or "derleme" in pt for pt in pts):
         return {
@@ -122,6 +138,20 @@ def classify_study_design(pub_types: List[str], title: str, abstract: str) -> Di
             "level_num": 4,
             "badge_color": "#DC2626"
         }
+    elif "guideline" in title_lower or "consensus statement" in title_lower or "rehber" in title_lower:
+        return {
+            "design": "Kılavuz / Klinik Rehber (Guideline)",
+            "level": "Seviye 5",
+            "level_num": 5,
+            "badge_color": "#4B5563"
+        }
+    elif "editorial" in title_lower or "letter to" in title_lower or "mektup" in title_lower:
+        return {
+            "design": "Editöryal / Mektup / Görüş",
+            "level": "Seviye 5",
+            "level_num": 5,
+            "badge_color": "#4B5563"
+        }
     elif "review" in title_lower or "derleme" in title_lower:
         return {
             "design": "Niteliksel Derleme / Uzman Görüşü",
@@ -166,6 +196,20 @@ def classify_study_design(pub_types: List[str], title: str, abstract: str) -> Di
             "level": "Seviye 4",
             "level_num": 4,
             "badge_color": "#DC2626"
+        }
+    elif "guideline" in abstract_lower or "consensus statement" in abstract_lower:
+        return {
+            "design": "Kılavuz / Klinik Rehber (Guideline)",
+            "level": "Seviye 5",
+            "level_num": 5,
+            "badge_color": "#4B5563"
+        }
+    elif "editorial" in abstract_lower or "letter to" in abstract_lower:
+        return {
+            "design": "Editöryal / Mektup / Görüş",
+            "level": "Seviye 5",
+            "level_num": 5,
+            "badge_color": "#4B5563"
         }
     elif "review" in abstract_lower or "derleme" in abstract_lower:
         return {
@@ -284,13 +328,13 @@ def extract_pico(query: str, abstract: str = "") -> Dict[str, str]:
 
     # 5. Apply Defaults
     if not population:
-        population = "Belirtilmedi / Genel Hasta Grubu"
+        population = "Belirtilmedi (Not Specified)"
     if not intervention:
-        intervention = "Belirtilmedi / Temel Müdahale"
+        intervention = "Belirtilmedi (Not Specified)"
     if not comparison:
-        comparison = "Plasebo / Standart Tedavi / Kontrol Grubu"
+        comparison = "Belirtilmedi (Not Specified)"
     if not outcome:
-        outcome = "Klinik Etkinlik, Güvenlilik ve Primer Sonlanım Noktaları"
+        outcome = "Belirtilmedi (Not Specified)"
 
     return {
         "population": _clean_pico_str(population),
@@ -331,16 +375,16 @@ def assess_risk_of_bias(article: Dict[str, Any]) -> Dict[str, Any]:
         }
 
     # 2. Qualitative Reviews, Expert Opinions, Case Reports, Guidelines, Editorials, Letters
-    if any(k in design_name for k in ["Niteliksel Derleme", "Olgu Sunumu", "Vaka Serisi", "Derleme", "Uzman Görüşü"]) or any(pt in pts_str for pt in ["case reports", "review", "editorial", "letter", "guideline"]):
+    if any(k in design_name for k in ["Niteliksel Derleme", "Olgu Sunumu", "Vaka Serisi", "Derleme", "Uzman Görüşü", "Kılavuz", "Editöryal"]) or any(pt in pts_str for pt in ["case reports", "review", "editorial", "letter", "guideline", "comment", "news"]):
         return {
             "tool": "Uygulanamaz (Not Applicable)",
-            "study_type": design_name or "Derleme / Olgu Sunumu",
+            "study_type": design_name or "Derleme / Olgu Sunumu / Kılavuz",
             "overall_rating": "Uygulanamaz (Not Applicable)",
             "badge_color": "#6B7280",
             "domains": {
-                "Metodolojik Araç Uygunluğu": "Derleme, olgu sunumu veya uzman görüşü yayınları için RoB 2 veya ROBINS-I yanlılık riski araçları uygulanamaz."
+                "Metodolojik Araç Uygunluğu": "Derleme, olgu sunumu, kılavuz veya editöryal/mektup yayınları için RoB 2 veya ROBINS-I yanlılık riski araçları uygulanamaz."
             },
-            "note": "Derleme, olgu sunumu veya uzman görüşü niteliğindeki yayınlar için RoB 2 veya ROBINS-I gibi deneysel/gözlemsel araçlar uygulanamaz."
+            "note": "Derleme, olgu sunumu, kılavuz veya editöryal nitelikteki yayınlar için RoB 2 veya ROBINS-I gibi deneysel/gözlemsel araçlar uygulanamaz."
         }
 
     # 3. RCT (Randomized Controlled Trial)
