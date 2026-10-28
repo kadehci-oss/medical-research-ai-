@@ -22,67 +22,165 @@ def _format_authors_short(authors: List[str]) -> str:
 
 def classify_study_design(pub_types: List[str], title: str, abstract: str) -> Dict[str, Any]:
     """
-    Classifies study design and evidence level based on NLM publication types,
-    title, and abstract text following evidence-based medicine hierarchy.
+    Classifies study design and evidence level using NLM publication types for preliminary
+    classification, falling back to title and abstract heuristics.
     """
-    combined = " ".join((pub_types or []) + [title or "", abstract or ""]).lower()
+    pts = [pt.lower() for pt in (pub_types or []) if pt]
 
-    if "systematic review" in combined or "meta-analysis" in combined or "sistematik derleme" in combined:
+    # 1. Preliminary classification via official NLM Publication Types (in priority order)
+    if any("meta-analysis" in pt or "sistematik derleme" in pt for pt in pts):
         return {
             "design": "Sistematik Derleme / Meta-Analiz",
             "level": "Seviye 1",
             "level_num": 1,
-            "badge_color": "#1E40AF"  # Dark blue
+            "badge_color": "#1E40AF"
         }
-    elif "randomized controlled trial" in combined or "rct" in combined or "rastgele kontrollü" in combined:
+    if any("systematic review" in pt for pt in pts):
+        return {
+            "design": "Sistematik Derleme / Meta-Analiz",
+            "level": "Seviye 1",
+            "level_num": 1,
+            "badge_color": "#1E40AF"
+        }
+    if any("randomized controlled trial" in pt for pt in pts):
         return {
             "design": "Rastgele Kontrollü Çalışma (RCT)",
             "level": "Seviye 2",
             "level_num": 2,
-            "badge_color": "#047857"  # Green
+            "badge_color": "#047857"
         }
-    elif "clinical trial" in combined or "controlled clinical trial" in combined or "klinik araştırma" in combined:
+    if any("clinical trial" in pt or "controlled clinical trial" in pt for pt in pts):
         return {
             "design": "Kontrollü Klinik Araştırma",
             "level": "Seviye 2",
             "level_num": 2,
-            "badge_color": "#059669"  # Green
+            "badge_color": "#059669"
         }
-    elif "cohort" in combined or "kohort" in combined or "prospective study" in combined or "longitudinal" in combined:
+    if any("observational study" in pt or "cohort" in pt or "longitudinal" in pt or "prospective study" in pt for pt in pts):
         return {
             "design": "Kohort Çalışması (Gözlemsel)",
             "level": "Seviye 3",
             "level_num": 3,
-            "badge_color": "#D97706"  # Amber
+            "badge_color": "#D97706"
         }
-    elif "case-control" in combined or "vaka-kontrol" in combined or "case control" in combined:
-        return {
-            "design": "Vaka-Kontrol Çalışması",
-            "level": "Seviye 4",
-            "level_num": 4,
-            "badge_color": "#DC2626"  # Red-Orange
-        }
-    elif "case report" in combined or "case series" in combined or "olgu sunumu" in combined:
+    if any("case reports" in pt or "case report" in pt for pt in pts):
         return {
             "design": "Olgu Sunumu / Vaka Serisi",
             "level": "Seviye 4",
             "level_num": 4,
             "badge_color": "#DC2626"
         }
-    elif "review" in combined or "derleme" in combined or "systematic" in combined:
+    if any("review" in pt or "derleme" in pt for pt in pts):
         return {
             "design": "Niteliksel Derleme / Uzman Görüşü",
             "level": "Seviye 5",
             "level_num": 5,
-            "badge_color": "#4B5563"  # Gray
+            "badge_color": "#4B5563"
         }
-    else:
+
+    # 2. Secondary check based on Title
+    title_lower = (title or "").lower()
+    if "systematic review" in title_lower or "meta-analysis" in title_lower or "sistematik derleme" in title_lower:
         return {
-            "design": "Primer Araştırma / Dergi Makalesi",
-            "level": "Seviye 3-5",
-            "level_num": 4,
-            "badge_color": "#6B7280"
+            "design": "Sistematik Derleme / Meta-Analiz",
+            "level": "Seviye 1",
+            "level_num": 1,
+            "badge_color": "#1E40AF"
         }
+    elif "randomized" in title_lower or "rct" in title_lower or "rastgele kontrollü" in title_lower:
+        return {
+            "design": "Rastgele Kontrollü Çalışma (RCT)",
+            "level": "Seviye 2",
+            "level_num": 2,
+            "badge_color": "#047857"
+        }
+    elif "clinical trial" in title_lower or "klinik araştırma" in title_lower:
+        return {
+            "design": "Kontrollü Klinik Araştırma",
+            "level": "Seviye 2",
+            "level_num": 2,
+            "badge_color": "#059669"
+        }
+    elif "cohort" in title_lower or "prospective" in title_lower or "longitudinal" in title_lower or "kohort" in title_lower:
+        return {
+            "design": "Kohort Çalışması (Gözlemsel)",
+            "level": "Seviye 3",
+            "level_num": 3,
+            "badge_color": "#D97706"
+        }
+    elif "case-control" in title_lower or "vaka-kontrol" in title_lower or "case control" in title_lower:
+        return {
+            "design": "Vaka-Kontrol Çalışması",
+            "level": "Seviye 4",
+            "level_num": 4,
+            "badge_color": "#DC2626"
+        }
+    elif "case report" in title_lower or "case series" in title_lower or "olgu sunumu" in title_lower:
+        return {
+            "design": "Olgu Sunumu / Vaka Serisi",
+            "level": "Seviye 4",
+            "level_num": 4,
+            "badge_color": "#DC2626"
+        }
+    elif "review" in title_lower or "derleme" in title_lower:
+        return {
+            "design": "Niteliksel Derleme / Uzman Görüşü",
+            "level": "Seviye 5",
+            "level_num": 5,
+            "badge_color": "#4B5563"
+        }
+
+    # 3. Tertiary fallback based on Abstract
+    abstract_lower = (abstract or "").lower()
+    if "systematic review" in abstract_lower or "meta-analysis" in abstract_lower or "sistematik derleme" in abstract_lower:
+        return {
+            "design": "Sistematik Derleme / Meta-Analiz",
+            "level": "Seviye 1",
+            "level_num": 1,
+            "badge_color": "#1E40AF"
+        }
+    elif "randomized controlled trial" in abstract_lower or "randomized trial" in abstract_lower or "rastgele kontrollü" in abstract_lower:
+        return {
+            "design": "Rastgele Kontrollü Çalışma (RCT)",
+            "level": "Seviye 2",
+            "level_num": 2,
+            "badge_color": "#047857"
+        }
+    elif "cohort study" in abstract_lower or "prospective cohort" in abstract_lower or "kohort çalışması" in abstract_lower:
+        return {
+            "design": "Kohort Çalışması (Gözlemsel)",
+            "level": "Seviye 3",
+            "level_num": 3,
+            "badge_color": "#D97706"
+        }
+    elif "case-control study" in abstract_lower or "vaka-kontrol çalışması" in abstract_lower:
+        return {
+            "design": "Vaka-Kontrol Çalışması",
+            "level": "Seviye 4",
+            "level_num": 4,
+            "badge_color": "#DC2626"
+        }
+    elif "case report" in abstract_lower or "olgu sunumu" in abstract_lower:
+        return {
+            "design": "Olgu Sunumu / Vaka Serisi",
+            "level": "Seviye 4",
+            "level_num": 4,
+            "badge_color": "#DC2626"
+        }
+    elif "review" in abstract_lower or "derleme" in abstract_lower:
+        return {
+            "design": "Niteliksel Derleme / Uzman Görüşü",
+            "level": "Seviye 5",
+            "level_num": 5,
+            "badge_color": "#4B5563"
+        }
+
+    return {
+        "design": "Primer Araştırma / Dergi Makalesi",
+        "level": "Seviye 3-5",
+        "level_num": 4,
+        "badge_color": "#6B7280"
+    }
 
 
 def _classify_evidence_level(pub_types: List[str], title: str, abstract: str) -> str:
@@ -136,92 +234,52 @@ def extract_pico(query: str, abstract: str = "") -> Dict[str, str]:
 
 def assess_risk_of_bias(article: Dict[str, Any]) -> Dict[str, Any]:
     """
-    Evaluates Risk of Bias using RoB 2 checklist for Randomized Controlled Trials (RCTs)
-    and ROBINS-I checklist for Non-Randomized Studies / Observational Studies.
+    Evaluates Risk of Bias status for RoB 2 (RCTs) or ROBINS-I (Non-Randomized Studies).
+    Formal risk of bias is marked as 'Değerlendirilmedi (Not Assessed)' because abstract-only
+    data is insufficient for automated methodological bias scoring.
     """
     pub_types = article.get("publication_types", [])
     title = article.get("title", "")
     abstract = article.get("abstract", "")
     design_info = classify_study_design(pub_types, title, abstract)
 
-    abstract_lower = abstract.lower()
     is_rct = "RCT" in design_info["design"] or "Rastgele" in design_info["design"] or "Randomized" in " ".join(pub_types)
 
+    not_assessed_msg = "Değerlendirilmedi (Not Assessed - Tam Metin Gereklidir)"
+
     if is_rct:
-        # RoB 2 (Risk of Bias in Randomized Trials)
-        d1 = "Düşük Risk" if "random" in abstract_lower or "rastgele" in abstract_lower else "Bazı Endişeler"
-        d2 = "Düşük Risk" if "double-blind" in abstract_lower or "masked" in abstract_lower or "blinded" in abstract_lower else "Bazı Endişeler"
-        d3 = "Düşük Risk" if "intention-to-treat" in abstract_lower or "complete" in abstract_lower or len(abstract_lower) > 200 else "Bazı Endişeler"
-        d4 = "Düşük Risk" if "blinded" in abstract_lower or "objective" in abstract_lower else "Düşük Risk"
-        d5 = "Düşük Risk" if "primary outcome" in abstract_lower or "endpoint" in abstract_lower else "Bazı Endişeler"
-
         domains = {
-            "D1: Rastgeleleştirme Süreci": d1,
-            "D2: Öngörülen Müdahalelerden Sapmalar": d2,
-            "D3: Eksik Sonuç Verileri": d3,
-            "D4: Sonuç Ölçümü": d4,
-            "D5: Bildirilen Sonucun Seçimi": d5
+            "D1: Rastgeleleştirme Süreci": not_assessed_msg,
+            "D2: Öngörülen Müdahalelerden Sapmalar": not_assessed_msg,
+            "D3: Eksik Sonuç Verileri": not_assessed_msg,
+            "D4: Sonuç Ölçümü": not_assessed_msg,
+            "D5: Bildirilen Sonucun Seçimi": not_assessed_msg
         }
-
-        some_concerns = sum(1 for v in domains.values() if v == "Bazı Endişeler")
-        high_risk = sum(1 for v in domains.values() if v == "Yüksek Risk")
-
-        if high_risk > 0:
-            overall = "Yüksek Yanlılık Riski (High Risk of Bias)"
-            badge_color = "#DC2626"
-        elif some_concerns >= 2:
-            overall = "Bazı Endişeler (Some Concerns)"
-            badge_color = "#D97706"
-        else:
-            overall = "Düşük Yanlılık Riski (Low Risk of Bias)"
-            badge_color = "#059669"
-
         return {
             "tool": "RoB 2 (Cochrane Risk of Bias for RCTs)",
             "study_type": "Randomize Kontrollü Çalışma",
-            "overall_rating": overall,
-            "badge_color": badge_color,
+            "overall_rating": "Değerlendirilmedi (Not Assessed)",
+            "badge_color": "#6B7280",
             "domains": domains,
-            "note": "RoB 2 değerlendirmesi makalenin yayınlanmış özet (abstract) metnindeki metodolojik bildirimlere dayanmaktadır."
+            "note": "Resmi RoB 2 değerlendirmesi yalnızca özet (abstract) metnine dayanarak otomatik yapılamaz; tam metin (full-text) incelemesi gereklidir."
         }
     else:
-        # ROBINS-I (Risk Of Bias In Non-randomized Studies - of Interventions)
-        d1 = "Orta Yanlılık Riski" if "adjusted" in abstract_lower or "multivariate" in abstract_lower or "propensity" in abstract_lower else "Ciddi Yanlılık Riski"
-        d2 = "Düşük Yanlılık Riski" if "consecutive" in abstract_lower or "cohort" in abstract_lower else "Orta Yanlılık Riski"
-        d3 = "Düşük Yanlılık Riski" if "classified" in abstract_lower or "defined" in abstract_lower else "Düşük Yanlılık Riski"
-        d4 = "Orta Yanlılık Riski"
-        d5 = "Düşük Yanlılık Riski" if len(abstract_lower) > 200 else "Orta Yanlılık Riski"
-        d6 = "Düşük Yanlılık Riski" if "outcome" in abstract_lower or "measured" in abstract_lower else "Orta Yanlılık Riski"
-        d7 = "Orta Yanlılık Riski"
-
         domains = {
-            "D1: Karıştırıcı Değişken Yanlılığı (Confounding)": d1,
-            "D2: Katılımcı Seçimi Yanlılığı": d2,
-            "D3: Müdahale Sınıflandırma Yanlılığı": d3,
-            "D4: Müdahaleden Sapma Yanlılığı": d4,
-            "D5: Eksik Veri Yanlılığı": d5,
-            "D6: Sonuç Ölçüm Yanlılığı": d6,
-            "D7: Bildirilen Sonuç Seçim Yanlılığı": d7
+            "D1: Karıştırıcı Değişken Yanlılığı (Confounding)": not_assessed_msg,
+            "D2: Katılımcı Seçimi Yanlılığı": not_assessed_msg,
+            "D3: Müdahale Sınıflandırma Yanlılığı": not_assessed_msg,
+            "D4: Müdahaleden Sapma Yanlılığı": not_assessed_msg,
+            "D5: Eksik Veri Yanlılığı": not_assessed_msg,
+            "D6: Sonuç Ölçüm Yanlılığı": not_assessed_msg,
+            "D7: Bildirilen Sonuç Seçim Yanlılığı": not_assessed_msg
         }
-
-        serious_count = sum(1 for v in domains.values() if "Ciddi" in v)
-        if serious_count >= 2:
-            overall = "Ciddi Yanlılık Riski (Serious Risk)"
-            badge_color = "#DC2626"
-        elif serious_count == 1:
-            overall = "Orta-Ciddi Yanlılık Riski (Moderate-Serious Risk)"
-            badge_color = "#D97706"
-        else:
-            overall = "Orta Yanlılık Riski (Moderate Risk)"
-            badge_color = "#2563EB"
-
         return {
             "tool": "ROBINS-I (Risk of Bias in Non-Randomized Studies)",
             "study_type": "Gözlemsel / Randomize Olmayan Çalışma",
-            "overall_rating": overall,
-            "badge_color": badge_color,
+            "overall_rating": "Değerlendirilmedi (Not Assessed)",
+            "badge_color": "#6B7280",
             "domains": domains,
-            "note": "ROBINS-I değerlendirmesi gözlemsel çalışma özetindeki karıştırıcı değişken yönetimi ve seçim kriterlerine dayanmaktadır."
+            "note": "Resmi ROBINS-I değerlendirmesi yalnızca özet (abstract) metnine dayanarak otomatik yapılamaz; tam metin (full-text) incelemesi gereklidir."
         }
 
 
@@ -415,6 +473,11 @@ def perform_red_team_audit(query: str, articles: List[Dict[str, Any]]) -> Dict[s
     if abstract_only_count > 0:
         warnings.append(f"{abstract_only_count} makalede yalnızca kısıtlı özet bilgisi bulunmaktadır. Tam metin incelemesi önerilir.")
 
+    reason_counts = {}
+    for v_res in verification_details:
+        r = v_res.get("reason", "unknown")
+        reason_counts[r] = reason_counts.get(r, 0) + 1
+
     return {
         "status": "DENETLEME TAMAMLANDI (AUDIT COMPLETE)",
         "metadata_retrieval_source": "NCBI PubMed E-utilities API",
@@ -425,6 +488,7 @@ def perform_red_team_audit(query: str, articles: List[Dict[str, Any]]) -> Dict[s
             "verified_citations": verified_count,
             "rejected_citations": rejected_count,
             "unverified_citations": unverified_count,
+            "reason_breakdown": reason_counts,
             "metadata_retrieval": "PubMed E-utilities API üzerinden çekildi",
             "independent_verification": "NCBI PubMed E-utilities re-fetch ve title/DOI normalizasyon eşleştirmesi",
             "duplicate_pmids_found": has_duplicate_pmids,
