@@ -22,8 +22,10 @@ def _format_authors_short(authors: List[str]) -> str:
 
 def classify_study_design(pub_types: List[str], title: str, abstract: str) -> Dict[str, Any]:
     """
-    Classifies study design and evidence level using NLM publication types for preliminary
-    classification, falling back to title and abstract heuristics.
+    Classifies study design and publication hierarchy level using NLM publication types
+    for preliminary classification, falling back to title and abstract heuristics.
+    Note: The returned level (e.g. Seviye 1-5) represents Study Design Hierarchy only,
+    and MUST BE explicitly distinguished from GRADE Certainty of Evidence.
     """
     pts = [pt.lower() for pt in (pub_types or []) if pt]
 
@@ -282,15 +284,15 @@ def extract_pico(query: str, abstract: str = "") -> Dict[str, str]:
             if out_matches:
                 outcome = _clean_pico_str(out_matches.group(0))
 
-    # 5. Apply Defaults
+    # 5. Apply Defaults (without inventing/fabricating unstated interventions, comparators or outcomes)
     if not population:
-        population = "Belirtilmedi / Genel Hasta Grubu"
+        population = "Belirtilmedi (Not Specified)"
     if not intervention:
-        intervention = "Belirtilmedi / Temel Müdahale"
+        intervention = "Belirtilmedi (Not Specified)"
     if not comparison:
-        comparison = "Plasebo / Standart Tedavi / Kontrol Grubu"
+        comparison = "Belirtilmedi (Not Specified)"
     if not outcome:
-        outcome = "Klinik Etkinlik, Güvenlilik ve Primer Sonlanım Noktaları"
+        outcome = "Belirtilmedi (Not Specified)"
 
     return {
         "population": _clean_pico_str(population),
@@ -389,7 +391,7 @@ def generate_evidence_table_markdown(articles: List[Dict[str, Any]]) -> str:
         return "*Tablo için gösterilecek veri bulunamadı.*"
 
     rows = [
-        "| # | Çalışma / Yazar (Yıl) | Tasarım & Kanıt Seviyesi | Yanlılık Riski (RoB 2 / ROBINS-I) | PMID / DOI | Klinik Bulgular |",
+        "| # | Çalışma / Yazar (Yıl) | Tasarım Hiyerarşisi (Yayın Seviyesi) | Yanlılık Riski (RoB 2 / ROBINS-I) | PMID / DOI | Klinik Bulgular |",
         "|---|---|---|---|---|---|"
     ]
 
@@ -492,7 +494,7 @@ def generate_evidence_table_html(articles: List[Dict[str, Any]]) -> str:
             <tr style="background-color: #F3F4F6; color: #1F2937; text-align: left; border-bottom: 2px solid #D1D5DB;">
                 <th style="padding: 10px; width: 4%;">#</th>
                 <th style="padding: 10px; width: 24%;">Çalışma / Yazar</th>
-                <th style="padding: 10px; width: 16%; text-align: center;">Tasarım & Kanıt</th>
+                <th style="padding: 10px; width: 16%; text-align: center;">Tasarım Hiyerarşisi</th>
                 <th style="padding: 10px; width: 18%; text-align: center;">Yanlılık Riski</th>
                 <th style="padding: 10px; width: 12%;">Kimlik</th>
                 <th style="padding: 10px; width: 26%;">Klinik Bulgular</th>
@@ -600,7 +602,7 @@ def perform_red_team_audit(query: str, articles: List[Dict[str, Any]]) -> Dict[s
         "grade_rating_policy": {
             "grade_status": "GRADE Değerlendirilmedi (Not Assessed)",
             "compliant": True,
-            "notice": "GRADE (Grading of Recommendations Assessment, Development and Evaluation) derecelendirmesi otomatik olarak atanmamıştır ve 'GRADE Değerlendirilmedi (Not Assessed)' statüsündedir. Formal GRADE kanıt kesinlik değerlendirmesi, yanlılık riski (risk of bias), tutarsızlık, dolaylılık ve imprezisyon kriterlerinin uzmanlarca manuel meta-analitik sentezi ile yapılmalıdır."
+            "notice": "GRADE (Grading of Recommendations Assessment, Development and Evaluation) derecelendirmesi otomatik olarak atanmamıştır ve 'GRADE Değerlendirilmedi (Not Assessed)' statüsündedir. Çalışma tasarımı hiyerarşisi seviyesi (Seviye 1-5) yalnızca yayın türü sınıflamasını gösterir ve GRADE kanıt kesinliği (Yüksek/Orta/Düşük/Çok Düşük) yerine geçemez. Formal GRADE kanıt kesinlik değerlendirmesi, yanlılık riski (risk of bias), tutarsızlık, dolaylılık ve imprezisyon kriterlerinin uzmanlarca manuel meta-analitik sentezi ile yapılmalıdır."
         },
         "methodological_warnings": warnings
     }
@@ -676,8 +678,9 @@ Lütfen arama terimlerini veya filtreleri genişleterek tekrar deneyiniz.
     report.append("- **Gözlemsel Yanlılık Riski:** Kohort ve vaka-kontrol tasarımlı çalışmalarda karıştırıcı değişkenler (confounding factors) ve seçim yanlılığı (selection bias) riski mevcuttur.")
     report.append("- **Yayın Yanlılığı (Publication Bias):** Pozitif sonuçlu çalışmaların yayınlanma olasılığının daha yüksek olması nedeniyle literatür genelinde yayın yanlılığı riski mevcuttur.")
 
-    report.append("\n### B. Formal GRADE Derecelendirme Statüsü")
+    report.append("\n### B. Formal GRADE Derecelendirme Statüsü ve Tasarım Ayrımı")
     report.append(f"- **GRADE Statüsü:** **{audit['grade_rating_policy']['grade_status']}**")
+    report.append(f"- **Çalışma Tasarımı Hiyerarşisi ve GRADE Ayrımı:** Çalışma tasarımı sınıflandırması (Seviye 1-5) yalnızca yayın türü/tasarımı hiyerarşisini gösterir ve GRADE kanıt kesinliği (Yüksek/Orta/Düşük/Çok Düşük) yerine geçemez.")
     report.append(f"- {audit['grade_rating_policy']['notice']}\n")
 
     report.append("### C. Klinik Doğrulama Sorumluluk Reddi (Clinical Validation Disclaimer)")
@@ -755,7 +758,7 @@ def generate_llm_turkish_report(query: str, articles: List[Dict[str, Any]], api_
         "KESİN KURALLAR VE KLİNİK RAPORLAMA KISITLARI:\n"
         "1. KESİNLİKLE uydurma atıf, uydurma PMID, uydurma makale veya kaynak gösterme! Yalnızca verilen makalelerdeki gerçek verileri kullan.\n"
         "2. KESİNLİKLE '100/100 doğrulandı', '0% halüsinasyon riski' veya 'klinik olarak doğrulanmıştır' gibi asılsız iddialarda BULUNMA!\n"
-        "3. KESİNLİKLE otomatik GRADE derecelendirmesi uydurma! GRADE statüsünün 'GRADE Değerlendirilmedi (Not Assessed)' olduğunu açıkça belirt.\n"
+        "3. KESİNLİKLE otomatik GRADE derecelendirmesi uydurma! Yayın tipi seviyelerinin (Seviye 1-5) yalnızca 'Çalışma Tasarımı Hiyerarşisi' olduğunu, GRADE kanıt kesinliği olmadığını ve GRADE statüsünün 'GRADE Değerlendirilmedi (Not Assessed)' olduğunu açıkça belirt.\n"
         "4. Raporda analizlerin yalnızca özet (abstract) metinlerine dayandığını, tam metin incelemesi olmadığını vurgula.\n"
         "5. Her iddia ve klinik bulgudan sonra metin içinde ilgili makalenin PMID'sine veya yazar/yılına atıf yap (örneğin [PMID: 12345678]).\n"
         "6. Raporu şu ana başlıklar altında Türkçe olarak yaz:\n"

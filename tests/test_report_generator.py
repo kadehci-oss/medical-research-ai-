@@ -134,6 +134,13 @@ class TestReportGenerator(unittest.TestCase):
         self.assertEqual(pico["population"], "Heart failure with preserved ejection fraction")
         self.assertIn("cardiovascular death", pico["outcome"])
 
+    def test_extract_pico_no_fabrication_on_empty_text(self):
+        pico = extract_pico("", "")
+        self.assertEqual(pico["population"], "Belirtilmedi (Not Specified)")
+        self.assertEqual(pico["intervention"], "Belirtilmedi (Not Specified)")
+        self.assertEqual(pico["comparison"], "Belirtilmedi (Not Specified)")
+        self.assertEqual(pico["outcome"], "Belirtilmedi (Not Specified)")
+
     def test_classify_evidence_level(self):
         level_rct = _classify_evidence_level(["Randomized Controlled Trial"], "Title", "Abstract")
         self.assertIn("Seviye 2", level_rct)

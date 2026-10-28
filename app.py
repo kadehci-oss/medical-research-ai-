@@ -108,7 +108,8 @@ def main():
     st.sidebar.info(
         "**🔍 Doğrulanmış Kaynak & Atıf Dürüstlüğü Politikası:**\n"
         "Bu sistem canlı NCBI PubMed ve CrossRef E-utilities API verilerini kullanır. "
-        "Metin sentezi özet (abstract) verilerine dayanır; klinik doğrulama veya otomatik GRADE derecelendirmesi iddiasında bulunulmaz."
+        "Metin sentezi özet (abstract) verilerine dayanır; klinik doğrulama veya otomatik GRADE derecelendirmesi iddiasında bulunulmaz. "
+        "Çalışma tasarımları (Seviye 1-5) yalnızca yayın türü hiyerarşisini gösterir, GRADE kanıt kesinliğini ifade etmez."
     )
 
     # Main Tabs
