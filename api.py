@@ -1,0 +1,78 @@
+from fastapi import FastAPI, Query, HTTPException, Body
+from typing import Optional, List, Dict, Any
+from pydantic import BaseModel, Field
+
+from pubmed_client import search_pubmed, verify_pmid, verify_doi
+from report_generator import generate_turkish_evidence_report
+
+app = FastAPI(
+    title="Medical Research AI API",
+    description="Physician Medical Research AI REST API backed by NCBI PubMed E-utilities and CrossRef.",
+    version="1.0.0"
+)
+
+
+class ReportRequest(BaseModel):
+    query: str = Field(..., description="The clinical search query or medical topic")
+    articles: List[Dict[str, Any]] = Field(..., description="List of verified article dicts from pubmed search/verification")
+    api_key: Optional[str] = Field(None, description="Optional OpenAI API key for LLM report synthesis")
+    use_llm: bool = Field(False, description="Whether to use OpenAI LLM synthesis or rule-based engine")
+    model: str = Field("gpt-4o-mini", description="OpenAI model to use if use_llm is True")
+
+
+@app.get("/health")
+def health_check():
+    return {"status": "ok", "service": "Medical Research AI API"}
+
+
+@app.get("/api/search")
+def api_search_pubmed(
+    query: str = Query(..., description="Clinical query or medical term"),
+    max_results: int = Query(10, ge=1, le=50, description="Max results to return"),
+    sort: str = Query("relevance", description="Sort order: relevance or pub_date"),
+    publication_type: Optional[str] = Query("Tümü", description="Filter by publication type"),
+    start_year: Optional[int] = Query(None, description="Start publication year"),
+    end_year: Optional[int] = Query(None, description="End publication year")
+):
+    result = search_pubmed(
+        query=query,
+        max_results=max_results,
+        sort=sort,
+        publication_type=publication_type,
+        start_year=start_year,
+        end_year=end_year
+    )
+    if "error" in result and not result.get("articles"):
+        raise HTTPException(status_code=502, detail=f"PubMed API Error: {result['error']}")
+    return result
+
+
+@app.get("/api/verify/pmid/{pmid}")
+def api_verify_pmid(pmid: str):
+    result = verify_pmid(pmid)
+    if not result.get("valid"):
+        raise HTTPException(status_code=404, detail=result.get("error", "PMID not found or invalid"))
+    return result
+
+
+@app.get("/api/verify/doi/{doi:path}")
+def api_verify_doi(doi: str):
+    result = verify_doi(doi)
+    if not result.get("valid"):
+        raise HTTPException(status_code=404, detail=result.get("error", "DOI not found or invalid"))
+    return result
+
+
+@app.post("/api/report")
+def api_generate_report(req: ReportRequest):
+    report_md = generate_turkish_evidence_report(
+        query=req.query,
+        articles=req.articles,
+        api_key=req.api_key,
+        use_llm=req.use_llm,
+        model=req.model
+    )
+    return {
+        "query": req.query,
+        "report": report_md
+    }
