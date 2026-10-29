@@ -4,9 +4,9 @@
 **Sorgu / Araştırma Konusu:** statin myopathy creatine kinase proximal muscle weakness anti-HMGCR necrotizing myopathy
 ### 📋 PICO Çerçevesi
 - **P (Hasta Grubu / Population):** Belirtilmemiş
-- **I (Müdahale / Intervention):** statin myopathy creatine kinase proximal muscle weakness anti-HMGCR necrotizing myopathy
+- **I (Müdahale / Intervention):** Belirtilmemiş
 - **C (Karşılaştırma / Comparison):** Belirtilmemiş
-- **O (Sonlanım / Outcome):** associated with autoantibodies (anti-HMGCR
+- **O (Sonlanım / Outcome):** elevated creatine kinase (CK)
 
 ## 2. Yönetici Özeti
 Bu kanıt raporu, **statin myopathy creatine kinase proximal muscle weakness anti-HMGCR necrotizing myopathy** klinik konusu kapsamında NCBI PubMed veritabanından çekilen **10 adet doğrulanmış çalışma** incelenerek hazırlanmıştır.
@@ -44,6 +44,7 @@ Aşağıdaki tabloda dahil edilen çalışmaların yazar, yıl, çalışma tasar
 - **Tasarım & Seviye:** Seviye 5 (Niteliksel Derleme / Uzman Görüşü)
 - **Yanlılık Riski / Metodoloji:** Uygulanamaz (Not Applicable) (Uygulanamaz (Not Applicable))
 - **Dergi:** *Muscle & nerve*
+- **Çıkarılan Sayısal / İstatistiksel Parametreler:** Özette spesifik n, HR/OR veya p değeri bildirilmemiştir (Eksik veriler uydurulmamıştır).
 - **Ana Özet:** The immune-mediated necrotizing myopathies (IMNM) are autoimmune myositides clinically characterized by proximal predominant weakness and elevated creatine kinase (CK). They may be associated with autoantibodies (anti-HMGCR, anti-SRP), triggered by statin use (e.g., anti-HMGCR myopathy), associated with cancer, or may be idiopathic. Immunotherap...
 - **Atıf:** [PMID: 38801022](https://pubmed.ncbi.nlm.nih.gov/38801022/) | [DOI: 10.1002/mus.28114](https://doi.org/10.1002/mus.28114)
 
@@ -51,6 +52,7 @@ Aşağıdaki tabloda dahil edilen çalışmaların yazar, yıl, çalışma tasar
 - **Tasarım & Seviye:** Seviye 5 (Niteliksel Derleme / Uzman Görüşü)
 - **Yanlılık Riski / Metodoloji:** Uygulanamaz (Not Applicable) (Uygulanamaz (Not Applicable))
 - **Dergi:** *Cureus*
+- **Çıkarılan Sayısal / İstatistiksel Parametreler:** Özette spesifik n, HR/OR veya p değeri bildirilmemiştir (Eksik veriler uydurulmamıştır).
 - **Ana Özet:** Immune-mediated necrotizing myopathy (IMNM) is a rare, antibody-defined subset of idiopathic inflammatory myopathies characterized by rapidly progressive proximal muscle weakness, markedly elevated creatine kinase (CK) levels, and myofiber necrosis with minimal lymphocytic infiltration. Two major autoantibody subtypes-anti-3-hydroxy-3-methylglut...
 - **Atıf:** [PMID: 41458822](https://pubmed.ncbi.nlm.nih.gov/41458822/) | [DOI: 10.7759/cureus.97933](https://doi.org/10.7759/cureus.97933)
 
@@ -58,6 +60,7 @@ Aşağıdaki tabloda dahil edilen çalışmaların yazar, yıl, çalışma tasar
 - **Tasarım & Seviye:** Seviye 5 (Niteliksel Derleme / Uzman Görüşü)
 - **Yanlılık Riski / Metodoloji:** Uygulanamaz (Not Applicable) (Uygulanamaz (Not Applicable))
 - **Dergi:** *Expert review of clinical immunology*
+- **Çıkarılan Sayısal / İstatistiksel Parametreler:** Özette spesifik n, HR/OR veya p değeri bildirilmemiştir (Eksik veriler uydurulmamıştır).
 - **Ana Özet:** Statin-induced necrotizing autoimmune myopathy (SINAM) is associated with a unique clinical 5 phenotype of severe proximal muscle weakness during or after exposure to statins in patients with high creatine kinase (CK) levels. Electromyography (EMG) and muscle biopsy reveal features of a necrotizing myopathy and the anti-HMGCR autoantibody is fre...
 - **Atıf:** [PMID: 26515829](https://pubmed.ncbi.nlm.nih.gov/26515829/) | [DOI: 10.1586/1744666X.2016.1103181](https://doi.org/10.1586/1744666X.2016.1103181)
 
@@ -65,6 +68,7 @@ Aşağıdaki tabloda dahil edilen çalışmaların yazar, yıl, çalışma tasar
 - **Tasarım & Seviye:** Seviye 3-5 (Primer Araştırma / Dergi Makalesi)
 - **Yanlılık Riski / Metodoloji:** Değerlendirilmedi (Not Assessed) (ROBINS-I (Risk of Bias in Non-Randomized Studies))
 - **Dergi:** *Journal of clinical neuroscience : official journal of the Neurosurgical Society of Australasia*
+- **Çıkarılan Sayısal / İstatistiksel Parametreler:** Hasta/Örneklem Sayısı (n): 98 | p Değerleri: p = 0.0013
 - **Ana Özet:** This study aimed to clarify the phenotypes and therapeutic responses of statin-naïve anti-3-hydroxy-3-methylglutaryl-coenzyme A reductase (HMGCR) antibody-mediated necrotizing myopathy. Anti-HMGCR antibodies were tested with ELISA methodology in the sera sample of 98 patients meeting the idiopathic inflammatory myopathy criteria and with negativ...
 - **Atıf:** [PMID: 30205933](https://pubmed.ncbi.nlm.nih.gov/30205933/) | [DOI: 10.1016/j.jocn.2018.08.010](https://doi.org/10.1016/j.jocn.2018.08.010)
 
@@ -72,6 +76,7 @@ Aşağıdaki tabloda dahil edilen çalışmaların yazar, yıl, çalışma tasar
 - **Tasarım & Seviye:** Seviye 5 (Niteliksel Derleme / Uzman Görüşü)
 - **Yanlılık Riski / Metodoloji:** Uygulanamaz (Not Applicable) (Uygulanamaz (Not Applicable))
 - **Dergi:** *Journal of the neurological sciences*
+- **Çıkarılan Sayısal / İstatistiksel Parametreler:** Özette spesifik n, HR/OR veya p değeri bildirilmemiştir (Eksik veriler uydurulmamıştır).
 - **Ana Özet:** Statin induced necrotizing autoimmune myopathy (SINAM) is a recently characterized entity belonging to the spectrum of statin myotoxicity. It is a more severe form, and is usually associated with significant proximal muscle weakness, strikingly elevated creatine kinase levels and persistent symptoms despite statin discontinuation. The characteri...
 - **Atıf:** [PMID: 25765229](https://pubmed.ncbi.nlm.nih.gov/25765229/) | [DOI: 10.1016/j.jns.2015.02.042](https://doi.org/10.1016/j.jns.2015.02.042)
 
@@ -79,6 +84,7 @@ Aşağıdaki tabloda dahil edilen çalışmaların yazar, yıl, çalışma tasar
 - **Tasarım & Seviye:** Seviye 3-5 (Primer Araştırma / Dergi Makalesi)
 - **Yanlılık Riski / Metodoloji:** Değerlendirilmedi (Not Assessed) (ROBINS-I (Risk of Bias in Non-Randomized Studies))
 - **Dergi:** *Neurology(R) neuroimmunology & neuroinflammation*
+- **Çıkarılan Sayısal / İstatistiksel Parametreler:** Özette spesifik n, HR/OR veya p değeri bildirilmemiştir (Eksik veriler uydurulmamıştır).
 - **Ana Özet:** BACKGROUND AND OBJECTIVES: Immune-mediated necrotizing myopathy (IMNM) caused by antibodies against 3-hydroxy-3-methylglutaryl coenzyme A reductase (HMGCR) is an inflammatory myopathy that has been epidemiologically correlated with previous statin exposure. We characterized in detail a series of 11 young statin-naïve patients experiencing a chro...
 - **Atıf:** [PMID: 39106428](https://pubmed.ncbi.nlm.nih.gov/39106428/) | [DOI: 10.1212/NXI.0000000000200285](https://doi.org/10.1212/NXI.0000000000200285)
 
@@ -86,6 +92,7 @@ Aşağıdaki tabloda dahil edilen çalışmaların yazar, yıl, çalışma tasar
 - **Tasarım & Seviye:** Seviye 4 (Olgu Sunumu / Vaka Serisi)
 - **Yanlılık Riski / Metodoloji:** Uygulanamaz (Not Applicable) (Uygulanamaz (Not Applicable))
 - **Dergi:** *Beijing da xue xue bao. Yi xue ban = Journal of Peking University. Health sciences*
+- **Çıkarılan Sayısal / İstatistiksel Parametreler:** Özette spesifik n, HR/OR veya p değeri bildirilmemiştir (Eksik veriler uydurulmamıştır).
 - **Ana Özet:** The patient was a 55-year-old man who was admitted to hospital with "progressive myalgia and weakness for 4 months, and exacerbated for 1 month". Four months ago, he presented with persistent shoulder girdle myalgia and elevated creatine kinase (CK) at routine physical examination, which fluctuated from 1 271 to 2 963 U/L after discontinuation o...
 - **Atıf:** [PMID: 37291935](https://pubmed.ncbi.nlm.nih.gov/37291935/) | [DOI: 10.19723/j.issn.1671-167X.2023.03.025](https://doi.org/10.19723/j.issn.1671-167X.2023.03.025)
 
@@ -93,6 +100,7 @@ Aşağıdaki tabloda dahil edilen çalışmaların yazar, yıl, çalışma tasar
 - **Tasarım & Seviye:** Seviye 4 (Olgu Sunumu / Vaka Serisi)
 - **Yanlılık Riski / Metodoloji:** Uygulanamaz (Not Applicable) (Uygulanamaz (Not Applicable))
 - **Dergi:** *Open medicine (Warsaw, Poland)*
+- **Çıkarılan Sayısal / İstatistiksel Parametreler:** Özette spesifik n, HR/OR veya p değeri bildirilmemiştir (Eksik veriler uydurulmamıştır).
 - **Ana Özet:** INTRODUCTION: Statin use can lead to various muscle-related issues, including benign creatine kinase (CK) elevations, myalgias, toxic myopathies, rhabdomyolysis, and immune-mediated necrotizing myositis (IMNM), which primarily affects older males. IMNM presents with proximal muscle weakness, elevated CK levels, and specific antibodies.
 
 CASE PRE...
@@ -102,6 +110,7 @@ CASE PRE...
 - **Tasarım & Seviye:** Seviye 4 (Olgu Sunumu / Vaka Serisi)
 - **Yanlılık Riski / Metodoloji:** Uygulanamaz (Not Applicable) (Uygulanamaz (Not Applicable))
 - **Dergi:** *Cureus*
+- **Çıkarılan Sayısal / İstatistiksel Parametreler:** Özette spesifik n, HR/OR veya p değeri bildirilmemiştir (Eksik veriler uydurulmamıştır).
 - **Ana Özet:** Idiopathic inflammatory myopathy (IIM) represents a rare group of autoimmune conditions resulting in muscle weakness and includes polymyositis, dermatomyositis, immune-mediated necrotizing myopathy (IMNM), overlap myositis, and inclusion body myositis. Anti-3-hydroxy-3-methylglutaryl-CoA reductase (HMGCR) antibody IMNM represents a rare but incr...
 - **Atıf:** [PMID: 38919212](https://pubmed.ncbi.nlm.nih.gov/38919212/) | [DOI: 10.7759/cureus.61094](https://doi.org/10.7759/cureus.61094)
 
@@ -109,29 +118,37 @@ CASE PRE...
 - **Tasarım & Seviye:** Seviye 4 (Olgu Sunumu / Vaka Serisi)
 - **Yanlılık Riski / Metodoloji:** Uygulanamaz (Not Applicable) (Uygulanamaz (Not Applicable))
 - **Dergi:** *Antibodies (Basel, Switzerland)*
+- **Çıkarılan Sayısal / İstatistiksel Parametreler:** p Değerleri: p = 0.001, p = 0.0001, p = 0.027
 - **Ana Özet:** BACKGROUND/OBJECTIVES: Immune-mediated necrotizing myopathy (IMNM) is a severe inflammatory myopathy marked by proximal muscle weakness, elevated creatine kinase (CK), and the presence of anti-HMGCR antibodies. Statin exposure is a recognized trigger for anti-HMGCR-positive IMNM, which may persist despite statin withdrawal. This pilot case serie...
 - **Atıf:** [PMID: 40843675](https://pubmed.ncbi.nlm.nih.gov/40843675/) | [DOI: 10.3390/antib14030063](https://doi.org/10.3390/antib14030063)
 
 ## 7. Tedavi Etkinliği ve Güvenlilik
-Müdahale ve tedavilerin klinik etkinliği, semptom kontrolü, yan etki profili, tolere edilebilirlik ve hasta güvenliği parametreleri incelenen çalışmalar ışığında aşağıda özetlenmiştir:
-- **Etkinlik Bulguları:** Çalışmalarda bildirilen birincil ve ikincil sonlanım noktaları değerlendirilmiştir.
-- **Güvenlilik ve Tolere Edilebilirlik:** Yan etkiler, toksisite riskleri ve tedavi kesme oranları özet metinlerden derlenmiştir.
+- **Joome Suh ve Anthony A Amato** (PMID: [38801022](https://pubmed.ncbi.nlm.nih.gov/38801022/)): The immune-mediated necrotizing myopathies (IMNM) are autoimmune myositides clinically characterized by proximal predominant weakness and elevated creatine kinase (CK). They may be associated with autoantibodies (anti-HMGCR, anti-SRP), triggered by statin use (e.
+- **Zahra Vaezi ve Afshin Amini** (PMID: [41458822](https://pubmed.ncbi.nlm.nih.gov/41458822/)): Immune-mediated necrotizing myopathy (IMNM) is a rare, antibody-defined subset of idiopathic inflammatory myopathies characterized by rapidly progressive proximal muscle weakness, markedly elevated creatine kinase (CK) levels, and myofiber necrosis with minimal lymphocytic infiltration. Anti-HMGCR IMNM typically affected middle-aged adults and was frequently associated with statin exposure, while anti-SRP IMNM presented at younger ages with more severe and treatment-refractory disease.
+- **Priyadarshini Loganathan et al.** (PMID: [26515829](https://pubmed.ncbi.nlm.nih.gov/26515829/)): Statin-induced necrotizing autoimmune myopathy (SINAM) is associated with a unique clinical 5 phenotype of severe proximal muscle weakness during or after exposure to statins in patients with high creatine kinase (CK) levels. HLA typing (HLADRB1*1101) is strongly associated with anti-10 HMGCR autoantibody positivity in statin-exposed patients.
+- **Yuqiong Jiao et al.** (PMID: [30205933](https://pubmed.ncbi.nlm.nih.gov/30205933/)): Proximal weakness and neck flexion weakness was the core neurological feature. The average maximal creatine kinase (CK) level was 7968.
+- **Suma Babu ve Yuebing Li** (PMID: [25765229](https://pubmed.ncbi.nlm.nih.gov/25765229/)): It is a more severe form, and is usually associated with significant proximal muscle weakness, strikingly elevated creatine kinase levels and persistent symptoms despite statin discontinuation. SINAM is an autoimmune disorder associated with an antibody against 3-hydroxy-3-methyglutaryl-coenzyme A reductase (HMGCR), and the antibody titer is a useful marker for assessing treatment response.
+- **Laura Llansó et al.** (PMID: [39106428](https://pubmed.ncbi.nlm.nih.gov/39106428/)): METHODS: Clinical and epidemiologic data, autoantibody titers, creatine kinase (CK) levels, response to treatment, muscle imaging, and muscle biopsies were assessed. 9%), presented with subacute proximal weakness progressing over many years and high CK levels (>1,000 U/L).
+- **Y J Zhang et al.** (PMID: [37291935](https://pubmed.ncbi.nlm.nih.gov/37291935/)): The patient was a 55-year-old man who was admitted to hospital with "progressive myalgia and weakness for 4 months, and exacerbated for 1 month". Four months ago, he presented with persistent shoulder girdle myalgia and elevated creatine kinase (CK) at routine physical examination, which fluctuated from 1 271 to 2 963 U/L after discontinuation of statin treatment.
+- **Andreas Albert Braun et al.** (PMID: [39247442](https://pubmed.ncbi.nlm.nih.gov/39247442/)): INTRODUCTION: Statin use can lead to various muscle-related issues, including benign creatine kinase (CK) elevations, myalgias, toxic myopathies, rhabdomyolysis, and immune-mediated necrotizing myositis (IMNM), which primarily affects older males. IMNM presents with proximal muscle weakness, elevated CK levels, and specific antibodies.
+- **Nicolas S Fink et al.** (PMID: [38919212](https://pubmed.ncbi.nlm.nih.gov/38919212/)): Idiopathic inflammatory myopathy (IIM) represents a rare group of autoimmune conditions resulting in muscle weakness and includes polymyositis, dermatomyositis, immune-mediated necrotizing myopathy (IMNM), overlap myositis, and inclusion body myositis. Here we report a case of a 65-year-old woman on rosuvastatin who presented with two months of progressive proximal muscle weakness, significant truncal weakness, and elevated creatine kinase concerning for rhabdomyolysis and inflammatory myopathy.
+- **Maurizio Benucci et al.** (PMID: [40843675](https://pubmed.ncbi.nlm.nih.gov/40843675/)): BACKGROUND/OBJECTIVES: Immune-mediated necrotizing myopathy (IMNM) is a severe inflammatory myopathy marked by proximal muscle weakness, elevated creatine kinase (CK), and the presence of anti-HMGCR antibodies. 37 CU/L (p = 0.027) after 6 months of treatment.
 
 ## 8. Güncel Klinik Kılavuzlar
-Uluslararası kılavuzlar (ESC, AHA/ACC, KDIGO, NCCN vb.) ve uzman konsensüs raporları doğrultusunda tanım, tanı kriterleri, birinci basamak tedavi ve izlem önerileri dikkate alınmalıdır. Mevcut makalelerde yer alan kılavuz atıfları taranmıştır.
+Taranan makaleler arasında doğrudan resmi klinik uygulama kılavuzu (practice guideline) bulunmamaktadır; primer klinik çalışmalar ve uzman derlemeleri dikkate alınmıştır.
 
 ## 9. Çelişkili Bilimsel Bulgular
-Literatürde farklı çalışmalar arasında gözlenen yöntemsel heterojenlikler, farklı hasta popülasyonları, örneklem büyüklükleri veya çalışma tasarımlarından kaynaklanan çelişkili bulgular tespit edilerek vurgulanmıştır.
+Farklı çalışmalar arasındaki kohort büyüklükleri, otoantikor pozitiflik oranları, statin maruziyet geçmişi (statin-naïve vs. statin maruziyeti olanlar) ve tedaviye yanıt heterojenlikleri çalışmalara göre değişiklik göstermektedir. İlgili makalelerin yöntem ve hasta seçim kriterleri bireysel olarak değerlendirilmelidir.
 
 ## 10. Red Team Eleştirisi
 - **Denetim Statüsü:** `DENETLEME TAMAMLANDI (AUDIT COMPLETE)`
-- **Atıf Doğrulaması:** 5 Doğrulanmış, 0 Reddedilen (Eşleşmeme), 5 Doğrulanamadı (API Hatası)
+- **Atıf Doğrulaması:** 6 Doğrulanmış, 0 Reddedilen (Eşleşmeme), 4 Doğrulanamadı (API Hatası)
 - **Mükerrer PMID Tespiti:** Mükerrer kayıt yok
 - **Metodolojik Sınırlılık:** Tüm sentez ve analizler yalnızca yayınlanmış özet (abstract) metinlerine dayanmaktadır. Tam metin (full-text) değerlendirmesi yapılmamıştır.
 - **Klinik Doğrulama:** Klinik Doğrulama Yapılmamıştır (No Clinical Validation Claimed)
 - **Tespit Edilen Metodolojik Uyarılar:**
   - ⚠️ İncelenen kaynaklar arasında yüksek seviyeli (Seviye 1 veya Seviye 2 - RCT/Meta-analiz) kanıt bulunmamaktadır.
-  - ⚠️ 5 atıf kaydı API/ağ hatası nedeniyle bağımsız olarak doğrulanamadı (Unverified / API Failure).
+  - ⚠️ 4 atıf kaydı API/ağ hatası nedeniyle bağımsız olarak doğrulanamadı (Unverified / API Failure).
 
 
 ## 11. Kanıt Gücü ve Belirsizlikler

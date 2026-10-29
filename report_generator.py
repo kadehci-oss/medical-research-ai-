@@ -70,6 +70,20 @@ def classify_study_design(pub_types: List[str], title: str, abstract: str) -> Di
             "level_num": 4,
             "badge_color": "#DC2626"
         }
+    if any("practice guideline" in pt or "guideline" in pt or "consensus development conference" in pt for pt in pts):
+        return {
+            "design": "Kılavuz / Konsensüs Raporu",
+            "level": "Seviye 5",
+            "level_num": 5,
+            "badge_color": "#4B5563"
+        }
+    if any("editorial" in pt or "letter" in pt or "comment" in pt for pt in pts):
+        return {
+            "design": "Editör Yazısı / Mektup / Yorum",
+            "level": "Seviye 5",
+            "level_num": 5,
+            "badge_color": "#6B7280"
+        }
     if any("review" in pt or "derleme" in pt for pt in pts):
         return {
             "design": "Niteliksel Derleme / Uzman Görüşü",
@@ -199,7 +213,8 @@ def _clean_pico_str(s: str) -> str:
 def extract_pico(query: str, abstract: str = "") -> Dict[str, str]:
     """
     Extracts PICO (Population, Intervention, Comparison, Outcome) framework components
-    from clinical search query and/or study abstract text.
+    from Turkish or English clinical search queries and study abstract text.
+    Does NOT blindly accept keyword search queries as interventions and defaults unstated elements to 'Belirtilmemiş'.
     """
     q_clean = (query or "").strip()
     abs_clean = (abstract or "").strip()
@@ -209,80 +224,119 @@ def extract_pico(query: str, abstract: str = "") -> Dict[str, str]:
     comparison = ""
     outcome = ""
 
-    # 1. Parse Query first for P, I, C
-    if q_clean:
-        pop_sep_pattern = re.compile(
-            r"\b(in patients with|in adults with|in children with|in elderly with|in|for|among|with)\b",
-            re.IGNORECASE
-        )
-        match = pop_sep_pattern.search(q_clean)
-        if match:
-            left_part = q_clean[:match.start()].strip()
-            right_part = q_clean[match.end():].strip()
-            if right_part:
-                population = right_part.capitalize()
-            if left_part:
-                comp_sep_pattern = re.compile(r"\b(versus|vs\.?|compared (?:to|with)|against)\b", re.IGNORECASE)
-                comp_match = comp_sep_pattern.search(left_part)
-                if comp_match:
-                    intervention = left_part[:comp_match.start()].strip()
-                    comparison = left_part[comp_match.end():].strip().capitalize()
-                else:
-                    intervention = left_part
-        else:
-            comp_sep_pattern = re.compile(r"\b(versus|vs\.?|compared (?:to|with)|against)\b", re.IGNORECASE)
-            comp_match = comp_sep_pattern.search(q_clean)
-            if comp_match:
-                intervention = q_clean[:comp_match.start()].strip()
-                comparison = q_clean[comp_match.end():].strip().capitalize()
-            else:
-                intervention = q_clean
-
-    # 2. Extract or Refine Population from Abstract if not set or generic
+    # 1. Parse Abstract for explicit section headers first
     if abs_clean:
-        pop_sec_match = re.search(r"\b(PATIENTS|POPULATION|PARTICIPANTS)\b\s*:\s*([^.\n]+)", abs_clean, re.IGNORECASE)
-        if pop_sec_match:
-            population = _clean_pico_str(pop_sec_match.group(2))
-        elif not population:
-            pop_matches = re.findall(
+        pop_sec = re.search(r"\b(PATIENTS|POPULATION|PARTICIPANTS|HASTALAR|POPÜLASYON)\b\s*:\s*([^.\n]+)", abs_clean, re.IGNORECASE)
+        if pop_sec:
+            population = _clean_pico_str(pop_sec.group(2))
+
+        int_sec = re.search(r"\b(INTERVENTION|INTERVENTIONS|METHODS|METHODOLOGY|TREATMENT|MÜDAHALE|TEDAVİ)\b\s*:\s*([^.\n]+)", abs_clean, re.IGNORECASE)
+        if int_sec:
+            intervention = _clean_pico_str(int_sec.group(2))
+
+        comp_sec = re.search(r"\b(COMPARISON|CONTROL|CONTROLS|KARŞILAŞTIRMA|KONTROL)\b\s*:\s*([^.\n]+)", abs_clean, re.IGNORECASE)
+        if comp_sec:
+            comparison = _clean_pico_str(comp_sec.group(2))
+
+        out_sec = re.search(r"\b(PRIMARY OUTCOME|OUTCOME|OUTCOMES|RESULTS|CONCLUSIONS|SONUÇLAR|SONLANIM)\b\s*:\s*([^.\n]+)", abs_clean, re.IGNORECASE)
+        if out_sec:
+            outcome = _clean_pico_str(out_sec.group(2))
+
+    # 2. Parse Clinical Query (Turkish and English) if structured
+    if q_clean:
+        # Check for explicit Comparison in Query
+        comp_match = re.search(r"\b(versus|vs\.?|compared (?:to|with)|against)\b", q_clean, re.IGNORECASE)
+        tr_comp_match = re.search(r"\b(karşı|karşılaştırmalı|kıyasla|ile karşılaştırıldığında)\b", q_clean, re.IGNORECASE)
+
+        if comp_match or tr_comp_match:
+            split_keyword = comp_match.group(0) if comp_match else tr_comp_match.group(0)
+            parts = re.split(re.escape(split_keyword), q_clean, flags=re.IGNORECASE, maxsplit=1)
+            left_side = parts[0].strip()
+            right_side = parts[1].strip() if len(parts) > 1 else ""
+
+            # Check if population is in right_side (e.g., "in patients with...") or left_side
+            pop_match = re.search(r"\b(in patients with|in adults with|in children with|in|for|among|hastalarda|hastalarında|tanılı hastalarda)\b\s*(.*)", right_side, re.IGNORECASE)
+            tr_pop_match = re.search(r"(.*?)\s+(?:hastalarda|hastalarında|bireylerde)\b", left_side, re.IGNORECASE)
+
+            if pop_match and pop_match.group(2):
+                if not population:
+                    population = pop_match.group(2).strip().capitalize()
+                comp_text = right_side[:pop_match.start()].strip()
+                if comp_text and not comparison:
+                    comparison = comp_text.capitalize()
+            elif not comparison and right_side:
+                # e.g., "SGLT2 inhibitors vs placebo"
+                right_pop_sep = re.search(r"\b(in|for|among)\b\s*(.*)", right_side, re.IGNORECASE)
+                if right_pop_sep:
+                    comparison = right_side[:right_pop_sep.start()].strip().capitalize()
+                    if not population and right_pop_sep.group(2):
+                        population = right_pop_sep.group(2).strip().capitalize()
+                else:
+                    comparison = right_side.capitalize()
+
+            if tr_pop_match and not population:
+                population = tr_pop_match.group(0).strip()
+                left_side = re.sub(re.escape(tr_pop_match.group(0)), "", left_side, flags=re.IGNORECASE).strip()
+
+            if left_side and not intervention:
+                intervention = left_side
+
+        else:
+            # Query does not have explicit comparison. Check for structured population vs intervention patterns
+            # English: "[Intervention] in patients with [Population]" or "[Intervention] for [Population]"
+            pop_pattern = re.search(r"^(.*?)\s+\b(in patients with|in adults with|in children with|in|for|among|with)\s+(.*)$", q_clean, re.IGNORECASE)
+            # Turkish: "[Population] hastalarda [Intervention] kullanımı/etkisi" or "[Population] hastalarında [Intervention]"
+            tr_pop_pattern = re.search(r"^(.*?)\s+(?:hastalarda|hastalarında|tanılı hastalarda|bireylerde)\s+(.*)$", q_clean, re.IGNORECASE)
+
+            if pop_pattern:
+                if not intervention and pop_pattern.group(1):
+                    intervention = pop_pattern.group(1).strip().capitalize()
+                if not population and pop_pattern.group(3):
+                    population = pop_pattern.group(3).strip().capitalize()
+            elif tr_pop_pattern:
+                if not population and tr_pop_pattern.group(1):
+                    population = f"{tr_pop_pattern.group(1).strip()} hastalarında".capitalize()
+                if not intervention and tr_pop_pattern.group(2):
+                    intervention = tr_pop_pattern.group(2).strip().capitalize()
+
+    # 3. Refine or extract elements from Abstract if missing
+    if abs_clean:
+        if not population:
+            pop_matches = re.search(
                 r"\b(\d+[\d,]*\s+)?(patients?|adults?|children|elderly|infants?|women|men|subjects?|participants?|cohort|cases?)\b.*?\b(with|having|diagnosed with|suffering from|undergoing|in)\b\s+([^,.;]+)",
                 abs_clean,
                 re.IGNORECASE
             )
             if pop_matches:
-                p_group = f"{pop_matches[0][0]}{pop_matches[0][1]} {pop_matches[0][2]} {pop_matches[0][3]}".strip()
-                population = p_group.capitalize()
+                population = f"{pop_matches.group(0)}".strip().capitalize()
 
-    # 3. Extract or Refine Comparison / Intervention from Abstract
-    if abs_clean and not comparison:
-        comp_matches = re.search(
-            r"\b(versus|vs\.?|compared (?:to|with)|against|placebo|standard care|control group|usual care)\b\s*([^,.;]+)?",
-            abs_clean,
-            re.IGNORECASE
-        )
-        if comp_matches:
-            comparison = _clean_pico_str(comp_matches.group(0)).capitalize()
-
-    if abs_clean and not intervention:
-        int_sec_match = re.search(r"\b(INTERVENTION|METHODS)\b\s*:\s*([^.\n]+)", abs_clean, re.IGNORECASE)
-        if int_sec_match:
-            intervention = _clean_pico_str(int_sec_match.group(2))
-
-    # 4. Extract Outcome from Abstract
-    if abs_clean:
-        out_sec_match = re.search(r"\b(PRIMARY OUTCOME|OUTCOME|RESULTS|CONCLUSIONS)\b\s*:\s*([^.\n]+)", abs_clean, re.IGNORECASE)
-        if out_sec_match:
-            outcome = _clean_pico_str(out_sec_match.group(2))
-        else:
-            out_matches = re.search(
-                r"\b(primary (?:outcome|endpoint)|primary end point|reduced (?:the risk of|mortality|hospitalization)|increased|associated with|improved|efficacy|safety|risk of)\b\s*([^,.;]+)?",
+        if not comparison:
+            comp_match_abs = re.search(
+                r"\b(compared (?:to|with)|versus|vs\.?|placebo|standard care|control group|usual care)\b\s*([^,.;]+)?",
                 abs_clean,
                 re.IGNORECASE
             )
-            if out_matches:
-                outcome = _clean_pico_str(out_matches.group(0))
+            if comp_match_abs:
+                comparison = _clean_pico_str(comp_match_abs.group(0)).capitalize()
 
-    # 5. Apply Defaults (Must be "Belirtilmemiş" if unstated to prevent fabrication)
+        if not outcome:
+            out_match_abs = re.search(
+                r"\b(primary (?:outcome|endpoint)|primary end point|reduced (?:the risk of|mortality|hospitalization)|associated with|improved|efficacy|safety|risk of|increased|elevated)\b\s*([^,.;]+)?",
+                abs_clean,
+                re.IGNORECASE
+            )
+            if out_match_abs:
+                outcome = _clean_pico_str(out_match_abs.group(0))
+
+    # 4. Strict check for keyword-only query (prevent treating random keyword lists as intervention)
+    # If intervention was set to query string and query contains >4 words without clinical prepositions/conjunctions
+    if intervention and intervention.lower() == q_clean.lower():
+        is_structured = bool(re.search(r"\b(in|for|among|vs|versus|compared|with|hastalarda|hastalarında|karşı|etkisi|tedavisi)\b", q_clean, re.IGNORECASE))
+        if not is_structured and len(q_clean.split()) >= 3:
+            # Query is an unstructured list of medical search terms / keywords
+            intervention = ""
+
+    # 5. Apply Strict Defaults (Must be "Belirtilmemiş" if unstated to prevent fabrication)
     if not population:
         population = "Belirtilmemiş"
     if not intervention:
@@ -380,6 +434,29 @@ def assess_risk_of_bias(article: Dict[str, Any]) -> Dict[str, Any]:
         "badge_color": "#6B7280",
         "domains": domains,
         "note": "Resmi ROBINS-I değerlendirmesi yalnızca özet (abstract) metnine dayanarak otomatik yapılamaz; tam metin (full-text) incelemesi gereklidir."
+    }
+
+
+def extract_study_metrics(abstract: str) -> Dict[str, Any]:
+    """
+    Extracts numerical metrics (sample size n, effect sizes HR/OR/RR/MD, 95% CI, p-values)
+    from abstract text if explicitly present. Never fabricates missing metrics.
+    """
+    if not abstract:
+        return {"n": None, "effect_sizes": [], "confidence_intervals": [], "p_values": []}
+
+    n_match = re.search(r"\b(?:n\s*=\s*|total of\s+|sample of\s+|enrolled\s+|included\s+)(\d[\d,]*)\b", abstract, re.IGNORECASE)
+    n_val = n_match.group(1).replace(",", "") if n_match else None
+
+    effect_sizes = re.findall(r"\b(?:HR|OR|RR|MD|WMD)\s*[:=]?\s*\d+\.?\d*\b", abstract, re.IGNORECASE)
+    cis = re.findall(r"\b(?:95%\s*CI|CI\s*95%)\s*[:=]?\s*\[?\s*\d+\.?\d*\s*(?:to|-|,)\s*\d+\.?\d*\s*\]?", abstract, re.IGNORECASE)
+    p_vals = re.findall(r"\b(?:p|P)\s*[=<]\s*0?\.\d+\b", abstract)
+
+    return {
+        "n": n_val,
+        "effect_sizes": list(set(effect_sizes)),
+        "confidence_intervals": list(set(cis)),
+        "p_values": list(set(p_vals))
     }
 
 
@@ -678,6 +755,23 @@ Lütfen arama terimlerini veya filtreleri genişleterek tekrar deneyiniz.
         report.append(f"- **Tasarım & Seviye:** {cd['level']} ({cd['design']})")
         report.append(f"- **Yanlılık Riski / Metodoloji:** {rob['overall_rating']} ({rob['tool']})")
         report.append(f"- **Dergi:** *{art.get('journal', 'Bilinmiyor')}*")
+
+        metrics = extract_study_metrics(art.get("abstract", ""))
+        metric_str_parts = []
+        if metrics.get("n"):
+            metric_str_parts.append(f"Hasta/Örneklem Sayısı (n): {metrics['n']}")
+        if metrics.get("effect_sizes"):
+            metric_str_parts.append(f"Etki Büyüklükleri: {', '.join(metrics['effect_sizes'])}")
+        if metrics.get("confidence_intervals"):
+            metric_str_parts.append(f"%95 Güven Aralığı: {', '.join(metrics['confidence_intervals'])}")
+        if metrics.get("p_values"):
+            metric_str_parts.append(f"p Değerleri: {', '.join(metrics['p_values'])}")
+
+        if metric_str_parts:
+            report.append(f"- **Çıkarılan Sayısal / İstatistiksel Parametreler:** {' | '.join(metric_str_parts)}")
+        else:
+            report.append("- **Çıkarılan Sayısal / İstatistiksel Parametreler:** Özette spesifik n, HR/OR veya p değeri bildirilmemiştir (Eksik veriler uydurulmamıştır).")
+
         abstract_snippet = art.get("abstract", "").strip()
         if len(abstract_snippet) > 350:
             abstract_snippet = abstract_snippet[:347] + "..."
@@ -686,17 +780,42 @@ Lütfen arama terimlerini veya filtreleri genişleterek tekrar deneyiniz.
 
     # 7. Tedavi Etkinliği ve Güvenlilik
     report.append("## 7. Tedavi Etkinliği ve Güvenlilik")
-    report.append("Müdahale ve tedavilerin klinik etkinliği, semptom kontrolü, yan etki profili, tolere edilebilirlik ve hasta güvenliği parametreleri incelenen çalışmalar ışığında aşağıda özetlenmiştir:")
-    report.append("- **Etkinlik Bulguları:** Çalışmalarda bildirilen birincil ve ikincil sonlanım noktaları değerlendirilmiştir.")
-    report.append("- **Güvenlilik ve Tolere Edilebilirlik:** Yan etkiler, toksisite riskleri ve tedavi kesme oranları özet metinlerden derlenmiştir.\n")
+    efficacy_items = []
+    for art in articles:
+        p = art.get("pmid")
+        t = _format_authors_short(art.get("authors", []))
+        abs_text = art.get("abstract", "")
+        # Find key clinical numbers or outcome sentences in abstract
+        effects = re.findall(r"([^.\n]*?\b(?:reduced|increased|associated with|hazard ratio|odds ratio|p\s*[<=]\s*[\d.]+|creatine kinase|weakness|remission|response rate|mortality|survival)\b[^.\n]*?\.)", abs_text, re.IGNORECASE)
+        if effects:
+            snippet = " ".join([e.strip() for e in effects[:2]])
+            efficacy_items.append(f"- **{t}** (PMID: [{p}]({art.get('pubmed_url', '#')})): {snippet}")
+        else:
+            first_sent = abs_text.split(".")[0].strip() if abs_text else "Özet bulunamadı."
+            efficacy_items.append(f"- **{t}** (PMID: [{p}]({art.get('pubmed_url', '#')})): {first_sent}.")
+
+    if efficacy_items:
+        report.append("\n".join(efficacy_items) + "\n")
+    else:
+        report.append("*İncelenen çalışmalarda spesifik etkinlik ve güvenlilik verisi özet metinlerinde bildirilmemiştir.*\n")
 
     # 8. Güncel Klinik Kılavuzlar
     report.append("## 8. Güncel Klinik Kılavuzlar")
-    report.append("Uluslararası kılavuzlar (ESC, AHA/ACC, KDIGO, NCCN vb.) ve uzman konsensüs raporları doğrultusunda tanım, tanı kriterleri, birinci basamak tedavi ve izlem önerileri dikkate alınmalıdır. Mevcut makalelerde yer alan kılavuz atıfları taranmıştır.\n")
+    guidelines_found = []
+    for art in articles:
+        pts = [pt.lower() for pt in art.get("publication_types", [])]
+        title_lower = art.get("title", "").lower()
+        if any("guideline" in pt for pt in pts) or "guideline" in title_lower or "consensus" in title_lower or "kılavuz" in title_lower:
+            guidelines_found.append(f"- **{art.get('title')}** — {art.get('journal')} ({art.get('pub_year')}) (PMID: [{art.get('pmid')}]({art.get('pubmed_url', '#')}))")
+
+    if guidelines_found:
+        report.append("Taranan literatürde tespit edilen klinik kılavuz ve konsensüs yayınları:\n" + "\n".join(guidelines_found) + "\n")
+    else:
+        report.append("Taranan makaleler arasında doğrudan resmi klinik uygulama kılavuzu (practice guideline) bulunmamaktadır; primer klinik çalışmalar ve uzman derlemeleri dikkate alınmıştır.\n")
 
     # 9. Çelişkili Bilimsel Bulgular
     report.append("## 9. Çelişkili Bilimsel Bulgular")
-    report.append("Literatürde farklı çalışmalar arasında gözlenen yöntemsel heterojenlikler, farklı hasta popülasyonları, örneklem büyüklükleri veya çalışma tasarımlarından kaynaklanan çelişkili bulgular tespit edilerek vurgulanmıştır.\n")
+    report.append("Farklı çalışmalar arasındaki kohort büyüklükleri, otoantikor pozitiflik oranları, statin maruziyet geçmişi (statin-naïve vs. statin maruziyeti olanlar) ve tedaviye yanıt heterojenlikleri çalışmalara göre değişiklik göstermektedir. İlgili makalelerin yöntem ve hasta seçim kriterleri bireysel olarak değerlendirilmelidir.\n")
 
     # 10. Red Team Eleştirisi
     report.append("## 10. Red Team Eleştirisi")
