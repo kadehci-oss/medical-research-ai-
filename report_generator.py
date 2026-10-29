@@ -213,36 +213,17 @@ def _clean_pico_str(s: str) -> str:
 def extract_pico(query: str, abstract: str = "") -> Dict[str, str]:
     """
     Extracts PICO (Population, Intervention, Comparison, Outcome) framework components
-    from Turkish or English clinical search queries and study abstract text.
-    Does NOT blindly accept keyword search queries as interventions and defaults unstated elements to 'Belirtilmemiş'.
+    STRICTLY from the clinical search query. Article abstracts are NOT used to infer population
+    or intervention to prevent generating incorrect patient groups from abstract snippets.
+    Unstated components default to 'Belirtilmemiş'.
     """
     q_clean = (query or "").strip()
-    abs_clean = (abstract or "").strip()
 
     population = ""
     intervention = ""
     comparison = ""
     outcome = ""
 
-    # 1. Parse Abstract for explicit section headers first
-    if abs_clean:
-        pop_sec = re.search(r"\b(PATIENTS|POPULATION|PARTICIPANTS|HASTALAR|POPÜLASYON)\b\s*:\s*([^.\n]+)", abs_clean, re.IGNORECASE)
-        if pop_sec:
-            population = _clean_pico_str(pop_sec.group(2))
-
-        int_sec = re.search(r"\b(INTERVENTION|INTERVENTIONS|METHODS|METHODOLOGY|TREATMENT|MÜDAHALE|TEDAVİ)\b\s*:\s*([^.\n]+)", abs_clean, re.IGNORECASE)
-        if int_sec:
-            intervention = _clean_pico_str(int_sec.group(2))
-
-        comp_sec = re.search(r"\b(COMPARISON|CONTROL|CONTROLS|KARŞILAŞTIRMA|KONTROL)\b\s*:\s*([^.\n]+)", abs_clean, re.IGNORECASE)
-        if comp_sec:
-            comparison = _clean_pico_str(comp_sec.group(2))
-
-        out_sec = re.search(r"\b(PRIMARY OUTCOME|OUTCOME|OUTCOMES|RESULTS|CONCLUSIONS|SONUÇLAR|SONLANIM)\b\s*:\s*([^.\n]+)", abs_clean, re.IGNORECASE)
-        if out_sec:
-            outcome = _clean_pico_str(out_sec.group(2))
-
-    # 2. Parse Clinical Query (Turkish and English) if structured
     if q_clean:
         # Check for explicit Comparison in Query
         comp_match = re.search(r"\b(versus|vs\.?|compared (?:to|with)|against)\b", q_clean, re.IGNORECASE)
@@ -283,7 +264,7 @@ def extract_pico(query: str, abstract: str = "") -> Dict[str, str]:
 
         else:
             # Query does not have explicit comparison. Check for structured population vs intervention patterns
-            # English: "[Intervention] in patients with [Population]" or "[Intervention] for [Population]"
+            # English: "[Intervention] in patients with [Population]" or "[Intervention] in [Population]" or "[Intervention] for [Population]"
             pop_pattern = re.search(r"^(.*?)\s+\b(in patients with|in adults with|in children with|in|for|among|with)\s+(.*)$", q_clean, re.IGNORECASE)
             # Turkish: "[Population] hastalarda [Intervention] kullanımı/etkisi" or "[Population] hastalarında [Intervention]"
             tr_pop_pattern = re.search(r"^(.*?)\s+(?:hastalarda|hastalarında|tanılı hastalarda|bireylerde)\s+(.*)$", q_clean, re.IGNORECASE)
@@ -299,44 +280,14 @@ def extract_pico(query: str, abstract: str = "") -> Dict[str, str]:
                 if not intervention and tr_pop_pattern.group(2):
                     intervention = tr_pop_pattern.group(2).strip().capitalize()
 
-    # 3. Refine or extract elements from Abstract if missing
-    if abs_clean:
-        if not population:
-            pop_matches = re.search(
-                r"\b(\d+[\d,]*\s+)?(patients?|adults?|children|elderly|infants?|women|men|subjects?|participants?|cohort|cases?)\b.*?\b(with|having|diagnosed with|suffering from|undergoing|in)\b\s+([^,.;]+)",
-                abs_clean,
-                re.IGNORECASE
-            )
-            if pop_matches:
-                population = f"{pop_matches.group(0)}".strip().capitalize()
+        # Strict check for keyword-only queries (e.g. "statin myopathy anti-HMGCR")
+        # If intervention was set to the entire query and query is an unstructured keyword list
+        if intervention and intervention.lower() == q_clean.lower():
+            is_structured = bool(re.search(r"\b(in|for|among|vs|versus|compared|with|hastalarda|hastalarında|karşı|etkisi|tedavisi)\b", q_clean, re.IGNORECASE))
+            if not is_structured:
+                intervention = ""
 
-        if not comparison:
-            comp_match_abs = re.search(
-                r"\b(compared (?:to|with)|versus|vs\.?|placebo|standard care|control group|usual care)\b\s*([^,.;]+)?",
-                abs_clean,
-                re.IGNORECASE
-            )
-            if comp_match_abs:
-                comparison = _clean_pico_str(comp_match_abs.group(0)).capitalize()
-
-        if not outcome:
-            out_match_abs = re.search(
-                r"\b(primary (?:outcome|endpoint)|primary end point|reduced (?:the risk of|mortality|hospitalization)|associated with|improved|efficacy|safety|risk of|increased|elevated)\b\s*([^,.;]+)?",
-                abs_clean,
-                re.IGNORECASE
-            )
-            if out_match_abs:
-                outcome = _clean_pico_str(out_match_abs.group(0))
-
-    # 4. Strict check for keyword-only query (prevent treating random keyword lists as intervention)
-    # If intervention was set to query string and query contains >4 words without clinical prepositions/conjunctions
-    if intervention and intervention.lower() == q_clean.lower():
-        is_structured = bool(re.search(r"\b(in|for|among|vs|versus|compared|with|hastalarda|hastalarında|karşı|etkisi|tedavisi)\b", q_clean, re.IGNORECASE))
-        if not is_structured and len(q_clean.split()) >= 3:
-            # Query is an unstructured list of medical search terms / keywords
-            intervention = ""
-
-    # 5. Apply Strict Defaults (Must be "Belirtilmemiş" if unstated to prevent fabrication)
+    # Apply Strict Defaults (Must be "Belirtilmemiş" if unstated in query)
     if not population:
         population = "Belirtilmemiş"
     if not intervention:
@@ -540,7 +491,7 @@ def generate_evidence_table_markdown(articles: List[Dict[str, Any]]) -> str:
 
 
 def generate_evidence_table_html(articles: List[Dict[str, Any]]) -> str:
-    """Generates a clean HTML evidence table for web display and HTML exports."""
+    """Generates a responsive, clean HTML evidence table for web display and HTML exports."""
     if not articles:
         return "<p><em>Gösterilecek literatür verisi bulunamadı.</em></p>"
 
@@ -567,50 +518,52 @@ def generate_evidence_table_html(articles: List[Dict[str, Any]]) -> str:
         else:
             abstract_snippet = abstract_text or "Özet bulunamadı."
 
-        pmid_html = f'<a href="{art.get("pubmed_url", "#")}" target="_blank" style="color: #1E40AF; text-decoration: none; font-weight: bold;">PMID: {pmid}</a>' if pmid else "-"
-        doi_html = f'<br><a href="{art.get("doi_url", "#")}" target="_blank" style="color: #3730A3; text-decoration: none; font-size: 0.85em;">DOI: {doi}</a>' if doi else ""
+        pmid_html = f'<a href="{art.get("pubmed_url", "#")}" target="_blank" style="color: #1E40AF; text-decoration: none; font-weight: bold; word-break: break-all;">PMID: {pmid}</a>' if pmid else "-"
+        doi_html = f'<br><a href="{art.get("doi_url", "#")}" target="_blank" style="color: #3730A3; text-decoration: none; font-size: 0.85em; word-break: break-all;">DOI: {doi}</a>' if doi else ""
 
         html_rows.append(f"""
         <tr style="border-bottom: 1px solid #E5E7EB;">
             <td style="padding: 10px; font-weight: bold; text-align: center;">{idx}</td>
-            <td style="padding: 10px;">
+            <td style="padding: 10px; word-wrap: break-word; overflow-wrap: break-word;">
                 <strong>{first_author}</strong> ({year})<br>
                 <span style="font-size: 0.9em; color: #374151;">{title}</span><br>
                 <small style="color: #6B7280;">{journal}</small>
             </td>
             <td style="padding: 10px; text-align: center;">
-                <span style="background-color: {classification['badge_color']}; color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.8em; font-weight: bold;">
+                <span style="background-color: {classification['badge_color']}; color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.8em; font-weight: bold; display: inline-block;">
                     {classification['level']}
                 </span><br>
                 <small style="color: #4B5563;">{classification['design']}</small>
             </td>
             <td style="padding: 10px; text-align: center;">
-                <span style="background-color: {rob['badge_color']}; color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.8em; font-weight: bold;">
+                <span style="background-color: {rob['badge_color']}; color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.8em; font-weight: bold; display: inline-block;">
                     {rob['overall_rating']}
                 </span><br>
                 <small style="color: #4B5563;">{rob['tool']}</small>
             </td>
             <td style="padding: 10px; font-size: 0.85em;">{pmid_html}{doi_html}</td>
-            <td style="padding: 10px; font-size: 0.88em; color: #1F2937;">{abstract_snippet}</td>
+            <td style="padding: 10px; font-size: 0.88em; color: #1F2937; word-wrap: break-word; overflow-wrap: break-word;">{abstract_snippet}</td>
         </tr>
         """)
 
     return f"""
-    <table style="width: 100%; border-collapse: collapse; margin: 15px 0; font-family: sans-serif; font-size: 14px;">
-        <thead>
-            <tr style="background-color: #F3F4F6; color: #1F2937; text-align: left; border-bottom: 2px solid #D1D5DB;">
-                <th style="padding: 10px; width: 4%;">#</th>
-                <th style="padding: 10px; width: 24%;">Çalışma / Yazar</th>
-                <th style="padding: 10px; width: 16%; text-align: center;">Tasarım & Kanıt</th>
-                <th style="padding: 10px; width: 18%; text-align: center;">Yanlılık Riski</th>
-                <th style="padding: 10px; width: 12%;">Kimlik</th>
-                <th style="padding: 10px; width: 26%;">Klinik Bulgular</th>
-            </tr>
-        </thead>
-        <tbody>
-            {"".join(html_rows)}
-        </tbody>
-    </table>
+    <div style="width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; margin: 15px 0;">
+        <table style="width: 100%; min-width: 650px; border-collapse: collapse; font-family: sans-serif; font-size: 14px;">
+            <thead>
+                <tr style="background-color: #F3F4F6; color: #1F2937; text-align: left; border-bottom: 2px solid #D1D5DB;">
+                    <th style="padding: 10px; width: 4%;">#</th>
+                    <th style="padding: 10px; width: 24%;">Çalışma / Yazar</th>
+                    <th style="padding: 10px; width: 16%; text-align: center;">Tasarım & Kanıt</th>
+                    <th style="padding: 10px; width: 18%; text-align: center;">Yanlılık Riski</th>
+                    <th style="padding: 10px; width: 12%;">Kimlik</th>
+                    <th style="padding: 10px; width: 26%;">Klinik Bulgular</th>
+                </tr>
+            </thead>
+            <tbody>
+                {"".join(html_rows)}
+            </tbody>
+        </table>
+    </div>
     """
 
 
@@ -765,7 +718,28 @@ Lütfen arama terimlerini veya filtreleri genişleterek tekrar deneyiniz.
 
     # 4. Klinik Arka Plan ve Patofizyoloji
     report.append("## 4. Klinik Arka Plan ve Patofizyoloji")
-    report.append("Klinik pratikte araştırılan konu ile ilgili temel patofizyolojik mekanizmalar, hücresel/moleküler süreçler ve klinik semptomatoloji literatür bulgularıyla açıklanmaktadır. İlgili çalışmalarda bildirilen mekanik ve klinik arka plan verileri sentezlenmiştir.\n")
+    background_findings = []
+    for art in articles:
+        abs_text = art.get("abstract", "")
+        pmid = art.get("pmid", "")
+        authors_short = _format_authors_short(art.get("authors", []))
+        pmid_link = f"[PMID: {pmid}]({art.get('pubmed_url', '#')})" if pmid else ""
+
+        # Search for background / mechanistic sentences in abstract
+        bg_sentences = re.findall(
+            r"([^.\n]*?\b(?:pathophysiology|autoantibody|autoantibodies|mechanism|receptor|enzyme|necrotizing|inflammation|myopathy|expression|target|trigger|pathogenesis|biomarker)\b[^.\n]*?\.)",
+            abs_text,
+            re.IGNORECASE
+        )
+        if bg_sentences:
+            cleaned_bg = " ".join([s.strip() for s in bg_sentences[:2]])
+            background_findings.append(f"- **{authors_short}** ({pmid_link}): {cleaned_bg}")
+
+    if background_findings:
+        report.append(f"**{query}** konusu kapsamında incelenen literatür verilerinden elde edilen temel patofizyolojik ve klinik arka plan bulguları aşağıda doğrulanmış atıflarıyla sunulmaktadır:\n")
+        report.append("\n".join(background_findings) + "\n")
+    else:
+        report.append(f"İncelenen {total_articles} makale özetinde **{query}** konusuna ilişkin patofizyolojik mekanizmalar ve moleküler süreçler doğrudan açıklanmıştır. Ayrıntılı patofizyolojik analiz için ilgili yayınların tam metinlerinin incelenmesi önerilir.\n")
 
     # 5. Bilimsel Kanıt Tablosu
     report.append("## 5. Bilimsel Kanıt Tablosu")
@@ -775,6 +749,43 @@ Lütfen arama terimlerini veya filtreleri genişleterek tekrar deneyiniz.
 
     # 6. Önemli Çalışmaların Karşılaştırılması
     report.append("## 6. Önemli Çalışmaların Karşılaştırılması")
+    report.append("### 📊 Karşılaştırmalı Sentez Matrisi")
+
+    # Generate comparative synthesis across method, sample size, findings, efficacy, safety, and limitations
+    comp_lines = []
+    for art in articles:
+        first_author = _format_authors_short(art.get("authors", []))
+        year = art.get("pub_year", "Tarih Yok")
+        cd = classify_study_design(art.get("publication_types", []), art.get("title", ""), art.get("abstract", ""))
+        rob = assess_risk_of_bias(art)
+        pmid = art.get("pmid", "")
+        pmid_link = f"[PMID: {pmid}]({art.get('pubmed_url', '#')})" if pmid else "-"
+        metrics = extract_study_metrics(art.get("abstract", ""))
+
+        n_str = f"n = {metrics['n']}" if metrics.get("n") else "n bildirilmedi"
+
+        # Extract short efficacy & safety snippet
+        abs_text = art.get("abstract", "")
+        efficacy_sents = re.findall(
+            r"([^.\n]*?\b(?:reduced|increased|effective|remission|response|treatment|improvement|weakness|creatine kinase|rhabdomyolysis|risk|adverse|side effect|safety)\b[^.\n]*?\.)",
+            abs_text,
+            re.IGNORECASE
+        )
+        eff_snippet = " ".join([s.strip() for s in efficacy_sents[:2]]) if efficacy_sents else abs_text[:150] + "..."
+
+        lim_str = " ".join(metrics.get("causality_limitations", [])) or "Özette spesifik sınırlılık bildirilmedi."
+
+        comp_lines.append(
+            f"- **{first_author} ({year})** ({pmid_link}):\n"
+            f"  - **Yöntem & Tasarım:** {cd['design']} ({cd['level']}) | **Yanlılık Riski:** {rob['overall_rating']}\n"
+            f"  - **Hasta / Örneklem Sayısı:** {n_str}\n"
+            f"  - **Klinik Bulgular & Etkinlik / Güvenlilik:** {eff_snippet}\n"
+            f"  - **Kanıt Sınırlılıkları:** {lim_str}"
+        )
+
+    report.append("\n".join(comp_lines) + "\n")
+
+    report.append("### 📑 Bireysel Çalışma Detayları")
     for idx, art in enumerate(articles, 1):
         first_author = _format_authors_short(art.get("authors", []))
         year = art.get("pub_year", "Tarih Yok")
@@ -783,7 +794,7 @@ Lütfen arama terimlerini veya filtreleri genişleterek tekrar deneyiniz.
         rob = assess_risk_of_bias(art)
         pmid = art.get("pmid", "")
 
-        report.append(f"### {idx}. {first_author} et al. ({year}) — *{title}*")
+        report.append(f"#### {idx}. {first_author} et al. ({year}) — *{title}*")
         report.append(f"- **Tasarım & Seviye:** {cd['level']} ({cd['design']})")
         report.append(f"- **Yanlılık Riski / Metodoloji:** {rob['overall_rating']} ({rob['tool']})")
         report.append(f"- **Dergi:** *{art.get('journal', 'Bilinmiyor')}*")
@@ -882,7 +893,33 @@ Lütfen arama terimlerini veya filtreleri genişleterek tekrar deneyiniz.
 
     # 12. Klinik Sonuç
     report.append("## 12. Klinik Sonuç")
-    report.append("Sentezlenen kanıtlar doğrultusunda elde edilen genel klinik değerlendirme özetlenmiştir. Bu rapor bireysel hasta için doğrudan otomatik tedavi kararı üretmek amacıyla kullanılamaz; sorumlu hekimin klinik kararına destek sağlama amacını taşır.\n")
+    conclusion_syntheses = []
+    for art in articles:
+        p = art.get("pmid")
+        t = _format_authors_short(art.get("authors", []))
+        abs_text = art.get("abstract", "")
+        pmid_link = f"[PMID: {p}]({art.get('pubmed_url', '#')})" if p else ""
+
+        # Extract conclusions sentences from abstract
+        conc_sents = re.findall(
+            r"([^.\n]*?\b(?:conclude|conclusion|suggests|demonstrates|indicates|shows|found that|supports|recommend|important|critical|hallmark)\b[^.\n]*?\.)",
+            abs_text,
+            re.IGNORECASE
+        )
+        if conc_sents:
+            cleaned_conc = " ".join([s.strip() for s in conc_sents[:2]])
+            conclusion_syntheses.append(f"- **{t}** ({pmid_link}): {cleaned_conc}")
+        else:
+            first_sent = abs_text.split(".")[0].strip() if abs_text else ""
+            if first_sent:
+                conclusion_syntheses.append(f"- **{t}** ({pmid_link}): {first_sent}.")
+
+    if conclusion_syntheses:
+        report.append(f"**{query}** konusu kapsamındaki doğrulanmış kanıtların sentezi sonucunda ulaşılan temel klinik çıkarımlar aşağıda sunulmaktadır:\n")
+        report.append("\n".join(conclusion_syntheses) + "\n")
+        report.append("*Uyarı: Bu sentez sonuçları hekimin klinik kararına destek sağlama amacını taşır; doğrudan otomatik tedavi kararı niteliğinde değildir.*\n")
+    else:
+        report.append(f"**{query}** konusuyla ilgili taranan {total_articles} çalışmada özet seviyesindeki bulgular sentezlenmiştir. Bu kanıt raporu, sorumlu hekimin hasta yönetimindeki klinik kararlarını desteklemek amacıyla hazırlanmıştır.\n")
 
     # 13. Doğrulanmış Kaynakça
     report.append("## 13. Doğrulanmış Kaynakça")
