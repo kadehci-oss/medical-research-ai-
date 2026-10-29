@@ -9,7 +9,8 @@ from report_generator import (
     perform_red_team_audit,
     classify_study_design,
     extract_pico,
-    assess_risk_of_bias
+    assess_risk_of_bias,
+    validate_clinical_report_quality
 )
 
 # Page config
@@ -262,19 +263,22 @@ def main():
             audit_res = perform_red_team_audit(query, articles)
 
             # Audit Summary Cards
-            col_a1, col_a2, col_a3, col_a4 = st.columns(4)
+            col_a1, col_a2, col_a3, col_a4, col_a5 = st.columns(5)
             with col_a1:
                 st.metric("Toplam Kaynak", len(articles))
             with col_a2:
                 st.metric("Doğrulanmış Atıf", audit_res["citation_integrity"]["verified_citations"])
             with col_a3:
-                st.metric("Veri Kapsamı", "Yalnızca Özet (Abstract)")
+                st.metric("Veri Kapsamı", "Özet (Abstract)")
             with col_a4:
                 st.metric("GRADE Statüsü", "Değerlendirilmedi")
+            with col_a5:
+                st.metric("Uzman Hekim İncelemesi", "Tamamlanmadı")
 
             st.markdown(
                 f"""<div class="grade-notice-card">
-                📌 <strong>GRADE Derecelendirme Politikası:</strong> {audit_res['grade_rating_policy']['notice']}
+                📌 <strong>GRADE Derecelendirme Politikası:</strong> {audit_res['grade_rating_policy']['notice']}<br>
+                ⚠️ <strong>Uzman Hekim Uyarısı:</strong> Gerçek uzman hekim değerlendirmesi henüz yapılmamıştır (Tamamlanmadı). Bu rapor yapay zeka destekli literatür araştırma çıktısıdır.
                 </div>""",
                 unsafe_allow_html=True
             )
@@ -293,8 +297,10 @@ def main():
                         model=llm_model,
                         search_metadata=search_meta
                     )
+                    quality_qc = validate_clinical_report_quality(report_md)
                     html_report = generate_html_report(query, articles, report_md)
                     st.session_state["generated_report"] = report_md
+                    st.session_state["generated_report_qc"] = quality_qc
                     st.session_state["generated_html_report"] = html_report
 
             if "generated_report" in st.session_state:

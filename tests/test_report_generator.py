@@ -11,7 +11,8 @@ from report_generator import (
     generate_evidence_table_markdown,
     generate_evidence_table_html,
     perform_red_team_audit,
-    generate_html_report
+    generate_html_report,
+    validate_clinical_report_quality
 )
 
 SAMPLE_ARTICLES = [
@@ -281,6 +282,37 @@ class TestReportGenerator(unittest.TestCase):
         self.assertNotIn("100 / 100", html_rep)
         self.assertNotIn("0% (Sıfır)", html_rep)
         self.assertNotIn("SIFIR HALÜSİNASYON", html_rep)
+
+    def test_validate_clinical_report_quality_success(self):
+        report = generate_rule_based_turkish_report("SGLT2 inhibitors in heart failure", SAMPLE_ARTICLES)
+        qc = validate_clinical_report_quality(report)
+        self.assertTrue(qc["valid"])
+        self.assertEqual(len(qc["missing_sections"]), 0)
+        self.assertEqual(len(qc["detected_false_claims"]), 0)
+
+    def test_validate_clinical_report_quality_missing_sections(self):
+        report = generate_rule_based_turkish_report("SGLT2 inhibitors in heart failure", SAMPLE_ARTICLES)
+        # Remove mandatory section 13
+        truncated_report = report.split("## 13. Doğrulanmış Kaynakça")[0]
+        qc = validate_clinical_report_quality(truncated_report)
+        self.assertFalse(qc["valid"])
+        self.assertIn("## 13. Doğrulanmış Kaynakça", qc["missing_sections"])
+
+    def test_validate_clinical_report_quality_false_claims(self):
+        report = generate_rule_based_turkish_report("SGLT2 inhibitors in heart failure", SAMPLE_ARTICLES)
+        bad_report = report + "\n\nBu rapor 100/100 tam puan almış olup %0 halüsinasyon riski taşır ve uzman hekim değerlendirmesi tamamlanmıştır."
+        qc = validate_clinical_report_quality(bad_report)
+        self.assertFalse(qc["valid"])
+        self.assertTrue(len(qc["detected_false_claims"]) > 0)
+
+    def test_expert_physician_review_status_disclaimer(self):
+        audit = perform_red_team_audit("SGLT2 inhibitors", SAMPLE_ARTICLES)
+        self.assertIn("Yapılmadı", audit["expert_physician_evaluation"])
+        self.assertEqual(audit["physician_review_status"], "Tamamlanmadı (Not Completed)")
+
+        report = generate_rule_based_turkish_report("SGLT2 inhibitors", SAMPLE_ARTICLES)
+        self.assertIn("Uzman Hekim Değerlendirmesi", report)
+        self.assertIn("Gerçek uzman hekim değerlendirmesi ve klinik onayı henüz yapılmamıştır", report)
 
 
 if __name__ == "__main__":

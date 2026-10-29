@@ -8,9 +8,45 @@ PUBMED_ESEARCH_URL = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi
 PUBMED_EFETCH_URL = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi"
 CROSSREF_API_URL = "https://api.crossref.org/works/"
 
+import time
+
 DEFAULT_HEADERS = {
     "User-Agent": "MedicalResearchAI/1.0 (mailto:medical_ai_app@example.com)"
 }
+
+NCBI_TOOL = "medical_research_ai"
+NCBI_EMAIL = "medical_ai_app@example.com"
+
+
+def _ncbi_get(url: str, params: dict, timeout: int = 15, max_retries: int = 4) -> requests.Response:
+    """Helper to perform HTTP GET requests to NCBI E-utilities with tool/email metadata and 429 rate-limit retries."""
+    p = dict(params or {})
+    if "eutils.ncbi.nlm.nih.gov" in url:
+        p.setdefault("tool", NCBI_TOOL)
+        p.setdefault("email", NCBI_EMAIL)
+
+    last_resp = None
+    last_exception = None
+    for attempt in range(max_retries):
+        try:
+            resp = requests.get(url, params=p, headers=DEFAULT_HEADERS, timeout=timeout)
+            last_resp = resp
+            if resp.status_code == 429 or resp.status_code in (500, 502, 503, 504):
+                time.sleep(1.0 * (attempt + 1))
+                continue
+            resp.raise_for_status()
+            return resp
+        except requests.RequestException as e:
+            last_exception = e
+            time.sleep(1.0 * (attempt + 1))
+
+    if last_resp is not None:
+        last_resp.raise_for_status()
+        return last_resp
+    elif last_exception:
+        raise last_exception
+    else:
+        raise requests.RequestException(f"NCBI GET request failed to {url}")
 
 
 def _get_element_text(elem: Optional[ET.Element]) -> str:
@@ -196,8 +232,7 @@ def search_pubmed(
             esearch_params["maxdate"] = str(end_year)
 
     try:
-        response = requests.get(PUBMED_ESEARCH_URL, params=esearch_params, headers=DEFAULT_HEADERS, timeout=10)
-        response.raise_for_status()
+        response = _ncbi_get(PUBMED_ESEARCH_URL, params=esearch_params, timeout=10)
         data = response.json()
         esearch_result = data.get("esearchresult", {})
 
@@ -239,9 +274,7 @@ def search_pubmed(
             "id": ",".join(id_list),
             "retmode": "xml"
         }
-        fetch_response = requests.get(PUBMED_EFETCH_URL, params=efetch_params, headers=DEFAULT_HEADERS, timeout=15)
-        fetch_response.raise_for_status()
-
+        fetch_response = _ncbi_get(PUBMED_EFETCH_URL, params=efetch_params, timeout=15)
         raw_articles = parse_pubmed_xml(fetch_response.text)
 
         # Deduplicate articles by PMID and DOI
@@ -303,8 +336,7 @@ def verify_pmid(pmid: str) -> Dict[str, Any]:
     }
 
     try:
-        response = requests.get(PUBMED_EFETCH_URL, params=efetch_params, headers=DEFAULT_HEADERS, timeout=10)
-        response.raise_for_status()
+        response = _ncbi_get(PUBMED_EFETCH_URL, params=efetch_params, timeout=10)
         articles = parse_pubmed_xml(response.text)
         if articles and articles[0].get("pmid") == clean_pmid:
             article = articles[0]
