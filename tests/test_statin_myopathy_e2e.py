@@ -168,19 +168,21 @@ class TestStatinMyopathyEndToEnd(unittest.TestCase):
             mock_efetch_23519993
         ]
 
+        query = "Statin-associated muscle symptoms AND anti-HMGCR"
+
         # Perform PubMed search for statin myopathy and anti-HMGCR
-        search_res = search_pubmed("statin myopathy anti-HMGCR", max_results=5)
+        search_res = search_pubmed(query, max_results=5)
         articles = search_res.get("articles", [])
 
         self.assertEqual(len(articles), 2)
 
-        audit = perform_red_team_audit("statin myopathy anti-HMGCR", articles)
+        audit = perform_red_team_audit(query, articles)
         self.assertEqual(audit["status"], "DENETLEME TAMAMLANDI (AUDIT COMPLETE)")
         self.assertEqual(audit["citation_integrity"]["rejected_citations"], 0)
         self.assertEqual(audit["citation_integrity"]["verified_citations"], 2)
 
         # Generate Turkish evidence synthesis report
-        report = generate_rule_based_turkish_report("statin myopathy anti-HMGCR", articles, search_metadata=search_res)
+        report = generate_rule_based_turkish_report(query, articles, search_metadata=search_res)
 
         # Validate all 13 mandatory clinical sections exist
         self.assertIn("1. Klinik Araştırma Sorusu", report)
@@ -201,6 +203,11 @@ class TestStatinMyopathyEndToEnd(unittest.TestCase):
         self.assertIn("anti-HMGCR", report, "Anti-HMGCR antibody term missing in report")
         self.assertIn("GRADE Değerlendirilmedi (Not Assessed)", report)
         self.assertIn("Klinik Doğrulama Yapılmamıştır", report)
+
+        # Verify Section 12 contains specific PMID citations and Turkish clinical synthesis
+        self.assertIn("[PMID: 37884200]", report)
+        self.assertIn("[PMID: 23519993]", report)
+        self.assertIn("nekrotizan miyopati", report.lower())
 
         # Ensure no false claims
         self.assertNotIn("100/100", report)

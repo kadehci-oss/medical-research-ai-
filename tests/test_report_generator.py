@@ -134,18 +134,17 @@ class TestReportGenerator(unittest.TestCase):
         self.assertIn("Immunosuppressive", metrics["concomitant_treatments"])
         self.assertTrue(any("causality" in lim.lower() for lim in metrics["causality_limitations"]))
 
-    def test_extract_pico_multi_part_query_and_abstract(self):
+    def test_extract_pico_multi_part_query(self):
         query = "SGLT2 inhibitors vs placebo in heart failure with preserved ejection fraction"
-        abstract = "RESULTS: Empagliflozin reduced the primary outcome of cardiovascular death or hospitalization."
 
-        pico = extract_pico(query, abstract)
+        pico = extract_pico(query)
         self.assertEqual(pico["intervention"], "SGLT2 inhibitors")
         self.assertEqual(pico["comparison"], "Placebo")
         self.assertEqual(pico["population"], "Heart failure with preserved ejection fraction")
         self.assertEqual(pico["outcome"], "Belirtilmemiş")
 
     def test_extract_pico_unstated_defaults_to_belirtilmemis(self):
-        pico = extract_pico("", "")
+        pico = extract_pico("")
         self.assertEqual(pico["population"], "Belirtilmemiş")
         self.assertEqual(pico["intervention"], "Belirtilmemiş")
         self.assertEqual(pico["comparison"], "Belirtilmemiş")
@@ -281,6 +280,42 @@ class TestReportGenerator(unittest.TestCase):
         self.assertNotIn("100 / 100", html_rep)
         self.assertNotIn("0% (Sıfır)", html_rep)
         self.assertNotIn("SIFIR HALÜSİNASYON", html_rep)
+
+    def test_regression_extract_pico_single_arg(self):
+        pico = extract_pico("Statin-associated muscle symptoms AND anti-HMGCR")
+        self.assertEqual(pico["population"], "Belirtilmemiş")
+        self.assertEqual(pico["intervention"], "Belirtilmemiş")
+        self.assertEqual(pico["comparison"], "Belirtilmemiş")
+
+    def test_regression_section_12_no_generic_template_and_has_pmid_citations(self):
+        query = "SGLT2 inhibitors in heart failure"
+        report = generate_rule_based_turkish_report(query, SAMPLE_ARTICLES)
+
+        # Ensure Section 12 header is present
+        self.assertIn("## 12. Klinik Sonuç", report)
+
+        # Isolate section 12 content
+        section_12 = report.split("## 12. Klinik Sonuç")[1].split("## 13. Doğrulanmış Kaynakça")[0]
+
+        # Verify NO generic template fallback text
+        self.assertNotIn("özet seviyesindeki bulgular sentezlenmiştir. Bu kanıt raporu, sorumlu hekimin hasta yönetimindeki klinik kararlarını desteklemek amacıyla hazırlanmıştır.", section_12)
+
+        # Verify real article findings and explicit PMID citations
+        self.assertIn("[PMID: 34449189]", section_12)
+        self.assertIn("[PMID: 31535829]", section_12)
+        self.assertIn("empagliflozin", section_12.lower())
+
+    def test_regression_evidence_table_no_visible_br_tags_and_responsive_html(self):
+        # 1. Markdown evidence table should NOT contain raw <br> tags
+        table_md = generate_evidence_table_markdown(SAMPLE_ARTICLES)
+        self.assertNotIn("<br>", table_md)
+        self.assertIn("PMID: 34449189", table_md)
+
+        # 2. HTML evidence table should be responsive and properly escaped
+        table_html = generate_evidence_table_html(SAMPLE_ARTICLES)
+        self.assertIn("overflow-x: auto", table_html)
+        self.assertIn("word-break: break-word", table_html)
+        self.assertIn("Empagliflozin in Heart Failure", table_html)
 
 
 if __name__ == "__main__":
