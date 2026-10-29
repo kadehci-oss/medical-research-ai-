@@ -300,7 +300,7 @@ def main():
             if "generated_report" in st.session_state:
                 st.markdown("---")
 
-                pico_res = extract_pico(query, articles[0].get("abstract", "") if articles else "")
+                pico_res = extract_pico(query)
 
                 report_subtab1, report_subtab2, report_subtab3, report_subtab4 = st.tabs([
                     "📄 Tam Kanıt Raporu (Markdown)",
