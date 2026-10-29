@@ -1,5 +1,6 @@
 import os
 import re
+import datetime
 import xml.etree.ElementTree as ET
 import requests
 from typing import List, Dict, Any, Optional
@@ -154,7 +155,6 @@ def search_pubmed(
     query logging, and article deduplication by PMID and DOI.
     Returns dict with 'articles', 'total_count', 'query', 'search_date', 'search_params'.
     """
-    import datetime
     search_date_str = datetime.date.today().strftime("%Y-%m-%d")
 
     search_params_summary = {

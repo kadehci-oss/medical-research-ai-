@@ -1,13 +1,31 @@
 import os
 import re
+import html
+import datetime
 from typing import List, Dict, Any, Optional
 
 try:
     from openai import OpenAI
-except ImportError:
+except Exception:
     OpenAI = None
 
 from pubmed_client import verify_citation
+
+__all__ = [
+    "classify_study_design",
+    "extract_pico",
+    "assess_risk_of_bias",
+    "extract_outcome_metrics",
+    "extract_study_metrics",
+    "extract_article_clinical_details",
+    "generate_evidence_table_markdown",
+    "generate_evidence_table_html",
+    "perform_red_team_audit",
+    "generate_rule_based_turkish_report",
+    "generate_llm_turkish_report",
+    "generate_turkish_evidence_report",
+    "generate_html_report",
+]
 
 
 def _format_authors_short(authors: List[str]) -> str:
@@ -659,7 +677,6 @@ def generate_evidence_table_markdown(articles: List[Dict[str, Any]]) -> str:
 
 def generate_evidence_table_html(articles: List[Dict[str, Any]]) -> str:
     """Generates a responsive, clean HTML evidence table for web display and HTML exports."""
-    import html
     if not articles:
         return "<p><em>Gösterilecek literatür verisi bulunamadı.</em></p>"
 
@@ -1069,7 +1086,6 @@ def _generate_section_12_synthesis(query: str, articles: List[Dict[str, Any]]) -
 
 def generate_rule_based_turkish_report(query: str, articles: List[Dict[str, Any]], search_metadata: Optional[Dict[str, Any]] = None) -> str:
     """Generates an advanced structured, deterministic Turkish evidence report with 13 explicit sections."""
-    import datetime
     today_str = datetime.date.today().strftime("%Y-%m-%d")
     search_date_str = (search_metadata or {}).get("search_date") or today_str
 
@@ -1389,9 +1405,6 @@ def generate_turkish_evidence_report(
         return generate_llm_turkish_report(query, articles, api_key.strip(), model=model, search_metadata=search_metadata)
     else:
         return generate_rule_based_turkish_report(query, articles, search_metadata=search_metadata)
-
-
-import html
 
 
 def generate_html_report(query: str, articles: List[Dict[str, Any]], markdown_content: str) -> str:

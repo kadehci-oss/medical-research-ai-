@@ -6,6 +6,13 @@ from streamlit.testing.v1 import AppTest
 
 class TestAppRegression(unittest.TestCase):
 
+    def test_streamlit_app_launch_smoke(self):
+        """Smoke test verifying that app.py loads and executes cleanly with Streamlit AppTest without unhandled exceptions."""
+        app_path = os.path.abspath("app.py")
+        at = AppTest.from_file(app_path, default_timeout=10)
+        at.run()
+        self.assertEqual(len(at.exception), 0, f"App launched with unhandled exceptions: {at.exception}")
+
     @patch("pubmed_client.search_pubmed")
     @patch("report_generator.generate_turkish_evidence_report")
     @patch("report_generator.generate_html_report")
