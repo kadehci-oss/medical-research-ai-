@@ -81,12 +81,17 @@ def api_verify_citation(citation: Dict[str, Any] = Body(...)):
 
 @app.post("/api/report")
 def api_generate_report(req: ReportRequest):
+    search_meta = {
+        "search_date": getattr(req, "search_date", None),
+        "query": req.query
+    }
     report_md = generate_turkish_evidence_report(
         query=req.query,
         articles=req.articles,
         api_key=req.api_key,
         use_llm=req.use_llm,
-        model=req.model
+        model=req.model,
+        search_metadata=search_meta
     )
     audit = perform_red_team_audit(req.query, req.articles)
     html_report = generate_html_report(req.query, req.articles, report_md)

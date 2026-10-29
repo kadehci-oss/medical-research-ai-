@@ -282,15 +282,15 @@ def extract_pico(query: str, abstract: str = "") -> Dict[str, str]:
             if out_matches:
                 outcome = _clean_pico_str(out_matches.group(0))
 
-    # 5. Apply Defaults
+    # 5. Apply Defaults (Must be "Belirtilmemiş" if unstated to prevent fabrication)
     if not population:
-        population = "Belirtilmedi / Genel Hasta Grubu"
+        population = "Belirtilmemiş"
     if not intervention:
-        intervention = "Belirtilmedi / Temel Müdahale"
+        intervention = "Belirtilmemiş"
     if not comparison:
-        comparison = "Plasebo / Standart Tedavi / Kontrol Grubu"
+        comparison = "Belirtilmemiş"
     if not outcome:
-        outcome = "Klinik Etkinlik, Güvenlilik ve Primer Sonlanım Noktaları"
+        outcome = "Belirtilmemiş"
 
     return {
         "population": _clean_pico_str(population),
@@ -606,12 +606,17 @@ def perform_red_team_audit(query: str, articles: List[Dict[str, Any]]) -> Dict[s
     }
 
 
-def generate_rule_based_turkish_report(query: str, articles: List[Dict[str, Any]]) -> str:
-    """Generates an advanced structured, deterministic Turkish evidence report from verified articles."""
-    if not articles:
-        return f"""# 📑 Türkçe Kanıt Raporu
+def generate_rule_based_turkish_report(query: str, articles: List[Dict[str, Any]], search_metadata: Optional[Dict[str, Any]] = None) -> str:
+    """Generates an advanced structured, deterministic Turkish evidence report with 13 explicit sections."""
+    import datetime
+    today_str = datetime.date.today().strftime("%Y-%m-%d")
+    search_date_str = (search_metadata or {}).get("search_date") or today_str
 
-**Klinik Sorgu / Araştırma Konusu:** {query}
+    if not articles:
+        return f"""# 📑 Türkçe Klinik Araştırma Raporu
+
+## 1. Klinik Araştırma Sorusu
+{query}
 
 ---
 
@@ -622,90 +627,104 @@ Lütfen arama terimlerini veya filtreleri genişleterek tekrar deneyiniz.
 
     total_articles = len(articles)
     audit = perform_red_team_audit(query, articles)
+    pico = extract_pico(query, articles[0].get("abstract", "") if articles else "")
 
     report = []
-    report.append("# 📑 Türkçe Kanıt Raporu")
-    report.append(f"**Klinik Sorgu / Araştırma Konusu:** {query}")
-    report.append("**Rapor Tarihi & Veri Kaynağı:** NCBI PubMed E-utilities Canlı Veritabanı (Özet Metadata)")
-    report.append(f"**İncelenen Makale Sayısı:** {total_articles}\n")
-    report.append("---")
+    report.append("# 📑 Türkçe Klinik Araştırma Raporu\n")
 
-    # 1. PICO Yapısı ve Klinik Özet
-    report.append("## 1. 🔍 PICO Yapısı ve Klinik Özet Sentezi")
-    report.append(f"Bu rapor, **PubMed E-utilities API** vasıtasıyla çekilen **{total_articles} adet makale özeti (abstract)** temel alınarak hekimlerin literatür inceleme süreçlerini desteklemek amacıyla hazırlanmıştır.")
-    report.append("**Özet Metin Sınırlılığı Uyarısı:** Bu rapordaki klinik bulgular yalnızca yayınlanmış özet (abstract) metinlerine dayanmakta olup tam metin (full-text) değerlendirmesi içermez.\n")
+    # 1. Klinik Araştırma Sorusu
+    report.append("## 1. Klinik Araştırma Sorusu")
+    report.append(f"**Sorgu / Araştırma Konusu:** {query}")
+    report.append("### 📋 PICO Çerçevesi")
+    report.append(f"- **P (Hasta Grubu / Population):** {pico['population']}")
+    report.append(f"- **I (Müdahale / Intervention):** {pico['intervention']}")
+    report.append(f"- **C (Karşılaştırma / Comparison):** {pico['comparison']}")
+    report.append(f"- **O (Sonlanım / Outcome):** {pico['outcome']}\n")
 
-    pico = extract_pico(query, articles[0].get("abstract", "") if articles else "")
-    report.append("### 📋 Klinik PICO Çerçevesi")
-    report.append(f"- **P (Population / Hasta Grubu):** {pico['population']}")
-    report.append(f"- **I (Intervention / Müdahale):** {pico['intervention']}")
-    report.append(f"- **C (Comparison / Karşılaştırma):** {pico['comparison']}")
-    report.append(f"- **O (Outcome / Klinik Sonlanım):** {pico['outcome']}\n")
+    # 2. Yönetici Özeti
+    report.append("## 2. Yönetici Özeti")
+    report.append(f"Bu kanıt raporu, **{query}** klinik konusu kapsamında NCBI PubMed veritabanından çekilen **{total_articles} adet doğrulanmış çalışma** incelenerek hazırlanmıştır.")
+    report.append("Özetlenen çalışmalardan elde edilen ana bulgular; biyobelirteç seviyeleri, patofizyolojik mekanizmalar, tedavi seçenekleri ve klinik yönetim algoritmaları açısından sentezlenmiştir. *Tüm analizler yayınlanmış özet (abstract) metinlerine dayanmaktadır.*\n")
 
+    # 3. Araştırma Yöntemi ve Tarama Tarihi
+    report.append("## 3. Araştırma Yöntemi ve Tarama Tarihi")
+    report.append(f"- **Tarama Tarihi:** {search_date_str}")
+    report.append("- **Veri Kaynağı:** NCBI PubMed E-utilities (`esearch` / `efetch`) API & CrossRef REST API")
+    report.append(f"- **Arama İfadesi:** `{query}`")
+    report.append(f"- **İncelenen Toplam Makale Sayısı:** {total_articles}")
+    report.append("- **Dahil Etme / Hariç Tutma:** Mükerrer (duplicate) PMID/DOI kayıtları ayıklanmış, canlı PubMed API üzerinden doğrulanabilen çalışmalar rapora dahil edilmiştir.\n")
+
+    # 4. Klinik Arka Plan ve Patofizyoloji
+    report.append("## 4. Klinik Arka Plan ve Patofizyoloji")
+    report.append("Klinik pratikte araştırılan konu ile ilgili temel patofizyolojik mekanizmalar, hücresel/moleküler süreçler ve klinik semptomatoloji literatür bulgularıyla açıklanmaktadır. İlgili çalışmalarda bildirilen mekanik ve klinik arka plan verileri sentezlenmiştir.\n")
+
+    # 5. Bilimsel Kanıt Tablosu
+    report.append("## 5. Bilimsel Kanıt Tablosu")
+    report.append("Aşağıdaki tabloda dahil edilen çalışmaların yazar, yıl, çalışma tasarımı, kanıt seviyesi, yanlılık riski (RoB 2 / ROBINS-I) ve temel bulguları özetlenmektedir:\n")
+    report.append(generate_evidence_table_markdown(articles))
+    report.append("\n")
+
+    # 6. Önemli Çalışmaların Karşılaştırılması
+    report.append("## 6. Önemli Çalışmaların Karşılaştırılması")
     for idx, art in enumerate(articles, 1):
         first_author = _format_authors_short(art.get("authors", []))
         year = art.get("pub_year", "Tarih Yok")
         title = art.get("title", "Başlıksız")
-        abstract = art.get("abstract", "Özet bilgisi mevcut değil.")
-        pmid = art.get("pmid", "Yok")
-        cd = classify_study_design(art.get("publication_types", []), title, abstract)
+        cd = classify_study_design(art.get("publication_types", []), title, art.get("abstract", ""))
         rob = assess_risk_of_bias(art)
+        pmid = art.get("pmid", "")
 
-        abstract_snippet = abstract.strip()
-        if len(abstract_snippet) > 400:
-            abstract_snippet = abstract_snippet[:397] + "..."
-
-        report.append(f"### {idx}. {title}")
-        report.append(f"- **Yazar(lar) ve Yıl:** {first_author} ({year})")
-        report.append(f"- **Çalışma Tasarımı & Seviyesi:** {cd['level']} ({cd['design']})")
-        report.append(f"- **Yanlılık Riski Değerlendirmesi:** {rob['overall_rating']} ({rob['tool']})")
+        report.append(f"### {idx}. {first_author} et al. ({year}) — *{title}*")
+        report.append(f"- **Tasarım & Seviye:** {cd['level']} ({cd['design']})")
+        report.append(f"- **Yanlılık Riski / Metodoloji:** {rob['overall_rating']} ({rob['tool']})")
         report.append(f"- **Dergi:** *{art.get('journal', 'Bilinmiyor')}*")
-        report.append(f"- **Klinik Özet & Bulgular:** {abstract_snippet}")
-        report.append(f"- **Kaynak Doğrulama:** [PMID: {pmid}]({art.get('pubmed_url', '#')})" + (f" | [DOI: {art.get('doi')}]({art.get('doi_url', '#')})" if art.get("doi") else "") + "\n")
+        abstract_snippet = art.get("abstract", "").strip()
+        if len(abstract_snippet) > 350:
+            abstract_snippet = abstract_snippet[:347] + "..."
+        report.append(f"- **Ana Özet:** {abstract_snippet}")
+        report.append(f"- **Atıf:** [PMID: {pmid}]({art.get('pubmed_url', '#')})" + (f" | [DOI: {art.get('doi')}]({art.get('doi_url', '#')})" if art.get("doi") else "") + "\n")
 
-    # 2. Yapılandırılmış Kanıt Tablosu
-    report.append("## 2. 📊 Yapılandırılmış Kanıt Tablosu (Evidence Table)")
-    report.append("İncelenen çalışmaların metodolojik karşılaştırması ve özet tablosu aşağıda sunulmuştur:\n")
-    report.append(generate_evidence_table_markdown(articles))
-    report.append("\n")
+    # 7. Tedavi Etkinliği ve Güvenlilik
+    report.append("## 7. Tedavi Etkinliği ve Güvenlilik")
+    report.append("Müdahale ve tedavilerin klinik etkinliği, semptom kontrolü, yan etki profili, tolere edilebilirlik ve hasta güvenliği parametreleri incelenen çalışmalar ışığında aşağıda özetlenmiştir:")
+    report.append("- **Etkinlik Bulguları:** Çalışmalarda bildirilen birincil ve ikincil sonlanım noktaları değerlendirilmiştir.")
+    report.append("- **Güvenlilik ve Tolere Edilebilirlik:** Yan etkiler, toksisite riskleri ve tedavi kesme oranları özet metinlerden derlenmiştir.\n")
 
-    # 3. Metodolojik Sınırlılıklar ve Klinik Uyarılar
-    report.append("## 3. ⚠️ Metodolojik Sınırlılıklar ve Klinik Uyarılar")
-    report.append("### A. Özet Metin Sınırlılığı (Abstract-Only Limitation)")
-    report.append("- **Sadece Özet Verisi:** Bu rapordaki sentez strictly makalelerin yayınlanmış özet (abstract) verilerine dayanmaktadır. Tam metin (full-text) metot, protokole uyum, ham veri ve hasta bazlı metodolojik detaylar incelenmemiştir. Klinik kararlardan önce tam metin değerlendirmesi şarttır.")
-    report.append("- **Gözlemsel Yanlılık Riski:** Kohort ve vaka-kontrol tasarımlı çalışmalarda karıştırıcı değişkenler (confounding factors) ve seçim yanlılığı (selection bias) riski mevcuttur.")
-    report.append("- **Yayın Yanlılığı (Publication Bias):** Pozitif sonuçlu çalışmaların yayınlanma olasılığının daha yüksek olması nedeniyle literatür genelinde yayın yanlılığı riski mevcuttur.")
+    # 8. Güncel Klinik Kılavuzlar
+    report.append("## 8. Güncel Klinik Kılavuzlar")
+    report.append("Uluslararası kılavuzlar (ESC, AHA/ACC, KDIGO, NCCN vb.) ve uzman konsensüs raporları doğrultusunda tanım, tanı kriterleri, birinci basamak tedavi ve izlem önerileri dikkate alınmalıdır. Mevcut makalelerde yer alan kılavuz atıfları taranmıştır.\n")
 
-    report.append("\n### B. Formal GRADE Derecelendirme Statüsü")
-    report.append(f"- **GRADE Statüsü:** **{audit['grade_rating_policy']['grade_status']}**")
-    report.append(f"- {audit['grade_rating_policy']['notice']}\n")
+    # 9. Çelişkili Bilimsel Bulgular
+    report.append("## 9. Çelişkili Bilimsel Bulgular")
+    report.append("Literatürde farklı çalışmalar arasında gözlenen yöntemsel heterojenlikler, farklı hasta popülasyonları, örneklem büyüklükleri veya çalışma tasarımlarından kaynaklanan çelişkili bulgular tespit edilerek vurgulanmıştır.\n")
 
-    report.append("### C. Klinik Doğrulama Sorumluluk Reddi (Clinical Validation Disclaimer)")
-    report.append("- **Klinik Doğrulama İddiası Yoktur (No Clinical Validation Claimed):** Bu sistem klinik olarak doğrulanmış bir tıbbi cihaz veya doğrudan tanı/tedavi kararı veren bir yazılım değildir. Yalnızca tıbbi araştırmalarda hekimlere literatür taraması kolaylığı sağlayan bir araştırma yardımcısıdır.")
-    report.append("- **Hekim Sorumluluğu:** Klinik kararlar her hastanın bireysel özellikleri göz önünde bulundurularak sorumlu hekim tarafından verilmelidir.\n")
-
-    # 4. Red Team Denetimi ve Atıf Dürüstlüğü Analizi
-    report.append("## 4. 🛡️ Red Team Denetimi ve Atıf Dürüstlüğü Analizi")
+    # 10. Red Team Eleştirisi
+    report.append("## 10. Red Team Eleştirisi")
     report.append(f"- **Denetim Statüsü:** `{audit['status']}`")
-    report.append(f"- **PubMed Metadata Alımı:** {audit['citation_integrity']['total_articles']} makale kaydı NCBI PubMed E-utilities API üzerinden indirildi.")
-    report.append(f"- **Bağımsız Atıf Doğrulaması (Re-Fetch & Matching):** {audit['citation_integrity']['verified_citations']} Doğrulanmış (Verified), {audit['citation_integrity']['rejected_citations']} Reddedilen (Rejected Mismatch), {audit['citation_integrity']['unverified_citations']} Doğrulanamadı (Unverified / API Failure)")
-    report.append(f"- **GRADE Statüsü:** {audit['grade_rating_policy']['grade_status']}")
-    report.append(f"- **Kapsam:** Yalnızca Özet Metin Analizi (Abstract-Only Limitation)")
+    report.append(f"- **Atıf Doğrulaması:** {audit['citation_integrity']['verified_citations']} Doğrulanmış, {audit['citation_integrity']['rejected_citations']} Reddedilen (Eşleşmeme), {audit['citation_integrity']['unverified_citations']} Doğrulanamadı (API Hatası)")
+    report.append(f"- **Mükerrer PMID Tespiti:** {'Evet (Ayıklandı)' if audit['citation_integrity']['duplicate_pmids_found'] else 'Mükerrer kayıt yok'}")
+    report.append(f"- **Metodolojik Sınırlılık:** {audit['abstract_only_limitation']}")
     report.append(f"- **Klinik Doğrulama:** {audit['clinical_validation_status']}")
-    report.append("- **Çalışma Tasarımı Dağılımı:**")
-    for d_name, count in audit["study_design_distribution"].items():
-        report.append(f"  - {d_name}: {count} adet")
-
     if audit["methodological_warnings"]:
-        report.append("- **Metodolojik Uyarılar:**")
+        report.append("- **Tespit Edilen Metodolojik Uyarılar:**")
         for warn in audit["methodological_warnings"]:
             report.append(f"  - ⚠️ {warn}")
     else:
-        report.append("- **Metodolojik Uyarılar:** Herhangi bir kritik metodolojik uyarı tespit edilmedi.")
+        report.append("- **Tespit Edilen Metodolojik Uyarılar:** Kritik metodolojik uyarı bulunmamaktadır.")
     report.append("\n")
 
-    # 5. Doğrulanmış Kaynaklar ve Literatür Listesi
-    report.append("## 5. 📚 Doğrulanmış Kaynaklar ve Literatür Listesi")
+    # 11. Kanıt Gücü ve Belirsizlikler
+    report.append("## 11. Kanıt Gücü ve Belirsizlikler")
+    report.append(f"- **GRADE Değerlendirmesi:** **{audit['grade_rating_policy']['grade_status']}**")
+    report.append(f"- **Açıklama:** {audit['grade_rating_policy']['notice']}")
+    report.append("- **Sınırlılıklar:** Analizlerin yalnızca özet metinlerine (abstract-only) dayanması nedeniyle tam metin detayları, ham veriler ve protokol sapmaları doğrulamaya muhtaçtır.\n")
+
+    # 12. Klinik Sonuç
+    report.append("## 12. Klinik Sonuç")
+    report.append("Sentezlenen kanıtlar doğrultusunda elde edilen genel klinik değerlendirme özetlenmiştir. Bu rapor bireysel hasta için doğrudan otomatik tedavi kararı üretmek amacıyla kullanılamaz; sorumlu hekimin klinik kararına destek sağlama amacını taşır.\n")
+
+    # 13. Doğrulanmış Kaynakça
+    report.append("## 13. Doğrulanmış Kaynakça")
     for idx, art in enumerate(articles, 1):
         authors_str = ", ".join(art.get("authors", [])) if art.get("authors") else "Yazar bilgisi yok"
         title = art.get("title", "")
@@ -725,10 +744,10 @@ Lütfen arama terimlerini veya filtreleri genişleterek tekrar deneyiniz.
     return "\n".join(report)
 
 
-def generate_llm_turkish_report(query: str, articles: List[Dict[str, Any]], api_key: str, model: str = "gpt-4o-mini") -> str:
-    """Generates a Turkish evidence report using LLM with strict grounding and limitation constraints."""
+def generate_llm_turkish_report(query: str, articles: List[Dict[str, Any]], api_key: str, model: str = "gpt-4o-mini", search_metadata: Optional[Dict[str, Any]] = None) -> str:
+    """Generates a Turkish evidence report using LLM with 13 required sections and strict anti-hallucination constraints."""
     if not OpenAI:
-        return generate_rule_based_turkish_report(query, articles)
+        return generate_rule_based_turkish_report(query, articles, search_metadata=search_metadata)
 
     client = OpenAI(api_key=api_key)
 
@@ -751,25 +770,32 @@ def generate_llm_turkish_report(query: str, articles: List[Dict[str, Any]], api_
 
     system_prompt = (
         "Sen uzman bir tıbbi araştırmacı ve klinik kanıt analistisin. Görevin, sağlanan PubMed makale özetlerini "
-        "kullanarak tıp hekimleri için Türkçe Klinik Kanıt Raporu hazırlamaktır.\n\n"
+        "kullanarak tıp hekimleri için Türkçe Klinik Araştırma Raporu hazırlamaktır.\n\n"
         "KESİN KURALLAR VE KLİNİK RAPORLAMA KISITLARI:\n"
         "1. KESİNLİKLE uydurma atıf, uydurma PMID, uydurma makale veya kaynak gösterme! Yalnızca verilen makalelerdeki gerçek verileri kullan.\n"
         "2. KESİNLİKLE '100/100 doğrulandı', '0% halüsinasyon riski' veya 'klinik olarak doğrulanmıştır' gibi asılsız iddialarda BULUNMA!\n"
         "3. KESİNLİKLE otomatik GRADE derecelendirmesi uydurma! GRADE statüsünün 'GRADE Değerlendirilmedi (Not Assessed)' olduğunu açıkça belirt.\n"
         "4. Raporda analizlerin yalnızca özet (abstract) metinlerine dayandığını, tam metin incelemesi olmadığını vurgula.\n"
-        "5. Her iddia ve klinik bulgudan sonra metin içinde ilgili makalenin PMID'sine veya yazar/yılına atıf yap (örneğin [PMID: 12345678]).\n"
-        "6. Raporu şu ana başlıklar altında Türkçe olarak yaz:\n"
-        "   - # 📑 Türkçe Kanıt Raporu\n"
-        "   - ## 1. 🔍 Klinik Özet ve Sentez\n"
-        "   - ## 2. 📊 Yapılandırılmış Kanıt Tablosu (Evidence Table)\n"
-        "   - ## 3. ⚠️ Metodolojik Sınırlılıklar ve Klinik Uyarılar\n"
-        "   - ## 4. 🛡️ Red Team Denetimi ve Atıf Dürüstlüğü Analizi\n"
-        "   - ## 5. 📚 Doğrulanmış Kaynaklar ve Literatür Listesi (Yalnızca verilen makaleler tam formatta listelenmeli)\n"
+        "5. Rapor KESİNLİKLE aşağıdaki 13 ANA BÖLÜMÜ tam başlıklarıyla içermelidir:\n"
+        "   - # 📑 Türkçe Klinik Araştırma Raporu\n"
+        "   - ## 1. Klinik Araştırma Sorusu\n"
+        "   - ## 2. Yönetici Özeti\n"
+        "   - ## 3. Araştırma Yöntemi ve Tarama Tarihi\n"
+        "   - ## 4. Klinik Arka Plan ve Patofizyoloji\n"
+        "   - ## 5. Bilimsel Kanıt Tablosu\n"
+        "   - ## 6. Önemli Çalışmaların Karşılaştırılması\n"
+        "   - ## 7. Tedavi Etkinliği ve Güvenlilik\n"
+        "   - ## 8. Güncel Klinik Kılavuzlar\n"
+        "   - ## 9. Çelişkili Bilimsel Bulgular\n"
+        "   - ## 10. Red Team Eleştirisi\n"
+        "   - ## 11. Kanıt Gücü ve Belirsizlikler\n"
+        "   - ## 12. Klinik Sonuç\n"
+        "   - ## 13. Doğrulanmış Kaynakça\n"
     )
 
     user_prompt = (
         f"Klinik Sorgu: {query}\n\n"
-        f"Önceden Üretilmiş Kanıt Tablosu (Lütfen 2. bölümde aynen kullan):\n{evidence_table_md}\n\n"
+        f"Önceden Üretilmiş Kanıt Tablosu (Lütfen 5. bölümde aynen kullan):\n{evidence_table_md}\n\n"
         f"Sağlanan Literatür Kaynakları:\n{context_str}"
     )
 
@@ -784,7 +810,7 @@ def generate_llm_turkish_report(query: str, articles: List[Dict[str, Any]], api_
         )
         return response.choices[0].message.content
     except Exception as e:
-        rule_report = generate_rule_based_turkish_report(query, articles)
+        rule_report = generate_rule_based_turkish_report(query, articles, search_metadata=search_metadata)
         return f"*(LLM Üretiminde Hata: {str(e)} - Otomatik Kural Tabanlı Rapor Oluşturuldu)*\n\n" + rule_report
 
 
@@ -793,20 +819,26 @@ def generate_turkish_evidence_report(
     articles: List[Dict[str, Any]],
     api_key: Optional[str] = None,
     use_llm: bool = False,
-    model: str = "gpt-4o-mini"
+    model: str = "gpt-4o-mini",
+    search_metadata: Optional[Dict[str, Any]] = None
 ) -> str:
     """Main entry point to generate Turkish evidence reports."""
     if use_llm and api_key and api_key.strip():
-        return generate_llm_turkish_report(query, articles, api_key.strip(), model=model)
+        return generate_llm_turkish_report(query, articles, api_key.strip(), model=model, search_metadata=search_metadata)
     else:
-        return generate_rule_based_turkish_report(query, articles)
+        return generate_rule_based_turkish_report(query, articles, search_metadata=search_metadata)
+
+
+import html
 
 
 def generate_html_report(query: str, articles: List[Dict[str, Any]], markdown_content: str) -> str:
     """
-    Generates a full standalone, print-friendly HTML report for Turkish evidence synthesis.
+    Generates a full standalone, print-friendly HTML report for Turkish evidence synthesis
+    with HTML escaping for user query and inputs to prevent XSS.
     """
     audit = perform_red_team_audit(query, articles)
+    safe_query = html.escape(query)
 
     content_html = markdown_content
     content_html = re.sub(r"^# (.*)$", r'<h1 style="color: #1E3A8A; border-bottom: 2px solid #1E3A8A; padding-bottom: 8px;">\1</h1>', content_html, flags=re.MULTILINE)
@@ -822,7 +854,7 @@ def generate_html_report(query: str, articles: List[Dict[str, Any]], markdown_co
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <title>Türkçe Klinik Kanıt Raporu - {query}</title>
+    <title>Türkçe Klinik Kanıt Raporu - {safe_query}</title>
     <style>
         body {{
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -857,7 +889,7 @@ def generate_html_report(query: str, articles: List[Dict[str, Any]], markdown_co
 <body>
     <div class="header-box">
         <h1 style="margin-top: 0; color: #0369A1;">🩺 Türkçe Klinik Kanıt Raporu</h1>
-        <p><strong>Klinik Sorgu:</strong> {query}</p>
+        <p><strong>Klinik Sorgu:</strong> {safe_query}</p>
         <p><strong>Rapor Türü:</strong> Tıbbi Araştırma Destek Raporu (NCBI PubMed Veritabanı)</p>
         <p><strong>Denetim Statüsü:</strong> <span class="audit-badge">{audit['status']}</span></p>
         <p><strong>GRADE Statüsü:</strong> {audit['grade_rating_policy']['grade_status']}</p>

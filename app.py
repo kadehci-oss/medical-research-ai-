@@ -281,12 +281,17 @@ def main():
 
             if st.button("📑 Türkçe Kanıt Raporunu ve Tabloları Oluştur", type="primary", use_container_width=True):
                 with st.spinner("Klinik kanıt raporu, Red Team denetimi ve HTML/Markdown tabloları hazırlanıyor..."):
+                    search_meta = {
+                        "search_date": st.session_state["search_results"].get("search_date"),
+                        "query": query
+                    }
                     report_md = generate_turkish_evidence_report(
                         query=query,
                         articles=articles,
                         api_key=openai_api_key if use_llm_synth else None,
                         use_llm=use_llm_synth,
-                        model=llm_model
+                        model=llm_model,
+                        search_metadata=search_meta
                     )
                     html_report = generate_html_report(query, articles, report_md)
                     st.session_state["generated_report"] = report_md
