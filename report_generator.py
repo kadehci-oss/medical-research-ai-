@@ -677,53 +677,108 @@ def perform_red_team_audit(query: str, articles: List[Dict[str, Any]]) -> Dict[s
     }
 
 
+def _translate_clinical_conclusion_to_turkish(
+    raw_conc: str,
+    abstract: str,
+    metrics: Dict[str, Any],
+    design_name: str,
+    title: str
+) -> str:
+    conc_lower = (raw_conc or abstract).lower()
+
+    # Format extracted metrics string in Turkish if available
+    stat_parts = []
+    if metrics.get("n"):
+        stat_parts.append(f"n = {metrics['n']}")
+    if metrics.get("effect_sizes"):
+        stat_parts.append(", ".join(metrics["effect_sizes"]))
+    if metrics.get("p_values"):
+        stat_parts.append(", ".join(metrics["p_values"]))
+    if metrics.get("confidence_intervals"):
+        stat_parts.append(", ".join(metrics["confidence_intervals"]))
+
+    stat_str = f" ({'; '.join(stat_parts)})" if stat_parts else ""
+
+    findings = []
+
+    if any(k in conc_lower for k in ["reduced", "decreased", "lowered", "reduction", "decline"]):
+        findings.append("klinik risk/semptom oranlarında düşüş/azalma sağlandığı")
+    elif any(k in conc_lower for k in ["increased", "elevated", "higher", "elevation"]):
+        findings.append("ilgili parametrelerde veya risk oranlarında artış gözlendiği")
+
+    if any(k in conc_lower for k in ["effective", "efficacy", "remission", "improved", "improvement", "benefit"]):
+        findings.append("tedavinin klinik etkinlik sunduğu ve iyileşme ile ilişkili olduğu")
+
+    if any(k in conc_lower for k in ["associated with", "correlation", "correlated", "linked to"]):
+        findings.append("incelenen parametreler arasında anlamlı ilişki saptandığı")
+
+    if any(k in conc_lower for k in ["differentiate", "distinguish", "biomarker", "diagnostic", "predictor"]):
+        findings.append("tanısal süreçlerde veya risk sınıflandırmasında biyobelirteç/gösterge değeri taşıdığı")
+
+    if any(k in conc_lower for k in ["safe", "well tolerated", "safety"]):
+        findings.append("güvenilirlik profilinin kabul edilebilir olduğu")
+
+    if any(k in conc_lower for k in ["no significant", "not associated", "no effect", "insignificant"]):
+        findings.append("gruplar arasında istatistiksel olarak anlamlı bir fark saptanmadığı")
+
+    if any(k in conc_lower for k in ["review", "overview", "summary", "guideline", "consensus"]):
+        findings.append("literatür verilerinin ve klinik kanıtların sentezlendiği")
+
+    title_snippet = f"*{title}* çalışması ({design_name})" if title else f"{design_name}"
+
+    if findings:
+        summary_body = " ve ".join(findings) + " bildirilmiştir."
+        summary_tr = f"{title_snippet} bulgularına göre {summary_body}{stat_str}"
+    else:
+        if stat_parts:
+            summary_tr = f"{title_snippet} verilerine göre elde edilen istatistiksel bulgular: {', '.join(stat_parts)}."
+        else:
+            summary_tr = f"{title_snippet} özetinde spesifik klinik sonuç veya nicel bulgu verisi yetersizdir / bildirilmemiştir."
+
+    return summary_tr
+
+
 def _synthesize_article_conclusion_tr(art: Dict[str, Any], query: str) -> str:
-    """Synthesizes a topic-specific Turkish clinical conclusion for an article with explicit PMID citation."""
+    """Synthesizes a topic-specific Turkish clinical conclusion for an article with explicit PMID citation based on actual abstract data."""
     pmid = art.get("pmid", "")
     pubmed_url = art.get("pubmed_url", f"https://pubmed.ncbi.nlm.nih.gov/{pmid}/" if pmid else "#")
     authors_short = _format_authors_short(art.get("authors", []))
     year = art.get("pub_year", "")
     title = art.get("title", "")
-    abstract = art.get("abstract", "")
-    pmid_link = f"[PMID: {pmid}]({pubmed_url})" if pmid else ""
+    abstract = (art.get("abstract") or "").strip()
+    pmid_link = f"[PMID: {pmid}]({pubmed_url})" if pmid else "PMID Yok"
 
-    text_lower = f"{title} {abstract}".lower()
+    if not abstract or abstract in ["Özet bulunamadı.", "Özet bilgisi bulunamadı."] or len(abstract) < 40:
+        return f"- **{authors_short} ({year})** ({pmid_link}): Makale özetinde klinik kanıt veya sonuç verisi yetersizdir / bildirilmemiştir."
 
-    # 1. Anti-HMGCR & Statin Myopathy Domain
-    if "anti-hmgcr" in text_lower or "hmgcr" in text_lower:
-        if "differentiate" in text_lower or "self-limited" in text_lower or "necrotising" in text_lower or "necrotizing" in text_lower:
-            summary_tr = "Anti-HMGCR otoantikorları, statin kullanımına bağlı gelişen immün aracılı nekrotizan miyopatiyi (IMNM) kendiliğinden sınırlanan statin miyopatisinden ayırt etmekte ve immünosüpresif tedavi gereksinimini tanımlamaktadır."
-        elif "remaining issues" in text_lower or "review" in text_lower:
-            summary_tr = "HMGCR enzimine karşı gelişen otoantikorlar, statin ile ilişkili miyopatiler içinde özgün bir immünopatolojik alt grubu (nekrotizan miyopati) tanımlamakta ve klinik yönetim için kritik biyobelirteç niteliği taşımaktadır."
-        else:
-            summary_tr = "Anti-HMGCR pozitifliği, statin maruziyeti ile güçlü ilişki gösteren ve özgün klinik/serolojik özellikler sergileyen otoimmün miyopati varlığını doğrulamaktadır."
+    metrics = extract_study_metrics(abstract)
+    classification = classify_study_design(art.get("publication_types", []), title, abstract)
+    design_name = classification.get("design", "Çalışma")
 
-    # 2. SGLT2 Inhibitors / Heart Failure Domain
-    elif "sglt2" in text_lower or "empagliflozin" in text_lower or "dapagliflozin" in text_lower:
-        if "empagliflozin" in text_lower or "preserved" in text_lower or "hfpef" in text_lower:
-            summary_tr = "SGLT2 inhibitörü empagliflozin, korunmuş fırlatma fraksiyonlu kalp yetersizliği (HFpEF) hastalarında kardiyovasküler ölüm ve hastaneye yatış riskini anlamlı ölçüde azaltmaktadır."
-        elif "dapagliflozin" in text_lower or "reduced" in text_lower or "hfref" in text_lower:
-            summary_tr = "Dapagliflozin, düşük fırlatma fraksiyonlu kalp yetersizliği (HFrEF) hastalarında kardiyovasküler olay ve mortalite riskini düşürmektedir."
-        else:
-            summary_tr = "SGLT2 inhibitörleri, kalp yetersizliği klinik seyrinde kardiyovasküler sonlanımları ve hastaneye yatış oranlarını iyileştirmektedir."
+    conc_match = re.search(
+        r"(?:CONCLUSION|CONCLUSIONS|CONCLUSION/SIGNIFICANCE|RESULTS)\s*:\s*(.*?)(?=\b(?:METHODS|BACKGROUND|FUNDING|CLINICAL TRIAL|REGISTRATION)\b|$)",
+        abstract,
+        re.IGNORECASE
+    )
+    raw_conc = conc_match.group(1).strip() if conc_match else ""
 
-    # 3. General Medical Topics
-    else:
-        conc_match = re.search(r"(?:CONCLUSION|CONCLUSIONS|RESULTS)\s*:\s*(.*?)(?=\b(?:METHODS|BACKGROUND|FUNDING)\b|$)", abstract, re.IGNORECASE)
-        if conc_match:
-            raw_conc = conc_match.group(1).strip()
-        else:
-            sents = re.findall(
-                r"([^.\n]*?\b(?:conclude|conclusion|suggests|demonstrates|indicates|shows|found that|supports|reduced|increased|effective|associated with)\b[^.\n]*?\.)",
-                abstract,
-                re.IGNORECASE
-            )
-            raw_conc = " ".join([s.strip() for s in sents[:2]]) if sents else abstract[:200]
+    if not raw_conc:
+        sents = re.findall(
+            r"([^.\n]*?\b(?:conclude|conclusion|suggests|demonstrates|indicates|shows|found that|supports|reduced|decreased|increased|associated with|effective|effective in|correlated with|identified|observed|improved)\b[^.\n]*?\.)",
+            abstract,
+            re.IGNORECASE
+        )
+        if sents:
+            raw_conc = " ".join([s.strip() for s in sents[:2]])
 
-        if raw_conc:
-            summary_tr = f"Çalışmada elde edilen temel klinik bulgulara göre: {raw_conc}"
-        else:
-            summary_tr = f"*{title}* başlıklı çalışma, {query} konusunda doğrudan klinik veriler ve kanıtlar sunmaktadır."
+    if not raw_conc:
+        all_sents = [s.strip() for s in re.split(r"(?<=[.!?])\s+", abstract) if s.strip()]
+        if len(all_sents) >= 2:
+            raw_conc = " ".join(all_sents[-2:])
+        elif len(all_sents) == 1:
+            raw_conc = all_sents[0]
+
+    summary_tr = _translate_clinical_conclusion_to_turkish(raw_conc, abstract, metrics, design_name, title)
 
     return f"- **{authors_short} ({year})** ({pmid_link}): {summary_tr}"
 
