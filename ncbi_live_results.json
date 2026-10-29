@@ -1,0 +1,46 @@
+{
+  "timestamp_utc": "2026-10-29T16:36:47.609483+00:00",
+  "checks": [
+    {
+      "test": "live_esearch",
+      "status": "PASS",
+      "count": "356",
+      "ids": [
+        "42920544",
+        "42904811",
+        "42898491",
+        "42880895",
+        "42877551"
+      ]
+    },
+    {
+      "test": "live_efetch_identity",
+      "status": "PASS",
+      "pmid": "38801022",
+      "doi": "10.1002/mus.28114",
+      "title": "Management of immune-mediated necrotizing myopathy."
+    },
+    {
+      "test": "live_efetch_identity",
+      "status": "PASS",
+      "pmid": "29480216",
+      "doi": "10.3233/jnd-170282",
+      "title": "Anti-HMGCR Myopathy."
+    },
+    {
+      "test": "live_efetch_identity",
+      "status": "PASS",
+      "pmid": "34449189",
+      "doi": "10.1056/nejmoa2107038",
+      "title": "Empagliflozin in Heart Failure with a Preserved Ejection Fraction."
+    },
+    {
+      "test": "live_efetch_identity",
+      "status": "PASS",
+      "pmid": "31535829",
+      "doi": "10.1056/nejmoa1911303",
+      "title": "Dapagliflozin in Patients with Heart Failure and Reduced Ejection Fraction."
+    }
+  ],
+  "outcome": "PASS"
+}

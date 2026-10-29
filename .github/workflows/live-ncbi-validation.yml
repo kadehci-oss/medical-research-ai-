@@ -1,0 +1,24 @@
+name: Live NCBI validation (on demand)
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '17 8 * * 1'
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install requests
+      - name: Query real NCBI ESearch and EFetch
+        run: python live_ncbi_validation.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ncbi-live-validation
+          path: ncbi_live_results.json
