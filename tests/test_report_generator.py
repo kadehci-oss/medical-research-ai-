@@ -134,6 +134,13 @@ class TestReportGenerator(unittest.TestCase):
         self.assertEqual(pico["population"], "Heart failure with preserved ejection fraction")
         self.assertIn("cardiovascular death", pico["outcome"])
 
+    def test_extract_pico_unstated_defaults_to_belirtilmemis(self):
+        pico = extract_pico("", "")
+        self.assertEqual(pico["population"], "Belirtilmemiş")
+        self.assertEqual(pico["intervention"], "Belirtilmemiş")
+        self.assertEqual(pico["comparison"], "Belirtilmemiş")
+        self.assertEqual(pico["outcome"], "Belirtilmemiş")
+
     def test_classify_evidence_level(self):
         level_rct = _classify_evidence_level(["Randomized Controlled Trial"], "Title", "Abstract")
         self.assertIn("Seviye 2", level_rct)
@@ -208,26 +215,26 @@ class TestReportGenerator(unittest.TestCase):
         query = "SGLT2 inhibitors in heart failure"
         report = generate_rule_based_turkish_report(query, SAMPLE_ARTICLES)
 
-        # Check required sections
-        self.assertIn("Türkçe Kanıt Raporu", report)
-        self.assertIn("1. 🔍 PICO Yapısı ve Klinik Özet Sentezi", report)
-        self.assertIn("2. 📊 Yapılandırılmış Kanıt Tablosu", report)
-        self.assertIn("📋 Klinik PICO Çerçevesi", report)
-        self.assertIn("Yanlılık Riski Değerlendirmesi", report)
-        self.assertIn("3. ⚠️ Metodolojik Sınırlılıklar ve Klinik Uyarılar", report)
-        self.assertIn("4. 🛡️ Red Team Denetimi ve Atıf Dürüstlüğü Analizi", report)
-        self.assertIn("5. 📚 Doğrulanmış Kaynaklar ve Literatür Listesi", report)
+        # Check all 13 required sections
+        self.assertIn("Türkçe Klinik Araştırma Raporu", report)
+        self.assertIn("1. Klinik Araştırma Sorusu", report)
+        self.assertIn("2. Yönetici Özeti", report)
+        self.assertIn("3. Araştırma Yöntemi ve Tarama Tarihi", report)
+        self.assertIn("4. Klinik Arka Plan ve Patofizyoloji", report)
+        self.assertIn("5. Bilimsel Kanıt Tablosu", report)
+        self.assertIn("6. Önemli Çalışmaların Karşılaştırılması", report)
+        self.assertIn("7. Tedavi Etkinliği ve Güvenlilik", report)
+        self.assertIn("8. Güncel Klinik Kılavuzlar", report)
+        self.assertIn("9. Çelişkili Bilimsel Bulgular", report)
+        self.assertIn("10. Red Team Eleştirisi", report)
+        self.assertIn("11. Kanıt Gücü ve Belirsizlikler", report)
+        self.assertIn("12. Klinik Sonuç", report)
+        self.assertIn("13. Doğrulanmış Kaynakça", report)
 
         # Check for mandatory disclaimers and limitations
-        self.assertIn("Özet Metin Sınırlılığı Uyarısı", report)
-        self.assertIn("Abstract-Only Limitation", report)
+        self.assertIn("yayınlanmış özet (abstract) metinlerine dayanmaktadır", report)
         self.assertIn("GRADE Değerlendirilmedi (Not Assessed)", report)
-        self.assertIn("Klinik Doğrulama İddiası Yoktur", report)
-        self.assertIn("No Clinical Validation Claimed", report)
-
-        # Check citation distinction
-        self.assertIn("PubMed Metadata Alımı", report)
-        self.assertIn("Bağımsız Atıf Doğrulaması", report)
+        self.assertIn("Klinik Doğrulama Yapılmamıştır (No Clinical Validation Claimed)", report)
 
         # Ensure real PMIDs are present
         self.assertIn("PMID: [33264510]", report)
@@ -247,7 +254,7 @@ class TestReportGenerator(unittest.TestCase):
 
     def test_generate_turkish_evidence_report_fallback(self):
         report = generate_turkish_evidence_report("SGLT2 inhibitors", SAMPLE_ARTICLES, api_key=None, use_llm=False)
-        self.assertIn("Türkçe Kanıt Raporu", report)
+        self.assertIn("Türkçe Klinik Araştırma Raporu", report)
         self.assertIn("33264510", report)
 
     def test_generate_html_report(self):

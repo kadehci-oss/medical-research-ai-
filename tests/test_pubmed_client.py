@@ -84,6 +84,36 @@ class TestPubMedClient(unittest.TestCase):
         self.assertEqual(res["total_count"], 1)
         self.assertEqual(len(res["articles"]), 1)
         self.assertEqual(res["articles"][0]["pmid"], "33264510")
+        self.assertIn("search_date", res)
+        self.assertIn("search_params", res)
+
+    @patch("requests.get")
+    def test_search_pubmed_deduplication(self, mock_get):
+        # XML containing 2 identical articles with same PMID
+        DUPLICATE_PUBMED_XML = """<?xml version="1.0" encoding="UTF-8"?>
+        <PubmedArticleSet>
+          <PubmedArticle>
+            <MedlineCitation Status="MEDLINE"><PMID Version="1">10001</PMID>
+              <Article><ArticleTitle>Dup Paper</ArticleTitle></Article>
+            </MedlineCitation>
+          </PubmedArticle>
+          <PubmedArticle>
+            <MedlineCitation Status="MEDLINE"><PMID Version="1">10001</PMID>
+              <Article><ArticleTitle>Dup Paper</ArticleTitle></Article>
+            </MedlineCitation>
+          </PubmedArticle>
+        </PubmedArticleSet>"""
+
+        mock_esearch = MagicMock()
+        mock_esearch.json.return_value = {"esearchresult": {"count": "2", "idlist": ["10001", "10001"]}}
+        mock_efetch = MagicMock()
+        mock_efetch.text = DUPLICATE_PUBMED_XML
+
+        mock_get.side_effect = [mock_esearch, mock_efetch]
+
+        res = search_pubmed("duplicate query")
+        self.assertEqual(len(res["articles"]), 1)
+        self.assertEqual(res["articles"][0]["pmid"], "10001")
 
     @patch("requests.get")
     def test_search_pubmed_api_error(self, mock_get):

@@ -150,11 +150,30 @@ def search_pubmed(
     end_year: Optional[int] = None
 ) -> Dict[str, Any]:
     """
-    Searches PubMed using E-utilities esearch & efetch.
-    Returns dict with 'articles', 'total_count', 'query'.
+    Searches PubMed using E-utilities esearch & efetch with search date recording,
+    query logging, and article deduplication by PMID and DOI.
+    Returns dict with 'articles', 'total_count', 'query', 'search_date', 'search_params'.
     """
+    import datetime
+    search_date_str = datetime.date.today().strftime("%Y-%m-%d")
+
+    search_params_summary = {
+        "max_results": max_results,
+        "retstart": retstart,
+        "sort": sort,
+        "publication_type": publication_type,
+        "start_year": start_year,
+        "end_year": end_year
+    }
+
     if not query or not query.strip():
-        return {"articles": [], "total_count": 0, "query": query}
+        return {
+            "articles": [],
+            "total_count": 0,
+            "query": query,
+            "search_date": search_date_str,
+            "search_params": search_params_summary
+        }
 
     term = query.strip()
     if publication_type and publication_type != "Tümü":
@@ -183,16 +202,36 @@ def search_pubmed(
         esearch_result = data.get("esearchresult", {})
 
         if "ERROR" in esearch_result:
-            return {"articles": [], "total_count": 0, "query": query, "error": esearch_result.get("ERROR")}
+            return {
+                "articles": [],
+                "total_count": 0,
+                "query": query,
+                "search_date": search_date_str,
+                "search_params": search_params_summary,
+                "error": esearch_result.get("ERROR")
+            }
         if "errorlist" in esearch_result:
             err_list = esearch_result.get("errorlist", {})
-            return {"articles": [], "total_count": 0, "query": query, "error": f"PubMed esearch error: {err_list}"}
+            return {
+                "articles": [],
+                "total_count": 0,
+                "query": query,
+                "search_date": search_date_str,
+                "search_params": search_params_summary,
+                "error": f"PubMed esearch error: {err_list}"
+            }
 
         id_list = esearch_result.get("idlist", [])
         total_count = int(esearch_result.get("count", "0"))
 
         if not id_list:
-            return {"articles": [], "total_count": 0, "query": query}
+            return {
+                "articles": [],
+                "total_count": 0,
+                "query": query,
+                "search_date": search_date_str,
+                "search_params": search_params_summary
+            }
 
         # Fetch article metadata using efetch
         efetch_params = {
@@ -203,11 +242,46 @@ def search_pubmed(
         fetch_response = requests.get(PUBMED_EFETCH_URL, params=efetch_params, headers=DEFAULT_HEADERS, timeout=15)
         fetch_response.raise_for_status()
 
-        articles = parse_pubmed_xml(fetch_response.text)
-        return {"articles": articles, "total_count": total_count, "query": query}
+        raw_articles = parse_pubmed_xml(fetch_response.text)
+
+        # Deduplicate articles by PMID and DOI
+        seen_pmids = set()
+        seen_dois = set()
+        deduped_articles = []
+
+        for art in raw_articles:
+            pmid = art.get("pmid")
+            norm_doi = normalize_doi(art.get("doi"))
+
+            if pmid and pmid in seen_pmids:
+                continue
+            if norm_doi and norm_doi in seen_dois:
+                continue
+
+            if pmid:
+                seen_pmids.add(pmid)
+            if norm_doi:
+                seen_dois.add(norm_doi)
+
+            deduped_articles.append(art)
+
+        return {
+            "articles": deduped_articles,
+            "total_count": total_count,
+            "query": query,
+            "search_date": search_date_str,
+            "search_params": search_params_summary
+        }
 
     except Exception as e:
-        return {"articles": [], "total_count": 0, "query": query, "error": str(e)}
+        return {
+            "articles": [],
+            "total_count": 0,
+            "query": query,
+            "search_date": search_date_str,
+            "search_params": search_params_summary,
+            "error": str(e)
+        }
 
 
 def verify_pmid(pmid: str) -> Dict[str, Any]:
