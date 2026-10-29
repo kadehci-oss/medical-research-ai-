@@ -145,6 +145,8 @@ def main():
             search_submitted = st.button("🔍 Ara", use_container_width=True)
 
         if search_submitted and search_query:
+            st.session_state.pop("generated_report", None)
+            st.session_state.pop("generated_html_report", None)
             start_yr = int(start_year) if start_year and not pd.isna(start_year) else None
             end_yr = int(end_year) if end_year and not pd.isna(end_year) else None
             with st.spinner("PubMed veritabanı sorgulanıyor..."):
@@ -280,6 +282,8 @@ def main():
             )
 
             if st.button("📑 Türkçe Kanıt Raporunu ve Tabloları Oluştur", type="primary", use_container_width=True):
+                st.session_state.pop("generated_report", None)
+                st.session_state.pop("generated_html_report", None)
                 with st.spinner("Klinik kanıt raporu, Red Team denetimi ve HTML/Markdown tabloları hazırlanıyor..."):
                     search_meta = {
                         "search_date": st.session_state["search_results"].get("search_date"),
