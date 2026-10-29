@@ -439,11 +439,19 @@ def assess_risk_of_bias(article: Dict[str, Any]) -> Dict[str, Any]:
 
 def extract_study_metrics(abstract: str) -> Dict[str, Any]:
     """
-    Extracts numerical metrics (sample size n, effect sizes HR/OR/RR/MD, 95% CI, p-values)
-    from abstract text if explicitly present. Never fabricates missing metrics.
+    Extracts numerical metrics (sample size n, effect sizes HR/OR/RR/MD, 95% CI, p-values,
+    concomitant treatments, and causality/methodological limitations)
+    strictly from abstract text if explicitly present. Never fabricates missing metrics.
     """
     if not abstract:
-        return {"n": None, "effect_sizes": [], "confidence_intervals": [], "p_values": []}
+        return {
+            "n": None,
+            "effect_sizes": [],
+            "confidence_intervals": [],
+            "p_values": [],
+            "concomitant_treatments": [],
+            "causality_limitations": []
+        }
 
     n_match = re.search(r"\b(?:n\s*=\s*|total of\s+|sample of\s+|enrolled\s+|included\s+)(\d[\d,]*)\b", abstract, re.IGNORECASE)
     n_val = n_match.group(1).replace(",", "") if n_match else None
@@ -452,11 +460,35 @@ def extract_study_metrics(abstract: str) -> Dict[str, Any]:
     cis = re.findall(r"\b(?:95%\s*CI|CI\s*95%)\s*[:=]?\s*\[?\s*\d+\.?\d*\s*(?:to|-|,)\s*\d+\.?\d*\s*\]?", abstract, re.IGNORECASE)
     p_vals = re.findall(r"\b(?:p|P)\s*[=<]\s*0?\.\d+\b", abstract)
 
+    # Extract concomitant / co-administered therapies mentioned in abstract
+    concomitant_treatments = []
+    concomitant_keywords = [
+        "corticosteroid", "corticosteroids", "immunosuppressive", "immunosuppressants",
+        "methotrexate", "azathioprine", "rituximab", "ivig", "intravenous immunoglobulin",
+        "statins", "statin", "acei", "arb", "beta-blocker", "sglt2", "diuretic"
+    ]
+    for kw in concomitant_keywords:
+        if re.search(r"\b" + re.escape(kw) + r"\b", abstract, re.IGNORECASE):
+            concomitant_treatments.append(kw.capitalize())
+
+    # Extract explicit causality or design limitations mentioned in abstract
+    causality_limitations = []
+    limitation_patterns = [
+        r"([^.\n]*?\b(?:observational|retrospective|small sample|lack of placebo|non-randomized|single-center|cross-sectional|confounding)\b[^.\n]*?\.)",
+        r"([^.\n]*?\b(?:causality cannot be|association does not imply|further randomized trials are needed|limited by)\b[^.\n]*?\.)"
+    ]
+    for pat in limitation_patterns:
+        matches = re.findall(pat, abstract, re.IGNORECASE)
+        for m in matches:
+            causality_limitations.append(m.strip())
+
     return {
         "n": n_val,
         "effect_sizes": list(set(effect_sizes)),
         "confidence_intervals": list(set(cis)),
-        "p_values": list(set(p_vals))
+        "p_values": list(set(p_vals)),
+        "concomitant_treatments": list(set(concomitant_treatments)),
+        "causality_limitations": list(set(causality_limitations))
     }
 
 
@@ -771,6 +803,16 @@ Lütfen arama terimlerini veya filtreleri genişleterek tekrar deneyiniz.
             report.append(f"- **Çıkarılan Sayısal / İstatistiksel Parametreler:** {' | '.join(metric_str_parts)}")
         else:
             report.append("- **Çıkarılan Sayısal / İstatistiksel Parametreler:** Özette spesifik n, HR/OR veya p değeri bildirilmemiştir (Eksik veriler uydurulmamıştır).")
+
+        if metrics.get("concomitant_treatments"):
+            report.append(f"- **Saptanan Eşzamanlı / Ek Tedaviler:** {', '.join(metrics['concomitant_treatments'])}")
+        else:
+            report.append("- **Saptanan Eşzamanlı / Ek Tedaviler:** Özette spesifik eşzamanlı ilaç bildirilmemiştir.")
+
+        if metrics.get("causality_limitations"):
+            report.append(f"- **Metodolojik / Nedensellik Sınırlılıkları:** {' '.join(metrics['causality_limitations'])}")
+        else:
+            report.append("- **Metodolojik / Nedensellik Sınırlılıkları:** Özette spesifik nedensellik sınırlılığı vurgulanmamıştır.")
 
         abstract_snippet = art.get("abstract", "").strip()
         if len(abstract_snippet) > 350:

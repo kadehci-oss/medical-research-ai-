@@ -7,6 +7,7 @@ from report_generator import (
     classify_study_design,
     assess_risk_of_bias,
     extract_pico,
+    extract_study_metrics,
     generate_evidence_table_markdown,
     generate_evidence_table_html,
     perform_red_team_audit,
@@ -15,16 +16,16 @@ from report_generator import (
 
 SAMPLE_ARTICLES = [
     {
-        "pmid": "33264510",
-        "doi": "10.1056/NEJMoa2022190",
+        "pmid": "34449189",
+        "doi": "10.1056/NEJMoa2107038",
         "title": "Empagliflozin in Heart Failure with a Preserved Ejection Fraction",
         "authors": ["Stefan D Anker", "Javed Butler"],
         "journal": "The New England Journal of Medicine",
-        "pub_year": "2020",
+        "pub_year": "2021",
         "publication_types": ["Randomized Controlled Trial", "Journal Article"],
         "abstract": "SGLT2 inhibitors reduce the risk of hospitalization in heart failure patients.",
-        "pubmed_url": "https://pubmed.ncbi.nlm.nih.gov/33264510/",
-        "doi_url": "https://doi.org/10.1056/NEJMoa2022190"
+        "pubmed_url": "https://pubmed.ncbi.nlm.nih.gov/34449189/",
+        "doi_url": "https://doi.org/10.1056/NEJMoa2107038"
     },
     {
         "pmid": "31535829",
@@ -124,6 +125,15 @@ class TestReportGenerator(unittest.TestCase):
         self.assertEqual(rob_cohort["overall_rating"], "Değerlendirilmedi (Not Assessed)")
         self.assertEqual(rob_cohort["tool"], "ROBINS-I (Risk of Bias in Non-Randomized Studies)")
 
+    def test_extract_study_metrics_concomitant_and_causality(self):
+        abstract = "A total of 150 patients were treated with corticosteroids and immunosuppressive drugs. HR 0.45, 95% CI 0.30-0.65, p < 0.001. However, causality cannot be determined due to the observational nature of the cohort."
+        metrics = extract_study_metrics(abstract)
+        self.assertEqual(metrics["n"], "150")
+        self.assertIn("HR 0.45", metrics["effect_sizes"])
+        self.assertIn("Corticosteroids", metrics["concomitant_treatments"])
+        self.assertIn("Immunosuppressive", metrics["concomitant_treatments"])
+        self.assertTrue(any("causality" in lim.lower() for lim in metrics["causality_limitations"]))
+
     def test_extract_pico_multi_part_query_and_abstract(self):
         query = "SGLT2 inhibitors vs placebo in heart failure with preserved ejection fraction"
         abstract = "RESULTS: Empagliflozin reduced the primary outcome of cardiovascular death or hospitalization."
@@ -149,18 +159,18 @@ class TestReportGenerator(unittest.TestCase):
         table_md = generate_evidence_table_markdown(SAMPLE_ARTICLES)
         self.assertIn("| # | Çalışma / Yazar (Yıl) |", table_md)
         self.assertIn("Stefan D Anker", table_md)
-        self.assertIn("PMID: 33264510", table_md)
+        self.assertIn("PMID: 34449189", table_md)
 
     def test_evidence_table_html_generation(self):
         table_html = generate_evidence_table_html(SAMPLE_ARTICLES)
         self.assertIn("<table", table_html)
         self.assertIn("Empagliflozin in Heart Failure", table_html)
-        self.assertIn("PMID: 33264510", table_html)
+        self.assertIn("PMID: 34449189", table_html)
 
     @patch("report_generator.verify_citation")
     def test_perform_red_team_audit(self, mock_verify_citation) -> None:
         mock_verify_citation.side_effect = [
-            {"status": "verified", "verified": True, "pmid": "33264510", "reason": "match"},
+            {"status": "verified", "verified": True, "pmid": "34449189", "reason": "match"},
             {"status": "verified", "verified": True, "pmid": "31535829", "reason": "match"}
         ]
         audit = perform_red_team_audit("Heart Failure SGLT2", SAMPLE_ARTICLES)
@@ -237,7 +247,7 @@ class TestReportGenerator(unittest.TestCase):
         self.assertIn("Klinik Doğrulama Yapılmamıştır (No Clinical Validation Claimed)", report)
 
         # Ensure real PMIDs are present
-        self.assertIn("PMID: [33264510]", report)
+        self.assertIn("PMID: [34449189]", report)
         self.assertIn("PMID: [31535829]", report)
         self.assertIn("Empagliflozin in Heart Failure", report)
 
@@ -255,7 +265,7 @@ class TestReportGenerator(unittest.TestCase):
     def test_generate_turkish_evidence_report_fallback(self):
         report = generate_turkish_evidence_report("SGLT2 inhibitors", SAMPLE_ARTICLES, api_key=None, use_llm=False)
         self.assertIn("Türkçe Klinik Araştırma Raporu", report)
-        self.assertIn("33264510", report)
+        self.assertIn("34449189", report)
 
     def test_generate_html_report(self):
         markdown_rep = generate_rule_based_turkish_report("SGLT2 inhibitors", SAMPLE_ARTICLES)

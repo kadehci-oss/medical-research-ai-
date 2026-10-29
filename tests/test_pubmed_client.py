@@ -7,13 +7,13 @@ SAMPLE_PUBMED_XML = """<?xml version="1.0" encoding="UTF-8"?>
 <PubmedArticleSet>
   <PubmedArticle>
     <MedlineCitation Status="MEDLINE">
-      <PMID Version="1">33264510</PMID>
+      <PMID Version="1">34449189</PMID>
       <Article PubModel="Print-Electronic">
         <Journal>
           <Title>The New England Journal of Medicine</Title>
           <JournalIssue>
             <PubDate>
-              <Year>2020</Year>
+              <Year>2021</Year>
             </PubDate>
           </JournalIssue>
         </Journal>
@@ -40,8 +40,8 @@ SAMPLE_PUBMED_XML = """<?xml version="1.0" encoding="UTF-8"?>
     </MedlineCitation>
     <PubmedData>
       <ArticleIdList>
-        <ArticleId IdType="pubmed">33264510</ArticleId>
-        <ArticleId IdType="doi">10.1056/NEJMoa2022190</ArticleId>
+        <ArticleId IdType="pubmed">34449189</ArticleId>
+        <ArticleId IdType="doi">10.1056/NEJMoa2107038</ArticleId>
       </ArticleIdList>
     </PubmedData>
   </PubmedArticle>
@@ -54,10 +54,10 @@ class TestPubMedClient(unittest.TestCase):
         articles = parse_pubmed_xml(SAMPLE_PUBMED_XML)
         self.assertEqual(len(articles), 1)
         art = articles[0]
-        self.assertEqual(art["pmid"], "33264510")
+        self.assertEqual(art["pmid"], "34449189")
         self.assertEqual(art["title"], "Empagliflozin in Heart Failure with a Preserved Ejection Fraction")
-        self.assertEqual(art["pub_year"], "2020")
-        self.assertEqual(art["doi"], "10.1056/NEJMoa2022190")
+        self.assertEqual(art["pub_year"], "2021")
+        self.assertEqual(art["doi"], "10.1056/NEJMoa2107038")
         self.assertIn("Stefan D Anker", art["authors"])
         self.assertIn("Javed Butler", art["authors"])
         self.assertIn("BACKGROUND: SGLT2 inhibitors", art["abstract"])
@@ -69,7 +69,7 @@ class TestPubMedClient(unittest.TestCase):
         mock_esearch_resp.json.return_value = {
             "esearchresult": {
                 "count": "1",
-                "idlist": ["33264510"]
+                "idlist": ["34449189"]
             }
         }
         mock_esearch_resp.raise_for_status.return_value = None
@@ -83,7 +83,7 @@ class TestPubMedClient(unittest.TestCase):
         res = search_pubmed("empagliflozin", max_results=5)
         self.assertEqual(res["total_count"], 1)
         self.assertEqual(len(res["articles"]), 1)
-        self.assertEqual(res["articles"][0]["pmid"], "33264510")
+        self.assertEqual(res["articles"][0]["pmid"], "34449189")
         self.assertIn("search_date", res)
         self.assertIn("search_params", res)
 
@@ -145,10 +145,10 @@ class TestPubMedClient(unittest.TestCase):
         mock_resp.raise_for_status.return_value = None
         mock_get.return_value = mock_resp
 
-        res = verify_pmid("33264510")
+        res = verify_pmid("34449189")
         self.assertTrue(res["valid"])
-        self.assertEqual(res["pmid"], "33264510")
-        self.assertEqual(res["doi"], "10.1056/NEJMoa2022190")
+        self.assertEqual(res["pmid"], "34449189")
+        self.assertEqual(res["doi"], "10.1056/NEJMoa2107038")
 
     def test_verify_pmid_invalid_format(self):
         res = verify_pmid("invalid_pmid_123abc")
@@ -160,23 +160,23 @@ class TestPubMedClient(unittest.TestCase):
         self.assertEqual(normalize_title(None), "")
 
     def test_normalize_doi(self):
-        self.assertEqual(normalize_doi("https://doi.org/10.1056/NEJMoa2022190 "), "10.1056/nejmoa2022190")
-        self.assertEqual(normalize_doi("doi: 10.1056/NEJMoa2022190"), "10.1056/nejmoa2022190")
+        self.assertEqual(normalize_doi("https://doi.org/10.1056/NEJMoa2107038 "), "10.1056/nejmoa2107038")
+        self.assertEqual(normalize_doi("doi: 10.1056/NEJMoa2107038"), "10.1056/nejmoa2107038")
         self.assertEqual(normalize_doi(None), "")
 
     @patch("pubmed_client.verify_pmid")
     def test_verify_citation_valid_match(self, mock_verify_pmid):
         mock_verify_pmid.return_value = {
             "valid": True,
-            "pmid": "33264510",
+            "pmid": "34449189",
             "title": "Empagliflozin in Heart Failure with a Preserved Ejection Fraction",
-            "doi": "10.1056/NEJMoa2022190"
+            "doi": "10.1056/NEJMoa2107038"
         }
 
         citation = {
-            "pmid": "33264510",
+            "pmid": "34449189",
             "title": "Empagliflozin in Heart Failure with a Preserved Ejection Fraction",
-            "doi": "10.1056/NEJMoa2022190"
+            "doi": "10.1056/NEJMoa2107038"
         }
 
         res = verify_citation(citation)
@@ -188,15 +188,15 @@ class TestPubMedClient(unittest.TestCase):
     def test_verify_citation_title_mismatch_rejection(self, mock_verify_pmid):
         mock_verify_pmid.return_value = {
             "valid": True,
-            "pmid": "33264510",
+            "pmid": "34449189",
             "title": "Real PubMed Title Here",
-            "doi": "10.1056/NEJMoa2022190"
+            "doi": "10.1056/NEJMoa2107038"
         }
 
         citation = {
-            "pmid": "33264510",
+            "pmid": "34449189",
             "title": "Fabricated Title Mismatch",
-            "doi": "10.1056/NEJMoa2022190"
+            "doi": "10.1056/NEJMoa2107038"
         }
 
         res = verify_citation(citation)
@@ -209,13 +209,13 @@ class TestPubMedClient(unittest.TestCase):
     def test_verify_citation_doi_mismatch_rejection(self, mock_verify_pmid):
         mock_verify_pmid.return_value = {
             "valid": True,
-            "pmid": "33264510",
+            "pmid": "34449189",
             "title": "Empagliflozin in Heart Failure",
-            "doi": "10.1056/NEJMoa2022190"
+            "doi": "10.1056/NEJMoa2107038"
         }
 
         citation = {
-            "pmid": "33264510",
+            "pmid": "34449189",
             "title": "Empagliflozin in Heart Failure",
             "doi": "10.9999/wrong-doi"
         }
@@ -230,12 +230,12 @@ class TestPubMedClient(unittest.TestCase):
     def test_verify_citation_api_failure_unverified(self, mock_verify_pmid):
         mock_verify_pmid.return_value = {
             "valid": False,
-            "pmid": "33264510",
+            "pmid": "34449189",
             "error": "Doğrulama sırasında hata oluştu: Connection timeout"
         }
 
         citation = {
-            "pmid": "33264510",
+            "pmid": "34449189",
             "title": "Empagliflozin in Heart Failure"
         }
 
@@ -267,6 +267,50 @@ class TestPubMedClient(unittest.TestCase):
         self.assertFalse(res["verified"])
         self.assertEqual(res["reason"], "not_found")
 
+    def test_verify_citation_auto_rejection_regression(self):
+        """Regression test ensuring mismatched titles, DOIs, and non-existent PMIDs are strictly auto-rejected."""
+        # 1. Invalid PMID non-numeric
+        res_invalid_pmid = verify_citation({"pmid": "PMID12345XYZ", "title": "Some Title"})
+        self.assertEqual(res_invalid_pmid["status"], "rejected")
+        self.assertFalse(res_invalid_pmid["verified"])
+        self.assertEqual(res_invalid_pmid["reason"], "missing_or_invalid_pmid")
+
+        # 2. Empty or non-dict input
+        res_empty = verify_citation(None)
+        self.assertEqual(res_empty["status"], "rejected")
+        self.assertFalse(res_empty["verified"])
+        self.assertEqual(res_empty["reason"], "invalid_input")
+
+    @patch("pubmed_client.verify_pmid")
+    def test_verify_citation_mismatch_auto_rejection_regression(self, mock_verify_pmid):
+        # Mock PMID lookup returns real article data
+        mock_verify_pmid.return_value = {
+            "valid": True,
+            "pmid": "34449189",
+            "title": "Empagliflozin in Heart Failure with a Preserved Ejection Fraction",
+            "doi": "10.1056/NEJMoa2107038"
+        }
+
+        # Case A: Title mismatch
+        bad_title = verify_citation({
+            "pmid": "34449189",
+            "title": "Fabricated Title About Diabetes Insipidus",
+            "doi": "10.1056/NEJMoa2107038"
+        })
+        self.assertEqual(bad_title["status"], "rejected")
+        self.assertFalse(bad_title["verified"])
+        self.assertEqual(bad_title["reason"], "title_mismatch")
+
+        # Case B: DOI mismatch
+        bad_doi = verify_citation({
+            "pmid": "34449189",
+            "title": "Empagliflozin in Heart Failure with a Preserved Ejection Fraction",
+            "doi": "10.1000/fabricated-doi"
+        })
+        self.assertEqual(bad_doi["status"], "rejected")
+        self.assertFalse(bad_doi["verified"])
+        self.assertEqual(bad_doi["reason"], "doi_mismatch")
+
     @patch("requests.get")
     def test_verify_doi_crossref_success(self, mock_get):
         mock_resp = MagicMock()
@@ -276,7 +320,7 @@ class TestPubMedClient(unittest.TestCase):
                 "title": ["Empagliflozin Test Article"],
                 "author": [{"given": "Stefan", "family": "Anker"}],
                 "container-title": ["NEJM"],
-                "published-print": {"date-parts": [[2020, 8, 27]]}
+                "published-print": {"date-parts": [[2021, 8, 27]]}
             }
         }
         mock_resp.raise_for_status.return_value = None
@@ -286,9 +330,9 @@ class TestPubMedClient(unittest.TestCase):
             mock_search.return_value = {"articles": []}
             mock_get.return_value = mock_resp
 
-            res = verify_doi("10.1056/NEJMoa2022190")
+            res = verify_doi("10.1056/NEJMoa2107038")
             self.assertTrue(res["valid"])
-            self.assertEqual(res["doi"], "10.1056/NEJMoa2022190")
+            self.assertEqual(res["doi"], "10.1056/NEJMoa2107038")
             self.assertEqual(res["title"], "Empagliflozin Test Article")
 
 
