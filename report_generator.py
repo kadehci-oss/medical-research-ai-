@@ -412,7 +412,7 @@ def extract_outcome_metrics(abstract: str) -> List[Dict[str, Any]]:
         if not raw_clean:
             continue
 
-        eff_count = len(re.findall(r"\b(?:HR|OR|RR|MD|WMD)\s*[:=]?\s*\d+\.?\d*\b", raw_clean, re.IGNORECASE))
+        eff_count = len(re.findall(r"\b(?:HR|OR|RR|MD|WMD)\s*[:=]?\s*-?\d+\.?\d*\b", raw_clean, re.IGNORECASE))
         p_count = len(re.findall(r"\b(?:p|P)\s*[=<]\s*0?\.\d+\b", raw_clean))
 
         if eff_count > 1 or (eff_count >= 1 and p_count > 1):
@@ -439,7 +439,7 @@ def extract_outcome_metrics(abstract: str) -> List[Dict[str, Any]]:
         if not clause_clean:
             continue
 
-        effect_sizes = re.findall(r"\b(?:HR|OR|RR|MD|WMD)\s*[:=]?\s*\d+\.?\d*\b", clause_clean, re.IGNORECASE)
+        effect_sizes = re.findall(r"\b(?:HR|OR|RR|MD|WMD)\s*[:=]?\s*-?\d+\.?\d*\b", clause_clean, re.IGNORECASE)
         cis = re.findall(r"\b(?:95%\s*CI|CI\s*95%)\s*[:=]?\s*\[?\s*\d+\.?\d*\s*(?:to|-|,)\s*\d+\.?\d*\s*\]?", clause_clean, re.IGNORECASE)
         p_vals = re.findall(r"\b(?:p|P)\s*[=<]\s*0?\.\d+\b", clause_clean)
 
@@ -495,7 +495,7 @@ def extract_study_metrics(abstract: str) -> Dict[str, Any]:
     n_match = re.search(r"\b(?:n\s*=\s*|total of\s+|sample of\s+|enrolled\s+|included\s+)(\d[\d,]*)\b", abstract, re.IGNORECASE)
     n_val = n_match.group(1).replace(",", "") if n_match else None
 
-    effect_sizes = re.findall(r"\b(?:HR|OR|RR|MD|WMD)\s*[:=]?\s*\d+\.?\d*\b", abstract, re.IGNORECASE)
+    effect_sizes = re.findall(r"\b(?:HR|OR|RR|MD|WMD)\s*[:=]?\s*-?\d+\.?\d*\b", abstract, re.IGNORECASE)
     cis = re.findall(r"\b(?:95%\s*CI|CI\s*95%)\s*[:=]?\s*\[?\s*\d+\.?\d*\s*(?:to|-|,)\s*\d+\.?\d*\s*\]?", abstract, re.IGNORECASE)
     p_vals = re.findall(r"\b(?:p|P)\s*[=<]\s*0?\.\d+\b", abstract)
 

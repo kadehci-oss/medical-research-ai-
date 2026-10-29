@@ -1,7 +1,8 @@
 import os
 import streamlit as st
 import pandas as pd
-from pubmed_client import search_pubmed, verify_pmid, verify_doi, verify_citation
+from pubmed_client import verify_pmid, verify_doi, verify_citation
+from universal_evidence_engine import UniversalEvidenceEngine
 from report_generator import (
     generate_turkish_evidence_report,
     generate_evidence_table_html,
@@ -15,7 +16,7 @@ from report_generator import (
 
 # Page config
 st.set_page_config(
-    page_title="Medical Research AI - Turkish Evidence Report Engine",
+    page_title="Medical Research AI - Evrensel Klinik Kanıt Motoru",
     page_icon="🩺",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -79,8 +80,8 @@ st.markdown("""
 
 
 def main():
-    st.markdown('<div class="main-header">🩺 Medical Research AI - Gelişmiş Tıbbi Literatür & Kanıt Raporu Engine</div>', unsafe_allow_html=True)
-    st.markdown('<div class="sub-header">Hekimler için Gerçek Literatür Taraması, PMID/DOI Doğrulama, Yapılandırılmış Kanıt Tablosu ve Türkçe Kanıt Raporu Modülü</div>', unsafe_allow_html=True)
+    st.markdown('<div class="main-header">🩺 Medical Research AI - Evrensel Klinik Kanıt Motoru</div>', unsafe_allow_html=True)
+    st.markdown('<div class="sub-header">Bütün Tıp Branşları için Gerçek Literatür Taraması, PMID/DOI Doğrulama, Yapılandırılmış Kanıt Tablosu ve Türkçe Klinik Sentez Raporu Engine</div>', unsafe_allow_html=True)
 
     # Sidebar Configuration
     st.sidebar.title("⚙️ Ayarlar & Yapılandırma")
@@ -90,7 +91,7 @@ def main():
         "OpenAI API Key (Opsiyonel)",
         value=openai_api_key_env,
         type="password",
-        help="LLM destekli rapor sentezi için API anahtarı. Girilmezse kural tabanlı deterministik kanıt motoru çalışır."
+        help="LLM destekli rapor sentezi için API anahtarı. Girilmezse kural tabanlı deterministik evrensel kanıt motoru çalışır."
     )
 
     use_llm_synth = st.sidebar.checkbox(
@@ -108,7 +109,7 @@ def main():
     st.sidebar.markdown("---")
     st.sidebar.info(
         "**🔍 Doğrulanmış Kaynak & Atıf Dürüstlüğü Politikası:**\n"
-        "Bu sistem canlı NCBI PubMed ve CrossRef E-utilities API verilerini kullanır. "
+        "Bu evrensel sistem canlı NCBI PubMed ve CrossRef E-utilities API verilerini kullanır. "
         "Metin sentezi özet (abstract) verilerine dayanır; klinik doğrulama veya otomatik GRADE derecelendirmesi iddiasında bulunulmaz."
     )
 
@@ -121,7 +122,7 @@ def main():
 
     # Tab 1: PubMed Search
     with tab1:
-        st.subheader("PubMed Gerçek Zamanlı Literatür Arama")
+        st.subheader("PubMed Gerçek Zamanlı Literatür Arama (Evrensel Motor)")
 
         col_search, col_type, col_count = st.columns([3, 1.5, 1])
         with col_search:
@@ -151,8 +152,9 @@ def main():
             st.session_state.pop("generated_report_query", None)
             start_yr = int(start_year) if start_year and not pd.isna(start_year) else None
             end_yr = int(end_year) if end_year and not pd.isna(end_year) else None
-            with st.spinner("PubMed veritabanı sorgulanıyor..."):
-                search_res = search_pubmed(
+            with st.spinner("PubMed veritabanı sorgulanıyor (Evrensel Kanıt Motoru)..."):
+                engine = UniversalEvidenceEngine()
+                search_res = engine.search_and_verify(
                     query=search_query,
                     max_results=max_results,
                     sort=sort_by,
@@ -178,7 +180,7 @@ def main():
                 for idx, art in enumerate(articles, 1):
                     cd = classify_study_design(art.get("publication_types", []), art.get("title", ""), art.get("abstract", ""))
                     rob = assess_risk_of_bias(art)
-                    art_details = extract_article_clinical_details(art, search_query)
+                    art_details = extract_article_clinical_details(art, search_query if 'search_query' in locals() else "")
                     with st.expander(f"{idx}. {art['title']} ({art['pub_year']}) - [{cd['level']}]", expanded=(idx <= 3)):
                         st.markdown(f"**Yazarlar:** {', '.join(art['authors']) if art['authors'] else 'Bilinmiyor'}")
                         st.markdown(f"**Dergi:** {art['journal']} ({art['pub_year']})")
@@ -190,9 +192,9 @@ def main():
                         st.markdown(f"**Sonlanımlar & Metrikler:** {art_details['outcomes_summary']}")
 
                         badges_html = []
-                        if art['pmid']:
+                        if art.get('pmid'):
                             badges_html.append(f'<span class="badge-pmid">PMID: {art["pmid"]}</span>')
-                        if art['doi']:
+                        if art.get('doi'):
                             badges_html.append(f'<span class="badge-doi">DOI: {art["doi"]}</span>')
                         st.markdown(" ".join(badges_html), unsafe_allow_html=True)
 
@@ -200,9 +202,9 @@ def main():
                         st.text_area(f"Özet #{idx}", art['abstract'], height=150, key=f"abs_{idx}")
 
                         links = []
-                        if art['pubmed_url']:
+                        if art.get('pubmed_url'):
                             links.append(f"[PubMed Sayfası]({art['pubmed_url']})")
-                        if art['doi_url']:
+                        if art.get('doi_url'):
                             links.append(f"[DOI Bağlantısı]({art['doi_url']})")
                         st.markdown(" | ".join(links))
 
@@ -295,20 +297,23 @@ def main():
             if st.button("📑 Türkçe Kanıt Raporunu ve Tabloları Oluştur", type="primary", use_container_width=True):
                 st.session_state.pop("generated_report", None)
                 st.session_state.pop("generated_html_report", None)
-                with st.spinner("Klinik kanıt raporu, Red Team denetimi ve HTML/Markdown tabloları hazırlanıyor..."):
+                with st.spinner("Evrensel Kanıt Motoru klinik kanıt raporunu, Red Team denetimini ve tabloları hazırlıyor..."):
                     search_meta = {
                         "search_date": st.session_state["search_results"].get("search_date"),
                         "query": query
                     }
-                    report_md = generate_turkish_evidence_report(
-                        query=query,
-                        articles=articles,
+                    engine = UniversalEvidenceEngine(
                         api_key=openai_api_key if use_llm_synth else None,
                         use_llm=use_llm_synth,
-                        model=llm_model,
+                        model=llm_model
+                    )
+                    synth_res = engine.generate_synthesis_report(
+                        query=query,
+                        articles=articles,
                         search_metadata=search_meta
                     )
-                    html_report = generate_html_report(query, articles, report_md)
+                    report_md = synth_res.get("report_markdown", "")
+                    html_report = synth_res.get("report_html", "")
                     st.session_state["generated_report"] = report_md
                     st.session_state["generated_html_report"] = html_report
                     st.session_state["generated_report_query"] = query

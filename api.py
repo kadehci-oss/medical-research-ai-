@@ -3,6 +3,7 @@ from typing import Optional, List, Dict, Any
 from pydantic import BaseModel, Field
 
 from pubmed_client import search_pubmed, verify_pmid, verify_doi, verify_citation
+from universal_evidence_engine import UniversalEvidenceEngine, run_universal_evidence_search, generate_universal_evidence_synthesis
 from report_generator import (
     generate_turkish_evidence_report,
     perform_red_team_audit,
@@ -15,8 +16,8 @@ from report_generator import (
 
 app = FastAPI(
     title="Medical Research AI API",
-    description="Physician Medical Research AI REST API backed by NCBI PubMed E-utilities and CrossRef.",
-    version="1.1.0"
+    description="Universal Physician Medical Research AI REST API backed by NCBI PubMed E-utilities and CrossRef.",
+    version="1.2.0"
 )
 
 
@@ -109,3 +110,18 @@ def api_generate_report(req: ReportRequest):
         "html_report": html_report,
         "audit": audit
     }
+
+
+@app.post("/api/universal_engine/synthesize")
+def api_universal_engine_synthesize(req: ReportRequest):
+    """
+    Universal Evidence Engine endpoint for disease-agnostic Turkish clinical report synthesis,
+    cross-study comparative analysis, and structured parameter extraction.
+    """
+    return generate_universal_evidence_synthesis(
+        query=req.query,
+        articles=req.articles,
+        api_key=req.api_key,
+        use_llm=req.use_llm,
+        model=req.model
+    )
