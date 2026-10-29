@@ -752,7 +752,11 @@ def _synthesize_article_conclusion_tr(art: Dict[str, Any], query: str) -> str:
     pico_str = f"Popülasyon (P): **{pico['population']}** | Müdahale (I): **{pico['intervention']}** | Karşılaştırma (C): **{pico['comparison']}** | Sonlanım (O): **{pico['outcome']}**"
 
     if not abstract or abstract in ["Özet bulunamadı.", "Özet bilgisi bulunamadı."] or len(abstract) < 40:
-        return f"- **{authors_short} ({year})** ({pmid_link}): Makale özetinde klinik kanıt veya sonuç verisi yetersizdir / bildirilmemiştir.\n  - *PICO Matrisi:* {pico_str}"
+        return (
+            f"- **{authors_short} ({year})** ({pmid_link}): Makale özetinde klinik kanıt veya sonuç verisi yetersizdir / bildirilmemiştir.\n"
+            f"  - *Hasta Sayısı:* Özette bildirilmedi | *Etki Ölçütleri:* Bildirilmedi | *Belirsizlikler:* Özet metni yetersizdir\n"
+            f"  - *PICO Matrisi:* {pico_str}"
+        )
 
     metrics = extract_study_metrics(abstract)
     classification = classify_study_design(art.get("publication_types", []), title, abstract)
@@ -760,7 +764,31 @@ def _synthesize_article_conclusion_tr(art: Dict[str, Any], query: str) -> str:
 
     summary_tr = _translate_clinical_conclusion_to_turkish("", abstract, metrics, design_name, title, pico=pico)
 
-    return f"- **{authors_short} ({year})** ({pmid_link}): {summary_tr}\n  - *PICO Matrisi:* {pico_str}"
+    pts_str = " ".join([pt.lower() for pt in art.get("publication_types", [])])
+    is_review_type = any(k in design_name for k in ["Niteliksel Derleme", "Uzman Görüşü", "Kılavuz", "Editör", "Derleme"]) or any(k in pts_str for k in ["review", "guideline", "editorial"])
+
+    review_note = ""
+    if is_review_type:
+        review_note = " *(Derleme/Kılavuz/Uzman Görüşü niteliğindeki yayınlardan kesin tedavi etkinliği çıkarılamaz; bu yayınlar ampirik primer veri sunmamaktadır.)*"
+
+    n_val_str = f"n = {metrics['n']}" if metrics.get("n") else "Özette bildirilmedi"
+
+    eff_parts = []
+    if metrics.get("effect_sizes"):
+        eff_parts.append(", ".join(metrics["effect_sizes"]))
+    if metrics.get("confidence_intervals"):
+        eff_parts.append(", ".join(metrics["confidence_intervals"]))
+    if metrics.get("p_values"):
+        eff_parts.append(", ".join(metrics["p_values"]))
+    eff_val_str = "; ".join(eff_parts) if eff_parts else "Özette nicel etki ölçütü bildirilmedi"
+
+    lim_val_str = " ".join(metrics.get("causality_limitations", [])) or "Abstract-only sınırlılığı (Tam metin incelemesi önerilir)"
+
+    return (
+        f"- **{authors_short} ({year})** ({pmid_link}): {summary_tr}{review_note}\n"
+        f"  - *Hasta Sayısı:* {n_val_str} | *Etki Ölçütleri:* {eff_val_str} | *Belirsizlikler:* {lim_val_str}\n"
+        f"  - *PICO Matrisi:* {pico_str}"
+    )
 
 
 def generate_rule_based_turkish_report(query: str, articles: List[Dict[str, Any]], search_metadata: Optional[Dict[str, Any]] = None) -> str:
@@ -973,12 +1001,67 @@ Lütfen arama terimlerini veya filtreleri genişleterek tekrar deneyiniz.
 
     # 12. Klinik Sonuç
     report.append("## 12. Klinik Sonuç")
+    report.append(f"**{query}** konusu kapsamındaki doğrulanmış kanıtların kaynaklara dayalı Türkçe karşılaştırmalı değerlendirmesi ve klinik çıkarımları aşağıda sunulmaktadır:\n")
+
+    # Comparative synthesis across included articles
+    report.append("### ⚖️ Kaynaklara Dayalı Karşılaştırmalı Klinik Sentez")
+
+    primary_studies = []
+    review_studies = []
+
+    for art in articles:
+        cd = classify_study_design(art.get("publication_types", []), art.get("title", ""), art.get("abstract", ""))
+        d_design = cd.get("design", "")
+        pts_str = " ".join([pt.lower() for pt in art.get("publication_types", [])])
+        if any(k in d_design for k in ["Niteliksel Derleme", "Uzman Görüşü", "Kılavuz", "Editör", "Olgu Sunumu"]) or any(k in pts_str for k in ["review", "guideline", "editorial"]):
+            review_studies.append(art)
+        else:
+            primary_studies.append(art)
+
+    if primary_studies:
+        report.append("**Ampirik / Primer Klinik Çalışmalar:**")
+        for art in primary_studies:
+            pmid = art.get("pmid", "")
+            pmid_link = f"[PMID: {pmid}]({art.get('pubmed_url', '#')})" if pmid else "PMID Yok"
+            authors_short = _format_authors_short(art.get("authors", []))
+            year = art.get("pub_year", "")
+            cd = classify_study_design(art.get("publication_types", []), art.get("title", ""), art.get("abstract", ""))
+            metrics = extract_study_metrics(art.get("abstract", ""))
+
+            n_str = f"n = {metrics['n']}" if metrics.get("n") else "hasta sayısı özette bildirilmedi"
+
+            eff_parts = []
+            if metrics.get("effect_sizes"):
+                eff_parts.append(", ".join(metrics["effect_sizes"]))
+            if metrics.get("confidence_intervals"):
+                eff_parts.append(", ".join(metrics["confidence_intervals"]))
+            if metrics.get("p_values"):
+                eff_parts.append(", ".join(metrics["p_values"]))
+
+            eff_str = f"Etki Ölçütleri: {'; '.join(eff_parts)}" if eff_parts else "Nicel etki ölçütü bildirilmedi"
+            lim_str = " ".join(metrics.get("causality_limitations", [])) or "Sınırlılık: Abstract-only veri sınırlılığı (tam metin incelemesi önerilir)"
+
+            report.append(f"- **{authors_short} ({year})** ({pmid_link}) — *{cd['design']}*: {n_str} | {eff_str} | {lim_str}")
+        report.append("")
+
+    if review_studies:
+        report.append("**Derleme, Kılavuz ve Görüşler:**")
+        for art in review_studies:
+            pmid = art.get("pmid", "")
+            pmid_link = f"[PMID: {pmid}]({art.get('pubmed_url', '#')})" if pmid else "PMID Yok"
+            authors_short = _format_authors_short(art.get("authors", []))
+            year = art.get("pub_year", "")
+            cd = classify_study_design(art.get("publication_types", []), art.get("title", ""), art.get("abstract", ""))
+
+            report.append(f"- **{authors_short} ({year})** ({pmid_link}) — *{cd['design']}*: Derleme/Kılavuz/Uzman Görüşü niteliğindedir; bu yayınlardan kesin tedavi etkinliği çıkarılamaz. Mevcut sentez ve arka plan literatür verilerini özetler.")
+        report.append("")
+
+    report.append("### 📑 Bireysel Çalışma Kanıt Değerlendirmeleri")
     conclusion_syntheses = []
     for art in articles:
         synth_line = _synthesize_article_conclusion_tr(art, query)
         conclusion_syntheses.append(synth_line)
 
-    report.append(f"**{query}** konusu kapsamındaki doğrulanmış kanıtların sentezi sonucunda ulaşılan temel klinik çıkarımlar aşağıda sunulmaktadır:\n")
     report.append("\n".join(conclusion_syntheses) + "\n")
     report.append("*Uyarı: Bu sentez sonuçları hekimin klinik kararına destek sağlama amacını taşır; doğrudan otomatik tedavi kararı niteliğinde değildir.*\n")
 
@@ -1049,7 +1132,11 @@ def generate_llm_turkish_report(query: str, articles: List[Dict[str, Any]], api_
         "   - ## 10. Red Team Eleştirisi\n"
         "   - ## 11. Kanıt Gücü ve Belirsizlikler\n"
         "   - ## 12. Klinik Sonuç\n"
-        "   - ## 13. Doğrulanmış Kaynakça\n"
+        "   - ## 13. Doğrulanmış Kaynakça\n\n"
+        "6. BÖLÜM 12 (Klinik Sonuç) İÇİN ÖZEL KURALLAR:\n"
+        "   - Bölüm 12'de kaynaklara dayalı, Türkçe, karşılaştırmalı bir değerlendirme üret.\n"
+        "   - Derleme/kılavuz/uzman görüşü niteliğindeki yayınlardan kesin tedavi etkinliği KESİNLİKLE ÇIKARMA!\n"
+        "   - Çalışmaların hasta sayılarını (n), etki ölçütlerini (HR, OR, RR, MD, %95 GA, p) ve belirsizlikleri/sınırlılıkları [PMID: xxx] kaynaklarıyla göster.\n"
     )
 
     user_prompt = (
