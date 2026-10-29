@@ -207,7 +207,7 @@ class TestStatinMyopathyEndToEnd(unittest.TestCase):
         # Verify Section 12 contains specific PMID citations and Turkish clinical synthesis
         self.assertIn("[PMID: 37884200]", report)
         self.assertIn("[PMID: 23519993]", report)
-        self.assertIn("nekrotizan miyopati", report.lower())
+        self.assertIn("biyobelirteç", report.lower())
 
         # Ensure no false claims
         self.assertNotIn("100/100", report)
