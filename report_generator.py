@@ -682,58 +682,58 @@ def _translate_clinical_conclusion_to_turkish(
     abstract: str,
     metrics: Dict[str, Any],
     design_name: str,
-    title: str
+    title: str,
+    pico: Optional[Dict[str, str]] = None
 ) -> str:
-    conc_lower = (raw_conc or abstract).lower()
+    """
+    Synthesizes clinical study results into Turkish WITHOUT generating automated claims
+    from trigger words like 'effective', 'safe', 'reduced', or 'associated with'.
+    Integrates quantitative metrics (n, HR/OR/RR, 95% CI, p-values), PICO context,
+    and reports evidence limitations when data is unverified or non-quantitative.
+    """
+    text_to_check = (raw_conc or abstract or "").lower()
 
-    # Format extracted metrics string in Turkish if available
+    # Format extracted metrics
     stat_parts = []
     if metrics.get("n"):
         stat_parts.append(f"n = {metrics['n']}")
     if metrics.get("effect_sizes"):
-        stat_parts.append(", ".join(metrics["effect_sizes"]))
-    if metrics.get("p_values"):
-        stat_parts.append(", ".join(metrics["p_values"]))
+        stat_parts.append(f"Etki büyüklüğü: {', '.join(metrics['effect_sizes'])}")
     if metrics.get("confidence_intervals"):
-        stat_parts.append(", ".join(metrics["confidence_intervals"]))
+        stat_parts.append(f"%95 GA: {', '.join(metrics['confidence_intervals'])}")
+    if metrics.get("p_values"):
+        stat_parts.append(f"p değeri: {', '.join(metrics['p_values'])}")
 
     stat_str = f" ({'; '.join(stat_parts)})" if stat_parts else ""
 
-    findings = []
+    # Check for explicit non-significant / negative findings
+    is_nonsignificant = any(phrase in text_to_check for phrase in [
+        "no significant", "not significant", "no statistically significant",
+        "statistically insignificant", "no difference", "not associated",
+        "failed to show", "did not reduce", "did not improve"
+    ]) or any("p >" in p.lower() or "p> " in p.lower() or "p >0" in p.lower() for p in metrics.get("p_values", []))
 
-    if any(k in conc_lower for k in ["reduced", "decreased", "lowered", "reduction", "decline"]):
-        findings.append("klinik risk/semptom oranlarında düşüş/azalma sağlandığı")
-    elif any(k in conc_lower for k in ["increased", "elevated", "higher", "elevation"]):
-        findings.append("ilgili parametrelerde veya risk oranlarında artış gözlendiği")
-
-    if any(k in conc_lower for k in ["effective", "efficacy", "remission", "improved", "improvement", "benefit"]):
-        findings.append("tedavinin klinik etkinlik sunduğu ve iyileşme ile ilişkili olduğu")
-
-    if any(k in conc_lower for k in ["associated with", "correlation", "correlated", "linked to"]):
-        findings.append("incelenen parametreler arasında anlamlı ilişki saptandığı")
-
-    if any(k in conc_lower for k in ["differentiate", "distinguish", "biomarker", "diagnostic", "predictor"]):
-        findings.append("tanısal süreçlerde veya risk sınıflandırmasında biyobelirteç/gösterge değeri taşıdığı")
-
-    if any(k in conc_lower for k in ["safe", "well tolerated", "safety"]):
-        findings.append("güvenilirlik profilinin kabul edilebilir olduğu")
-
-    if any(k in conc_lower for k in ["no significant", "not associated", "no effect", "insignificant"]):
-        findings.append("gruplar arasında istatistiksel olarak anlamlı bir fark saptanmadığı")
-
-    if any(k in conc_lower for k in ["review", "overview", "summary", "guideline", "consensus"]):
-        findings.append("literatür verilerinin ve klinik kanıtların sentezlendiği")
+    # Check for explicit conflicting / heterogeneous findings
+    is_conflicting = any(phrase in text_to_check for phrase in [
+        "conflicting", "inconsistent", "discrepant", "mixed results",
+        "heterogeneous", "controversial"
+    ])
 
     title_snippet = f"*{title}* çalışması ({design_name})" if title else f"{design_name}"
 
-    if findings:
-        summary_body = " ve ".join(findings) + " bildirilmiştir."
-        summary_tr = f"{title_snippet} bulgularına göre {summary_body}{stat_str}"
+    if is_conflicting:
+        summary_tr = f"{title_snippet} verilerinde çelişkili veya heterojen sonuçlar bildirilmiştir{stat_str}."
+    elif is_nonsignificant:
+        summary_tr = f"{title_snippet} bulgularına göre gruplar veya parametreler arasında istatistiksel olarak anlamlı bir fark saptanmamıştır{stat_str}."
+    elif stat_parts:
+        summary_tr = f"{title_snippet} kapsamında elde edilen istatistiksel ve nicel bulgular: {'; '.join(stat_parts)}."
     else:
-        if stat_parts:
-            summary_tr = f"{title_snippet} verilerine göre elde edilen istatistiksel bulgular: {', '.join(stat_parts)}."
+        # No quantitative metrics and no explicit non-significant/conflicting indicators
+        # DO NOT fabricate 'effective' or 'safe' claims from single words!
+        if any(k in design_name.lower() for k in ["derleme", "kılavuz", "uzman görüşü", "review", "guideline"]):
+            summary_tr = f"{title_snippet} niteliğindeki yayında klinik veriler ve literatür bulguları derlenmiş olup özet metninde nicel istatistiksel parametre bildirilmemiştir."
         else:
-            summary_tr = f"{title_snippet} özetinde spesifik klinik sonuç veya nicel bulgu verisi yetersizdir / bildirilmemiştir."
+            summary_tr = f"{title_snippet} özetinde kural tabanlı motor tarafından doğrulanabilir nicel klinik sonuç veya istatistiksel parametre verisi yetersizdir; tam metin incelemesi önerilir."
 
     return summary_tr
 
@@ -748,39 +748,19 @@ def _synthesize_article_conclusion_tr(art: Dict[str, Any], query: str) -> str:
     abstract = (art.get("abstract") or "").strip()
     pmid_link = f"[PMID: {pmid}]({pubmed_url})" if pmid else "PMID Yok"
 
+    pico = extract_pico(query)
+    pico_str = f"Popülasyon (P): **{pico['population']}** | Müdahale (I): **{pico['intervention']}** | Karşılaştırma (C): **{pico['comparison']}** | Sonlanım (O): **{pico['outcome']}**"
+
     if not abstract or abstract in ["Özet bulunamadı.", "Özet bilgisi bulunamadı."] or len(abstract) < 40:
-        return f"- **{authors_short} ({year})** ({pmid_link}): Makale özetinde klinik kanıt veya sonuç verisi yetersizdir / bildirilmemiştir."
+        return f"- **{authors_short} ({year})** ({pmid_link}): Makale özetinde klinik kanıt veya sonuç verisi yetersizdir / bildirilmemiştir.\n  - *PICO Matrisi:* {pico_str}"
 
     metrics = extract_study_metrics(abstract)
     classification = classify_study_design(art.get("publication_types", []), title, abstract)
     design_name = classification.get("design", "Çalışma")
 
-    conc_match = re.search(
-        r"(?:CONCLUSION|CONCLUSIONS|CONCLUSION/SIGNIFICANCE|RESULTS)\s*:\s*(.*?)(?=\b(?:METHODS|BACKGROUND|FUNDING|CLINICAL TRIAL|REGISTRATION)\b|$)",
-        abstract,
-        re.IGNORECASE
-    )
-    raw_conc = conc_match.group(1).strip() if conc_match else ""
+    summary_tr = _translate_clinical_conclusion_to_turkish("", abstract, metrics, design_name, title, pico=pico)
 
-    if not raw_conc:
-        sents = re.findall(
-            r"([^.\n]*?\b(?:conclude|conclusion|suggests|demonstrates|indicates|shows|found that|supports|reduced|decreased|increased|associated with|effective|effective in|correlated with|identified|observed|improved)\b[^.\n]*?\.)",
-            abstract,
-            re.IGNORECASE
-        )
-        if sents:
-            raw_conc = " ".join([s.strip() for s in sents[:2]])
-
-    if not raw_conc:
-        all_sents = [s.strip() for s in re.split(r"(?<=[.!?])\s+", abstract) if s.strip()]
-        if len(all_sents) >= 2:
-            raw_conc = " ".join(all_sents[-2:])
-        elif len(all_sents) == 1:
-            raw_conc = all_sents[0]
-
-    summary_tr = _translate_clinical_conclusion_to_turkish(raw_conc, abstract, metrics, design_name, title)
-
-    return f"- **{authors_short} ({year})** ({pmid_link}): {summary_tr}"
+    return f"- **{authors_short} ({year})** ({pmid_link}): {summary_tr}\n  - *PICO Matrisi:* {pico_str}"
 
 
 def generate_rule_based_turkish_report(query: str, articles: List[Dict[str, Any]], search_metadata: Optional[Dict[str, Any]] = None) -> str:
@@ -839,22 +819,18 @@ Lütfen arama terimlerini veya filtreleri genişleterek tekrar deneyiniz.
         pmid = art.get("pmid", "")
         authors_short = _format_authors_short(art.get("authors", []))
         pmid_link = f"[PMID: {pmid}]({art.get('pubmed_url', '#')})" if pmid else ""
+        cd = classify_study_design(art.get("publication_types", []), art.get("title", ""), abs_text)
 
-        # Search for background / mechanistic sentences in abstract
-        bg_sentences = re.findall(
-            r"([^.\n]*?\b(?:pathophysiology|autoantibody|autoantibodies|mechanism|receptor|enzyme|necrotizing|inflammation|myopathy|expression|target|trigger|pathogenesis|biomarker)\b[^.\n]*?\.)",
-            abs_text,
-            re.IGNORECASE
+        background_findings.append(
+            f"- **{authors_short} ({art.get('pub_year', '')})** ({pmid_link}): "
+            f"*{art.get('title', '')}* ({cd['design']}). İlgili çalışmanın patofizyolojik arka planı ve mekanizması için özet metni incelenmiş olup, doğrudan tam metin biyokimyasal/hücresel analiz verileri doğrulanmalıdır."
         )
-        if bg_sentences:
-            cleaned_bg = " ".join([s.strip() for s in bg_sentences[:2]])
-            background_findings.append(f"- **{authors_short}** ({pmid_link}): {cleaned_bg}")
 
     if background_findings:
         report.append(f"**{query}** konusu kapsamında incelenen literatür verilerinden elde edilen temel patofizyolojik ve klinik arka plan bulguları aşağıda doğrulanmış atıflarıyla sunulmaktadır:\n")
         report.append("\n".join(background_findings) + "\n")
     else:
-        report.append(f"İncelenen {total_articles} makale özetinde **{query}** konusuna ilişkin patofizyolojik mekanizmalar ve moleküler süreçler doğrudan açıklanmıştır. Ayrıntılı patofizyolojik analiz için ilgili yayınların tam metinlerinin incelenmesi önerilir.\n")
+        report.append(f"İncelenen {total_articles} makale özetinde **{query}** konusuna ilişkin patofizyolojik mekanizmalar ve moleküler süreçler kural tabanlı motor tarafından tam olarak çıkarılamamıştır. Ayrıntılı patofizyolojik analiz için ilgili yayınların tam metinlerinin incelenmesi önerilir.\n")
 
     # 5. Bilimsel Kanıt Tablosu
     report.append("## 5. Bilimsel Kanıt Tablosu")
@@ -866,7 +842,6 @@ Lütfen arama terimlerini veya filtreleri genişleterek tekrar deneyiniz.
     report.append("## 6. Önemli Çalışmaların Karşılaştırılması")
     report.append("### 📊 Karşılaştırmalı Sentez Matrisi")
 
-    # Generate comparative synthesis across method, sample size, findings, efficacy, safety, and limitations
     comp_lines = []
     for art in articles:
         first_author = _format_authors_short(art.get("authors", []))
@@ -879,22 +854,14 @@ Lütfen arama terimlerini veya filtreleri genişleterek tekrar deneyiniz.
 
         n_str = f"n = {metrics['n']}" if metrics.get("n") else "n bildirilmedi"
 
-        # Extract short efficacy & safety snippet
-        abs_text = art.get("abstract", "")
-        efficacy_sents = re.findall(
-            r"([^.\n]*?\b(?:reduced|increased|effective|remission|response|treatment|improvement|weakness|creatine kinase|rhabdomyolysis|risk|adverse|side effect|safety)\b[^.\n]*?\.)",
-            abs_text,
-            re.IGNORECASE
-        )
-        eff_snippet = " ".join([s.strip() for s in efficacy_sents[:2]]) if efficacy_sents else abs_text[:150] + "..."
-
-        lim_str = " ".join(metrics.get("causality_limitations", [])) or "Özette spesifik sınırlılık bildirilmedi."
+        stat_summary = _translate_clinical_conclusion_to_turkish("", art.get("abstract", ""), metrics, cd["design"], art.get("title", ""), pico=pico)
+        lim_str = " ".join(metrics.get("causality_limitations", [])) or "Özette spesifik metodolojik sınırlılık vurgulanmamıştır (Tam metin incelemesi önerilir)."
 
         comp_lines.append(
             f"- **{first_author} ({year})** ({pmid_link}):\n"
             f"  - **Yöntem & Tasarım:** {cd['design']} ({cd['level']}) | **Yanlılık Riski:** {rob['overall_rating']}\n"
             f"  - **Hasta / Örneklem Sayısı:** {n_str}\n"
-            f"  - **Klinik Bulgular & Etkinlik / Güvenlilik:** {eff_snippet}\n"
+            f"  - **Klinik Bulgular & Etkinlik / Güvenlilik Sentezi:** {stat_summary}\n"
             f"  - **Kanıt Sınırlılıkları:** {lim_str}"
         )
 
@@ -953,19 +920,17 @@ Lütfen arama terimlerini veya filtreleri genişleterek tekrar deneyiniz.
         p = art.get("pmid")
         t = _format_authors_short(art.get("authors", []))
         abs_text = art.get("abstract", "")
-        # Find key clinical numbers or outcome sentences in abstract
-        effects = re.findall(r"([^.\n]*?\b(?:reduced|increased|associated with|hazard ratio|odds ratio|p\s*[<=]\s*[\d.]+|creatine kinase|weakness|remission|response rate|mortality|survival)\b[^.\n]*?\.)", abs_text, re.IGNORECASE)
-        if effects:
-            snippet = " ".join([e.strip() for e in effects[:2]])
-            efficacy_items.append(f"- **{t}** (PMID: [{p}]({art.get('pubmed_url', '#')})): {snippet}")
-        else:
-            first_sent = abs_text.split(".")[0].strip() if abs_text else "Özet bulunamadı."
-            efficacy_items.append(f"- **{t}** (PMID: [{p}]({art.get('pubmed_url', '#')})): {first_sent}.")
+        metrics = extract_study_metrics(abs_text)
+        cd = classify_study_design(art.get("publication_types", []), art.get("title", ""), abs_text)
+        p_link = f"[PMID: {p}]({art.get('pubmed_url', '#')})" if p else "PMID Yok"
+
+        stat_summary = _translate_clinical_conclusion_to_turkish("", abs_text, metrics, cd["design"], art.get("title", ""), pico=pico)
+        efficacy_items.append(f"- **{t} ({art.get('pub_year', '')})** ({p_link}): {stat_summary}")
 
     if efficacy_items:
         report.append("\n".join(efficacy_items) + "\n")
     else:
-        report.append("*İncelenen çalışmalarda spesifik etkinlik ve güvenlilik verisi özet metinlerinde bildirilmemiştir.*\n")
+        report.append("*İncelenen çalışmalarda kural tabanlı motor tarafından doğrulanabilir etkinlik ve güvenlilik parametresi saptanmamıştır.*\n")
 
     # 8. Güncel Klinik Kılavuzlar
     report.append("## 8. Güncel Klinik Kılavuzlar")

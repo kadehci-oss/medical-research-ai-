@@ -289,7 +289,7 @@ class TestReportGenerator(unittest.TestCase):
         self.assertEqual(pico["comparison"], "Belirtilmemiş")
 
     def test_synthesize_article_conclusion_tr_diverse_medical_conditions(self):
-        # 1. Oncology
+        # 1. Oncology with explicit quantitative metrics
         onco_article = {
             "pmid": "12345678",
             "pubmed_url": "https://pubmed.ncbi.nlm.nih.gov/12345678/",
@@ -297,46 +297,15 @@ class TestReportGenerator(unittest.TestCase):
             "pub_year": "2023",
             "title": "Pembrolizumab in Non-Small Cell Lung Cancer",
             "publication_types": ["Randomized Controlled Trial"],
-            "abstract": "In this trial with 450 patients (n=450), Pembrolizumab significantly reduced risk of recurrence (HR 0.62, p=0.002) and improved overall survival."
+            "abstract": "In this trial with 450 patients (n=450), Pembrolizumab reduced recurrence (HR 0.62, p=0.002) and improved overall survival."
         }
         res_onco = _synthesize_article_conclusion_tr(onco_article, "lung cancer immunotherapy")
         self.assertIn("[PMID: 12345678]", res_onco)
         self.assertIn("John Smith ve Jane Doe (2023)", res_onco)
-        self.assertIn("düşüş/azalma sağlandığı", res_onco)
-        self.assertIn("etkinlik sunduğu", res_onco)
+        self.assertIn("n = 450", res_onco)
+        self.assertIn("HR 0.62", res_onco)
 
-        # 2. Neurology / Alzheimer's
-        neuro_article = {
-            "pmid": "23456789",
-            "pubmed_url": "https://pubmed.ncbi.nlm.nih.gov/23456789/",
-            "authors": ["Alice Brown"],
-            "pub_year": "2022",
-            "title": "Plasma Tau-181 as a Diagnostic Biomarker for Alzheimer Disease",
-            "publication_types": ["Observational Study"],
-            "abstract": "Plasma Tau-181 levels correlated with amyloid PET positivity and served as a reliable diagnostic biomarker."
-        }
-        res_neuro = _synthesize_article_conclusion_tr(neuro_article, "Alzheimer biomarker")
-        self.assertIn("[PMID: 23456789]", res_neuro)
-        self.assertIn("biyobelirteç/gösterge değeri taşıdığı", res_neuro)
-        self.assertIn("anlamlı ilişki saptandığı", res_neuro)
-
-        # 3. Endocrinology / Diabetes
-        endo_article = {
-            "pmid": "34567890",
-            "pubmed_url": "https://pubmed.ncbi.nlm.nih.gov/34567890/",
-            "authors": ["Carlos Gomez", "Maria Silva", "Juan Rossi"],
-            "pub_year": "2024",
-            "title": "Tirzepatide for Weight Loss and Glycemic Control in Type 2 Diabetes",
-            "publication_types": ["Clinical Trial"],
-            "abstract": "Treatment with tirzepatide demonstrated significant reduction in HbA1c and was well tolerated with acceptable safety."
-        }
-        res_endo = _synthesize_article_conclusion_tr(endo_article, "Tirzepatide diabetes")
-        self.assertIn("[PMID: 34567890]", res_endo)
-        self.assertIn("Carlos Gomez et al. (2024)", res_endo)
-        self.assertIn("düşüş/azalma sağlandığı", res_endo)
-        self.assertIn("güvenilirlik profilinin kabul edilebilir olduğu", res_endo)
-
-        # 4. Rheumatology / Rheumatoid Arthritis
+        # 2. Non-significant trial
         rheum_article = {
             "pmid": "45678901",
             "pubmed_url": "https://pubmed.ncbi.nlm.nih.gov/45678901/",
@@ -344,11 +313,11 @@ class TestReportGenerator(unittest.TestCase):
             "pub_year": "2020",
             "title": "JAK Inhibitors vs TNF Inhibitors in Rheumatoid Arthritis",
             "publication_types": ["Systematic Review"],
-            "abstract": "CONCLUSIONS: No significant difference was observed between JAK inhibitors and TNF inhibitors regarding overall remission rates."
+            "abstract": "No statistically significant difference was observed between JAK inhibitors and TNF inhibitors regarding overall remission rates."
         }
         res_rheum = _synthesize_article_conclusion_tr(rheum_article, "Rheumatoid Arthritis")
         self.assertIn("[PMID: 45678901]", res_rheum)
-        self.assertIn("istatistiksel olarak anlamlı bir fark saptanmadığı", res_rheum)
+        self.assertIn("istatistiksel olarak anlamlı bir fark saptanmamıştır", res_rheum)
 
     def test_synthesize_article_conclusion_tr_insufficient_data(self):
         # 1. Missing / Empty abstract
@@ -363,7 +332,7 @@ class TestReportGenerator(unittest.TestCase):
         self.assertIn("[PMID: 99990000]", res_empty)
         self.assertIn("Makale özetinde klinik kanıt veya sonuç verisi yetersizdir / bildirilmemiştir.", res_empty)
 
-        # 2. Too short / vague abstract without clinical outcomes
+        # 2. Abstract without quantitative metrics reports limitations rather than fabricating claims
         vague_art = {
             "pmid": "99990001",
             "authors": ["Test Author"],
@@ -373,7 +342,122 @@ class TestReportGenerator(unittest.TestCase):
         }
         res_vague = _synthesize_article_conclusion_tr(vague_art, "Rare Condition")
         self.assertIn("[PMID: 99990001]", res_vague)
-        self.assertIn("yetersizdir / bildirilmemiştir", res_vague)
+        self.assertIn("doğrulanabilir nicel klinik sonuç veya istatistiksel parametre verisi yetersizdir", res_vague)
+
+    def test_regression_statin_myopathy_heart_failure_infection_outcomes(self):
+        """
+        Regression tests for Statin Myopathy, Heart Failure, and Infectious Diseases across:
+        1) Positive (quantitative) results
+        2) Negative results
+        3) Nonsignificant results
+        4) Conflicting/heterogeneous results
+        Verifies no ungrounded claims are produced from single trigger words ("effective", "safe", etc.).
+        """
+        # --- 1. Statin Myopathy ---
+        # Positive quantitative
+        statin_pos = {
+            "pmid": "50001",
+            "title": "Statin Myopathy Trial",
+            "authors": ["A. Smith"],
+            "pub_year": "2022",
+            "publication_types": ["Randomized Controlled Trial"],
+            "abstract": "In a study of n=200 patients with statin myopathy, anti-HMGCR titers correlated with CK levels (OR 2.50, 95% CI 1.40-4.20, p=0.001)."
+        }
+        res_statin_pos = _synthesize_article_conclusion_tr(statin_pos, "Statin myopathy in adults")
+        self.assertIn("[PMID: 50001]", res_statin_pos)
+        self.assertIn("n = 200", res_statin_pos)
+        self.assertIn("OR 2.50", res_statin_pos)
+        self.assertIn("Popülasyon (P): **Adults**", res_statin_pos)
+
+        # Nonsignificant
+        statin_nonsig = {
+            "pmid": "50002",
+            "title": "Statin Myopathy Supplement Trial",
+            "authors": ["B. Jones"],
+            "pub_year": "2021",
+            "publication_types": ["Clinical Trial"],
+            "abstract": "Coenzyme Q10 failed to show statistically significant reduction in statin-associated muscle symptoms compared to placebo (p=0.45)."
+        }
+        res_statin_nonsig = _synthesize_article_conclusion_tr(statin_nonsig, "CoQ10 in statin myopathy")
+        self.assertIn("[PMID: 50002]", res_statin_nonsig)
+        self.assertIn("istatistiksel olarak anlamlı bir fark saptanmamıştır", res_statin_nonsig)
+
+        # Conflicting
+        statin_conflict = {
+            "pmid": "50003",
+            "title": "Vitamin D in Statin Intolerance",
+            "authors": ["C. Lee"],
+            "pub_year": "2023",
+            "publication_types": ["Observational Study"],
+            "abstract": "Literature shows conflicting and inconsistent results regarding vitamin D supplementation for statin myopathy."
+        }
+        res_statin_conflict = _synthesize_article_conclusion_tr(statin_conflict, "Vitamin D statin myopathy")
+        self.assertIn("[PMID: 50003]", res_statin_conflict)
+        self.assertIn("çelişkili veya heterojen sonuçlar bildirilmiştir", res_statin_conflict)
+
+        # Single trigger word ("effective", "safe") without metrics -> MUST report evidence limitation, NOT auto-claim efficacy!
+        statin_trigger = {
+            "pmid": "50004",
+            "title": "Statin Myopathy Narrative Review",
+            "authors": ["D. Miller"],
+            "pub_year": "2020",
+            "publication_types": ["Journal Article"],
+            "abstract": "Statins are generally effective and safe in reducing cardiovascular events, but myopathy remains a concern."
+        }
+        res_statin_trigger = _synthesize_article_conclusion_tr(statin_trigger, "Statin myopathy")
+        self.assertNotIn("tedavinin klinik etkinlik sunduğu", res_statin_trigger)
+        self.assertNotIn("güvenilirlik profilinin kabul edilebilir olduğu", res_statin_trigger)
+        self.assertIn("nicel istatistiksel parametre bildirilmemiştir", res_statin_trigger)
+
+        # --- 2. Heart Failure ---
+        hf_pos = {
+            "pmid": "60001",
+            "title": "SGLT2 Inhibitor in Heart Failure",
+            "authors": ["E. Davis"],
+            "pub_year": "2023",
+            "publication_types": ["Randomized Controlled Trial"],
+            "abstract": "In HFrEF patients (n=300), SGLT2 inhibition lowered CV death (HR 0.74, 95% CI 0.60-0.90, p=0.003)."
+        }
+        res_hf_pos = _synthesize_article_conclusion_tr(hf_pos, "SGLT2 in heart failure")
+        self.assertIn("[PMID: 60001]", res_hf_pos)
+        self.assertIn("HR 0.74", res_hf_pos)
+
+        hf_nonsig = {
+            "pmid": "60002",
+            "title": "Novel Inotrope in Acute Heart Failure",
+            "authors": ["F. Wilson"],
+            "pub_year": "2022",
+            "publication_types": ["Clinical Trial"],
+            "abstract": "The novel inotrope did not reduce 30-day mortality in acute decompensated heart failure compared to placebo (p=0.82)."
+        }
+        res_hf_nonsig = _synthesize_article_conclusion_tr(hf_nonsig, "Inotropes in acute heart failure")
+        self.assertIn("[PMID: 60002]", res_hf_nonsig)
+        self.assertIn("istatistiksel olarak anlamlı bir fark saptanmamıştır", res_hf_nonsig)
+
+        # --- 3. Infectious Diseases ---
+        inf_pos = {
+            "pmid": "70001",
+            "title": "Antiviral Therapy in Severe Influenza",
+            "authors": ["G. Taylor"],
+            "pub_year": "2024",
+            "publication_types": ["Randomized Controlled Trial"],
+            "abstract": "In hospitalized influenza patients (n=500), early antiviral therapy reduced ICU admission (OR 0.55, 95% CI 0.38-0.79, p=0.001)."
+        }
+        res_inf_pos = _synthesize_article_conclusion_tr(inf_pos, "Antiviral in severe influenza")
+        self.assertIn("[PMID: 70001]", res_inf_pos)
+        self.assertIn("OR 0.55", res_inf_pos)
+
+        inf_nonsig = {
+            "pmid": "70002",
+            "title": "Adjunctive Steroids in Bacterial Pneumonia",
+            "authors": ["H. Anderson"],
+            "pub_year": "2023",
+            "publication_types": ["Randomized Controlled Trial"],
+            "abstract": "Adjunctive corticosteroids showed no statistically significant difference in 28-day mortality in non-severe CAP (p=0.34)."
+        }
+        res_inf_nonsig = _synthesize_article_conclusion_tr(inf_nonsig, "Steroids in bacterial pneumonia")
+        self.assertIn("[PMID: 70002]", res_inf_nonsig)
+        self.assertIn("istatistiksel olarak anlamlı bir fark saptanmamıştır", res_inf_nonsig)
 
     def test_regression_section_12_no_generic_template_and_has_pmid_citations(self):
         query = "SGLT2 inhibitors in heart failure"

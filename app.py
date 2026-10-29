@@ -147,6 +147,7 @@ def main():
         if search_submitted and search_query:
             st.session_state.pop("generated_report", None)
             st.session_state.pop("generated_html_report", None)
+            st.session_state.pop("generated_report_query", None)
             start_yr = int(start_year) if start_year and not pd.isna(start_year) else None
             end_yr = int(end_year) if end_year and not pd.isna(end_year) else None
             with st.spinner("PubMed veritabanı sorgulanıyor..."):
@@ -261,6 +262,10 @@ def main():
             articles = st.session_state["search_results"]["articles"]
             query = st.session_state.get("active_query", "Klinik Araştırma")
 
+            if st.session_state.get("generated_report_query") != query:
+                st.session_state.pop("generated_report", None)
+                st.session_state.pop("generated_html_report", None)
+
             audit_res = perform_red_team_audit(query, articles)
 
             # Audit Summary Cards
@@ -300,6 +305,7 @@ def main():
                     html_report = generate_html_report(query, articles, report_md)
                     st.session_state["generated_report"] = report_md
                     st.session_state["generated_html_report"] = html_report
+                    st.session_state["generated_report_query"] = query
 
             if "generated_report" in st.session_state:
                 st.markdown("---")
