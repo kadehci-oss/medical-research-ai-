@@ -42,6 +42,11 @@ This application enables clinicians and medical researchers to perform real-time
 ├── app.py                   # Streamlit web application dashboard
 ├── pubmed_client.py         # PubMed E-utilities client & PMID/DOI verifiers
 ├── report_generator.py      # Turkish Evidence Report synthesis engine
+├── live_ncbi_validation.py  # Live NCBI PubMed API smoke validation script
+├── ncbi_live_results.json   # Output results of live NCBI validation check
+├── UZMAN_HEKIM_DEGERLENDIRME.md # Independent Expert Physician Evaluation Protocol
+├── .github/workflows/
+│   └── live-ncbi-validation.yml # GitHub Actions workflow for live NCBI validation
 ├── tests/
 │   ├── test_pubmed_client.py   # Unit tests for PubMed client & verifiers
 │   └── test_report_generator.py # Unit tests for report synthesis & anti-hallucination
@@ -78,13 +83,25 @@ This application enables clinicians and medical researchers to perform real-time
 
 ---
 
-## 🧪 Running Tests
+## 🧪 Running Tests & Live NCBI Validation
 
+### Unit & Integration Test Suite
 Run the full automated test suite using `pytest`:
 
 ```bash
 pytest
 ```
+
+### Live NCBI PubMed API Validation
+To verify real ESearch and EFetch calls directly against live NCBI production servers without mocks:
+
+```bash
+python live_ncbi_validation.py
+```
+
+This generates `ncbi_live_results.json` detailing the pass/fail status of ESearch queries and EFetch paper identities (PMID, DOI, Title).
+
+This test is also executed automatically via GitHub Actions workflow (`.github/workflows/live-ncbi-validation.yml`).
 
 ---
 
@@ -107,3 +124,10 @@ Medical safety requires absolute accuracy. Hallucinating paper citations or inve
 - **Direct API Sourcing:** All bibliographic records are fetched directly from NCBI PubMed XML outputs.
 - **Verification First:** Verification tools query live CrossRef and PubMed servers.
 - **Strict Grounding:** The report generator operates on verified PubMed payload objects only, ensuring zero fabricated PMIDs or paper titles.
+
+---
+
+## ⚕️ Independent Expert Physician Review Disclosure
+
+- **Evaluation Protocol:** See `UZMAN_HEKIM_DEGERLENDIRME.md` for the evaluation framework, scoring criteria, and clinical safety thresholds for independent specialist physicians.
+- **Status Notice:** **Uzman Hekim Değerlendirmesi / Onayı Henüz Tamamlanmamıştır (Yapılmadı / Tamamlanmadı).** The protocol form in `UZMAN_HEKIM_DEGERLENDIRME.md` is a baseline proposal for future double-blind expert review. No completed physician review or clinical validation approval is claimed.
