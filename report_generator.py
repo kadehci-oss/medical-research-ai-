@@ -84,6 +84,13 @@ def classify_study_design(pub_types: List[str], title: str, abstract: str) -> Di
             "level_num": 5,
             "badge_color": "#6B7280"
         }
+    if any("comparative study" in pt for pt in pts):
+        return {
+            "design": "Karşılaştırmalı Klinik Çalışma",
+            "level": "Seviye 3",
+            "level_num": 3,
+            "badge_color": "#D97706"
+        }
     if any("review" in pt or "derleme" in pt for pt in pts):
         return {
             "design": "Niteliksel Derleme / Uzman Görüşü",
@@ -388,10 +395,90 @@ def assess_risk_of_bias(article: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
+def extract_outcome_metrics(abstract: str) -> List[Dict[str, Any]]:
+    """
+    Parses abstract sentences/clauses and binds HR, RR, OR, 95% CI, and p-values
+    directly to their respective clinical outcomes. Preserves outcome associations.
+    Returns a list of dicts: [{"outcome": str, "metrics": List[str], "sentence": str}]
+    """
+    if not abstract:
+        return []
+
+    raw_clauses = re.split(r'(?<=[.!?])\s+|\n+|(?:;\s*)', abstract)
+    clauses = []
+
+    for raw in raw_clauses:
+        raw_clean = raw.strip()
+        if not raw_clean:
+            continue
+
+        eff_count = len(re.findall(r"\b(?:HR|OR|RR|MD|WMD)\s*[:=]?\s*\d+\.?\d*\b", raw_clean, re.IGNORECASE))
+        p_count = len(re.findall(r"\b(?:p|P)\s*[=<]\s*0?\.\d+\b", raw_clean))
+
+        if eff_count > 1 or (eff_count >= 1 and p_count > 1):
+            sub_parts = re.split(r'(?<=\))\s*(?:and\s+|,|\s+while\s+)|(?:\b(?:and|,)\s+)(?=[A-Za-z\s]+?\b(?:HR|OR|RR|MD|WMD|p\s*[=<]))', raw_clean, flags=re.IGNORECASE)
+            for sp in sub_parts:
+                if sp.strip():
+                    clauses.append(sp.strip())
+        else:
+            clauses.append(raw_clean)
+
+    results = []
+
+    outcome_keywords = [
+        "cardiovascular death", "cv death", "all-cause mortality", "mortality", "death",
+        "hospitalization", "heart failure hospitalization", "readmission", "events",
+        "remission", "relapse", "progression-free survival", "overall survival",
+        "myopathy", "muscle pain", "muscle symptoms", "ck elevation", "anti-hmgcr",
+        "adverse events", "side effects", "infection rate", "cure rate", "response rate",
+        "recurrence", "blood pressure", "ejection fraction", "stroke", "infarction"
+    ]
+
+    for clause in clauses:
+        clause_clean = clause.strip()
+        if not clause_clean:
+            continue
+
+        effect_sizes = re.findall(r"\b(?:HR|OR|RR|MD|WMD)\s*[:=]?\s*\d+\.?\d*\b", clause_clean, re.IGNORECASE)
+        cis = re.findall(r"\b(?:95%\s*CI|CI\s*95%)\s*[:=]?\s*\[?\s*\d+\.?\d*\s*(?:to|-|,)\s*\d+\.?\d*\s*\]?", clause_clean, re.IGNORECASE)
+        p_vals = re.findall(r"\b(?:p|P)\s*[=<]\s*0?\.\d+\b", clause_clean)
+
+        combined_metrics = list(dict.fromkeys(effect_sizes + cis + p_vals))
+        if not combined_metrics:
+            continue
+
+        outcome_name = ""
+        clause_lower = clause_clean.lower()
+        for kw in outcome_keywords:
+            if kw in clause_lower:
+                outcome_name = kw.title()
+                break
+
+        if not outcome_name:
+            metric_match = re.search(r"\b(?:HR|OR|RR|MD|WMD|95% CI|CI|p\s*[=<])\b", clause_clean, re.IGNORECASE)
+            if metric_match:
+                prefix = clause_clean[:metric_match.start()].strip()
+                prefix = re.sub(r"^[,\s.:;(]+|[,\s.:;(]+$", "", prefix)
+                words = prefix.split()
+                if len(words) > 0:
+                    outcome_name = " ".join(words[-4:]).strip().capitalize()
+
+        if not outcome_name:
+            outcome_name = "Genel Sonlanım / Özet İstatistiği"
+
+        results.append({
+            "outcome": outcome_name,
+            "metrics": combined_metrics,
+            "sentence": clause_clean
+        })
+
+    return results
+
+
 def extract_study_metrics(abstract: str) -> Dict[str, Any]:
     """
     Extracts numerical metrics (sample size n, effect sizes HR/OR/RR/MD, 95% CI, p-values,
-    concomitant treatments, and causality/methodological limitations)
+    outcome-bound metrics, concomitant treatments, and causality/methodological limitations)
     strictly from abstract text if explicitly present. Never fabricates missing metrics.
     """
     if not abstract:
@@ -400,6 +487,7 @@ def extract_study_metrics(abstract: str) -> Dict[str, Any]:
             "effect_sizes": [],
             "confidence_intervals": [],
             "p_values": [],
+            "outcome_metrics": [],
             "concomitant_treatments": [],
             "causality_limitations": []
         }
@@ -410,6 +498,8 @@ def extract_study_metrics(abstract: str) -> Dict[str, Any]:
     effect_sizes = re.findall(r"\b(?:HR|OR|RR|MD|WMD)\s*[:=]?\s*\d+\.?\d*\b", abstract, re.IGNORECASE)
     cis = re.findall(r"\b(?:95%\s*CI|CI\s*95%)\s*[:=]?\s*\[?\s*\d+\.?\d*\s*(?:to|-|,)\s*\d+\.?\d*\s*\]?", abstract, re.IGNORECASE)
     p_vals = re.findall(r"\b(?:p|P)\s*[=<]\s*0?\.\d+\b", abstract)
+
+    outcome_metrics = extract_outcome_metrics(abstract)
 
     # Extract concomitant / co-administered therapies mentioned in abstract
     concomitant_treatments = []
@@ -438,8 +528,85 @@ def extract_study_metrics(abstract: str) -> Dict[str, Any]:
         "effect_sizes": list(set(effect_sizes)),
         "confidence_intervals": list(set(cis)),
         "p_values": list(set(p_vals)),
+        "outcome_metrics": outcome_metrics,
         "concomitant_treatments": list(set(concomitant_treatments)),
         "causality_limitations": list(set(causality_limitations))
+    }
+
+
+def extract_article_clinical_details(article: Dict[str, Any], query: str = "") -> Dict[str, Any]:
+    """
+    Extracts individual PubMed article clinical details separately:
+    - Hasta Grubu (Patient Group / Population)
+    - Örneklem Büyüklüğü (Sample Size / n)
+    - Çalışma Tasarımı (Study Design)
+    - Müdahale (Intervention)
+    - Karşılaştırma (Comparison)
+    - Sonlanım & İstatistiksel Metrikler (Outcomes & Bound Metrics)
+    - Gerçek Bulgular (Ground-Truth Findings)
+    """
+    title = article.get("title", "")
+    abstract = article.get("abstract", "")
+    pub_types = article.get("publication_types", [])
+
+    classification = classify_study_design(pub_types, title, abstract)
+    metrics = extract_study_metrics(abstract)
+    outcome_metrics = extract_outcome_metrics(abstract)
+
+    # 1. Sample Size
+    sample_size_str = f"n = {metrics['n']}" if metrics.get("n") else "Özette bildirilmedi"
+
+    # 2. Patient Group
+    patient_group = "Belirtilmedi"
+    pop_match = re.search(r"\b(?:in|among|enrolled|included)\s+(?:a total of\s+)?(?:\d[\d,]*\s+)?(patients|subjects|adults|children|individuals)\s+(?:with|having|diagnosed with|suffering from)\s+([^.,;\n]+)", abstract, re.IGNORECASE)
+    if pop_match and pop_match.group(2):
+        patient_group = pop_match.group(2).strip().capitalize()
+    else:
+        pico_q = extract_pico(query)
+        if pico_q.get("population") and pico_q["population"] != "Belirtilmemiş":
+            patient_group = pico_q["population"]
+
+    # 3. Intervention
+    intervention = "Belirtilmedi"
+    pico_q = extract_pico(query)
+    if pico_q.get("intervention") and pico_q["intervention"] != "Belirtilmemiş":
+        intervention = pico_q["intervention"]
+    else:
+        int_match = re.search(r"\b(?:effect|efficacy|safety|impact|role) of\s+([^.,;\n]+?)\s+(?:in|on|for|vs|versus|compared)\b", title or abstract, re.IGNORECASE)
+        if int_match and int_match.group(1):
+            intervention = int_match.group(1).strip().capitalize()
+
+    # 4. Comparison
+    comparison = "Belirtilmedi"
+    comp_match = re.search(r"\b(?:versus|vs\.?|compared with|compared to|against)\s+([^.,;\n]+)", title or abstract, re.IGNORECASE)
+    if comp_match and comp_match.group(1):
+        comparison = comp_match.group(1).strip().capitalize()
+    elif re.search(r"\bplacebo\b", abstract, re.IGNORECASE):
+        comparison = "Placebo"
+
+    # 5. Outcomes & Bound Metrics
+    outcomes_formatted = []
+    if outcome_metrics:
+        for om in outcome_metrics:
+            outcomes_formatted.append(f"{om['outcome']}: {', '.join(om['metrics'])}")
+    elif metrics.get("effect_sizes") or metrics.get("p_values"):
+        combined = metrics.get("effect_sizes", []) + metrics.get("confidence_intervals", []) + metrics.get("p_values", [])
+        outcomes_formatted.append(f"Genel İstatistik: {', '.join(combined)}")
+    else:
+        outcomes_formatted.append("Özette nicel etki ölçütü bildirilmedi")
+
+    # 6. Real Findings
+    real_findings = _translate_clinical_conclusion_to_turkish("", abstract, metrics, classification["design"], title, pico=pico_q)
+
+    return {
+        "patient_group": patient_group,
+        "sample_size": sample_size_str,
+        "study_design": f"{classification['level']} ({classification['design']})",
+        "intervention": intervention,
+        "comparison": comparison,
+        "outcome_metrics": outcome_metrics,
+        "outcomes_summary": "; ".join(outcomes_formatted),
+        "real_findings": real_findings
     }
 
 
@@ -791,6 +958,115 @@ def _synthesize_article_conclusion_tr(art: Dict[str, Any], query: str) -> str:
     )
 
 
+def _generate_section_12_synthesis(query: str, articles: List[Dict[str, Any]]) -> str:
+    """
+    Synthesizes Section 12 ("Klinik Sonuç") in Turkish without printing a bulleted article list.
+    Synthesizes 4 mandatory clinical dimensions:
+    1. Ortak Klinik Bulgular ve Sentez (Common Clinical Findings with PMID citations)
+    2. Çelişkili Bulgular ve Heterojenlikler (Contradictions & Discrepancies)
+    3. Klinik Önem ve Uygulanabilirlik (Clinical Significance & Practice)
+    4. Kanıt Sınırlılıkları (Evidence Limitations & Constraints)
+    """
+    if not articles:
+        return "İncelenen literatürde sentezlenecek klinik kanıt bulunamamıştır."
+
+    primary_studies = []
+    review_studies = []
+
+    for art in articles:
+        cd = classify_study_design(art.get("publication_types", []), art.get("title", ""), art.get("abstract", ""))
+        d_design = cd.get("design", "")
+        pts_str = " ".join([pt.lower() for pt in art.get("publication_types", [])])
+        if any(k in d_design for k in ["Niteliksel Derleme", "Uzman Görüşü", "Kılavuz", "Editör", "Olgu Sunumu"]) or any(k in pts_str for k in ["review", "guideline", "editorial"]):
+            review_studies.append(art)
+        else:
+            primary_studies.append(art)
+
+    sec_lines = []
+
+    # 1. Ortak Klinik Bulgular ve Sentez
+    sec_lines.append("### 🎯 Ortak Klinik Bulgular ve Sentez")
+
+    if primary_studies:
+        primary_citations = []
+        quant_summaries = []
+        for art in primary_studies:
+            pmid = art.get("pmid", "")
+            pubmed_url = art.get("pubmed_url", f"https://pubmed.ncbi.nlm.nih.gov/{pmid}/" if pmid else "#")
+            pmid_link = f"[PMID: {pmid}]({pubmed_url})" if pmid else "PMID Yok"
+            authors_short = _format_authors_short(art.get("authors", []))
+            year = art.get("pub_year", "")
+            details = extract_article_clinical_details(art, query)
+
+            quant_summaries.append(f"**{authors_short} ({year})** ({pmid_link}): {details['real_findings']} (Tasarım: {details['study_design']}, Örneklem: {details['sample_size']}, Sonlanım Ölçütleri: {details['outcomes_summary']}).")
+
+        sec_lines.append(f"**{query}** odağında incelenen ampirik primer araştırmalar klinik verileri ve nicel etki ölçütlerini ortaya koymaktadır:")
+        sec_lines.append("\n".join([f"- {s}" for s in quant_summaries]))
+        sec_lines.append("")
+
+    if review_studies:
+        rev_citations = []
+        for a in review_studies:
+            pmid = a.get("pmid", "")
+            p_url = a.get("pubmed_url", f"https://pubmed.ncbi.nlm.nih.gov/{pmid}/" if pmid else "#")
+            p_link = f"[PMID: {pmid}]({p_url})" if pmid else "PMID Yok"
+            rev_citations.append(f"{_format_authors_short(a.get('authors', []))} ({a.get('pub_year', '')}) {p_link}")
+
+        sec_lines.append(f"Derleme, kılavuz ve uzman görüşü niteliğindeki yayınlarda ({', '.join(rev_citations)}) klinik arka plan, patofizyolojik mekanizmalar ve genel hasta yönetim ilkeleri sentezlenmiş olup, bu yayınlar ampirik primer veri sunmadığı için kesin tedavi etkinliği çıkarılmamıştır.")
+        sec_lines.append("")
+
+    # 2. Çelişkili Bulgular ve Heterojenlikler
+    sec_lines.append("### ⚠️ Çelişkili Bulgular ve Heterojenlikler")
+    conflicts = []
+    for art in articles:
+        pmid = art.get("pmid", "")
+        p_url = art.get("pubmed_url", f"https://pubmed.ncbi.nlm.nih.gov/{pmid}/" if pmid else "#")
+        pmid_link = f"[PMID: {pmid}]({p_url})" if pmid else ""
+        authors_short = _format_authors_short(art.get("authors", []))
+        year = art.get("pub_year", "")
+        abs_text = (art.get("abstract") or "").lower()
+
+        if any(phrase in abs_text for phrase in ["conflicting", "inconsistent", "discrepant", "mixed results", "heterogeneous", "controversial"]):
+            conflicts.append(f"- **{authors_short} ({year})** ({pmid_link}): Çalışma özetinde veriler arasında heterojenlik veya çelişkili klinik bulgular vurgulanmıştır.")
+
+    if conflicts:
+        sec_lines.append("\n".join(conflicts))
+    else:
+        pmid_links_all = [f"[PMID: {a.get('pmid')}]({a.get('pubmed_url', '#')})" for a in articles if a.get("pmid")]
+        sec_lines.append(f"İncelenen çalışmalarda ({', '.join(pmid_links_all)}) hasta seçim kriterleri, örneklem büyüklükleri ve takip sürelerindeki farklılıklara bağlı metodolojik heterojenlikler mevcuttur. Bireysel kohortların sonuçları klinik bağlamda ayrı ayrı değerlendirilmelidir.")
+    sec_lines.append("")
+
+    # 3. Klinik Önem ve Uygulanabilirlik
+    sec_lines.append("### 🩺 Klinik Önem ve Uygulanabilirlik")
+    pmid_links_primary = [f"[PMID: {a.get('pmid')}]({a.get('pubmed_url', '#')})" for a in primary_studies if a.get("pmid")]
+    sec_lines.append(f"Elde edilen klinik kanıt sentezi, hekimin **{query}** konusundaki karar destek sürecini yapılandırmayı amaçlamaktadır. Yüksek seviyeli kanıt sunan primer araştırmaların nicel bulguları ({', '.join(pmid_links_primary) if pmid_links_primary else 'bulunmamaktadır'}) klinik pratikte dikkate alınmalıdır.")
+    sec_lines.append("*Uyarı: Bu kanıt raporu doğrudan otomatik tedavi kararı niteliğinde değildir; kaynaksız tedavi önerisi üretilmemiştir. Sorumlu hekim klinik değerlendirmeyi bireysel hasta bağlamında yapmalıdır.*")
+    sec_lines.append("")
+
+    # 4. Kanıt Sınırlılıkları ve Metodolojik Engeller
+    sec_lines.append("### 🔬 Kanıt Sınırlılıkları ve Metodolojik Engeller")
+    limitations = []
+    for art in articles:
+        pmid = art.get("pmid", "")
+        p_url = art.get("pubmed_url", f"https://pubmed.ncbi.nlm.nih.gov/{pmid}/" if pmid else "#")
+        pmid_link = f"[PMID: {pmid}]({p_url})" if pmid else ""
+        authors_short = _format_authors_short(art.get("authors", []))
+        year = art.get("pub_year", "")
+        metrics = extract_study_metrics(art.get("abstract", ""))
+
+        if metrics.get("causality_limitations"):
+            limitations.append(f"- **{authors_short} ({year})** ({pmid_link}): {' '.join(metrics['causality_limitations'])}")
+
+    if limitations:
+        sec_lines.append("\n".join(limitations))
+
+    pmid_links_all = [f"[PMID: {a.get('pmid')}]({a.get('pubmed_url', '#')})" for a in articles if a.get("pmid")]
+    sec_lines.append(f"- Tüm analizler NCBI PubMed veritabanındaki yayınlanmış özet (abstract-only) metinlerine dayanmaktadır; tam metin (full-text) incelemesi yapılmamıştır ({', '.join(pmid_links_all)}).")
+    sec_lines.append("- Otomatik GRADE kanıt kesinlik derecelendirmesi atanmamış olup 'GRADE Değerlendirilmedi (Not Assessed)' statüsündedir.")
+
+    return "\n".join(sec_lines)
+
+
 def generate_rule_based_turkish_report(query: str, articles: List[Dict[str, Any]], search_metadata: Optional[Dict[str, Any]] = None) -> str:
     """Generates an advanced structured, deterministic Turkish evidence report with 13 explicit sections."""
     import datetime
@@ -1002,68 +1278,8 @@ Lütfen arama terimlerini veya filtreleri genişleterek tekrar deneyiniz.
     # 12. Klinik Sonuç
     report.append("## 12. Klinik Sonuç")
     report.append(f"**{query}** konusu kapsamındaki doğrulanmış kanıtların kaynaklara dayalı Türkçe karşılaştırmalı değerlendirmesi ve klinik çıkarımları aşağıda sunulmaktadır:\n")
-
-    # Comparative synthesis across included articles
-    report.append("### ⚖️ Kaynaklara Dayalı Karşılaştırmalı Klinik Sentez")
-
-    primary_studies = []
-    review_studies = []
-
-    for art in articles:
-        cd = classify_study_design(art.get("publication_types", []), art.get("title", ""), art.get("abstract", ""))
-        d_design = cd.get("design", "")
-        pts_str = " ".join([pt.lower() for pt in art.get("publication_types", [])])
-        if any(k in d_design for k in ["Niteliksel Derleme", "Uzman Görüşü", "Kılavuz", "Editör", "Olgu Sunumu"]) or any(k in pts_str for k in ["review", "guideline", "editorial"]):
-            review_studies.append(art)
-        else:
-            primary_studies.append(art)
-
-    if primary_studies:
-        report.append("**Ampirik / Primer Klinik Çalışmalar:**")
-        for art in primary_studies:
-            pmid = art.get("pmid", "")
-            pmid_link = f"[PMID: {pmid}]({art.get('pubmed_url', '#')})" if pmid else "PMID Yok"
-            authors_short = _format_authors_short(art.get("authors", []))
-            year = art.get("pub_year", "")
-            cd = classify_study_design(art.get("publication_types", []), art.get("title", ""), art.get("abstract", ""))
-            metrics = extract_study_metrics(art.get("abstract", ""))
-
-            n_str = f"n = {metrics['n']}" if metrics.get("n") else "hasta sayısı özette bildirilmedi"
-
-            eff_parts = []
-            if metrics.get("effect_sizes"):
-                eff_parts.append(", ".join(metrics["effect_sizes"]))
-            if metrics.get("confidence_intervals"):
-                eff_parts.append(", ".join(metrics["confidence_intervals"]))
-            if metrics.get("p_values"):
-                eff_parts.append(", ".join(metrics["p_values"]))
-
-            eff_str = f"Etki Ölçütleri: {'; '.join(eff_parts)}" if eff_parts else "Nicel etki ölçütü bildirilmedi"
-            lim_str = " ".join(metrics.get("causality_limitations", [])) or "Sınırlılık: Abstract-only veri sınırlılığı (tam metin incelemesi önerilir)"
-
-            report.append(f"- **{authors_short} ({year})** ({pmid_link}) — *{cd['design']}*: {n_str} | {eff_str} | {lim_str}")
-        report.append("")
-
-    if review_studies:
-        report.append("**Derleme, Kılavuz ve Görüşler:**")
-        for art in review_studies:
-            pmid = art.get("pmid", "")
-            pmid_link = f"[PMID: {pmid}]({art.get('pubmed_url', '#')})" if pmid else "PMID Yok"
-            authors_short = _format_authors_short(art.get("authors", []))
-            year = art.get("pub_year", "")
-            cd = classify_study_design(art.get("publication_types", []), art.get("title", ""), art.get("abstract", ""))
-
-            report.append(f"- **{authors_short} ({year})** ({pmid_link}) — *{cd['design']}*: Derleme/Kılavuz/Uzman Görüşü niteliğindedir; bu yayınlardan kesin tedavi etkinliği çıkarılamaz. Mevcut sentez ve arka plan literatür verilerini özetler.")
-        report.append("")
-
-    report.append("### 📑 Bireysel Çalışma Kanıt Değerlendirmeleri")
-    conclusion_syntheses = []
-    for art in articles:
-        synth_line = _synthesize_article_conclusion_tr(art, query)
-        conclusion_syntheses.append(synth_line)
-
-    report.append("\n".join(conclusion_syntheses) + "\n")
-    report.append("*Uyarı: Bu sentez sonuçları hekimin klinik kararına destek sağlama amacını taşır; doğrudan otomatik tedavi kararı niteliğinde değildir.*\n")
+    report.append(_generate_section_12_synthesis(query, articles))
+    report.append("\n*Uyarı: Bu sentez sonuçları hekimin klinik kararına destek sağlama amacını taşır; doğrudan otomatik tedavi kararı niteliğinde değildir.*\n")
 
     # 13. Doğrulanmış Kaynakça
     report.append("## 13. Doğrulanmış Kaynakça")

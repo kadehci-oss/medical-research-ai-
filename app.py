@@ -9,6 +9,7 @@ from report_generator import (
     perform_red_team_audit,
     classify_study_design,
     extract_pico,
+    extract_article_clinical_details,
     assess_risk_of_bias
 )
 
@@ -177,11 +178,16 @@ def main():
                 for idx, art in enumerate(articles, 1):
                     cd = classify_study_design(art.get("publication_types", []), art.get("title", ""), art.get("abstract", ""))
                     rob = assess_risk_of_bias(art)
+                    art_details = extract_article_clinical_details(art, search_query)
                     with st.expander(f"{idx}. {art['title']} ({art['pub_year']}) - [{cd['level']}]", expanded=(idx <= 3)):
                         st.markdown(f"**Yazarlar:** {', '.join(art['authors']) if art['authors'] else 'Bilinmiyor'}")
                         st.markdown(f"**Dergi:** {art['journal']} ({art['pub_year']})")
                         st.markdown(f"**Çalışma Tasarımı:** `{cd['design']}` ({cd['level']})")
                         st.markdown(f"**Yanlılık Riski ({rob['tool']}):** `{rob['overall_rating']}`")
+
+                        st.markdown(f"**Hasta Grubu:** {art_details['patient_group']} | **Örneklem (n):** {art_details['sample_size']}")
+                        st.markdown(f"**Müdahale:** {art_details['intervention']} | **Karşılaştırma:** {art_details['comparison']}")
+                        st.markdown(f"**Sonlanımlar & Metrikler:** {art_details['outcomes_summary']}")
 
                         badges_html = []
                         if art['pmid']:
@@ -340,12 +346,18 @@ def main():
                         st.error(f"**O (Sonlanım):**\n\n{pico_res['outcome']}")
 
                     st.markdown("---")
-                    st.subheader("🔬 Yanlılık Riski (RoB 2 / ROBINS-I) İncelemesi")
+                    st.subheader("🔬 Makale Bazlı Klinik Parametreler ve Yanlılık Riski (RoB)")
                     for a_idx, a_item in enumerate(articles, 1):
                         a_rob = assess_risk_of_bias(a_item)
+                        a_details = extract_article_clinical_details(a_item, query)
                         with st.expander(f"Makale #{a_idx}: {a_item.get('title')} — {a_rob['overall_rating']}"):
-                            st.markdown(f"**Değerlendirme Aracı:** {a_rob['tool']}")
-                            st.markdown(f"**Genel Derecelendirme:** `{a_rob['overall_rating']}`")
+                            st.markdown(f"**Tasarım:** {a_details['study_design']} | **Örneklem:** {a_details['sample_size']}")
+                            st.markdown(f"**Hasta Grubu:** {a_details['patient_group']}")
+                            st.markdown(f"**Müdahale:** {a_details['intervention']} | **Karşılaştırma:** {a_details['comparison']}")
+                            st.markdown(f"**Sonlanımlar:** {a_details['outcomes_summary']}")
+                            st.markdown(f"**Gerçek Bulgular:** {a_details['real_findings']}")
+                            st.markdown("---")
+                            st.markdown(f"**Yanlılık Riski Aracı:** {a_rob['tool']} — `{a_rob['overall_rating']}`")
                             st.markdown("**Domain Detayları:**")
                             st.json(a_rob["domains"])
 

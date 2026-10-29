@@ -524,23 +524,19 @@ class TestReportGenerator(unittest.TestCase):
 
         # 1. Check comparative synthesis header and subsection
         self.assertIn("karşılaştırmalı değerlendirmesi", section_12.lower())
-        self.assertIn("### ⚖️ Kaynaklara Dayalı Karşılaştırmalı Klinik Sentez", section_12)
+        self.assertIn("### 🎯 Ortak Klinik Bulgular ve Sentez", section_12)
 
-        # 2. Check primary empirical vs review partitioning with PMIDs
-        self.assertIn("Ampirik / Primer Klinik Çalışmalar", section_12)
-        self.assertIn("Derleme, Kılavuz ve Görüşler", section_12)
+        # 2. Check PMIDs present in Section 12
         self.assertIn("[PMID: 80001]", section_12)
         self.assertIn("[PMID: 80002]", section_12)
 
         # 3. Check review exclusion disclaimer: no definitive efficacy from review
-        self.assertIn("kesin tedavi etkinliği çıkarılamaz", section_12)
+        self.assertIn("kesin tedavi etkinliği çıkarılmamıştır", section_12)
 
         # 4. Check display of patient count (n), effect metrics, and uncertainties
         self.assertIn("n = 500", section_12)
         self.assertIn("HR 0.65", section_12)
-        self.assertIn("Hasta Sayısı:", section_12)
-        self.assertIn("Etki Ölçütleri:", section_12)
-        self.assertIn("Belirsizlikler:", section_12)
+        self.assertIn("Sonlanım Ölçütleri:", section_12)
 
 
 if __name__ == "__main__":
