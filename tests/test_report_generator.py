@@ -488,6 +488,60 @@ class TestReportGenerator(unittest.TestCase):
         self.assertIn("word-break: break-word", table_html)
         self.assertIn("Empagliflozin in Heart Failure", table_html)
 
+    def test_section_12_comparative_evaluation_and_review_exclusion(self):
+        """
+        Verifies that Section 12 produces a source-based, Turkish comparative evaluation,
+        does not claim definitive treatment efficacy from reviews, and displays patient count (n),
+        effect metrics, and uncertainties with PMID sources.
+        """
+        test_articles = [
+            {
+                "pmid": "80001",
+                "pubmed_url": "https://pubmed.ncbi.nlm.nih.gov/80001/",
+                "authors": ["Alice Brown"],
+                "pub_year": "2023",
+                "title": "Randomized Trial of Drug X in Hypertension",
+                "publication_types": ["Randomized Controlled Trial"],
+                "abstract": "In a study with n=500 hypertensive patients, Drug X lowered blood pressure (HR 0.65, 95% CI 0.50-0.85, p=0.001)."
+            },
+            {
+                "pmid": "80002",
+                "pubmed_url": "https://pubmed.ncbi.nlm.nih.gov/80002/",
+                "authors": ["Bob Green"],
+                "pub_year": "2022",
+                "title": "Comprehensive Review of Hypertension Therapies",
+                "publication_types": ["Review", "Journal Article"],
+                "abstract": "This narrative review summarizes current antihypertensive drugs and mechanisms."
+            }
+        ]
+
+        query = "Drug X in hypertension management"
+        report = generate_rule_based_turkish_report(query, test_articles)
+
+        # Isolate section 12
+        self.assertIn("## 12. Klinik Sonuç", report)
+        section_12 = report.split("## 12. Klinik Sonuç")[1].split("## 13. Doğrulanmış Kaynakça")[0]
+
+        # 1. Check comparative synthesis header and subsection
+        self.assertIn("karşılaştırmalı değerlendirmesi", section_12.lower())
+        self.assertIn("### ⚖️ Kaynaklara Dayalı Karşılaştırmalı Klinik Sentez", section_12)
+
+        # 2. Check primary empirical vs review partitioning with PMIDs
+        self.assertIn("Ampirik / Primer Klinik Çalışmalar", section_12)
+        self.assertIn("Derleme, Kılavuz ve Görüşler", section_12)
+        self.assertIn("[PMID: 80001]", section_12)
+        self.assertIn("[PMID: 80002]", section_12)
+
+        # 3. Check review exclusion disclaimer: no definitive efficacy from review
+        self.assertIn("kesin tedavi etkinliği çıkarılamaz", section_12)
+
+        # 4. Check display of patient count (n), effect metrics, and uncertainties
+        self.assertIn("n = 500", section_12)
+        self.assertIn("HR 0.65", section_12)
+        self.assertIn("Hasta Sayısı:", section_12)
+        self.assertIn("Etki Ölçütleri:", section_12)
+        self.assertIn("Belirsizlikler:", section_12)
+
 
 if __name__ == "__main__":
     unittest.main()
