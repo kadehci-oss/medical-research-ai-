@@ -9,9 +9,11 @@ class TestAppRegression(unittest.TestCase):
     @patch("pubmed_client.search_pubmed")
     @patch("report_generator.generate_turkish_evidence_report")
     @patch("report_generator.generate_html_report")
+    @patch("report_generator.verify_citation")
     def test_new_search_clears_old_generated_report(
-        self, mock_gen_html, mock_gen_report, mock_search
+        self, mock_verify_cit, mock_gen_html, mock_gen_report, mock_search
     ):
+        mock_verify_cit.return_value = {"status": "verified", "verified": True, "reason": "match"}
         mock_search.return_value = {
             "articles": [
                 {
