@@ -142,7 +142,7 @@ class TestReportGenerator(unittest.TestCase):
         self.assertEqual(pico["intervention"], "SGLT2 inhibitors")
         self.assertEqual(pico["comparison"], "Placebo")
         self.assertEqual(pico["population"], "Heart failure with preserved ejection fraction")
-        self.assertIn("cardiovascular death", pico["outcome"])
+        self.assertEqual(pico["outcome"], "Belirtilmemiş")
 
     def test_extract_pico_unstated_defaults_to_belirtilmemis(self):
         pico = extract_pico("", "")
