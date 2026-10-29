@@ -9,6 +9,7 @@ from report_generator import (
     generate_evidence_table_html,
     generate_html_report,
     extract_pico,
+    extract_article_clinical_details,
     assess_risk_of_bias
 )
 
@@ -97,11 +98,13 @@ def api_generate_report(req: ReportRequest):
     html_report = generate_html_report(req.query, req.articles, report_md)
     pico = extract_pico(req.query)
     risk_of_bias_list = [assess_risk_of_bias(art) for art in req.articles]
+    article_clinical_details = [extract_article_clinical_details(art, req.query) for art in req.articles]
 
     return {
         "query": req.query,
         "pico": pico,
         "risk_of_bias": risk_of_bias_list,
+        "article_clinical_details": article_clinical_details,
         "report": report_md,
         "html_report": html_report,
         "audit": audit
