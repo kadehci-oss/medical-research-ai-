@@ -10,7 +10,7 @@ import unittest
 
 import pytest
 
-from pubmed_client import search_pubmed
+from pubmed_client import search_pubmed, verify_pmid
 from report_generator import assess_risk_of_bias, classify_study_design
 
 pytestmark = pytest.mark.skipif(
@@ -81,6 +81,47 @@ class TestLivePubMedDesignRegression(unittest.TestCase):
                 failures.append(f"{specialty}: PMID {pmid} için yanlılık aracı seçilmedi")
         if failures:
             self.fail("Gerçek PubMed regresyonu:\n" + "\n".join(failures))
+
+
+# Statin-associated IMNM records. A generic Review tag must not hide a case report.
+LIVE_IMNM_DESIGNS = {
+    "33372889": "case_report",
+    "36896367": "case_series",
+    "41458822": "systematic_review",
+    "35955495": "narrative_review",
+    "32581543": "narrative_review",
+}
+
+
+class TestLiveImnmDesigns(unittest.TestCase):
+    def test_live_imnm_pmids_keep_case_reports_out_of_reviews(self):
+        failures = []
+        for pmid, expected in LIVE_IMNM_DESIGNS.items():
+            try:
+                article = verify_pmid(pmid)
+            except Exception as exc:  # noqa: BLE001 - report the access barrier
+                failures.append(f"PMID {pmid}: PubMed erişim engeli: {exc}")
+                continue
+            if not isinstance(article, dict) or not article.get("valid"):
+                error = article.get("error") if isinstance(article, dict) else article
+                failures.append(f"PMID {pmid}: PubMed erişim engeli: {error}")
+                continue
+            design = classify_study_design(
+                article.get("publication_types") or [],
+                article.get("title") or "",
+                article.get("abstract") or "",
+            )
+            if design["design_key"] != expected:
+                failures.append(
+                    f"PMID {pmid}: tasarım {design['design_key']} ({design['design']}), "
+                    f"beklenen {expected}; yayın türleri {article.get('publication_types')}"
+                )
+            if expected in ("case_report", "case_series") and "Derleme" in design["design"]:
+                failures.append(f"PMID {pmid} olgu kanıtı derleme olarak göründü: {design['design']}")
+            if design["level"] != "Değerlendirilemedi":
+                failures.append(f"PMID {pmid} kanıt düzeyi {design['level']}")
+        if failures:
+            self.fail("Gerçek PubMed IMNM regresyonu:\n" + "\n".join(failures))
 
 
 if __name__ == "__main__":
