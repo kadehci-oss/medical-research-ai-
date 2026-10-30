@@ -177,7 +177,7 @@ class TestUniversalEvidenceEngine(unittest.TestCase):
 
         self.assertEqual(comp["total_articles"], 3)
         self.assertEqual(comp["primary_study_count"], 3)
-         self.assertEqual(comp["consistent_findings"], [])
+        self.assertEqual(comp["consistent_findings"], [])
         self.assertEqual(comp["conflicting_findings"], [])
     # --- 7. Search and Verification with Mocks ---
     @patch("universal_evidence_engine.pubmed_client.search_pubmed")
