@@ -119,6 +119,9 @@ class TestFastAPIApp(unittest.TestCase):
         self.assertIn("html_report", data)
         self.assertIn("audit", data)
         self.assertIn("DENETLEME TAMAMLANDI", data["audit"]["status"])
+        self.assertIn("quality_control", data)
+        self.assertFalse(data["quality_control"]["valid"])
+        self.assertTrue(data["quality_control"]["missing_sections"])
 
 
 if __name__ == "__main__":

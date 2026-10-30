@@ -667,7 +667,7 @@ class UniversalEvidenceEngine:
 
         limitation_notice = (
             "Tüm karşılaştırmalar yalnızca yayınlanmış özet (abstract) metinlerine dayanmaktadır. "
-            "GRADE kesinlik değerlendirmesi resmi olarak yapılmamış (Not Assessed), Uzman Hekim Değerlendirmesi 'Yapılmadı / Tamamlanmadı' durumundadır."
+            "GRADE kesinlik değerlendirmesi resmi olarak yapılmamış (Not Assessed). Uzman Hekim Değerlendirmesi: Yapılmadı."
         )
 
         return {
@@ -724,6 +724,7 @@ class UniversalEvidenceEngine:
             html_report = report_generator.generate_html_report(query, articles, report_md)
             pico = report_generator.extract_pico(query)
             cross_comp = self.compare_cross_article_findings(articles, query)
+            quality_qc = report_generator.validate_clinical_report_quality(report_md)
 
             return {
                 "status": "success",
@@ -732,7 +733,8 @@ class UniversalEvidenceEngine:
                 "cross_comparison": cross_comp,
                 "report_markdown": report_md,
                 "report_html": html_report,
-                "audit": audit_res
+                "audit": audit_res,
+                "quality_control": quality_qc,
             }
         except Exception as e:
             logger.error(f"Error during universal evidence synthesis: {str(e)}")

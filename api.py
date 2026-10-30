@@ -11,7 +11,8 @@ from report_generator import (
     generate_html_report,
     extract_pico,
     extract_article_clinical_details,
-    assess_risk_of_bias
+    assess_risk_of_bias,
+    validate_clinical_report_quality,
 )
 
 app = FastAPI(
@@ -96,6 +97,7 @@ def api_generate_report(req: ReportRequest):
         search_metadata=search_meta
     )
     audit = perform_red_team_audit(req.query, req.articles)
+    quality_qc = validate_clinical_report_quality(report_md)
     html_report = generate_html_report(req.query, req.articles, report_md)
     pico = extract_pico(req.query)
     risk_of_bias_list = [assess_risk_of_bias(art) for art in req.articles]
@@ -108,6 +110,7 @@ def api_generate_report(req: ReportRequest):
         "article_clinical_details": article_clinical_details,
         "report": report_md,
         "html_report": html_report,
+        "quality_control": quality_qc,
         "audit": audit
     }
 

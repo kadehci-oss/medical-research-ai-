@@ -9,12 +9,16 @@ from report_generator import (
     extract_pico,
     extract_pico_improved,
     extract_study_metrics,
+    extract_outcome_metrics,
     generate_evidence_table_markdown,
     generate_evidence_table_html,
     perform_red_team_audit,
     generate_html_report,
+    validate_clinical_report_quality,
     _synthesize_article_conclusion_tr
 )
+
+PHYSICIAN_REVIEW_LINE = "Uzman Hekim Değerlendirmesi: Yapılmadı"
 
 SAMPLE_ARTICLES = [
     {
@@ -620,6 +624,154 @@ class TestReportGenerator(unittest.TestCase):
         self.assertIn("n = 500", section_12)
         self.assertIn("HR 0.65", section_12)
         self.assertIn("Sonlanım Ölçütleri:", section_12)
+
+    def test_case_control_publication_type_without_title_or_abstract_cues(self):
+        design = classify_study_design(
+            ["Journal Article", "Case-Control Studies"],
+            "Statin exposure and autoimmune myopathy",
+            "Exposure histories were compared between groups.",
+        )
+        self.assertEqual(design["design"], "Vaka-Kontrol Çalışması")
+        self.assertEqual(design["level"], "Seviye 4")
+        self.assertEqual(design["level_num"], 4)
+
+        singular = classify_study_design(
+            ["Case-Control Study"],
+            "Exposure study",
+            "Groups were compared.",
+        )
+        self.assertEqual(singular["design"], "Vaka-Kontrol Çalışması")
+
+    def test_case_control_publication_type_outranks_generic_observational_tag(self):
+        design = classify_study_design(
+            ["Observational Study", "Case-Control Studies", "Journal Article"],
+            "Statin exposure and myopathy",
+            "We compared exposure histories.",
+        )
+        self.assertEqual(design["design"], "Vaka-Kontrol Çalışması")
+
+        cohort = classify_study_design(
+            ["Observational Study", "Journal Article"],
+            "A registry analysis",
+            "Participants were followed over time.",
+        )
+        self.assertEqual(cohort["design"], "Kohort Çalışması (Gözlemsel)")
+
+    def test_case_control_does_not_override_rct_publication_type(self):
+        design = classify_study_design(
+            ["Randomized Controlled Trial", "Case-Control Studies"],
+            "Treatment comparison",
+            "Participants were allocated to two groups.",
+        )
+        self.assertEqual(design["design"], "Rastgele Kontrollü Çalışma (RCT)")
+
+    def test_extract_irr_and_smd_effect_measures(self):
+        abstract = (
+            "Depression symptoms improved after treatment "
+            "(standardized mean difference -0.42; 95% CI -0.61 to -0.23; p < 0.001). "
+            "Pain scores also changed (SMD -0.55). "
+            "The infection rate was lower with prophylaxis "
+            "(incidence rate ratio 0.74; 95% CI 0.61 to 0.90; p = 0.003). "
+            "A second analysis reported IRR 1.20."
+        )
+        metrics = extract_study_metrics(abstract)
+        self.assertCountEqual(
+            metrics["effect_sizes"],
+            [
+                "standardized mean difference -0.42",
+                "SMD -0.55",
+                "incidence rate ratio 0.74",
+                "IRR 1.20",
+            ],
+        )
+        self.assertTrue(any("-0.61" in ci for ci in metrics["confidence_intervals"]))
+
+        outcomes = extract_outcome_metrics(abstract)
+        symptom_metrics = " ".join(
+            " ".join(item["metrics"]) for item in outcomes if "depression" in item["outcome"].lower()
+        )
+        self.assertIn("standardized mean difference -0.42", symptom_metrics)
+        infection_metrics = " ".join(
+            " ".join(item["metrics"]) for item in outcomes if "infection" in item["outcome"].lower()
+        )
+        self.assertIn("incidence rate ratio 0.74", infection_metrics)
+
+    def test_sample_size_regex_does_not_capture_bare_patient_counts(self):
+        """Bare 'N patients' spans stay unmatched. PR #33's looser pattern is not used."""
+        group_counts = (
+            "Primary outcome occurred in 415 of 2997 patients in the empagliflozin group "
+            "and 511 of 2991 patients in the placebo group."
+        )
+        self.assertIsNone(extract_study_metrics(group_counts)["n"])
+
+        enrolled = (
+            "In the registry, 450 patients with diabetes received metformin. "
+            "A separate cohort of 120 patients were enrolled."
+        )
+        self.assertEqual(extract_study_metrics(enrolled)["n"], "120")
+
+    @patch("report_generator.verify_citation")
+    def test_expert_physician_review_line_in_report_html_and_audit(self, mock_verify):
+        mock_verify.return_value = {"status": "verified", "verified": True, "reason": "match"}
+        audit = perform_red_team_audit("SGLT2 inhibitors", SAMPLE_ARTICLES)
+        self.assertEqual(audit["expert_physician_review"], "Yapılmadı")
+        self.assertEqual(audit["physician_review_status"], "Yapılmadı")
+
+        report = generate_rule_based_turkish_report("SGLT2 inhibitors", SAMPLE_ARTICLES)
+        self.assertIn(PHYSICIAN_REVIEW_LINE, report)
+        red_team = report.split("## 10. Red Team Eleştirisi")[1].split("## 11.")[0]
+        self.assertIn(PHYSICIAN_REVIEW_LINE, red_team)
+
+        html_rep = generate_html_report("SGLT2 inhibitors", SAMPLE_ARTICLES, report)
+        self.assertIn(PHYSICIAN_REVIEW_LINE, html_rep)
+
+        empty = generate_rule_based_turkish_report("Unknown condition xyz", [])
+        self.assertIn(PHYSICIAN_REVIEW_LINE, empty)
+
+    @patch("report_generator.verify_citation")
+    def test_validate_clinical_report_quality_success(self, mock_verify):
+        mock_verify.return_value = {"status": "verified", "verified": True, "reason": "match"}
+        report = generate_rule_based_turkish_report("SGLT2 inhibitors in heart failure", SAMPLE_ARTICLES)
+        qc = validate_clinical_report_quality(report)
+        self.assertTrue(qc["valid"], qc)
+        self.assertEqual(qc["missing_sections"], [])
+        self.assertEqual(qc["detected_false_claims"], [])
+        self.assertEqual(qc["warnings"], [])
+
+    @patch("report_generator.verify_citation")
+    def test_validate_clinical_report_quality_missing_sections(self, mock_verify):
+        mock_verify.return_value = {"status": "verified", "verified": True, "reason": "match"}
+        report = generate_rule_based_turkish_report("SGLT2 inhibitors in heart failure", SAMPLE_ARTICLES)
+        truncated = report.split("## 13. Doğrulanmış Kaynakça")[0]
+        qc = validate_clinical_report_quality(truncated)
+        self.assertFalse(qc["valid"])
+        self.assertIn("## 13. Doğrulanmış Kaynakça", qc["missing_sections"])
+
+    @patch("report_generator.verify_citation")
+    def test_validate_clinical_report_quality_false_claims(self, mock_verify):
+        mock_verify.return_value = {"status": "verified", "verified": True, "reason": "match"}
+        report = generate_rule_based_turkish_report("SGLT2 inhibitors in heart failure", SAMPLE_ARTICLES)
+        bad = report + "\n\nBu rapor 100/100 tam puan almış olup %0 halüsinasyon riski taşır ve uzman hekim değerlendirmesi tamamlanmıştır."
+        qc = validate_clinical_report_quality(bad)
+        self.assertFalse(qc["valid"])
+        self.assertGreaterEqual(len(qc["detected_false_claims"]), 2)
+        self.assertTrue(any("100/100" in claim for claim in qc["detected_false_claims"]))
+        self.assertTrue(any("tamamland" in claim for claim in qc["detected_false_claims"]))
+
+    @patch("report_generator.verify_citation")
+    def test_validate_clinical_report_quality_warns_when_physician_line_removed(self, mock_verify):
+        mock_verify.return_value = {"status": "verified", "verified": True, "reason": "match"}
+        report = generate_rule_based_turkish_report("SGLT2 inhibitors", SAMPLE_ARTICLES)
+        stripped = report.replace(PHYSICIAN_REVIEW_LINE, "Uzman inceleme notu yok")
+        qc = validate_clinical_report_quality(stripped)
+        self.assertTrue(qc["valid"])
+        self.assertTrue(any(PHYSICIAN_REVIEW_LINE in warning for warning in qc["warnings"]))
+
+    def test_validate_clinical_report_quality_rejects_empty_text(self):
+        qc = validate_clinical_report_quality("")
+        self.assertFalse(qc["valid"])
+        self.assertEqual(len(qc["missing_sections"]), 13)
+        self.assertIn("error", qc)
 
 
 if __name__ == "__main__":
