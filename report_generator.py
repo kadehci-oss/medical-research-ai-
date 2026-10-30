@@ -155,14 +155,66 @@ _RCT_RE = re.compile(
     re.IGNORECASE,
 )
 _CASE_CONTROL_RE = re.compile(r"\b(case-?control|vaka-?kontrol|olgu-?kontrol)\b", re.IGNORECASE)
-_CROSS_RE = re.compile(r"\b(cross-?sectional|kesitsel)\b", re.IGNORECASE)
+_CROSS_RE = re.compile(r"\b(cross[-\s]?sectional|kesitsel)\b", re.IGNORECASE)
 _COHORT_RE = re.compile(r"\b(cohort|kohort)\b", re.IGNORECASE)
 _FOLLOW_RE = re.compile(
     r"\b(followed(?:\s+up)?(?:\s+for|\s+over)?|were followed|was followed|longitudinal follow)\b",
     re.IGNORECASE,
 )
-_CASE_SERIES_RE = re.compile(r"\b(case series|olgu serisi|vaka serisi|series of cases)\b", re.IGNORECASE)
-_CASE_REPORT_RE = re.compile(r"\b(case reports?|olgu sunumu|olgu bildirimi)\b", re.IGNORECASE)
+# Counts of two or more. A bare "1" or "a patient" stays a single case report.
+_AT_LEAST_TWO_PATIENTS = (
+    r"few|several|multiple|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|"
+    r"[2-9]|[1-9]\d+"
+)
+_CASE_SERIES_RE = re.compile(
+    rf"\b("
+    rf"case series|olgu serisi|vaka serisi|series of cases|"
+    rf"series of (?:\d+\s+)?(?:cases|patients)|"
+    rf"(?:{_AT_LEAST_TWO_PATIENTS})\s+cases\s+of|"
+    rf"(?:herein\s+)?we\s+(?:report|present|describe)\s+(?:a\s+series\s+of\s+)?"
+    rf"(?:{_AT_LEAST_TWO_PATIENTS})\s+"
+    rf"(?:consecutive\s+|adult\s+|pediatric\s+|paediatric\s+)?"
+    rf"(?:patients|cases|women|men|children)"
+    rf")\b",
+    re.IGNORECASE,
+)
+# "case report" is an explicit design label. Bare "a case of" is weaker: a
+# review can use it as a metaphor ("a case of neuronal life and death").
+_CASE_REPORT_EXPLICIT_RE = re.compile(
+    r"\b(case reports?|olgu sunumu|olgu bildirimi)\b",
+    re.IGNORECASE,
+)
+_A_CASE_OF_RE = re.compile(r"\ba case of\b", re.IGNORECASE)
+_CASE_REPORT_RE = re.compile(
+    r"\b(case reports?|olgu sunumu|olgu bildirimi|a case of)\b",
+    re.IGNORECASE,
+)
+# The paper's own description of itself as a review, not a citation of one.
+_SELF_DESCRIBED_REVIEW_RE = re.compile(
+    r"\b(?:"
+    r"this\s+(?:narrative\s+|brief\s+|scoping\s+|perspective\s+)?"
+    r"(?:review|perspective|article|paper)\s+"
+    r"(?:summarizes|reviews|examines|discusses|provides)|"
+    r"this\s+perspective\s+reviews|"
+    r"(?:we|this\s+(?:paper|article|review))\s+review(?:s)?\s+(?:the\s+)?literature"
+    r")\b",
+    re.IGNORECASE,
+)
+# "We report/present a … patient" (or case/man/woman). Gap words that name a
+# review or a study design do not count: "we present a review of patients".
+_WE_PRESENT_PATIENT_RE = re.compile(
+    r"\b(?:herein\s+)?we\s+(?:report|present|describe)\s+(?:a|an|the)\s+"
+    r"(?:(?!(?:review|reviews|overview|summary|discussion|analysis|analyses|"
+    r"study|studies|trial|trials|cohort|literature|management|systematic|meta)\b)"
+    r"[\w-]+\s+){0,10}?"
+    r"(?:patient|case|man|woman|boy|girl|child|infant)\b",
+    re.IGNORECASE,
+)
+# Demographic opening used by case reports. Not "a 10-year-old cohort".
+_YEAR_OLD_CASE_RE = re.compile(
+    r"\ba[n]?\s+\d{1,3}-year-old\b(?!\s+(?:cohort|study|trial|review|population|group|sample|series)\b)",
+    re.IGNORECASE,
+)
 _GUIDELINE_RE = re.compile(
     r"\b(practice guidelines?|clinical practice guidelines?|klinik kılavuz(?:lar|u)?|klinik kilavuz(?:lar|u)?|uygulama kılavuzu|uygulama kilavuzu)\b",
     re.IGNORECASE,
@@ -221,6 +273,72 @@ def _own_design_match(text: str, pattern: re.Pattern) -> bool:
     return False
 
 
+def _title_opens_as_case(title: str) -> bool:
+    """True when the title itself is phrased as a case report, not a metaphor."""
+    return bool(re.match(r"\s*a case of\b", title or "", re.IGNORECASE))
+
+
+def _bare_case_of_is_review_metaphor(title: str, abstract: str) -> bool:
+    """True when 'a case of' is figurative and the paper calls itself a review.
+
+    A title that opens with 'a case of', or a real patient cue (case report,
+    we present a patient, a NN-year-old), is not a metaphor.
+    """
+    title = title or ""
+    abstract = abstract or ""
+    if _title_opens_as_case(title):
+        return False
+    combined = f"{title}\n{abstract}"
+    if not _own_design_match(combined, _A_CASE_OF_RE):
+        return False
+    for blob in (title, abstract):
+        if (
+            _own_design_match(blob, _CASE_REPORT_EXPLICIT_RE)
+            or _own_design_match(blob, _WE_PRESENT_PATIENT_RE)
+            or _own_design_match(blob, _YEAR_OLD_CASE_RE)
+            or _own_design_match(blob, _CASE_SERIES_RE)
+        ):
+            return False
+    return _own_design_match(combined, _SELF_DESCRIBED_REVIEW_RE)
+
+
+def _case_report_in_text(blob: str, title: str, abstract: str) -> bool:
+    """Explicit case-report wording in one field.
+
+    Age ('a NN-year-old') is intentionally excluded so a cohort phrase in the
+    same field can still win. Cited cases and a metaphorical 'a case of' inside
+    a self-described review do not count.
+    """
+    if not blob:
+        return False
+    if _own_design_match(blob, _CASE_REPORT_EXPLICIT_RE) or _own_design_match(blob, _WE_PRESENT_PATIENT_RE):
+        return True
+    if _title_opens_as_case(title) and blob == title and _own_design_match(blob, _A_CASE_OF_RE):
+        return True
+    if _own_design_match(blob, _A_CASE_OF_RE) and not _bare_case_of_is_review_metaphor(title, abstract):
+        return True
+    return False
+
+
+def _case_evidence_key(title: str, abstract: str) -> Optional[str]:
+    """Case series or case report cues that describe this paper's own patients.
+
+    A cited case ("a previous case report") does not count. Several patients
+    described by the paper are a case series; one patient is a case report.
+    A generic Review tag must not hide these cues. A metaphorical 'a case of'
+    inside a paper that describes itself as a review is not a case report.
+    """
+    title = title or ""
+    abstract = abstract or ""
+    for blob in (title, abstract):
+        if _own_design_match(blob, _CASE_SERIES_RE):
+            return "case_series"
+    for blob in (title, abstract):
+        if _case_report_in_text(blob, title, abstract) or _own_design_match(blob, _YEAR_OLD_CASE_RE):
+            return "case_report"
+    return None
+
+
 def _text_design_key(title: str, abstract: str) -> Optional[str]:
     """Read the study's own design from the title, then from the abstract."""
     title = title or ""
@@ -244,7 +362,7 @@ def _text_design_key(title: str, abstract: str) -> Optional[str]:
             return "cross_sectional"
         if _own_design_match(blob, _CASE_SERIES_RE):
             return "case_series"
-        if _own_design_match(blob, _CASE_REPORT_RE):
+        if _case_report_in_text(blob, title, abstract):
             return "case_report"
         if _own_design_match(blob, _COHORT_RE):
             return "cohort"
@@ -252,6 +370,10 @@ def _text_design_key(title: str, abstract: str) -> Optional[str]:
             return "cohort"
         if _own_design_match(blob, _DIAG_RE):
             return "diagnostic_accuracy"
+        # Age alone is weaker than a named design in the same field, but it is
+        # still a case report when nothing stronger was stated.
+        if _own_design_match(blob, _YEAR_OLD_CASE_RE):
+            return "case_report"
     if _NARRATIVE_TITLE_RE.search(title) or (
         re.search(r"\breview\b", title, re.IGNORECASE) and not _own_design_match(title, _SR_RE)
     ):
@@ -265,6 +387,10 @@ def classify_study_design(pub_types: List[str], title: str, abstract: str) -> Di
 
     Meta-analysis, systematic review, RCT, cohort, case-control, cross-sectional,
     case report, case series, and clinical guideline are separate labels.
+    Explicit NLM tags (systematic review, meta-analysis, randomized controlled
+    trial, cohort, case-control, and case reports) outrank title and abstract
+    cues. A generic Review tag does not outrank clear case-report or
+    case-series evidence in the title or abstract.
     The returned level is never an evidence grade inferred from the design.
     """
     pts = [pt.lower() for pt in (pub_types or []) if pt]
@@ -319,6 +445,10 @@ def classify_study_design(pub_types: List[str], title: str, abstract: str) -> Di
     if _has_pub_type(pts, "review", "derleme"):
         # A review often cites trials. Only an explicit synthesis or guideline
         # label promotes it; a mentioned RCT does not make the paper an RCT.
+        # A generic Review tag is not an explicit NLM design. Clear case-report
+        # evidence in the title or abstract ("a case of", "case report",
+        # "we report/present a … patient", "a NN-year-old", or several patients)
+        # is a case report or a case series.
         if text_key in (
             "meta_analysis",
             "systematic_review",
@@ -326,6 +456,9 @@ def classify_study_design(pub_types: List[str], title: str, abstract: str) -> Di
             "guideline",
         ):
             return _design_record(text_key)
+        case_key = _case_evidence_key(title, abstract)
+        if case_key:
+            return _design_record(case_key)
         return _design_record("narrative_review")
 
     if _has_pub_type(pts, "observational study", "prospective studies", "longitudinal studies"):
@@ -1283,6 +1416,288 @@ def _format_bound_claims(details: Dict[str, Any]) -> str:
     return " ".join(lines)
 
 
+# Section 5 must not paste the English abstract. These labels stay Turkish.
+# Outcome names, effect-measure wording, numbers, and the source sentence stay
+# in the language of the abstract. Nothing is translated or invented.
+NO_NUMERIC_CLINICAL_FINDING_TR = "Özette sayısal klinik bulgu bulunamadı"
+_UNNAMED_OUTCOME_TR = "özette adlandırılmadı"
+_UNNAMED_EFFECT_TR = "özette adlandırılmadı"
+_MISSING_CI_TR = "özette bildirilmedi"
+_UNPAIRED_CI_TR = "kaynak cümlede var ancak tek etki ölçütüne bağlanamadı"
+
+_EFFECT_PHRASE_RE = re.compile(
+    r"\b(hazard\s+ratios?|odds\s+ratios?|relative\s+risks?|risk\s+ratios?|"
+    r"incidence\s+rate\s+ratios?|win\s+ratios?|"
+    r"standardized\s+mean\s+differences?|mean\s+differences?)\b",
+    re.IGNORECASE,
+)
+# Uppercase only, so the conjunction "or" is not read as an odds ratio.
+_EFFECT_ACRONYM_RE = re.compile(r"\b(HR|OR|RR|IRR|SMD|WMD|MD)\b")
+_FINDING_NUMBER_RE = re.compile(r"[-−]?\d+(?:\.\d+)?")
+_CI_RE = re.compile(
+    r"(?:\[\s*)?"
+    r"(?:95\s*%\s*(?:confidence\s+intervals?|CI)|"
+    r"(?:confidence\s+intervals?)\s*,?\s*95\s*%|"
+    r"\bCI\s*,?\s*95\s*%)"
+    r"(?![A-Za-z])"
+    r"(?:\s*\[\s*CI\s*\])?"
+    r"\s*[:=,]?\s*"
+    r"\[?\s*"
+    r"(?P<low>[-−]?\d+(?:\.\d+)?)"
+    r"\s*(?:to|–|—|-|−|,)\s*"
+    r"(?P<high>[-−]?\d+(?:\.\d+)?)"
+    r"\s*\]?",
+    re.IGNORECASE,
+)
+# Longer phrases first so "body weight" wins over "weight".
+_OUTCOME_KEYWORDS = (
+    "event-free survival",
+    "progression-free survival",
+    "overall survival",
+    "hospitalization for heart failure",
+    "heart failure hospitalization",
+    "cardiovascular death",
+    "all-cause mortality",
+    "cardiovascular mortality",
+    "lymphocytic leukaemia",
+    "lymphocytic leukemia",
+    "waist circumference",
+    "body weight",
+    "response rate",
+    "adverse events",
+    "leukaemia",
+    "leukemia",
+    "hospitalization",
+    "remission",
+    "relapse",
+    "mortality",
+    "myopathy",
+    "infection",
+    "exacerbation",
+    "depression",
+    "seizure",
+    "weight",
+    "stroke",
+    "hba1c",
+)
+
+
+def _finding_sentences(abstract: str) -> List[str]:
+    """Split an abstract into sentences without changing their wording."""
+    text = (abstract or "").replace("\xa0", " ").replace("\u2009", " ")
+    sentences = []
+    for block in re.split(r"\n+", text):
+        block = block.strip()
+        if not block:
+            continue
+        for chunk in re.split(r"(?<=[.!?])\s+", block):
+            sentence = re.sub(r"\s+", " ", chunk).strip()
+            if sentence:
+                sentences.append(sentence)
+    return sentences
+
+
+def _is_calendar_year(raw: str) -> bool:
+    digits = raw.lstrip("-−")
+    if not re.fullmatch(r"\d{4}", digits):
+        return False
+    year = int(digits)
+    return 1900 <= year <= 2100
+
+
+def _number_after(text: str, start: int, max_gap: int):
+    """First non-year number within max_gap, not past a sentence boundary."""
+    window = text[start:start + max_gap]
+    for match in _FINDING_NUMBER_RE.finditer(window):
+        gap = window[:match.start()]
+        if re.search(r"[.!?]\s", gap):
+            return None
+        if _is_calendar_year(match.group(0)):
+            continue
+        return match
+    return None
+
+
+def _keyword_outcome(sentence: str, anchor: int) -> str:
+    """Outcome word copied from the sentence, nearest to the effect measure."""
+    found = []
+    for keyword in _OUTCOME_KEYWORDS:
+        for match in re.finditer(rf"\b{re.escape(keyword)}\b", sentence, re.IGNORECASE):
+            found.append((-(match.end() - match.start()), abs(match.start() - anchor), match.start()))
+    if not found:
+        return ""
+    found.sort()
+    start = found[0][2]
+    keyword = next(item for item in _OUTCOME_KEYWORDS if sentence[start:start + len(item)].lower() == item)
+    return sentence[start:start + len(keyword)]
+
+
+def _outcome_from_gap(sentence: str, name_end: int, value_start: int, anchor: int) -> str:
+    gap = sentence[name_end:value_start]
+    gap = re.sub(r"\([^)]*\)", " ", gap)
+    gap = re.sub(r"^(?:\s*(?:for|of)\s+)+", "", gap, flags=re.IGNORECASE)
+    gap = re.sub(r"\s+(?:of|was|were|is)$", "", gap.strip(" ,;:()[]"), flags=re.IGNORECASE)
+    gap = gap.strip(" ,;:()[]")
+    if gap and re.search(r"[A-Za-z]{4,}", gap) and len(gap) <= 90:
+        if not re.fullmatch(
+            r"(?:the|a|an|patients?|groups?|compared(?:\s+with)?|versus|vs\.?)",
+            gap,
+            re.IGNORECASE,
+        ):
+            return re.sub(r"\s+", " ", gap)
+    return _keyword_outcome(sentence, anchor) or _UNNAMED_OUTCOME_TR
+
+
+def _collect_named_effects(sentence: str) -> List[Dict[str, Any]]:
+    """Named effect measures whose numeric value is in the same sentence."""
+    candidates = []
+    for pattern, max_gap in ((_EFFECT_PHRASE_RE, 90), (_EFFECT_ACRONYM_RE, 18)):
+        for match in pattern.finditer(sentence):
+            value = _number_after(sentence, match.end(), max_gap)
+            if not value:
+                continue
+            value_start = match.end() + value.start()
+            value_end = match.end() + value.end()
+            candidates.append({
+                "name": sentence[match.start():match.end()],
+                "name_start": match.start(),
+                "name_end": match.end(),
+                "value": value.group(0),
+                "value_start": value_start,
+                "value_end": value_end,
+                "span": match.end() - match.start(),
+            })
+    candidates.sort(key=lambda item: (item["name_start"], -item["span"]))
+    kept = []
+    for item in candidates:
+        overlap = False
+        for prior in kept:
+            if not (item["value_end"] <= prior["name_start"] or item["name_start"] >= prior["value_end"]):
+                overlap = True
+                break
+        if not overlap:
+            kept.append(item)
+    kept.sort(key=lambda item: item["name_start"])
+    return kept
+
+
+def _collect_confidence_intervals(sentence: str) -> List[Dict[str, Any]]:
+    intervals = []
+    for match in _CI_RE.finditer(sentence):
+        intervals.append({
+            "low": match.group("low"),
+            "high": match.group("high"),
+            "start": match.start(),
+            "end": match.end(),
+            "text": f"{match.group('low')} ile {match.group('high')}",
+        })
+    return intervals
+
+
+def _point_before_ci(sentence: str, ci_start: int) -> str:
+    """Number written immediately before a confidence interval, if the source has one."""
+    window = sentence[max(0, ci_start - 28):ci_start]
+    match = re.search(r"([-−]?\d+(?:\.\d+)?)(\s*%)?\s*[\(,;:]?\s*$", window)
+    if not match or _is_calendar_year(match.group(1)):
+        return ""
+    percent = "%" if match.group(2) else ""
+    return f"{match.group(1)}{percent}"
+
+
+def _pair_effects_with_intervals(effects: List[Dict[str, Any]], intervals: List[Dict[str, Any]]):
+    """Pair each effect with the CI that belongs to it. Do not guess when ambiguous."""
+    if len(effects) == 1 and len(intervals) == 1:
+        return [(effects[0], intervals[0])], []
+    used = set()
+    pairs = []
+    ambiguous_notes = []
+    for index, effect in enumerate(effects):
+        next_name = effects[index + 1]["name_start"] if index + 1 < len(effects) else 10**9
+        candidates = [
+            item for item in intervals
+            if effect["value_end"] <= item["start"] < next_name and id(item) not in used
+        ]
+        if len(candidates) == 1:
+            used.add(id(candidates[0]))
+            pairs.append((effect, candidates[0]))
+        elif len(candidates) == 0:
+            pairs.append((effect, None))
+        else:
+            pairs.append((effect, None))
+            ambiguous_notes.append(", ".join(item["text"] for item in candidates))
+    return pairs, ambiguous_notes
+
+
+def extract_grounded_clinical_findings(abstract: str) -> List[Dict[str, str]]:
+    """Turkish-labeled findings taken only from effect measures and CIs in the abstract.
+
+    Each item keeps the PMID-ready fields outcome, effect, ci, and the exact
+    source sentence. Missing outcome, effect name, or CI is stated in Turkish.
+    """
+    findings = []
+    for sentence in _finding_sentences(abstract):
+        effects = _collect_named_effects(sentence)
+        intervals = _collect_confidence_intervals(sentence)
+        if effects:
+            pairs, ambiguous = _pair_effects_with_intervals(effects, intervals)
+            ambiguous_text = "; ".join(note for note in ambiguous if note)
+            for effect, interval in pairs:
+                outcome = _outcome_from_gap(
+                    sentence, effect["name_end"], effect["value_start"], effect["name_start"]
+                )
+                if interval is not None:
+                    ci_text = interval["text"]
+                elif ambiguous_text:
+                    ci_text = f"{_UNPAIRED_CI_TR} ({ambiguous_text})"
+                else:
+                    ci_text = _MISSING_CI_TR
+                findings.append({
+                    "outcome": outcome,
+                    "effect": f"{effect['name']} {effect['value']}",
+                    "ci": ci_text,
+                    "sentence": sentence,
+                })
+            continue
+        if not intervals:
+            continue
+        for interval in intervals:
+            point = _point_before_ci(sentence, interval["start"])
+            if point:
+                effect = f"{_UNNAMED_EFFECT_TR}; kaynak değer: {point}"
+            else:
+                effect = _UNNAMED_EFFECT_TR
+            outcome = _keyword_outcome(sentence, interval["start"]) or _UNNAMED_OUTCOME_TR
+            findings.append({
+                "outcome": outcome,
+                "effect": effect,
+                "ci": interval["text"],
+                "sentence": sentence,
+            })
+    return findings
+
+
+def format_klinik_bulgular_cell(article: Dict[str, Any]) -> str:
+    """Klinik Bulgular cell: Turkish labels, source numbers, exact source sentence.
+
+    The raw abstract is never copied in. When no effect measure or confidence
+    interval can be read from the abstract, the cell says so in Turkish.
+    """
+    pmid = str((article or {}).get("pmid") or "").strip() or "yok"
+    findings = extract_grounded_clinical_findings((article or {}).get("abstract") or "")
+    if not findings:
+        return f"{NO_NUMERIC_CLINICAL_FINDING_TR} (PMID: {pmid})."
+    parts = []
+    for item in findings:
+        sentence = item["sentence"].replace("|", "/").replace("\n", " ")
+        parts.append(
+            f"PMID: {pmid}. Sonlanım: {item['outcome']}. "
+            f"Etki ölçütü: {item['effect']}. "
+            f"Güven aralığı: {item['ci']}. "
+            f"Kaynak cümle: \"{sentence}\"."
+        )
+    return " ".join(parts)
+
+
 def generate_evidence_table_markdown(articles: List[Dict[str, Any]]) -> str:
     """Generates a structured Markdown table of evidence with PICO & Risk of Bias for the report."""
     if not articles:
@@ -1315,16 +1730,11 @@ def generate_evidence_table_markdown(articles: List[Dict[str, Any]]) -> str:
         if doi:
             pmid_link += f" / [DOI: {doi}]({art.get('doi_url', '#')})"
 
-        abstract_text = art.get("abstract", "").replace("|", "-").replace("\n", " ").strip()
-        if len(abstract_text) > 200:
-            abstract_snippet = abstract_text[:197] + "..."
-        else:
-            abstract_snippet = abstract_text or "Özet bilgisi bulunamadı."
-
+        finding_cell = format_klinik_bulgular_cell(art).replace("|", "/").replace("\n", " ")
         title_clean = title.replace("|", "-")
 
         rows.append(
-            f"| {idx} | **{first_author}** ({year}) — *{title_clean}* | {design_str} | {rob_str} | {pmid_link} | {abstract_snippet} |"
+            f"| {idx} | **{first_author}** ({year}) — *{title_clean}* | {design_str} | {rob_str} | {pmid_link} | {finding_cell} |"
         )
 
     return "\n".join(rows)
@@ -1353,11 +1763,7 @@ def generate_evidence_table_html(articles: List[Dict[str, Any]]) -> str:
 
         rob = assess_risk_of_bias(art)
 
-        abstract_text = art.get("abstract", "").replace("\n", " ").strip()
-        if len(abstract_text) > 220:
-            abstract_snippet = html.escape(abstract_text[:217]) + "..."
-        else:
-            abstract_snippet = html.escape(abstract_text) if abstract_text else "Özet bulunamadı."
+        finding_cell = html.escape(format_klinik_bulgular_cell(art))
 
         pubmed_url = html.escape(art.get("pubmed_url", "#"))
         doi_url = html.escape(art.get("doi_url", "#"))
@@ -1391,7 +1797,7 @@ def generate_evidence_table_html(articles: List[Dict[str, Any]]) -> str:
                 <small style="color: #4B5563;">{tool_escaped}</small>
             </td>
             <td style="padding: 10px; font-size: 0.85em; word-break: break-all;">{pmid_html}{doi_html}</td>
-            <td style="padding: 10px; font-size: 0.88em; color: #1F2937; word-wrap: break-word; overflow-wrap: break-word; word-break: break-word;">{abstract_snippet}</td>
+            <td style="padding: 10px; font-size: 0.88em; color: #1F2937; word-wrap: break-word; overflow-wrap: break-word; word-break: break-word;">{finding_cell}</td>
         </tr>
         """)
 
@@ -1851,7 +2257,13 @@ Lütfen arama terimlerini veya filtreleri genişleterek tekrar deneyiniz.
 
     # 5. Bilimsel Kanıt Tablosu
     report.append("## 5. Bilimsel Kanıt Tablosu")
-    report.append("Aşağıdaki tabloda yazar, yıl, çalışma tasarımı ve seçilen yanlılık aracı yer alır. Kanıt düzeyi tasarımından üretilmez. Araç seçilmiş olsa da değerlendirme yapılmadan risk derecesi verilmez.\n")
+    report.append(
+        "Aşağıdaki tabloda yazar, yıl, çalışma tasarımı ve seçilen yanlılık aracı yer alır. "
+        "Kanıt düzeyi tasarımından üretilmez. Araç seçilmiş olsa da değerlendirme yapılmadan risk derecesi verilmez. "
+        "Klinik Bulgular hücresi ham özet metni değildir. Her sayısal sonuç PMID, sonlanım, etki ölçütü "
+        "(değer ve varsa güven aralığı) ve kaynak cümle ile gösterilir. Özette çıkarılabilir sayısal bulgu yoksa "
+        "bu açıkça yazılır. Kaynakta olmayan sayı, güven aralığı veya sonlanım üretilmez.\n"
+    )
     report.append(generate_evidence_table_markdown(articles))
     report.append("\n")
 
@@ -2114,7 +2526,11 @@ def generate_llm_turkish_report(query: str, articles: List[Dict[str, Any]], api_
         "   - ## 11. Kanıt Gücü ve Belirsizlikler\n"
         "   - ## 12. Klinik Sonuç\n"
         "   - ## 13. Doğrulanmış Kaynakça\n\n"
-        "7. BÖLÜM 12 (Klinik Sonuç) İÇİN ÖZEL KURALLAR:\n"
+        "7. Bölüm 5'teki Klinik Bulgular hücresine ham İngilizce özet yapıştırma. "
+        "Önceden üretilmiş tablodaki Türkçe ve kaynağa bağlı bulguyu aynen kullan. "
+        "Sayısal bulgu yoksa 'Özette sayısal klinik bulgu bulunamadı' ifadesini koru. "
+        "Kaynakta olmayan sayı, güven aralığı veya sonlanım üretme.\n"
+        "8. BÖLÜM 12 (Klinik Sonuç) İÇİN ÖZEL KURALLAR:\n"
         "   - Bölüm 12'de kaynaklara dayalı, Türkçe, karşılaştırmalı bir değerlendirme üret.\n"
         "   - Derleme/kılavuz/uzman görüşü niteliğindeki yayınlardan kesin tedavi etkinliği KESİNLİKLE ÇIKARMA!\n"
         "   - Çalışmaların hasta sayılarını (n), etki ölçütlerini (HR, OR, RR, IRR, SMD, MD, %95 GA, p) ve belirsizlikleri/sınırlılıkları [PMID: xxx] kaynaklarıyla göster.\n"
