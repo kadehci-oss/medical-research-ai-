@@ -431,7 +431,9 @@ def extract_outcome_metrics(abstract: str) -> List[Dict[str, Any]]:
         "remission", "relapse", "progression-free survival", "overall survival",
         "myopathy", "muscle pain", "muscle symptoms", "ck elevation", "anti-hmgcr",
         "adverse events", "side effects", "infection rate", "cure rate", "response rate",
-        "recurrence", "blood pressure", "ejection fraction", "stroke", "infarction"
+        "recurrence", "blood pressure", "ejection fraction", "stroke", "infarction",
+        "depression", "depression symptoms", "functional independence", "pasi", "walking speed",
+        "nasal polyp score", "nasal polyps", "pain", "symptoms", "quality of life"
     ]
 
     for clause in clauses:
@@ -458,6 +460,7 @@ def extract_outcome_metrics(abstract: str) -> List[Dict[str, Any]]:
             metric_match = re.search(r"\b(?:HR|OR|RR|MD|WMD|95% CI|CI|p\s*[=<])\b", clause_clean, re.IGNORECASE)
             if metric_match:
                 prefix = clause_clean[:metric_match.start()].strip()
+                prefix = re.sub(r"\b(?:compared (?:to|with)|vs\.?|versus|against)\s+[^.,;\n]*$", "", prefix, flags=re.IGNORECASE).strip()
                 prefix = re.sub(r"^[,\s.:;(]+|[,\s.:;(]+$", "", prefix)
                 words = prefix.split()
                 if len(words) > 0:
@@ -958,7 +961,7 @@ def _synthesize_article_conclusion_tr(art: Dict[str, Any], query: str) -> str:
     )
 
 
-def _generate_section_12_synthesis(query: str, articles: List[Dict[str, Any]]) -> str:
+def _generate_section_12_synthesis(query: str, articles: List[Dict[str, Any]], cross_comp: Optional[Dict[str, Any]] = None) -> str:
     """
     Synthesizes Section 12 ("Klinik Sonuç") in Turkish without printing a bulleted article list.
     Synthesizes 4 mandatory clinical dimensions:
@@ -1018,16 +1021,21 @@ def _generate_section_12_synthesis(query: str, articles: List[Dict[str, Any]]) -
     # 2. Çelişkili Bulgular ve Heterojenlikler
     sec_lines.append("### ⚠️ Çelişkili Bulgular ve Heterojenlikler")
     conflicts = []
-    for art in articles:
-        pmid = art.get("pmid", "")
-        p_url = art.get("pubmed_url", f"https://pubmed.ncbi.nlm.nih.gov/{pmid}/" if pmid else "#")
-        pmid_link = f"[PMID: {pmid}]({p_url})" if pmid else ""
-        authors_short = _format_authors_short(art.get("authors", []))
-        year = art.get("pub_year", "")
-        abs_text = (art.get("abstract") or "").lower()
 
-        if any(phrase in abs_text for phrase in ["conflicting", "inconsistent", "discrepant", "mixed results", "heterogeneous", "controversial"]):
-            conflicts.append(f"- **{authors_short} ({year})** ({pmid_link}): Çalışma özetinde veriler arasında heterojenlik veya çelişkili klinik bulgular vurgulanmıştır.")
+    if cross_comp and cross_comp.get("conflicting_findings"):
+        for cf in cross_comp["conflicting_findings"]:
+            conflicts.append(f"- {cf['details']}")
+    else:
+        for art in articles:
+            pmid = art.get("pmid", "")
+            p_url = art.get("pubmed_url", f"https://pubmed.ncbi.nlm.nih.gov/{pmid}/" if pmid else "#")
+            pmid_link = f"[PMID: {pmid}]({p_url})" if pmid else ""
+            authors_short = _format_authors_short(art.get("authors", []))
+            year = art.get("pub_year", "")
+            abs_text = (art.get("abstract") or "").lower()
+
+            if any(phrase in abs_text for phrase in ["conflicting", "inconsistent", "discrepant", "mixed results", "heterogeneous", "controversial"]):
+                conflicts.append(f"- **{authors_short} ({year})** ({pmid_link}): Çalışma özetinde veriler arasında heterojenlik veya çelişkili klinik bulgular vurgulanmıştır.")
 
     if conflicts:
         sec_lines.append("\n".join(conflicts))
@@ -1142,6 +1150,14 @@ Lütfen arama terimlerini veya filtreleri genişleterek tekrar deneyiniz.
     report.append(generate_evidence_table_markdown(articles))
     report.append("\n")
 
+    # Cross-article comparison calculation via engine
+    try:
+        from universal_evidence_engine import UniversalEvidenceEngine
+        cross_engine = UniversalEvidenceEngine()
+        cross_comp = cross_engine.compare_cross_article_findings(articles, query)
+    except Exception:
+        cross_comp = None
+
     # 6. Önemli Çalışmaların Karşılaştırılması
     report.append("## 6. Önemli Çalışmaların Karşılaştırılması")
     report.append("### 📊 Karşılaştırmalı Sentez Matrisi")
@@ -1168,6 +1184,16 @@ Lütfen arama terimlerini veya filtreleri genişleterek tekrar deneyiniz.
             f"  - **Klinik Bulgular & Etkinlik / Güvenlilik Sentezi:** {stat_summary}\n"
             f"  - **Kanıt Sınırlılıkları:** {lim_str}"
         )
+
+    if cross_comp and cross_comp.get("consistent_findings"):
+        comp_lines.append("\n**Tutarlı Klinik Bulgular:**")
+        for cf in cross_comp["consistent_findings"]:
+            comp_lines.append(f"- {cf['details']}")
+
+    if cross_comp and cross_comp.get("non_comparable_studies"):
+        comp_lines.append("\n**Karşılaştırılabilirlik Durumu ve Gerekçeler:**")
+        for nc in cross_comp["non_comparable_studies"]:
+            comp_lines.append(f"- {nc['reason']}")
 
     report.append("\n".join(comp_lines) + "\n")
 
@@ -1252,7 +1278,13 @@ Lütfen arama terimlerini veya filtreleri genişleterek tekrar deneyiniz.
 
     # 9. Çelişkili Bilimsel Bulgular
     report.append("## 9. Çelişkili Bilimsel Bulgular")
-    report.append("Farklı çalışmalar arasındaki kohort büyüklükleri, otoantikor pozitiflik oranları, statin maruziyet geçmişi (statin-naïve vs. statin maruziyeti olanlar) ve tedaviye yanıt heterojenlikleri çalışmalara göre değişiklik göstermektedir. İlgili makalelerin yöntem ve hasta seçim kriterleri bireysel olarak değerlendirilmelidir.\n")
+    if cross_comp and cross_comp.get("conflicting_findings"):
+        conf_lines = []
+        for cf in cross_comp["conflicting_findings"]:
+            conf_lines.append(f"- {cf['details']}")
+        report.append("\n".join(conf_lines) + "\n")
+    else:
+        report.append("Doğrudan eşleşen PICO ve çalışma tasarımına sahip makaleler arasında zıt yönde istatistiksel çelişki tespit edilmemiştir. Bununla birlikte, farklı çalışmalar arasındaki kohort büyüklükleri, alt grup özellikleri, tedavi protokolleri ve takip sürelerindeki heterojenlikler klinik bağlamda dikkate alınmalıdır.\n")
 
     # 10. Red Team Eleştirisi
     report.append("## 10. Red Team Eleştirisi")
@@ -1278,7 +1310,7 @@ Lütfen arama terimlerini veya filtreleri genişleterek tekrar deneyiniz.
     # 12. Klinik Sonuç
     report.append("## 12. Klinik Sonuç")
     report.append(f"**{query}** konusu kapsamındaki doğrulanmış kanıtların kaynaklara dayalı Türkçe karşılaştırmalı değerlendirmesi ve klinik çıkarımları aşağıda sunulmaktadır:\n")
-    report.append(_generate_section_12_synthesis(query, articles))
+    report.append(_generate_section_12_synthesis(query, articles, cross_comp=cross_comp))
     report.append("\n*Uyarı: Bu sentez sonuçları hekimin klinik kararına destek sağlama amacını taşır; doğrudan otomatik tedavi kararı niteliğinde değildir.*\n")
 
     # 13. Doğrulanmış Kaynakça
