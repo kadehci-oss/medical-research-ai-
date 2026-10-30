@@ -63,6 +63,13 @@ def classify_study_design(pub_types: List[str], title: str, abstract: str) -> Di
             "level_num": 3,
             "badge_color": "#D97706"
         }
+    if any("case-control" in pt or "vaka-kontrol" in pt for pt in pts):
+        return {
+            "design": "Vaka-Kontrol Çalışması",
+            "level": "Seviye 4",
+            "level_num": 4,
+            "badge_color": "#DC2626"
+        }
     if any("case reports" in pt or "case report" in pt for pt in pts):
         return {
             "design": "Olgu Sunumu / Vaka Serisi",
@@ -412,7 +419,7 @@ def extract_outcome_metrics(abstract: str) -> List[Dict[str, Any]]:
         if not raw_clean:
             continue
 
-        eff_count = len(re.findall(r"\b(?:HR|OR|RR|MD|WMD|hazard ratio|odds ratio|relative risk|mean difference)\s*[:=, ]?\s*-?\d+\.?\d*\b", raw_clean, re.IGNORECASE))
+        eff_count = len(re.findall(r"\b(?:HR|OR|RR|MD|WMD|IRR|SMD|hazard ratio|odds ratio|relative risk|mean difference|incidence rate ratio|standardized mean difference)\s*[:=, ]?\s*-?\d+\.?\d*\b", raw_clean, re.IGNORECASE))
         p_count = len(re.findall(r"\b(?:p|P)\s*[=<]\s*0?\.\d+\b", raw_clean))
 
         if eff_count > 1 or (eff_count >= 1 and p_count > 1):
@@ -441,7 +448,7 @@ def extract_outcome_metrics(abstract: str) -> List[Dict[str, Any]]:
         if not clause_clean:
             continue
 
-        effect_sizes = re.findall(r"\b(?:HR|OR|RR|MD|WMD|hazard ratio|odds ratio|relative risk|mean difference)\s*[:=, ]?\s*-?\d+\.?\d*\b", clause_clean, re.IGNORECASE)
+        effect_sizes = re.findall(r"\b(?:HR|OR|RR|MD|WMD|IRR|SMD|hazard ratio|odds ratio|relative risk|mean difference|incidence rate ratio|standardized mean difference)\s*[:=, ]?\s*-?\d+\.?\d*\b", clause_clean, re.IGNORECASE)
         cis = re.findall(r"\b(?:95%\s*CI|CI\s*95%)\s*[:=]?\s*\[?\s*\d+\.?\d*\s*(?:to|-|,)\s*\d+\.?\d*\s*\]?", clause_clean, re.IGNORECASE)
         p_vals = re.findall(r"\b(?:p|P)\s*[=<]\s*0?\.\d+\b", clause_clean)
 
@@ -510,12 +517,12 @@ def extract_study_metrics(abstract: str) -> Dict[str, Any]:
     if not n_match:
         n_match = re.search(r"\b(?:of the|among the|a total of)\s+(\d[\d,]*)\s+(?:patients|subjects|participants|adults|children|individuals|cases)\b", abstract_clean, re.IGNORECASE)
     if not n_match:
-        n_match = re.search(r"\b(\d[\d,]*)\s+(?:patients|subjects|participants|adults|children|individuals|cases)\s+(?:were\s+)?(?:enrolled|randomized|randomised|included|studied|evaluated|assigned|followed)\b", abstract_clean, re.IGNORECASE)
+        n_match = re.search(r"\b(\d[\d,]*)\s+(?:patients|subjects|participants|adults|children|individuals|cases)\b", abstract_clean, re.IGNORECASE)
 
     if n_match:
         n_val = n_match.group(1).replace(",", "")
 
-    effect_sizes = re.findall(r"\b(?:HR|OR|RR|MD|WMD|hazard ratio|odds ratio|relative risk|mean difference)\s*[:=, ]?\s*-?\d+\.?\d*\b", abstract_clean, re.IGNORECASE)
+    effect_sizes = re.findall(r"\b(?:HR|OR|RR|MD|WMD|IRR|SMD|hazard ratio|odds ratio|relative risk|mean difference|incidence rate ratio|standardized mean difference)\s*[:=, ]?\s*-?\d+\.?\d*\b", abstract_clean, re.IGNORECASE)
     cis = re.findall(r"\[?\s*\b(?:95%\s*CI|95%CI|CI\s*95%)\b\s*[:=,]?\s*-?\d+\.?\d*\s*(?:to|-|–|,)\s*-?\d+\.?\d*\s*\]?", abstract_clean, re.IGNORECASE)
     p_vals = re.findall(r"\b(?:p|P)(?:interaction|-value)?\s*[=<]\s*(?:0?\.\d+|\d+\.?\d*|\.\d+)\b", abstract_clean)
 
@@ -868,6 +875,7 @@ def perform_red_team_audit(query: str, articles: List[Dict[str, Any]]) -> Dict[s
         "metadata_retrieval_source": "NCBI PubMed E-utilities API",
         "abstract_only_limitation": "Tüm sentez ve analizler yalnızca yayınlanmış özet (abstract) metinlerine dayanmaktadır. Tam metin (full-text) değerlendirmesi yapılmamıştır.",
         "clinical_validation_status": "Klinik Doğrulama Yapılmamıştır (No Clinical Validation Claimed)",
+        "expert_physician_review": "Yapılmadı / Tamamlanmadı (Incomplete / Not Performed)",
         "citation_integrity": {
             "total_articles": total,
             "verified_citations": verified_count,
@@ -1363,6 +1371,7 @@ Lütfen arama terimlerini veya filtreleri genişleterek tekrar deneyiniz.
     report.append(f"- **Mükerrer PMID Tespiti:** {'Evet (Ayıklandı)' if audit['citation_integrity']['duplicate_pmids_found'] else 'Mükerrer kayıt yok'}")
     report.append(f"- **Metodolojik Sınırlılık:** {audit['abstract_only_limitation']}")
     report.append(f"- **Klinik Doğrulama:** {audit['clinical_validation_status']}")
+    report.append(f"- **Uzman Hekim Değerlendirmesi:** {audit.get('expert_physician_review', 'Yapılmadı / Tamamlanmadı')}")
     if audit["methodological_warnings"]:
         report.append("- **Tespit Edilen Metodolojik Uyarılar:**")
         for warn in audit["methodological_warnings"]:
@@ -1556,6 +1565,7 @@ def generate_html_report(query: str, articles: List[Dict[str, Any]], markdown_co
         <p><strong>Klinik Sorgu:</strong> {safe_query}</p>
         <p><strong>Rapor Türü:</strong> Tıbbi Araştırma Destek Raporu (NCBI PubMed Veritabanı)</p>
         <p><strong>Denetim Statüsü:</strong> <span class="audit-badge">{audit['status']}</span></p>
+        <p><strong>Uzman Hekim Değerlendirmesi:</strong> {audit.get('expert_physician_review', 'Yapılmadı / Tamamlanmadı')}</p>
         <p><strong>GRADE Statüsü:</strong> {audit['grade_rating_policy']['grade_status']}</p>
         <p><strong>Veri Kapsamı:</strong> Yalnızca Özet Metin (Abstract-Only Limitation)</p>
     </div>
