@@ -457,17 +457,21 @@ def extract_outcome_metrics(abstract: str) -> List[Dict[str, Any]]:
                 break
 
         if not outcome_name:
-            metric_match = re.search(r"\b(?:HR|OR|RR|MD|WMD|95% CI|CI|p\s*[=<])\b", clause_clean, re.IGNORECASE)
+            metric_match = re.search(r"\b(?:HR|OR|RR|MD|WMD|hazard ratio|odds ratio|relative risk|mean difference|95%\s*CI|95%CI|CI|p|P)(?:\s*interaction|\s*value)?\b", clause_clean, re.IGNORECASE)
             if metric_match:
                 prefix = clause_clean[:metric_match.start()].strip()
                 prefix = re.sub(r"\b(?:compared (?:to|with)|vs\.?|versus|against)\s+[^.,;\n]*$", "", prefix, flags=re.IGNORECASE).strip()
-                prefix = re.sub(r"^[,\s.:;(]+|[,\s.:;(]+$", "", prefix)
+                prefix = re.sub(r"[\(\[\{\)\]\}]", " ", prefix)
+                prefix = re.sub(r"\s+", " ", prefix).strip()
+                prefix = re.sub(r"^[,\s.:;]+|[,\s.:;]+$", "", prefix)
                 words = prefix.split()
                 if len(words) > 0:
-                    outcome_name = " ".join(words[-4:]).strip().capitalize()
+                    cand_name = " ".join(words[-4:]).strip().capitalize()
+                    if cand_name and not cand_name.lower().startswith(("hazard", "odds", "relative", "mean", "p", "ci", "hr", "or", "rr", "md")):
+                        outcome_name = cand_name
 
         if not outcome_name:
-            outcome_name = "Genel Sonlanım / Özet İstatistiği"
+            outcome_name = "Primer Klinik Sonlanım / Özet İstatistiği"
 
         results.append({
             "outcome": outcome_name,
@@ -495,14 +499,27 @@ def extract_study_metrics(abstract: str) -> Dict[str, Any]:
             "causality_limitations": []
         }
 
-    n_match = re.search(r"\b(?:n\s*=\s*|total of\s+|sample of\s+|enrolled\s+|included\s+|assigned\s+|randomly assigned\s+|randomized\s+|randomised\s+)(\d[\d,]*)\b", abstract, re.IGNORECASE)
-    n_val = n_match.group(1).replace(",", "") if n_match else None
+    # Clean non-breaking spaces
+    abstract_clean = abstract.replace("\xa0", " ")
 
-    effect_sizes = re.findall(r"\b(?:HR|OR|RR|MD|WMD|hazard ratio|odds ratio|relative risk|mean difference)\s*[:=, ]?\s*-?\d+\.?\d*\b", abstract, re.IGNORECASE)
-    cis = re.findall(r"\b(?:95%\s*CI|CI\s*95%)\s*[:=]?\s*\[?\s*\d+\.?\d*\s*(?:to|-|,)\s*\d+\.?\d*\s*\]?", abstract, re.IGNORECASE)
-    p_vals = re.findall(r"\b(?:p|P)\s*[=<]\s*0?\.\d+\b", abstract)
+    # 1. Sample Size (n) Extraction Patterns
+    n_val = None
+    n_match = re.search(r"\b(?:n|N)\s*=\s*(\d[\d,]*)\b", abstract_clean)
+    if not n_match:
+        n_match = re.search(r"\b(?:total of|sample of|enrolled|included|assigned|randomly assigned|randomized|randomised)\s+(\d[\d,]*)\b", abstract_clean, re.IGNORECASE)
+    if not n_match:
+        n_match = re.search(r"\b(?:of the|among the|a total of)\s+(\d[\d,]*)\s+(?:patients|subjects|participants|adults|children|individuals|cases)\b", abstract_clean, re.IGNORECASE)
+    if not n_match:
+        n_match = re.search(r"\b(\d[\d,]*)\s+(?:patients|subjects|participants|adults|children|individuals|cases)\s+(?:were\s+)?(?:enrolled|randomized|randomised|included|studied|evaluated|assigned|followed)\b", abstract_clean, re.IGNORECASE)
 
-    outcome_metrics = extract_outcome_metrics(abstract)
+    if n_match:
+        n_val = n_match.group(1).replace(",", "")
+
+    effect_sizes = re.findall(r"\b(?:HR|OR|RR|MD|WMD|hazard ratio|odds ratio|relative risk|mean difference)\s*[:=, ]?\s*-?\d+\.?\d*\b", abstract_clean, re.IGNORECASE)
+    cis = re.findall(r"\[?\s*\b(?:95%\s*CI|95%CI|CI\s*95%)\b\s*[:=,]?\s*-?\d+\.?\d*\s*(?:to|-|–|,)\s*-?\d+\.?\d*\s*\]?", abstract_clean, re.IGNORECASE)
+    p_vals = re.findall(r"\b(?:p|P)(?:interaction|-value)?\s*[=<]\s*(?:0?\.\d+|\d+\.?\d*|\.\d+)\b", abstract_clean)
+
+    outcome_metrics = extract_outcome_metrics(abstract_clean)
 
     # Extract concomitant / co-administered therapies mentioned in abstract
     concomitant_treatments = []
@@ -549,7 +566,7 @@ def extract_article_clinical_details(article: Dict[str, Any], query: str = "") -
     - Gerçek Bulgular (Ground-Truth Findings)
     """
     title = article.get("title", "")
-    abstract = article.get("abstract", "")
+    abstract = (article.get("abstract") or "").replace("\xa0", " ")
     pub_types = article.get("publication_types", [])
 
     classification = classify_study_design(pub_types, title, abstract)
@@ -569,22 +586,49 @@ def extract_article_clinical_details(article: Dict[str, Any], query: str = "") -
         if pico_q.get("population") and pico_q["population"] != "Belirtilmemiş":
             patient_group = pico_q["population"]
 
-    # 3. Intervention
+    # 3. Intervention & Comparison extraction from abstract and title
     intervention = "Belirtilmedi"
-    pico_q = extract_pico(query)
-    if pico_q.get("intervention") and pico_q["intervention"] != "Belirtilmemiş":
-        intervention = pico_q["intervention"]
-    else:
+    comparison = "Belirtilmedi"
+
+    # Check abstract for explicit randomized/assigned/allocated/treated patterns
+    int_comp_match = re.search(r"\b(?:randomized|assigned|allocated|treated)\b.*?\bto\s+receive\s+([^.,;\n]+?)\s+(?:or|vs\.?|versus|compared\s+(?:to|with))\s+([^.,;\n]+)", abstract, re.IGNORECASE)
+    if not int_comp_match:
+        int_comp_match = re.search(r"\b(?:randomized|assigned|allocated|treated)\s+(?:to\s+)?(?:receive\s+)?([^.,;\n]+?)\s+(?:or|vs\.?|versus|compared\s+(?:to|with))\s+([^.,;\n]+)", abstract, re.IGNORECASE)
+
+    if int_comp_match:
+        raw_int = int_comp_match.group(1).strip()
+        raw_comp = int_comp_match.group(2).strip()
+        if "to receive " in raw_int.lower():
+            raw_int = re.sub(r"^.*?\bto\s+receive\s+", "", raw_int, flags=re.IGNORECASE).strip()
+        intervention = raw_int.capitalize()
+        comparison = raw_comp.capitalize()
+
+    if intervention == "Belirtilmedi":
+        pico_q = extract_pico(query)
+        if pico_q.get("intervention") and pico_q["intervention"] != "Belirtilmemiş":
+            intervention = pico_q["intervention"]
+
+    if intervention == "Belirtilmedi":
         int_match = re.search(r"\b(?:effect|efficacy|safety|impact|role) of\s+([^.,;\n]+?)\s+(?:in|on|for|vs|versus|compared)\b", title or abstract, re.IGNORECASE)
         if int_match and int_match.group(1):
             intervention = int_match.group(1).strip().capitalize()
 
-    # 4. Comparison
-    comparison = "Belirtilmedi"
-    comp_match = re.search(r"\b(?:versus|vs\.?|compared with|compared to|against)\s+([^.,;\n]+)", title or abstract, re.IGNORECASE)
-    if comp_match and comp_match.group(1):
-        comparison = comp_match.group(1).strip().capitalize()
-    elif re.search(r"\bplacebo\b", abstract, re.IGNORECASE):
+    if intervention == "Belirtilmedi":
+        int_title_match = re.search(r"^([A-Za-z0-9\s\-]+?)\s+\b(?:for|in|among|versus|vs\.?)\b", title, re.IGNORECASE)
+        if int_title_match and int_title_match.group(1):
+            t_cand = int_title_match.group(1).strip()
+            if len(t_cand) > 2 and not any(k in t_cand.lower() for k in ["study", "trial", "analysis", "review"]):
+                intervention = t_cand.capitalize()
+
+    # 4. Comparison fallback
+    if comparison == "Belirtilmedi":
+        comp_match = re.search(r"\b(?:versus|vs\.?|compared with|compared to|against)\s+([^.,;\n]+)", title or abstract, re.IGNORECASE)
+        if comp_match and comp_match.group(1):
+            comparison = comp_match.group(1).strip().capitalize()
+        elif re.search(r"\bplacebo\b", abstract, re.IGNORECASE):
+            comparison = "Placebo"
+
+    if comparison.lower().startswith("placebo"):
         comparison = "Placebo"
 
     # 5. Outcomes & Bound Metrics
@@ -599,7 +643,7 @@ def extract_article_clinical_details(article: Dict[str, Any], query: str = "") -
         outcomes_formatted.append("Özette nicel etki ölçütü bildirilmedi")
 
     # 6. Real Findings
-    real_findings = _translate_clinical_conclusion_to_turkish("", abstract, metrics, classification["design"], title, pico=pico_q)
+    real_findings = _translate_clinical_conclusion_to_turkish("", abstract, metrics, classification["design"], title, pico=extract_pico(query))
 
     return {
         "patient_group": patient_group,
@@ -870,7 +914,8 @@ def _translate_clinical_conclusion_to_turkish(
     if metrics.get("effect_sizes"):
         stat_parts.append(f"Etki büyüklüğü: {', '.join(metrics['effect_sizes'])}")
     if metrics.get("confidence_intervals"):
-        stat_parts.append(f"%95 GA: {', '.join(metrics['confidence_intervals'])}")
+        cleaned_cis = [re.sub(r"^\s*\[?\s*(?:95%\s*CI|95%CI|CI\s*95%)\s*[:=,]?\s*", "", ci, flags=re.IGNORECASE).rstrip("]") for ci in metrics["confidence_intervals"]]
+        stat_parts.append(f"%95 GA: {', '.join(cleaned_cis)}")
     if metrics.get("p_values"):
         stat_parts.append(f"p değeri: {', '.join(metrics['p_values'])}")
 
@@ -891,19 +936,25 @@ def _translate_clinical_conclusion_to_turkish(
 
     title_snippet = f"*{title}* çalışması ({design_name})" if title else f"{design_name}"
 
-    if is_conflicting:
+    is_review = any(k in design_name.lower() for k in ["derleme", "kılavuz", "uzman görüşü", "review", "guideline", "editorial"])
+
+    if is_review:
+        if is_conflicting:
+            summary_tr = f"{title_snippet} niteliğindeki bu yayında derlenen verilerde çelişkili veya heterojen sonuçlar bildirilmiştir{stat_str}."
+        elif is_nonsignificant:
+            summary_tr = f"{title_snippet} niteliğindeki bu yayında derlenen verilere göre gruplar veya parametreler arasında istatistiksel olarak anlamlı bir fark saptanmamıştır{stat_str}."
+        elif stat_parts:
+            summary_tr = f"{title_snippet} niteliğindeki bu yayında literatürdeki klinik/RCT verileri derlenmiş olup atıfta bulunulan çalışma bulguları: {'; '.join(stat_parts)}. *(Not: Bu bulgular derleme yazarının bağımsız ampirik araştırması olmayıp, referans gösterilen klinik çalışmalardan aktarılmıştır.)*"
+        else:
+            summary_tr = f"{title_snippet} niteliğindeki yayında klinik veriler ve literatür bulguları derlenmiş olup özet metninde nicel istatistiksel parametre bildirilmemiştir."
+    elif is_conflicting:
         summary_tr = f"{title_snippet} verilerinde çelişkili veya heterojen sonuçlar bildirilmiştir{stat_str}."
     elif is_nonsignificant:
         summary_tr = f"{title_snippet} bulgularına göre gruplar veya parametreler arasında istatistiksel olarak anlamlı bir fark saptanmamıştır{stat_str}."
     elif stat_parts:
         summary_tr = f"{title_snippet} kapsamında elde edilen istatistiksel ve nicel bulgular: {'; '.join(stat_parts)}."
     else:
-        # No quantitative metrics and no explicit non-significant/conflicting indicators
-        # DO NOT fabricate 'effective' or 'safe' claims from single words!
-        if any(k in design_name.lower() for k in ["derleme", "kılavuz", "uzman görüşü", "review", "guideline"]):
-            summary_tr = f"{title_snippet} niteliğindeki yayında klinik veriler ve literatür bulguları derlenmiş olup özet metninde nicel istatistiksel parametre bildirilmemiştir."
-        else:
-            summary_tr = f"{title_snippet} özetinde kural tabanlı motor tarafından doğrulanabilir nicel klinik sonuç veya istatistiksel parametre verisi yetersizdir; tam metin incelemesi önerilir."
+        summary_tr = f"{title_snippet} özetinde kural tabanlı motor tarafından doğrulanabilir nicel klinik sonuç veya istatistiksel parametre verisi yetersizdir / bildirilmemiştir; tam metin incelemesi önerilir."
 
     return summary_tr
 

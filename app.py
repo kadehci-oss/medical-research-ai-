@@ -200,7 +200,7 @@ def main():
                         st.markdown(" ".join(badges_html), unsafe_allow_html=True)
 
                         st.markdown("**Özet (Abstract):**")
-                        st.text_area(f"Özet #{idx}", art['abstract'], height=150, key=f"abs_{idx}")
+                        st.text_area("Makale Özeti (Abstract)", art['abstract'], height=150, key=f"abs_{idx}")
 
                         links = []
                         if art.get('pubmed_url'):
@@ -444,7 +444,7 @@ def main():
                             st.markdown("**Domain Detayları:**")
                             st.json(a_rob["domains"])
 
-                with report_subtab4:
+                with report_subtab5:
                     st.subheader("🛡️ Red Team Denetimi & Metodolojik Değerlendirme")
                     st.json(audit_res)
 
