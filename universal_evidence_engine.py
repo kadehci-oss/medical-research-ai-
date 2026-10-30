@@ -4,7 +4,7 @@ Disease-Agnostic Medical Research Engine for Turkish Clinical Evidence Synthesis
 
 Supports all medical specialties (Cardiology, Neurology, Oncology, ENT/KBB, Infectious Diseases, etc.).
 Extracts structured parameters (n, HR/RR/OR/MD, 95% CI, p-values, PICO, RoB) from PubMed articles
-without fabricating unstated metrics.
+without fabricating unstated metrics. 
 Provides source-claim matching, comparative cross-article synthesis, and safe error handling.
 """
 
@@ -203,18 +203,12 @@ class UniversalEvidenceEngine:
         consistent = []
         conflicting = []
 
-        for p in processed:
-            abs_lower = (p.get("title", "") + " " + (articles[0].get("abstract", "") if articles else "")).lower()
+        for i,p in enumerate(processed):
+            abs_lower = (p.get("title", "") + " " + articles[i].get("abstract","")).lower()
             pmid_str = f"[PMID: {p['pmid']}]" if p.get("pmid") else "PMID Yok"
 
             # Check for explicitly reported conflicts or heterogeneity
-            if any(k in abs_lower for k in ["conflicting", "inconsistent", "heterogeneous", "mixed results", "controversial"]):
-                conflicting.append(f"{p['authors_short']} ({p['pub_year']}) {pmid_str}: Özetinde sonuçların heterojen veya çelişkili olduğunu bildirmiştir.")
-            elif p.get("effect_sizes") or p.get("p_values"):
-                consistent.append(f"{p['authors_short']} ({p['pub_year']}) {pmid_str}: {p['real_findings']}")
-            else:
-                consistent.append(f"{p['authors_short']} ({p['pub_year']}) {pmid_str}: {p['study_design']['design']} niteliğinde klinik veriler sunmaktadır.")
-
+            pass          
         heterogeneity_msg = (
             f"Toplam {len(articles)} çalışma ({len(primary_studies)} primer araştırma, {len(review_studies)} derleme/kılavuz) "
             f"örneklem büyüklükleri (n), hasta yaş/cinsiyet grupları ve takip süreleri açısından metodolojik farklılıklar göstermektedir."

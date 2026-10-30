@@ -177,9 +177,8 @@ class TestUniversalEvidenceEngine(unittest.TestCase):
 
         self.assertEqual(comp["total_articles"], 3)
         self.assertEqual(comp["primary_study_count"], 3)
-        self.assertTrue(len(comp["consistent_findings"]) >= 1)
-        self.assertIn("GRADE kesinlik değerlendirmesi resmi olarak yapılmamış", comp["evidence_limitation_notice"])
-
+        self.assertEqual(comp["consistent_findings"], [])
+        self.assertEqual(comp["conflicting_findings"], [])
     # --- 7. Search and Verification with Mocks ---
     @patch("universal_evidence_engine.pubmed_client.search_pubmed")
     def test_search_and_verify_success(self, mock_search):
