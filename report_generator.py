@@ -161,8 +161,42 @@ _FOLLOW_RE = re.compile(
     r"\b(followed(?:\s+up)?(?:\s+for|\s+over)?|were followed|was followed|longitudinal follow)\b",
     re.IGNORECASE,
 )
-_CASE_SERIES_RE = re.compile(r"\b(case series|olgu serisi|vaka serisi|series of cases)\b", re.IGNORECASE)
-_CASE_REPORT_RE = re.compile(r"\b(case reports?|olgu sunumu|olgu bildirimi)\b", re.IGNORECASE)
+# Counts of two or more. A bare "1" or "a patient" stays a single case report.
+_AT_LEAST_TWO_PATIENTS = (
+    r"few|several|multiple|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|"
+    r"[2-9]|[1-9]\d+"
+)
+_CASE_SERIES_RE = re.compile(
+    rf"\b("
+    rf"case series|olgu serisi|vaka serisi|series of cases|"
+    rf"series of (?:\d+\s+)?(?:cases|patients)|"
+    rf"(?:{_AT_LEAST_TWO_PATIENTS})\s+cases\s+of|"
+    rf"(?:herein\s+)?we\s+(?:report|present|describe)\s+(?:a\s+series\s+of\s+)?"
+    rf"(?:{_AT_LEAST_TWO_PATIENTS})\s+"
+    rf"(?:consecutive\s+|adult\s+|pediatric\s+|paediatric\s+)?"
+    rf"(?:patients|cases|women|men|children)"
+    rf")\b",
+    re.IGNORECASE,
+)
+_CASE_REPORT_RE = re.compile(
+    r"\b(case reports?|olgu sunumu|olgu bildirimi|a case of)\b",
+    re.IGNORECASE,
+)
+# "We report/present a … patient" (or case/man/woman). Gap words that name a
+# review or a study design do not count: "we present a review of patients".
+_WE_PRESENT_PATIENT_RE = re.compile(
+    r"\b(?:herein\s+)?we\s+(?:report|present|describe)\s+(?:a|an|the)\s+"
+    r"(?:(?!(?:review|reviews|overview|summary|discussion|analysis|analyses|"
+    r"study|studies|trial|trials|cohort|literature|management|systematic|meta)\b)"
+    r"[\w-]+\s+){0,10}?"
+    r"(?:patient|case|man|woman|boy|girl|child|infant)\b",
+    re.IGNORECASE,
+)
+# Demographic opening used by case reports. Not "a 10-year-old cohort".
+_YEAR_OLD_CASE_RE = re.compile(
+    r"\ba[n]?\s+\d{1,3}-year-old\b(?!\s+(?:cohort|study|trial|review|population|group|sample|series)\b)",
+    re.IGNORECASE,
+)
 _GUIDELINE_RE = re.compile(
     r"\b(practice guidelines?|clinical practice guidelines?|klinik kılavuz(?:lar|u)?|klinik kilavuz(?:lar|u)?|uygulama kılavuzu|uygulama kilavuzu)\b",
     re.IGNORECASE,
@@ -221,6 +255,27 @@ def _own_design_match(text: str, pattern: re.Pattern) -> bool:
     return False
 
 
+def _case_evidence_key(title: str, abstract: str) -> Optional[str]:
+    """Case series or case report cues that describe this paper's own patients.
+
+    A cited case ("a previous case report") does not count. Several patients
+    described by the paper are a case series; one patient is a case report.
+    """
+    title = title or ""
+    abstract = abstract or ""
+    for blob in (title, abstract):
+        if _own_design_match(blob, _CASE_SERIES_RE):
+            return "case_series"
+    for blob in (title, abstract):
+        if (
+            _own_design_match(blob, _CASE_REPORT_RE)
+            or _own_design_match(blob, _WE_PRESENT_PATIENT_RE)
+            or _own_design_match(blob, _YEAR_OLD_CASE_RE)
+        ):
+            return "case_report"
+    return None
+
+
 def _text_design_key(title: str, abstract: str) -> Optional[str]:
     """Read the study's own design from the title, then from the abstract."""
     title = title or ""
@@ -244,7 +299,7 @@ def _text_design_key(title: str, abstract: str) -> Optional[str]:
             return "cross_sectional"
         if _own_design_match(blob, _CASE_SERIES_RE):
             return "case_series"
-        if _own_design_match(blob, _CASE_REPORT_RE):
+        if _own_design_match(blob, _CASE_REPORT_RE) or _own_design_match(blob, _WE_PRESENT_PATIENT_RE):
             return "case_report"
         if _own_design_match(blob, _COHORT_RE):
             return "cohort"
@@ -252,6 +307,10 @@ def _text_design_key(title: str, abstract: str) -> Optional[str]:
             return "cohort"
         if _own_design_match(blob, _DIAG_RE):
             return "diagnostic_accuracy"
+        # Age alone is weaker than a named design in the same field, but it is
+        # still a case report when nothing stronger was stated.
+        if _own_design_match(blob, _YEAR_OLD_CASE_RE):
+            return "case_report"
     if _NARRATIVE_TITLE_RE.search(title) or (
         re.search(r"\breview\b", title, re.IGNORECASE) and not _own_design_match(title, _SR_RE)
     ):
@@ -265,6 +324,10 @@ def classify_study_design(pub_types: List[str], title: str, abstract: str) -> Di
 
     Meta-analysis, systematic review, RCT, cohort, case-control, cross-sectional,
     case report, case series, and clinical guideline are separate labels.
+    Explicit NLM tags (systematic review, meta-analysis, randomized controlled
+    trial, cohort, case-control, and case reports) outrank title and abstract
+    cues. A generic Review tag does not outrank clear case-report or
+    case-series evidence in the title or abstract.
     The returned level is never an evidence grade inferred from the design.
     """
     pts = [pt.lower() for pt in (pub_types or []) if pt]
@@ -319,6 +382,10 @@ def classify_study_design(pub_types: List[str], title: str, abstract: str) -> Di
     if _has_pub_type(pts, "review", "derleme"):
         # A review often cites trials. Only an explicit synthesis or guideline
         # label promotes it; a mentioned RCT does not make the paper an RCT.
+        # A generic Review tag is not an explicit NLM design. Clear case-report
+        # evidence in the title or abstract ("a case of", "case report",
+        # "we report/present a … patient", "a NN-year-old", or several patients)
+        # is a case report or a case series.
         if text_key in (
             "meta_analysis",
             "systematic_review",
@@ -326,6 +393,9 @@ def classify_study_design(pub_types: List[str], title: str, abstract: str) -> Di
             "guideline",
         ):
             return _design_record(text_key)
+        case_key = _case_evidence_key(title, abstract)
+        if case_key:
+            return _design_record(case_key)
         return _design_record("narrative_review")
 
     if _has_pub_type(pts, "observational study", "prospective studies", "longitudinal studies"):
