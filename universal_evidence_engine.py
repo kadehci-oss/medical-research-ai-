@@ -4,7 +4,7 @@ Disease-Agnostic Medical Research Engine for Turkish Clinical Evidence Synthesis
 
 Supports all medical specialties (Cardiology, Neurology, Oncology, ENT/KBB, Infectious Diseases, etc.).
 Extracts structured parameters (n, HR/RR/OR/MD, 95% CI, p-values, PICO, RoB) from PubMed articles
-without fabricating unstated metrics.
+without fabricating unstated metrics. 
 Provides source-claim matching, comparative cross-article synthesis, and safe error handling.
 """
 
@@ -203,13 +203,13 @@ class UniversalEvidenceEngine:
         consistent = []
         conflicting = []
 
-        for İ,P in enumerate(processed):
+        for i,p in enumerate(processed):
             abs_lower = (p.get("title", "") + " " + articles[i].get("abstract","")).lower()
             pmid_str = f"[PMID: {p['pmid']}]" if p.get("pmid") else "PMID Yok"
 
             # Check for explicitly reported conflicts or heterogeneity
             pass          
-            heterogeneity_msg = (
+        heterogeneity_msg = (
             f"Toplam {len(articles)} çalışma ({len(primary_studies)} primer araştırma, {len(review_studies)} derleme/kılavuz) "
             f"örneklem büyüklükleri (n), hasta yaş/cinsiyet grupları ve takip süreleri açısından metodolojik farklılıklar göstermektedir."
         )
