@@ -37,8 +37,8 @@ It searches live PubMed, verifies PMIDs and DOIs against PubMed and CrossRef, an
 ├── AGENTS.md                      # Contributor and agent conventions
 ├── statin_myopathy_report.md      # Example generated report
 ├── .github/workflows/
-│   ├── ci.yml                     # pytest on push and pull request
-│   └── live-ncbi-validation.yml   # Scheduled and manual live NCBI check
+│   ├── ci.yml                     # pytest on push and pull request (Python 3.12)
+│   └── live-ncbi-validation.yml   # Weekly and manual live NCBI check (Python 3.12)
 └── tests/
     ├── test_api.py
     ├── test_app.py
@@ -59,7 +59,7 @@ It searches live PubMed, verifies PMIDs and DOIs against PubMed and CrossRef, an
 
 ### Prerequisites
 
-- Python 3.11 or newer (3.12 is what CI and the pinned dependency set were checked with). Streamlit 1.66 and pandas 3.1 require 3.11+.
+- Python 3.11 or newer (3.12 is what CI, the weekly NCBI workflow, and the pinned dependency set were checked with). Streamlit 1.66 and pandas 3.1 require 3.11+.
 - Network access to NCBI E-utilities and the CrossRef API.
 
 ### Install
@@ -80,6 +80,8 @@ pip install -r requirements.lock
 
 Regenerate the lock file from a clean virtual environment whenever `requirements.txt` changes. Do not edit `requirements.lock` by hand.
 
+CI (`.github/workflows/ci.yml`) and the live NCBI workflow install from `requirements.lock` on Python 3.12. If that install fails, they fall back to `requirements.txt`.
+
 ---
 
 ## Environment variables
@@ -99,6 +101,8 @@ export OPENAI_API_KEY="your-openai-api-key"
 ```
 
 No personal email is hardcoded. `live_ncbi_validation.py` sends the same `tool`, `email`, and optional `api_key` values as `pubmed_client.py`.
+
+The weekly workflow reads `NCBI_EMAIL`, `NCBI_API_KEY`, and `NCBI_TOOL` from GitHub Actions secrets. **Set the repository secret `NCBI_EMAIL` under Settings > Secrets and variables > Actions.** `NCBI_API_KEY` and `NCBI_TOOL` are optional; an empty `NCBI_API_KEY` is left off the request. If `NCBI_EMAIL` is missing, the job prints a `::warning::` and continues with the non-personal default above. This repository is public, so the monitored contact address belongs in that secret.
 
 ---
 
@@ -134,7 +138,7 @@ pytest
 python live_ncbi_validation.py
 ```
 
-`pytest` mocks network calls. `live_ncbi_validation.py` calls production E-utilities with no mocks and writes `ncbi_live_results.json`. The same script runs from `.github/workflows/live-ncbi-validation.yml` (weekly and on manual dispatch). A passing smoke test is not a clinical validation.
+`pytest` mocks network calls. `live_ncbi_validation.py` calls production E-utilities with no mocks and writes `ncbi_live_results.json`. The same script runs from `.github/workflows/live-ncbi-validation.yml` on Python 3.12, every Monday at 08:17 UTC and on manual dispatch. That job installs from `requirements.lock` and passes `NCBI_EMAIL` from the Actions secret described above. A passing smoke test is not a clinical validation.
 
 ---
 

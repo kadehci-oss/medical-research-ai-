@@ -237,7 +237,7 @@ Sağlık bilişimi ve yapay zeka uygulamalarında veri güvenliği, hasta gizlil
 
 ### 6.8. Otomatik Güvenlik Testleri
 - **Birincil Test Süreci**: `tests/` dizinindeki 70 otomatize test senaryosu her kod değişikliğinde çalıştırılır.
-- **Canlı NCBI Validation**: `live_ncbi_validation.py` betiği ve GitHub Actions iş akışı (`.github/workflows/live-ncbi-validation.yml`) aracılığıyla canlı NCBI sunucuları üzerinde düzenli güvenlik ve doğrulama denetimi sağlanır.
+- **Canlı NCBI Validation**: `live_ncbi_validation.py` betiği ve GitHub Actions iş akışı (`.github/workflows/live-ncbi-validation.yml`) aracılığıyla canlı NCBI sunucuları üzerinde düzenli güvenlik ve doğrulama denetimi sağlanır. İş akışı Python 3.12 kullanır ve bağımlılıkları `requirements.lock` dosyasından kurar. `NCBI_EMAIL` deposu sırrı **Settings > Secrets and variables > Actions** altında tanımlanmalıdır; sır yoksa iş `::warning::` yazar.
 
 ---
 

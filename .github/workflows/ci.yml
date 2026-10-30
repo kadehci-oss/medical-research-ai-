@@ -21,7 +21,12 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          if [ -f requirements.lock ] && python -m pip install -r requirements.lock; then
+            echo "Installed dependencies from requirements.lock"
+          else
+            echo "::warning title=Lockfile install failed::Could not install from requirements.lock; falling back to requirements.txt"
+            python -m pip install -r requirements.txt
+          fi
 
       - name: Run Pytest
         run: |
