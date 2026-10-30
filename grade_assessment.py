@@ -71,10 +71,14 @@ def _design_start(design_name: str, abstract: str) -> Dict[str, Any]:
     abstract_l = abstract or ""
     if "RCT" in design_name or "Rastgele" in design_name:
         return {"level": "Yüksek", "score": 4, "reason": "Çalışma tasarımı randomize kontrollü çalışma olarak sınıflandı."}
-    if "Kohort" in design_name or "Vaka-Kontrol" in design_name or "Gözlemsel" in design_name or "Karşılaştırmalı" in design_name:
-        return {"level": "Düşük", "score": 2, "reason": "Gözlemsel veya karşılaştırmalı non-randomize tasarım GRADE başlangıcında düşük kabul edilir."}
-    if "Olgu" in design_name or "Niteliksel Derleme" in design_name or "Editör" in design_name:
-        return {"level": "Çok düşük", "score": 1, "reason": "Olgu sunumu, anlatı derlemesi veya editöryal yazı etki kesinliği için çok düşük başlangıçtır."}
+    if any(token in design_name for token in ("Kohort", "Vaka-Kontrol", "Gözlemsel", "Karşılaştırmalı", "Kesitsel")):
+        return {"level": "Düşük", "score": 2, "reason": "Gözlemsel tasarım GRADE başlangıcında düşük kabul edilir. Bu bir kanıt düzeyi damgası değildir."}
+    if any(token in design_name for token in ("Olgu", "Niteliksel Derleme", "Editör", "Kılavuz", "Konsensüs", "belirlenemedi")):
+        return {
+            "level": _NOT_ASSESSABLE,
+            "score": None,
+            "reason": "Olgu sunumu, olgu serisi, derleme, kılavuz veya editöryal yazı için tasarım adından kesinlik düzeyi üretilmedi.",
+        }
     if "Sistematik Derleme" in design_name or "Meta-Analiz" in design_name:
         if re.search(r"\brandomi[sz]ed\b|\brct\b|rastgele", abstract_l, re.IGNORECASE):
             return {
@@ -215,9 +219,79 @@ def _apply_ceiling(start_score: Optional[int], domains: Dict[str, Dict[str, str]
     }
 
 
+_GENERIC_OUTCOME = "primer klinik sonlanım / özet istatistiği"
+
+
+def _outcome_is_named(label: str) -> bool:
+    cleaned = (label or "").strip().lower()
+    return bool(cleaned) and cleaned != _GENERIC_OUTCOME and cleaned != _NOT_ASSESSABLE
+
+
+def _grade_one_outcome(
+    article: Dict[str, Any],
+    query: str,
+    design_name: str,
+    starting: Dict[str, Any],
+    outcome: Dict[str, Any],
+) -> Dict[str, Any]:
+    """GRADE-style note for one outcome sentence. Missing pieces stay unassessed."""
+    from report_generator import extract_study_metrics
+
+    sentence = outcome.get("sentence") or outcome.get("source_sentence") or ""
+    title = article.get("title") or ""
+    abstract = article.get("abstract") or ""
+    named = _outcome_is_named(outcome.get("outcome") or "")
+    if not named:
+        domains = {
+            "risk_of_bias": _domain(_NOT_ASSESSABLE, "Sonlanım adı olmadığı için yanlılık alanı sonlanıma bağlanamadı."),
+            "inconsistency": _domain(_NOT_ASSESSABLE, "Sonlanım adı olmadığı için tutarsızlık değerlendirilemedi."),
+            "indirectness": _domain(_NOT_ASSESSABLE, "Sonlanım adı olmadığı için dolaylılık değerlendirilemedi."),
+            "imprecision": _domain(_NOT_ASSESSABLE, "Sonlanım adı olmadığı için kesinlik eksikliği değerlendirilemedi."),
+            "publication_bias": _domain(_NOT_ASSESSABLE, "Sonlanım adı olmadığı için yayın yanlılığı değerlendirilemedi."),
+        }
+        return {
+            "outcome": _NOT_ASSESSABLE,
+            "identified": False,
+            "pmid": article.get("pmid") or "",
+            "source_sentence": sentence,
+            "metrics": list(outcome.get("metrics") or []),
+            "starting_level": _NOT_ASSESSABLE,
+            "domains": domains,
+            "preliminary_level": _NOT_ASSESSABLE,
+            "applied_downgrades": 0,
+            "ceiling_reason": "Adlandırılmış sonlanım olmadığı için kesinlik düzeyi üretilmedi.",
+        }
+
+    metric_strings = list(outcome.get("metrics") or [])
+    sentence_metrics = extract_study_metrics(sentence)
+    sentence_metrics["confidence_intervals"] = [
+        item for item in metric_strings if re.search(r"\bCI\b|95%", item, re.IGNORECASE)
+    ] or sentence_metrics.get("confidence_intervals") or []
+    domains = {
+        "risk_of_bias": _risk_of_bias(sentence),
+        "inconsistency": _inconsistency(design_name, sentence or abstract),
+        "indirectness": _indirectness(query, abstract, title),
+        "imprecision": _imprecision(sentence, sentence_metrics),
+        "publication_bias": _publication_bias(design_name, sentence or abstract),
+    }
+    ceiling = _apply_ceiling(starting.get("score"), domains)
+    return {
+        "outcome": outcome.get("outcome"),
+        "identified": True,
+        "pmid": article.get("pmid") or "",
+        "source_sentence": sentence,
+        "metrics": metric_strings,
+        "starting_level": starting["level"],
+        "domains": domains,
+        "preliminary_level": ceiling["preliminary_level"],
+        "applied_downgrades": ceiling["applied_downgrades"],
+        "ceiling_reason": ceiling["reason"],
+    }
+
+
 def assess_preliminary_grade(article: Dict[str, Any], query: str = "") -> Dict[str, Any]:
-    """Return a per-article preliminary GRADE-style note. Does not invent metrics."""
-    from report_generator import classify_study_design, extract_study_metrics
+    """Return outcome-level GRADE-style notes. A missing outcome is not graded."""
+    from report_generator import classify_study_design, extract_outcome_metrics, extract_study_metrics
 
     title = article.get("title") or ""
     abstract = article.get("abstract") or ""
@@ -232,16 +306,34 @@ def assess_preliminary_grade(article: Dict[str, Any], query: str = "") -> Dict[s
         "imprecision": _imprecision(abstract, metrics),
         "publication_bias": _publication_bias(design_name, abstract),
     }
-    ceiling = _apply_ceiling(starting.get("score"), domains)
+    raw_outcomes = extract_outcome_metrics(abstract)
+    if not raw_outcomes:
+        raw_outcomes = [{"outcome": "", "metrics": [], "sentence": ""}]
+    outcome_notes = [_grade_one_outcome(article, query, design_name, starting, item) for item in raw_outcomes]
+    identified = [item for item in outcome_notes if item["identified"]]
+    levels = {item["preliminary_level"] for item in identified}
+    if not identified:
+        preliminary_level = _NOT_ASSESSABLE
+        applied_downgrades = 0
+        ceiling_reason = "Adlandırılmış sonlanım olmadığı için kesinlik düzeyi üretilmedi."
+    elif len(levels) == 1:
+        preliminary_level = identified[0]["preliminary_level"]
+        applied_downgrades = max(item["applied_downgrades"] for item in identified)
+        ceiling_reason = "Ön kesinlik, adlandırılmış sonlanım cümlelerinden üretildi. Resmi GRADE değildir."
+    else:
+        preliminary_level = _NOT_ASSESSABLE
+        applied_downgrades = 0
+        ceiling_reason = "Sonlanımların ön kesinlik düzeyleri aynı değil; tek düzey üretilmedi."
     return {
         "pmid": article.get("pmid") or "",
         "design": design_name,
         "starting_level": starting["level"],
         "starting_reason": starting["reason"],
         "domains": domains,
-        "preliminary_level": ceiling["preliminary_level"],
-        "applied_downgrades": ceiling["applied_downgrades"],
-        "ceiling_reason": ceiling["reason"],
+        "outcomes": outcome_notes,
+        "preliminary_level": preliminary_level,
+        "applied_downgrades": applied_downgrades,
+        "ceiling_reason": ceiling_reason,
         "disclaimer": DISCLAIMER,
         "formal_grade_status": "GRADE Değerlendirilmedi (Not Assessed)",
     }
@@ -260,22 +352,27 @@ def format_preliminary_grade_markdown(query: str, articles: List[Dict[str, Any]]
     for art in articles:
         note = assess_preliminary_grade(art, query)
         pmid = note["pmid"] or "PMID yok"
-        domain_bits = []
         labels = {
             "risk_of_bias": "Yanlılık riski",
             "inconsistency": "Tutarsızlık",
             "indirectness": "Dolaylılık",
-            "imprecision": "Imprecision",
+            "imprecision": "Kesinlik eksikliği",
             "publication_bias": "Yayın yanlılığı",
         }
-        for key, label in labels.items():
-            item = note["domains"][key]
-            domain_bits.append(f"{label}: {item['status']}")
         lines.append(
-            f"- **PMID {pmid}** ({note['design'] or 'tasarım belirsiz'}): "
-            f"başlangıç {note['starting_level']}; ön tavan {note['preliminary_level']}; "
-            f"uygulanan ciddi düşürme sayısı {note['applied_downgrades']}. "
-            + "; ".join(domain_bits)
-            + "."
+            f"- **PMID {pmid}** ({note['design'] or 'tasarım belirsiz'}). "
+            f"Makale için tek kesinlik düzeyi: {note['preliminary_level']}. {note['ceiling_reason']}"
         )
+        for outcome in note.get("outcomes") or []:
+            bits = []
+            for key, label in labels.items():
+                item = outcome["domains"][key]
+                bits.append(f"{label}: {item['status']}")
+            sentence = outcome.get("source_sentence") or ""
+            sentence_bit = f" Kaynak cümle: \"{sentence}\"." if sentence else " Kaynak cümle: değerlendirilemedi."
+            lines.append(
+                f"  - Sonlanım: {outcome['outcome']}; ön kesinlik: {outcome['preliminary_level']}; "
+                + "; ".join(bits)
+                + f".{sentence_bit} (PMID: {pmid})"
+            )
     return "\n".join(lines)

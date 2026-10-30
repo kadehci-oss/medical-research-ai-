@@ -54,7 +54,8 @@ class TestStatinMyopathyRegression(unittest.TestCase):
         details = extract_article_clinical_details(art_rct, "CoQ10 in statin myopathy")
 
         self.assertEqual(details["sample_size"], "n = 120")
-        self.assertIn("Seviye 2", details["study_design"])
+        self.assertIn("Rastgele Kontrollü", details["study_design"])
+        self.assertEqual(details["evidence_level"], "Değerlendirilemedi")
         self.assertIn("Placebo", details["comparison"])
 
         om = details["outcome_metrics"]
@@ -63,15 +64,15 @@ class TestStatinMyopathyRegression(unittest.TestCase):
 
     def test_statin_myopathy_study_design_classification(self):
         rev = classify_study_design(STATIN_MYOPATHY_ARTICLES[0]["publication_types"], STATIN_MYOPATHY_ARTICLES[0]["title"], STATIN_MYOPATHY_ARTICLES[0]["abstract"])
-        self.assertEqual(rev["level"], "Seviye 5")
+        self.assertEqual(rev["level"], "Değerlendirilemedi")
         self.assertIn("Derleme", rev["design"])
 
         obs = classify_study_design(STATIN_MYOPATHY_ARTICLES[1]["publication_types"], STATIN_MYOPATHY_ARTICLES[1]["title"], STATIN_MYOPATHY_ARTICLES[1]["abstract"])
-        self.assertEqual(obs["level"], "Seviye 3")
+        self.assertEqual(obs["level"], "Değerlendirilemedi")
         self.assertIn("Gözlemsel", obs["design"])
 
         rct = classify_study_design(STATIN_MYOPATHY_ARTICLES[2]["publication_types"], STATIN_MYOPATHY_ARTICLES[2]["title"], STATIN_MYOPATHY_ARTICLES[2]["abstract"])
-        self.assertEqual(rct["level"], "Seviye 2")
+        self.assertEqual(rct["level"], "Değerlendirilemedi")
         self.assertIn("Rastgele Kontrollü", rct["design"])
 
     def test_statin_myopathy_report_section_12_synthesis(self):

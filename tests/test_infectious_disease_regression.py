@@ -59,13 +59,17 @@ class TestInfectiousDiseaseRegression(unittest.TestCase):
 
     def test_infectious_disease_study_design_classification(self):
         rct = classify_study_design(INFECTIOUS_DISEASE_ARTICLES[0]["publication_types"], INFECTIOUS_DISEASE_ARTICLES[0]["title"], INFECTIOUS_DISEASE_ARTICLES[0]["abstract"])
-        self.assertEqual(rct["level"], "Seviye 2")
+        self.assertEqual(rct["level"], "Değerlendirilemedi")
+        self.assertEqual(rct["design"], "Rastgele Kontrollü Çalışma (RCT)")
 
         meta = classify_study_design(INFECTIOUS_DISEASE_ARTICLES[1]["publication_types"], INFECTIOUS_DISEASE_ARTICLES[1]["title"], INFECTIOUS_DISEASE_ARTICLES[1]["abstract"])
-        self.assertEqual(meta["level"], "Seviye 1")
+        self.assertEqual(meta["level"], "Değerlendirilemedi")
+        self.assertIn("Meta-Analiz", meta["design"])
+        self.assertIn("Sistematik Derleme", meta["design"])
 
         obs = classify_study_design(INFECTIOUS_DISEASE_ARTICLES[2]["publication_types"], INFECTIOUS_DISEASE_ARTICLES[2]["title"], INFECTIOUS_DISEASE_ARTICLES[2]["abstract"])
-        self.assertEqual(obs["level"], "Seviye 3")
+        self.assertEqual(obs["level"], "Değerlendirilemedi")
+        self.assertIn("Kohort", obs["design"])
 
     def test_infectious_disease_report_section_12_synthesis(self):
         query = "Antiviral and antibiotic stewardship in severe infections"

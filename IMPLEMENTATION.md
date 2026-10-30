@@ -65,7 +65,7 @@ Bu doküman, **Medical Research AI** platformunun uçtan uca mimarisini, PubMed/
 
 4. **`report_generator.py` (Klinik Kanıt Sentez Motoru)**:
    - PubMed çıktılarından nicel parametreleri ($n$, HR, OR, RR, MD, %95 GA, p değerleri) ve PICO bileşenlerini çıkarır.
-   - Çalışma tasarımlarını Hiyerarşik Kanıt Piramidine (Seviye 1-5) göre sınıflandırır.
+   - Çalışma tasarımını sınıflandırır. Tasarım adından kanıt düzeyi üretmez.
    - Kural tabanlı deterministik sentezleyici ve OpenAI LLM sentezleyicisi ile 13 zorunlu bölümden oluşan Türkçe klinik rapor üretir.
 
 5. **`universal_evidence_engine.py` (Evrensel Klinik Kanıt Motoru)**:
@@ -98,15 +98,21 @@ NCBI PubMed E-utilities API entegrasyonu iki aşamalı olarak gerçekleştirilir
 
 ## 3. Bilimsel Kanıt Değerlendirmesi ve Parametre Çıkarımı
 
-### 📊 Çalışma Tasarımı Hiyerarşisi (Level 1–5)
+### 📊 Çalışma Tasarımı
 
-Sistem, makalelerin yayın tipleri (`publication_types`) ve abstract metin heuristiclerini inceleyerek kanıt seviyesini belirler:
+Sistem, NLM yayın türü ile başlık ve özetteki tasarım ifadesini kullanarak tasarımı ayırır. Ayrım bir kanıt düzeyi değildir; `level` alanı `Değerlendirilemedi` kalır.
 
-- **Seviye 1**: Sistemik Derleme ve Meta-Analizler (*Systematic Review, Meta-Analysis*)
-- **Seviye 2**: Rastgele Kontrollü Çalışmalar (*Randomized Controlled Trial - RCT*)
-- **Seviye 3**: Kohort ve Vaka-Kontrol Çalışmaları (*Cohort Study, Case-Control Study*)
-- **Seviye 4**: Kesitsel Çalışmalar, Vaka Serileri ve Vaka Sunumları (*Cross-Sectional, Case Series, Case Report*)
-- **Seviye 5**: Anlatımsal Derlemeler, Kılavuzlar, Editör Yazıları ve Uzman Görüşleri (*Narrative Review, Guideline, Editorial*)
+- Rastgele kontrollü çalışma (RCT)
+- Kohort
+- Vaka-kontrol
+- Kesitsel çalışma
+- Olgu sunumu
+- Olgu serisi
+- Sistematik derleme
+- Meta-analiz
+- Klinik kılavuz
+
+GRADE notu sonlanım cümlesine bağlanır. Sonlanım veya alan eksikse durum `değerlendirilemedi` yazılır. RoB 2, ROBINS-I, ROBIS, AXIS, JBI, AGREE II veya QUADAS-2 tasarıma göre seçilir; değerlendirme yapılmadan risk derecesi verilmez. Hasta grubu, örneklem, müdahale, karşılaştırıcı, sonlanım ve istatistik, kaynak cümle ve PMID ile gösterilir.
 
 ### 🔢 Nicel Parametre Çıkarımı ve PICO Analizi
 

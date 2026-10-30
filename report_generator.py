@@ -108,204 +108,249 @@ def _format_authors_short(authors: List[str]) -> str:
         return authors[0]
     if len(authors) == 2:
         return f"{authors[0]} ve {authors[1]}"
-    return f"{authors[0]} et al."
+    return f"{authors[0]} ve ark."
+
+
+# Design labels are not evidence grades. Certainty stays unassigned until an
+# outcome-level GRADE assessment has the data it needs.
+UNASSIGNED_EVIDENCE_LEVEL = "Değerlendirilemedi"
+EVIDENCE_LEVEL_NOTE = (
+    "Kanıt düzeyi çalışma tasarımından üretilmez. "
+    "Sonlanım bazlı GRADE değerlendirmesi yapılmadan kesinlik derecesi atanmaz."
+)
+
+_DESIGN_LABELS = {
+    "meta_analysis": "Meta-Analiz",
+    "systematic_review": "Sistematik Derleme",
+    "systematic_review_and_meta_analysis": "Sistematik Derleme ve Meta-Analiz",
+    "rct": "Rastgele Kontrollü Çalışma (RCT)",
+    "clinical_trial": "Kontrollü Klinik Araştırma",
+    "case_control": "Vaka-Kontrol Çalışması",
+    "cross_sectional": "Kesitsel Çalışma",
+    "cohort": "Kohort Çalışması (Gözlemsel)",
+    "case_report": "Olgu Sunumu",
+    "case_series": "Olgu Serisi",
+    "guideline": "Klinik Kılavuz",
+    "consensus": "Konsensüs Raporu",
+    "editorial": "Editör Yazısı / Mektup / Yorum",
+    "comparative": "Karşılaştırmalı Klinik Çalışma",
+    "narrative_review": "Niteliksel Derleme / Uzman Görüşü",
+    "observational_unspecified": "Gözlemsel Çalışma (tasarım ayrıştırılamadı)",
+    "diagnostic_accuracy": "Tanı Doğruluğu Çalışması",
+    "unclassified": "Çalışma tasarımı belirlenemedi",
+}
+
+_BACKGROUND_BEFORE_RE = re.compile(
+    r"\b(previous|prior|published|earlier|existing|önceki|yayımlanmış|yayinlanmis)\b\W*$",
+    re.IGNORECASE,
+)
+_BACKGROUND_AFTER_RE = re.compile(
+    r"^\s+(?:was\s+|were\s+)?(?:previously|earlier)\b",
+    re.IGNORECASE,
+)
+_META_RE = re.compile(r"\b(meta-?analysis|meta analysis|metaanalysis|meta-?analiz)\b", re.IGNORECASE)
+_SR_RE = re.compile(r"\b(systematic reviews?|sistematik derleme|sistematik inceleme)\b", re.IGNORECASE)
+_RCT_RE = re.compile(
+    r"(?<!non)(?<!non-)(?<!non )\b(?:randomi[sz]ed controlled trials?|randomi[sz]ed trials?|randomi[sz]ed|rastgele kontroll[uü]|rct)\b",
+    re.IGNORECASE,
+)
+_CASE_CONTROL_RE = re.compile(r"\b(case-?control|vaka-?kontrol|olgu-?kontrol)\b", re.IGNORECASE)
+_CROSS_RE = re.compile(r"\b(cross-?sectional|kesitsel)\b", re.IGNORECASE)
+_COHORT_RE = re.compile(r"\b(cohort|kohort)\b", re.IGNORECASE)
+_FOLLOW_RE = re.compile(
+    r"\b(followed(?:\s+up)?(?:\s+for|\s+over)?|were followed|was followed|longitudinal follow)\b",
+    re.IGNORECASE,
+)
+_CASE_SERIES_RE = re.compile(r"\b(case series|olgu serisi|vaka serisi|series of cases)\b", re.IGNORECASE)
+_CASE_REPORT_RE = re.compile(r"\b(case reports?|olgu sunumu|olgu bildirimi)\b", re.IGNORECASE)
+_GUIDELINE_RE = re.compile(
+    r"\b(practice guidelines?|clinical practice guidelines?|klinik kılavuz(?:lar|u)?|klinik kilavuz(?:lar|u)?|uygulama kılavuzu|uygulama kilavuzu)\b",
+    re.IGNORECASE,
+)
+_DIAG_RE = re.compile(
+    r"\b(diagnostic accuracy|sensitivity and specificity|tanı doğruluğu|tani dogrulugu)\b",
+    re.IGNORECASE,
+)
+_NARRATIVE_TITLE_RE = re.compile(r"\b(narrative review|literature review|derleme)\b", re.IGNORECASE)
+_INTERVENTION_RE = re.compile(
+    r"\b(placebos?|plasebo|treatments?|therap(?:y|ies)|treated|inhibitors?|supplements?|surger(?:y|ies)|interventions?|drugs?|tedavi|ilaç|ilac)\b",
+    re.IGNORECASE,
+)
+_EFFECTIVENESS_RE = re.compile(
+    r"\b(effectiveness|efficacy|treated with|placebo|plasebo|etkinlik)\b",
+    re.IGNORECASE,
+)
+
+
+def _design_record(design_key: str) -> Dict[str, Any]:
+    return {
+        "design": _DESIGN_LABELS[design_key],
+        "design_key": design_key,
+        "level": UNASSIGNED_EVIDENCE_LEVEL,
+        "level_num": None,
+        "evidence_level_note": EVIDENCE_LEVEL_NOTE,
+        "badge_color": "#4B5563",
+    }
+
+
+def _sentence_around(text: str, start: int, end: int) -> str:
+    if not text or start is None or start < 0:
+        return ""
+    left_period = text.rfind(".", 0, start)
+    left_break = text.rfind("\n", 0, start)
+    begin = max(left_period, left_break) + 1
+    right_candidates = [pos for pos in (text.find(".", end), text.find("\n", end)) if pos != -1]
+    finish = (min(right_candidates) + 1) if right_candidates else len(text)
+    return re.sub(r"\s+", " ", text[begin:finish]).strip()
+
+
+def _has_pub_type(pts: List[str], *needles: str) -> bool:
+    return any(any(needle in pt for needle in needles) for pt in pts)
+
+
+def _own_design_match(text: str, pattern: re.Pattern) -> bool:
+    """True when the cue describes this study, not a paper it cites."""
+    if not text:
+        return False
+    for match in pattern.finditer(text):
+        before = text[max(0, match.start() - 60):match.start()]
+        after = text[match.end():match.end() + 48]
+        if _BACKGROUND_BEFORE_RE.search(before) or _BACKGROUND_AFTER_RE.search(after):
+            continue
+        return True
+    return False
+
+
+def _text_design_key(title: str, abstract: str) -> Optional[str]:
+    """Read the study's own design from the title, then from the abstract."""
+    title = title or ""
+    abstract = abstract or ""
+    for blob, allow_follow in ((title, False), (abstract, True)):
+        meta = _own_design_match(blob, _META_RE)
+        systematic = _own_design_match(blob, _SR_RE)
+        if meta and systematic:
+            return "systematic_review_and_meta_analysis"
+        if meta:
+            return "meta_analysis"
+        if systematic:
+            return "systematic_review"
+        if _own_design_match(blob, _GUIDELINE_RE):
+            return "guideline"
+        if _own_design_match(blob, _RCT_RE):
+            return "rct"
+        if _own_design_match(blob, _CASE_CONTROL_RE):
+            return "case_control"
+        if _own_design_match(blob, _CROSS_RE):
+            return "cross_sectional"
+        if _own_design_match(blob, _CASE_SERIES_RE):
+            return "case_series"
+        if _own_design_match(blob, _CASE_REPORT_RE):
+            return "case_report"
+        if _own_design_match(blob, _COHORT_RE):
+            return "cohort"
+        if allow_follow and _own_design_match(blob, _FOLLOW_RE):
+            return "cohort"
+        if _own_design_match(blob, _DIAG_RE):
+            return "diagnostic_accuracy"
+    if _NARRATIVE_TITLE_RE.search(title) or (
+        re.search(r"\breview\b", title, re.IGNORECASE) and not _own_design_match(title, _SR_RE)
+    ):
+        return "narrative_review"
+    return None
 
 
 def classify_study_design(pub_types: List[str], title: str, abstract: str) -> Dict[str, Any]:
     """
-    Classifies study design and evidence level using NLM publication types for preliminary
-    classification, falling back to title and abstract heuristics.
+    Classify study design from NLM publication types, then title, then abstract.
+
+    Meta-analysis, systematic review, RCT, cohort, case-control, cross-sectional,
+    case report, case series, and clinical guideline are separate labels.
+    The returned level is never an evidence grade inferred from the design.
     """
     pts = [pt.lower() for pt in (pub_types or []) if pt]
+    text_key = _text_design_key(title or "", abstract or "")
 
-    # 1. Preliminary classification via official NLM Publication Types (in priority order)
-    if any("meta-analysis" in pt or "sistematik derleme" in pt for pt in pts):
-        return {
-            "design": "Sistematik Derleme / Meta-Analiz",
-            "level": "Seviye 1",
-            "level_num": 1,
-            "badge_color": "#1E40AF"
-        }
-    if any("systematic review" in pt for pt in pts):
-        return {
-            "design": "Sistematik Derleme / Meta-Analiz",
-            "level": "Seviye 1",
-            "level_num": 1,
-            "badge_color": "#1E40AF"
-        }
-    if any("randomized controlled trial" in pt for pt in pts):
-        return {
-            "design": "Rastgele Kontrollü Çalışma (RCT)",
-            "level": "Seviye 2",
-            "level_num": 2,
-            "badge_color": "#047857"
-        }
-    if any("clinical trial" in pt or "controlled clinical trial" in pt for pt in pts):
-        return {
-            "design": "Kontrollü Klinik Araştırma",
-            "level": "Seviye 2",
-            "level_num": 2,
-            "badge_color": "#059669"
-        }
-    # More specific than the generic observational bucket, which PubMed often co-tags.
-    if any("case-control" in pt or "case control" in pt or "vaka-kontrol" in pt for pt in pts):
-        return {
-            "design": "Vaka-Kontrol Çalışması",
-            "level": "Seviye 4",
-            "level_num": 4,
-            "badge_color": "#DC2626"
-        }
-    if any("observational study" in pt or "cohort" in pt or "longitudinal" in pt or "prospective study" in pt for pt in pts):
-        return {
-            "design": "Kohort Çalışması (Gözlemsel)",
-            "level": "Seviye 3",
-            "level_num": 3,
-            "badge_color": "#D97706"
-        }
-    if any("case reports" in pt or "case report" in pt for pt in pts):
-        return {
-            "design": "Olgu Sunumu / Vaka Serisi",
-            "level": "Seviye 4",
-            "level_num": 4,
-            "badge_color": "#DC2626"
-        }
-    if any("practice guideline" in pt or "guideline" in pt or "consensus development conference" in pt for pt in pts):
-        return {
-            "design": "Kılavuz / Konsensüs Raporu",
-            "level": "Seviye 5",
-            "level_num": 5,
-            "badge_color": "#4B5563"
-        }
-    if any("editorial" in pt or "letter" in pt or "comment" in pt for pt in pts):
-        return {
-            "design": "Editör Yazısı / Mektup / Yorum",
-            "level": "Seviye 5",
-            "level_num": 5,
-            "badge_color": "#6B7280"
-        }
-    if any("comparative study" in pt for pt in pts):
-        return {
-            "design": "Karşılaştırmalı Klinik Çalışma",
-            "level": "Seviye 3",
-            "level_num": 3,
-            "badge_color": "#D97706"
-        }
-    if any("review" in pt or "derleme" in pt for pt in pts):
-        return {
-            "design": "Niteliksel Derleme / Uzman Görüşü",
-            "level": "Seviye 5",
-            "level_num": 5,
-            "badge_color": "#4B5563"
-        }
+    if _has_pub_type(pts, "meta-analysis"):
+        if _has_pub_type(pts, "systematic review") or text_key == "systematic_review":
+            return _design_record("systematic_review_and_meta_analysis")
+        return _design_record("meta_analysis")
 
-    # 2. Secondary check based on Title
-    title_lower = (title or "").lower()
-    if "systematic review" in title_lower or "meta-analysis" in title_lower or "sistematik derleme" in title_lower:
-        return {
-            "design": "Sistematik Derleme / Meta-Analiz",
-            "level": "Seviye 1",
-            "level_num": 1,
-            "badge_color": "#1E40AF"
-        }
-    elif "randomized" in title_lower or "rct" in title_lower or "rastgele kontrollü" in title_lower:
-        return {
-            "design": "Rastgele Kontrollü Çalışma (RCT)",
-            "level": "Seviye 2",
-            "level_num": 2,
-            "badge_color": "#047857"
-        }
-    elif "clinical trial" in title_lower or "klinik araştırma" in title_lower:
-        return {
-            "design": "Kontrollü Klinik Araştırma",
-            "level": "Seviye 2",
-            "level_num": 2,
-            "badge_color": "#059669"
-        }
-    elif "cohort" in title_lower or "prospective" in title_lower or "longitudinal" in title_lower or "kohort" in title_lower:
-        return {
-            "design": "Kohort Çalışması (Gözlemsel)",
-            "level": "Seviye 3",
-            "level_num": 3,
-            "badge_color": "#D97706"
-        }
-    elif "case-control" in title_lower or "vaka-kontrol" in title_lower or "case control" in title_lower:
-        return {
-            "design": "Vaka-Kontrol Çalışması",
-            "level": "Seviye 4",
-            "level_num": 4,
-            "badge_color": "#DC2626"
-        }
-    elif "case report" in title_lower or "case series" in title_lower or "olgu sunumu" in title_lower:
-        return {
-            "design": "Olgu Sunumu / Vaka Serisi",
-            "level": "Seviye 4",
-            "level_num": 4,
-            "badge_color": "#DC2626"
-        }
-    elif "review" in title_lower or "derleme" in title_lower:
-        return {
-            "design": "Niteliksel Derleme / Uzman Görüşü",
-            "level": "Seviye 5",
-            "level_num": 5,
-            "badge_color": "#4B5563"
-        }
+    if _has_pub_type(pts, "systematic review"):
+        if text_key == "meta_analysis":
+            return _design_record("systematic_review_and_meta_analysis")
+        return _design_record("systematic_review")
 
-    # 3. Tertiary fallback based on Abstract
-    abstract_lower = (abstract or "").lower()
-    if "systematic review" in abstract_lower or "meta-analysis" in abstract_lower or "sistematik derleme" in abstract_lower:
-        return {
-            "design": "Sistematik Derleme / Meta-Analiz",
-            "level": "Seviye 1",
-            "level_num": 1,
-            "badge_color": "#1E40AF"
-        }
-    elif "randomized controlled trial" in abstract_lower or "randomized trial" in abstract_lower or "rastgele kontrollü" in abstract_lower:
-        return {
-            "design": "Rastgele Kontrollü Çalışma (RCT)",
-            "level": "Seviye 2",
-            "level_num": 2,
-            "badge_color": "#047857"
-        }
-    elif "cohort study" in abstract_lower or "prospective cohort" in abstract_lower or "kohort çalışması" in abstract_lower:
-        return {
-            "design": "Kohort Çalışması (Gözlemsel)",
-            "level": "Seviye 3",
-            "level_num": 3,
-            "badge_color": "#D97706"
-        }
-    elif "case-control study" in abstract_lower or "vaka-kontrol çalışması" in abstract_lower:
-        return {
-            "design": "Vaka-Kontrol Çalışması",
-            "level": "Seviye 4",
-            "level_num": 4,
-            "badge_color": "#DC2626"
-        }
-    elif "case report" in abstract_lower or "olgu sunumu" in abstract_lower:
-        return {
-            "design": "Olgu Sunumu / Vaka Serisi",
-            "level": "Seviye 4",
-            "level_num": 4,
-            "badge_color": "#DC2626"
-        }
-    elif "review" in abstract_lower or "derleme" in abstract_lower:
-        return {
-            "design": "Niteliksel Derleme / Uzman Görüşü",
-            "level": "Seviye 5",
-            "level_num": 5,
-            "badge_color": "#4B5563"
-        }
+    if _has_pub_type(pts, "randomized controlled trial"):
+        return _design_record("rct")
 
-    return {
-        "design": "Primer Araştırma / Dergi Makalesi",
-        "level": "Seviye 3-5",
-        "level_num": 4,
-        "badge_color": "#6B7280"
-    }
+    if _has_pub_type(pts, "case-control", "case control", "vaka-kontrol"):
+        return _design_record("case_control")
+
+    if _has_pub_type(pts, "cross-sectional", "cross sectional"):
+        return _design_record("cross_sectional")
+
+    if _has_pub_type(pts, "cohort"):
+        return _design_record("cohort")
+
+    if _has_pub_type(pts, "case reports", "case report"):
+        if text_key == "case_series":
+            return _design_record("case_series")
+        return _design_record("case_report")
+
+    if _has_pub_type(pts, "practice guideline", "guideline"):
+        return _design_record("guideline")
+
+    if _has_pub_type(pts, "consensus development conference"):
+        return _design_record("consensus")
+
+    if _has_pub_type(pts, "editorial") or _has_pub_type(pts, "letter") or _has_pub_type(pts, "comment"):
+        return _design_record("editorial")
+
+    if _has_pub_type(pts, "clinical trial", "controlled clinical trial"):
+        if text_key == "rct":
+            return _design_record("rct")
+        return _design_record("clinical_trial")
+
+    if _has_pub_type(pts, "comparative study"):
+        if text_key in ("cohort", "case_control", "cross_sectional", "rct", "case_series", "case_report"):
+            return _design_record(text_key)
+        return _design_record("comparative")
+
+    if _has_pub_type(pts, "review", "derleme"):
+        # A review often cites trials. Only an explicit synthesis or guideline
+        # label promotes it; a mentioned RCT does not make the paper an RCT.
+        if text_key in (
+            "meta_analysis",
+            "systematic_review",
+            "systematic_review_and_meta_analysis",
+            "guideline",
+        ):
+            return _design_record(text_key)
+        return _design_record("narrative_review")
+
+    if _has_pub_type(pts, "observational study", "prospective studies", "longitudinal studies"):
+        if text_key in ("cohort", "case_control", "cross_sectional", "case_series", "case_report", "rct", "diagnostic_accuracy"):
+            return _design_record(text_key)
+        if _own_design_match(f"{title or ''} {abstract or ''}", _FOLLOW_RE):
+            return _design_record("cohort")
+        return _design_record("observational_unspecified")
+
+    if text_key:
+        return _design_record(text_key)
+    return _design_record("unclassified")
 
 
 def _classify_evidence_level(pub_types: List[str], title: str, abstract: str) -> str:
     res = classify_study_design(pub_types, title, abstract)
     return f"{res['level']} ({res['design']})"
+
+
+def _excluded_from_primary_pool(design_name: str) -> bool:
+    """Synthesis papers and single case reports are not pooled as comparative trials."""
+    return any(
+        key in (design_name or "")
+        for key in ("Derleme", "Meta-Analiz", "Kılavuz", "Uzman Görüşü", "Editör", "Olgu Sunumu")
+    )
 
 
 def _clean_pico_str(s: str) -> str:
@@ -697,87 +742,150 @@ def extract_pico(query: str) -> Dict[str, str]:
 
 
 
-def assess_risk_of_bias(article: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Evaluates Risk of Bias status for RoB 2 (RCTs) or ROBINS-I (Non-Randomized Studies).
-    Formal risk of bias is marked as 'Değerlendirilmedi (Not Assessed)' because abstract-only
-    data is insufficient for automated methodological bias scoring.
-    RoB 2 and ROBINS-I are not assigned to inappropriate article types (Systematic Reviews,
-    Narrative Reviews, Case Reports, Guidelines, Editorials, etc.).
-    """
-    pub_types = article.get("publication_types", [])
-    title = article.get("title", "")
-    abstract = article.get("abstract", "")
-    design_info = classify_study_design(pub_types, title, abstract)
-    design_name = design_info.get("design", "")
-    pts_str = " ".join([pt.lower() for pt in (pub_types or []) if pt])
-
-    not_assessed_msg = "Değerlendirilmedi (Not Assessed - Tam Metin Gereklidir)"
-
-    # 1. Systematic Review / Meta-Analysis
-    if "Sistematik Derleme" in design_name or "Meta-Analiz" in design_name or "meta-analysis" in pts_str or "systematic review" in pts_str:
-        return {
-            "tool": "AMSTAR 2 / ROBIS (Sistematik Derleme)",
-            "study_type": "Sistematik Derleme / Meta-Analiz",
-            "overall_rating": "Uygulanamaz (Not Applicable)",
-            "badge_color": "#6B7280",
-            "domains": {
-                "Metodolojik Araç Uygunluğu": "RoB 2 ve ROBINS-I yalnızca primer çalışmalar (RCT ve gözlemsel) içindir. Sistematik derlemeler için AMSTAR 2 veya ROBIS kullanılmalıdır."
-            },
-            "note": "Sistematik derlemeler ve meta-analizler için RoB 2 veya ROBINS-I araçları uygulanamaz. Tam metin üzerinden AMSTAR 2 veya ROBIS metodolojik değerlendirmesi yapılmalıdır."
-        }
-
-    # 2. Qualitative Reviews, Expert Opinions, Case Reports, Guidelines, Editorials, Letters
-    if any(k in design_name for k in ["Niteliksel Derleme", "Olgu Sunumu", "Vaka Serisi", "Derleme", "Uzman Görüşü"]) or any(pt in pts_str for pt in ["case reports", "review", "editorial", "letter", "guideline"]):
-        return {
-            "tool": "Uygulanamaz (Not Applicable)",
-            "study_type": design_name or "Derleme / Olgu Sunumu",
-            "overall_rating": "Uygulanamaz (Not Applicable)",
-            "badge_color": "#6B7280",
-            "domains": {
-                "Metodolojik Araç Uygunluğu": "Derleme, olgu sunumu veya uzman görüşü yayınları için RoB 2 veya ROBINS-I yanlılık riski araçları uygulanamaz."
-            },
-            "note": "Derleme, olgu sunumu veya uzman görüşü niteliğindeki yayınlar için RoB 2 veya ROBINS-I gibi deneysel/gözlemsel araçlar uygulanamaz."
-        }
-
-    # 3. RCT (Randomized Controlled Trial)
-    is_rct = "RCT" in design_name or "Rastgele" in design_name or "randomized controlled trial" in pts_str
-
-    if is_rct:
-        domains = {
-            "D1: Rastgeleleştirme Süreci": not_assessed_msg,
-            "D2: Öngörülen Müdahalelerden Sapmalar": not_assessed_msg,
-            "D3: Eksik Sonuç Verileri": not_assessed_msg,
-            "D4: Sonuç Ölçümü": not_assessed_msg,
-            "D5: Bildirilen Sonucun Seçimi": not_assessed_msg
-        }
-        return {
-            "tool": "RoB 2 (Cochrane Risk of Bias for RCTs)",
-            "study_type": "Randomize Kontrollü Çalışma",
-            "overall_rating": "Değerlendirilmedi (Not Assessed)",
-            "badge_color": "#6B7280",
-            "domains": domains,
-            "note": "Resmi RoB 2 değerlendirmesi yalnızca özet (abstract) metnine dayanarak otomatik yapılamaz; tam metin (full-text) incelemesi gereklidir."
-        }
-
-    # 4. Non-Randomized Studies (ROBINS-I) for Cohort, Case-Control, Non-Randomized Clinical Trials
-    domains = {
-        "D1: Karıştırıcı Değişken Yanlılığı (Confounding)": not_assessed_msg,
-        "D2: Katılımcı Seçimi Yanlılığı": not_assessed_msg,
-        "D3: Müdahale Sınıflandırma Yanlılığı": not_assessed_msg,
-        "D4: Müdahaleden Sapma Yanlılığı": not_assessed_msg,
-        "D5: Eksik Veri Yanlılığı": not_assessed_msg,
-        "D6: Sonuç Ölçüm Yanlılığı": not_assessed_msg,
-        "D7: Bildirilen Sonucun Seçimi": not_assessed_msg
-    }
+def _unassessed_bias(
+    tool: str,
+    study_type: str,
+    domain_names: List[str],
+    note: str,
+) -> Dict[str, Any]:
+    """Select a tool and leave every domain unrated until a real appraisal is done."""
+    pending = "Değerlendirilmedi (Not Assessed - Tam Metin Gereklidir)"
     return {
-        "tool": "ROBINS-I (Risk of Bias in Non-Randomized Studies)",
-        "study_type": "Gözlemsel / Randomize Olmayan Çalışma",
+        "tool": tool,
+        "study_type": study_type,
         "overall_rating": "Değerlendirilmedi (Not Assessed)",
         "badge_color": "#6B7280",
-        "domains": domains,
-        "note": "Resmi ROBINS-I değerlendirmesi yalnızca özet (abstract) metnine dayanarak otomatik yapılamaz; tam metin (full-text) incelemesi gereklidir."
+        "domains": {name: pending for name in domain_names},
+        "note": note,
+        "risk_assigned": False,
+        "rating_policy": "Değerlendirme yapılmadan risk derecesi verilmez.",
     }
+
+
+def assess_risk_of_bias(article: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Choose RoB 2, ROBINS-I, ROBIS, or another design-specific tool.
+
+    No low/some-concerns/high rating is emitted. Abstract text is not an appraisal.
+    """
+    title = article.get("title", "") or ""
+    abstract = article.get("abstract", "") or ""
+    design_info = classify_study_design(article.get("publication_types", []), title, abstract)
+    design_key = design_info.get("design_key") or "unclassified"
+    design_name = design_info.get("design") or ""
+    blob = f"{title} {abstract}"
+
+    if design_key in ("systematic_review", "meta_analysis", "systematic_review_and_meta_analysis"):
+        return _unassessed_bias(
+            "ROBIS (Risk of Bias in Systematic Reviews)",
+            design_name,
+            [
+                "Çalışmaya alınma ölçütleri",
+                "Çalışmaların belirlenmesi ve seçimi",
+                "Veri toplama ve değerlendirme",
+                "Sentez ve bulgular",
+            ],
+            "Sistematik derleme veya meta-analiz için ROBIS seçildi. Değerlendirme yapılmadığı için risk derecesi verilmedi.",
+        )
+
+    if design_key == "rct":
+        return _unassessed_bias(
+            "RoB 2 (Cochrane Risk of Bias for RCTs)",
+            design_name,
+            [
+                "D1: Rastgeleleştirme Süreci",
+                "D2: Öngörülen Müdahalelerden Sapmalar",
+                "D3: Eksik Sonuç Verileri",
+                "D4: Sonuç Ölçümü",
+                "D5: Bildirilen Sonucun Seçimi",
+            ],
+            "RoB 2 seçildi. Resmi RoB 2 değerlendirmesi yalnızca özet metnine dayanarak otomatik yapılamaz; tam metin (full-text) incelemesi gereklidir. Risk derecesi verilmedi.",
+        )
+
+    if design_key == "cross_sectional":
+        return _unassessed_bias(
+            "AXIS (Kesitsel Çalışmalar)",
+            design_name,
+            ["Amaç", "Yöntem", "Sonuç verisi", "Tartışma", "Çıkar çatışması"],
+            "Kesitsel çalışma için AXIS seçildi. Değerlendirme yapılmadığı için risk derecesi verilmedi.",
+        )
+
+    if design_key == "case_report":
+        return _unassessed_bias(
+            "JBI Olgu Sunumu Değerlendirme Listesi",
+            design_name,
+            ["Hasta tanımlaması", "Tanı", "Müdahale", "Sonuç", "Çıkarılabilir ders"],
+            "Olgu sunumu için JBI listesi seçildi. Değerlendirme yapılmadığı için risk derecesi verilmedi.",
+        )
+
+    if design_key == "case_series":
+        return _unassessed_bias(
+            "JBI Olgu Serisi Değerlendirme Listesi",
+            design_name,
+            ["Dahil etme", "Tanı", "Ardışık dahil etme", "Sonuç", "İstatistik"],
+            "Olgu serisi için JBI listesi seçildi. Değerlendirme yapılmadığı için risk derecesi verilmedi.",
+        )
+
+    if design_key == "guideline":
+        return _unassessed_bias(
+            "AGREE II (Klinik Kılavuz)",
+            design_name,
+            ["Kapsam", "Paydaş katılımı", "Yöntemin titizliği", "Uygulanabilirlik", "Editöryal bağımsızlık"],
+            "Klinik kılavuz için AGREE II seçildi. Değerlendirme yapılmadığı için risk derecesi verilmedi.",
+        )
+
+    if design_key == "diagnostic_accuracy":
+        return _unassessed_bias(
+            "QUADAS-2 (Tanı Doğruluğu)",
+            design_name,
+            ["Hasta seçimi", "İndeks test", "Referans standart", "Akış ve zamanlama"],
+            "Tanı doğruluğu çalışması için QUADAS-2 seçildi. Değerlendirme yapılmadığı için risk derecesi verilmedi.",
+        )
+
+    if design_key in ("cohort", "case_control", "comparative", "observational_unspecified"):
+        use_robins = design_key != "case_control" and bool(_INTERVENTION_RE.search(blob))
+        if design_key == "case_control" and _EFFECTIVENESS_RE.search(blob):
+            use_robins = True
+        if use_robins:
+            tool = "ROBINS-I (Risk of Bias in Non-Randomized Studies)"
+            note = "Müdahale etkisi bildiren randomize olmayan çalışma için ROBINS-I seçildi. Değerlendirme yapılmadığı için risk derecesi verilmedi."
+            domains = [
+                "D1: Karıştırıcı Değişken Yanlılığı (Confounding)",
+                "D2: Katılımcı Seçimi Yanlılığı",
+                "D3: Müdahale Sınıflandırma Yanlılığı",
+                "D4: Müdahaleden Sapma Yanlılığı",
+                "D5: Eksik Veri Yanlılığı",
+                "D6: Sonuç Ölçüm Yanlılığı",
+                "D7: Bildirilen Sonucun Seçimi",
+            ]
+        else:
+            tool = "Newcastle-Ottawa Scale (NOS)"
+            note = "Etiyolojik gözlemsel çalışma için Newcastle-Ottawa Scale seçildi. Değerlendirme yapılmadığı için risk derecesi verilmedi."
+            domains = ["Seçim", "Karşılaştırılabilirlik", "Maruziyet veya sonlanım"]
+        return _unassessed_bias(tool, design_name, domains, note)
+
+    if design_key == "clinical_trial":
+        return _unassessed_bias(
+            "Değerlendirilemedi (randomizasyon doğrulanmadı)",
+            design_name,
+            ["Randomizasyon"],
+            "Klinik araştırma kaydı randomizasyonu doğrulamıyor. RoB 2 veya ROBINS-I seçilmedi ve risk derecesi verilmedi.",
+        )
+
+    if design_key == "consensus":
+        return _unassessed_bias(
+            "Uygulanamaz (Not Applicable)",
+            design_name,
+            ["Metodolojik Araç Uygunluğu"],
+            "Konsensüs metni için RoB 2, ROBINS-I veya ROBIS uygulanamaz. Risk derecesi verilmedi.",
+        )
+
+    return _unassessed_bias(
+        "Uygulanamaz (Not Applicable)",
+        design_name or "Sınıflandırılamadı",
+        ["Metodolojik Araç Uygunluğu"],
+        "Bu yayın türü için RoB 2, ROBINS-I veya ROBIS uygulanamaz. Değerlendirme yapılmadan risk derecesi verilmez.",
+    )
 
 
 # Longer phrases precede shorter ones so "standardized mean difference" is not read as "mean difference".
@@ -899,6 +1007,7 @@ def extract_study_metrics(abstract: str) -> Dict[str, Any]:
     if not abstract:
         return {
             "n": None,
+            "n_source_sentence": "",
             "effect_sizes": [],
             "confidence_intervals": [],
             "p_values": [],
@@ -912,6 +1021,7 @@ def extract_study_metrics(abstract: str) -> Dict[str, Any]:
 
     # 1. Sample Size (n) Extraction Patterns
     n_val = None
+    n_sentence = ""
     n_match = re.search(r"\b(?:n|N)\s*=\s*(\d[\d,]*)\b", abstract_clean)
     if not n_match:
         n_match = re.search(r"\b(?:total of|sample of|enrolled|included|assigned|randomly assigned|randomized|randomised)\s+(\d[\d,]*)\b", abstract_clean, re.IGNORECASE)
@@ -922,6 +1032,7 @@ def extract_study_metrics(abstract: str) -> Dict[str, Any]:
 
     if n_match:
         n_val = n_match.group(1).replace(",", "")
+        n_sentence = _sentence_around(abstract_clean, n_match.start(), n_match.end())
 
     effect_sizes = _EFFECT_MEASURE_RE.findall(abstract_clean)
     cis = re.findall(r"\[?\s*\b(?:95%\s*CI|95%CI|CI\s*95%)\b\s*[:=,]?\s*-?\d+\.?\d*\s*(?:to|-|–|,)\s*-?\d+\.?\d*\s*\]?", abstract_clean, re.IGNORECASE)
@@ -953,6 +1064,7 @@ def extract_study_metrics(abstract: str) -> Dict[str, Any]:
 
     return {
         "n": n_val,
+        "n_source_sentence": n_sentence,
         "effect_sizes": list(set(effect_sizes)),
         "confidence_intervals": list(set(cis)),
         "p_values": list(set(p_vals)),
@@ -981,27 +1093,59 @@ def extract_article_clinical_details(article: Dict[str, Any], query: str = "") -
     metrics = extract_study_metrics(abstract)
     outcome_metrics = extract_outcome_metrics(abstract)
 
-    # 1. Sample Size
-    sample_size_str = f"n = {metrics['n']}" if metrics.get("n") else "Özette bildirilmedi"
+    pmid = str(article.get("pmid") or "")
 
-    # 2. Patient Group
-    patient_group = "Belirtilmedi"
-    pop_match = re.search(r"\b(?:in|among|enrolled|included)\s+(?:a total of\s+)?(?:\d[\d,]*\s+)?(patients|subjects|adults|children|individuals)\s+(?:with|having|diagnosed with|suffering from)\s+([^.,;\n]+)", abstract, re.IGNORECASE)
-    if pop_match and pop_match.group(2):
-        patient_group = pop_match.group(2).strip().capitalize()
+    def _claim(value: str, sentence: str, source: str) -> Dict[str, str]:
+        stated = bool(value) and value not in ("Belirtilmedi", "Özette bildirilmedi")
+        return {
+            "value": value if stated else "değerlendirilemedi",
+            "source_sentence": sentence if stated and sentence else "",
+            "pmid": pmid if stated else "",
+            "source": source if stated else "missing",
+        }
+
+    # 1. Sample Size — only a number that the abstract itself states
+    if metrics.get("n"):
+        sample_size_str = f"n = {metrics['n']}"
+        sample_sentence = metrics.get("n_source_sentence") or ""
     else:
-        pico_q = extract_pico(query)
-        if pico_q.get("population") and pico_q["population"] != "Belirtilmemiş":
-            patient_group = pico_q["population"]
+        sample_size_str = "Özette bildirilmedi"
+        sample_sentence = ""
 
-    # 3. Intervention & Comparison extraction from abstract and title
+    # 2. Patient group from the abstract sentence, never from the user's question
+    patient_group = "Belirtilmedi"
+    pop_sentence = ""
+    pop_match = re.search(
+        r"\b(?:patients|subjects|adults|children|individuals|participants|hastalar)\s+"
+        r"(?:with|having|diagnosed with|suffering from)\s+([^.,;\n]+)",
+        abstract,
+        re.IGNORECASE,
+    )
+    if pop_match:
+        patient_group = pop_match.group(1).strip().capitalize()
+        pop_sentence = _sentence_around(abstract, pop_match.start(), pop_match.end())
+
+    # 3. Intervention and comparator from the abstract or the article title
     intervention = "Belirtilmedi"
     comparison = "Belirtilmedi"
+    intervention_sentence = ""
+    intervention_source = "missing"
+    comparison_sentence = ""
+    comparison_source = "missing"
 
-    # Check abstract for explicit randomized/assigned/allocated/treated patterns
-    int_comp_match = re.search(r"\b(?:randomized|assigned|allocated|treated)\b.*?\bto\s+receive\s+([^.,;\n]+?)\s+(?:or|vs\.?|versus|compared\s+(?:to|with))\s+([^.,;\n]+)", abstract, re.IGNORECASE)
+    int_comp_match = re.search(
+        r"\b(?:randomized|assigned|allocated|treated)\b.*?\bto\s+receive\s+([^.,;\n]+?)\s+"
+        r"(?:or|vs\.?|versus|compared\s+(?:to|with))\s+([^.,;\n]+)",
+        abstract,
+        re.IGNORECASE,
+    )
     if not int_comp_match:
-        int_comp_match = re.search(r"\b(?:randomized|assigned|allocated|treated)\s+(?:to\s+)?(?:receive\s+)?([^.,;\n]+?)\s+(?:or|vs\.?|versus|compared\s+(?:to|with))\s+([^.,;\n]+)", abstract, re.IGNORECASE)
+        int_comp_match = re.search(
+            r"\b(?:randomized|assigned|allocated|treated)\s+(?:to\s+)?(?:receive\s+)?"
+            r"([^.,;\n]+?)\s+(?:or|vs\.?|versus|compared\s+(?:to|with))\s+([^.,;\n]+)",
+            abstract,
+            re.IGNORECASE,
+        )
 
     if int_comp_match:
         raw_int = int_comp_match.group(1).strip()
@@ -1010,59 +1154,133 @@ def extract_article_clinical_details(article: Dict[str, Any], query: str = "") -
             raw_int = re.sub(r"^.*?\bto\s+receive\s+", "", raw_int, flags=re.IGNORECASE).strip()
         intervention = raw_int.capitalize()
         comparison = raw_comp.capitalize()
+        intervention_sentence = _sentence_around(abstract, int_comp_match.start(), int_comp_match.end())
+        comparison_sentence = intervention_sentence
+        intervention_source = "abstract"
+        comparison_source = "abstract"
 
     if intervention == "Belirtilmedi":
-        pico_q = extract_pico(query)
-        if pico_q.get("intervention") and pico_q["intervention"] != "Belirtilmemiş":
-            intervention = pico_q["intervention"]
-
-    if intervention == "Belirtilmedi":
-        int_match = re.search(r"\b(?:effect|efficacy|safety|impact|role) of\s+([^.,;\n]+?)\s+(?:in|on|for|vs|versus|compared)\b", title or abstract, re.IGNORECASE)
+        int_match = re.search(
+            r"\b(?:effect|efficacy|safety|impact|role) of\s+([^.,;\n]+?)\s+(?:in|on|for|vs|versus|compared)\b",
+            abstract or "",
+            re.IGNORECASE,
+        )
         if int_match and int_match.group(1):
             intervention = int_match.group(1).strip().capitalize()
+            intervention_sentence = _sentence_around(abstract, int_match.start(), int_match.end())
+            intervention_source = "abstract"
 
-    if intervention == "Belirtilmedi":
+    if intervention == "Belirtilmedi" and title:
         int_title_match = re.search(r"^([A-Za-z0-9\s\-]+?)\s+\b(?:for|in|among|versus|vs\.?)\b", title, re.IGNORECASE)
         if int_title_match and int_title_match.group(1):
             t_cand = int_title_match.group(1).strip()
             if len(t_cand) > 2 and not any(k in t_cand.lower() for k in ["study", "trial", "analysis", "review"]):
                 intervention = t_cand.capitalize()
+                intervention_sentence = title.strip()
+                intervention_source = "title"
 
-    # 4. Comparison fallback
     if comparison == "Belirtilmedi":
-        comp_match = re.search(r"\b(?:versus|vs\.?|compared with|compared to|against)\s+([^.,;\n]+)", title or abstract, re.IGNORECASE)
+        comp_match = re.search(
+            r"\b(?:versus|vs\.?|compared with|compared to|against)\s+([^.,;\n]+)",
+            abstract or "",
+            re.IGNORECASE,
+        )
         if comp_match and comp_match.group(1):
             comparison = comp_match.group(1).strip().capitalize()
-        elif re.search(r"\bplacebo\b", abstract, re.IGNORECASE):
-            comparison = "Placebo"
+            comparison_sentence = _sentence_around(abstract, comp_match.start(), comp_match.end())
+            comparison_source = "abstract"
+        else:
+            placebo_match = re.search(r"\bplacebo\b", abstract or "", re.IGNORECASE)
+            if placebo_match:
+                comparison = "Placebo"
+                comparison_sentence = _sentence_around(abstract, placebo_match.start(), placebo_match.end())
+                comparison_source = "abstract"
 
     if comparison.lower().startswith("placebo"):
         comparison = "Placebo"
 
-    # 5. Outcomes & Bound Metrics
+    # 4. Outcomes stay tied to the abstract clause that stated the statistic
+    bound_outcomes = []
+    for om in outcome_metrics:
+        bound_outcomes.append({
+            "outcome": om.get("outcome") or "değerlendirilemedi",
+            "metrics": list(om.get("metrics") or []),
+            "sentence": om.get("sentence") or "",
+            "source_sentence": om.get("sentence") or "",
+            "pmid": pmid,
+        })
+
     outcomes_formatted = []
-    if outcome_metrics:
-        for om in outcome_metrics:
-            outcomes_formatted.append(f"{om['outcome']}: {', '.join(om['metrics'])}")
-    elif metrics.get("effect_sizes") or metrics.get("p_values"):
-        combined = metrics.get("effect_sizes", []) + metrics.get("confidence_intervals", []) + metrics.get("p_values", [])
-        outcomes_formatted.append(f"Genel İstatistik: {', '.join(combined)}")
+    if bound_outcomes:
+        for om in bound_outcomes:
+            metric_text = ", ".join(om["metrics"]) if om["metrics"] else "değerlendirilemedi"
+            outcomes_formatted.append(f"{om['outcome']}: {metric_text}")
     else:
         outcomes_formatted.append("Özette nicel etki ölçütü bildirilmedi")
 
-    # 6. Real Findings
-    real_findings = _translate_clinical_conclusion_to_turkish("", abstract, metrics, classification["design"], title, pico=extract_pico(query))
+    real_findings = _translate_clinical_conclusion_to_turkish(
+        "", abstract, metrics, classification["design"], title, pico=extract_pico(query)
+    )
+
+    provenance = {
+        "pmid": pmid,
+        "population": _claim(patient_group, pop_sentence, "abstract"),
+        "sample_size": _claim(sample_size_str, sample_sentence, "abstract"),
+        "intervention": _claim(intervention, intervention_sentence, intervention_source),
+        "comparison": _claim(comparison, comparison_sentence, comparison_source),
+        "outcomes": bound_outcomes,
+    }
 
     return {
         "patient_group": patient_group,
         "sample_size": sample_size_str,
-        "study_design": f"{classification['level']} ({classification['design']})",
+        "study_design": classification["design"],
+        "evidence_level": classification["level"],
+        "evidence_level_note": classification["evidence_level_note"],
+        "design_key": classification["design_key"],
         "intervention": intervention,
         "comparison": comparison,
-        "outcome_metrics": outcome_metrics,
+        "outcome_metrics": bound_outcomes,
         "outcomes_summary": "; ".join(outcomes_formatted),
-        "real_findings": real_findings
+        "real_findings": real_findings,
+        "provenance": provenance,
+        "pmid": pmid,
     }
+
+
+def _format_bound_claims(details: Dict[str, Any]) -> str:
+    """Turkish lines that keep each extracted item next to its sentence and PMID."""
+    prov = details.get("provenance") or {}
+    pmid = prov.get("pmid") or details.get("pmid") or "PMID yok"
+    lines = [f"*Kaynağa bağlı öğeler (PMID: {pmid}):*"]
+    labels = (
+        ("Hasta grubu", "population"),
+        ("Örneklem", "sample_size"),
+        ("Müdahale", "intervention"),
+        ("Karşılaştırıcı", "comparison"),
+    )
+    for label, key in labels:
+        item = prov.get(key) or {}
+        value = item.get("value") or "değerlendirilemedi"
+        sentence = item.get("source_sentence") or ""
+        if sentence:
+            lines.append(f"{label}: {value}. Kaynak cümle: \"{sentence}\" (PMID: {pmid})")
+        else:
+            lines.append(f"{label}: değerlendirilemedi. Kaynak cümle yok (PMID: {pmid})")
+    outcomes = prov.get("outcomes") or []
+    if not outcomes:
+        lines.append(f"Sonlanım ve istatistik: değerlendirilemedi (PMID: {pmid})")
+    for om in outcomes:
+        metric_text = ", ".join(om.get("metrics") or []) or "değerlendirilemedi"
+        sentence = om.get("source_sentence") or om.get("sentence") or ""
+        if sentence:
+            lines.append(
+                f"Sonlanım: {om.get('outcome')}. İstatistik: {metric_text}. "
+                f"Kaynak cümle: \"{sentence}\" (PMID: {pmid})"
+            )
+        else:
+            lines.append(f"Sonlanım: değerlendirilemedi. İstatistik: {metric_text} (PMID: {pmid})")
+    return " ".join(lines)
 
 
 def generate_evidence_table_markdown(articles: List[Dict[str, Any]]) -> str:
@@ -1071,7 +1289,7 @@ def generate_evidence_table_markdown(articles: List[Dict[str, Any]]) -> str:
         return "*Tablo için gösterilecek veri bulunamadı.*"
 
     rows = [
-        "| # | Çalışma / Yazar (Yıl) | Tasarım & Kanıt Seviyesi | Yanlılık Riski (RoB 2 / ROBINS-I) | PMID / DOI | Klinik Bulgular |",
+        "| # | Çalışma / Yazar (Yıl) | Çalışma Tasarımı | Yanlılık Aracı (derece yok) | PMID / DOI | Klinik Bulgular |",
         "|---|---|---|---|---|---|"
     ]
 
@@ -1088,7 +1306,7 @@ def generate_evidence_table_markdown(articles: List[Dict[str, Any]]) -> str:
             title,
             art.get("abstract", "")
         )
-        design_str = f"**{classification['level']}** — *{classification['design']}*"
+        design_str = f"**{classification['design']}** — *Kanıt düzeyi: {classification['level']}*"
 
         rob = assess_risk_of_bias(art)
         rob_str = f"**{rob['overall_rating']}** — *{rob['tool']}*"
@@ -1184,8 +1402,8 @@ def generate_evidence_table_html(articles: List[Dict[str, Any]]) -> str:
                 <tr style="background-color: #F3F4F6; color: #1F2937; text-align: left; border-bottom: 2px solid #D1D5DB;">
                     <th style="padding: 10px; width: 4%;">#</th>
                     <th style="padding: 10px; width: 24%;">Çalışma / Yazar</th>
-                    <th style="padding: 10px; width: 16%; text-align: center;">Tasarım & Kanıt</th>
-                    <th style="padding: 10px; width: 18%; text-align: center;">Yanlılık Riski</th>
+                    <th style="padding: 10px; width: 16%; text-align: center;">Çalışma Tasarımı</th>
+                    <th style="padding: 10px; width: 18%; text-align: center;">Yanlılık Aracı</th>
                     <th style="padding: 10px; width: 12%;">Kimlik</th>
                     <th style="padding: 10px; width: 26%;">Klinik Bulgular</th>
                 </tr>
@@ -1242,7 +1460,7 @@ def perform_red_team_audit(query: str, articles: List[Dict[str, Any]]) -> Dict[s
 
     warnings = []
     if total > 0 and rct_and_meta_count == 0:
-        warnings.append("İncelenen kaynaklar arasında yüksek seviyeli (Seviye 1 veya Seviye 2 - RCT/Meta-analiz) kanıt bulunmamaktadır.")
+        warnings.append("İncelenen kaynaklar arasında randomize kontrollü çalışma, sistematik derleme veya meta-analiz yok. Bu saptama tek başına bir kanıt düzeyi değildir.")
 
     if total < 3:
         warnings.append("Literatür örneklem sayısı düşüktür (3'ten az çalışma). Klinik genelleme yapılırken dikkatli olunmalıdır.")
@@ -1295,7 +1513,7 @@ def perform_red_team_audit(query: str, articles: List[Dict[str, Any]]) -> Dict[s
         "grade_rating_policy": {
             "grade_status": "GRADE Değerlendirilmedi (Not Assessed)",
             "compliant": True,
-            "notice": "GRADE (Grading of Recommendations Assessment, Development and Evaluation) derecelendirmesi otomatik olarak atanmamıştır ve 'GRADE Değerlendirilmedi (Not Assessed)' statüsündedir. Formal GRADE kanıt kesinlik değerlendirmesi, yanlılık riski (risk of bias), tutarsızlık, dolaylılık ve imprezisyon kriterlerinin uzmanlarca manuel meta-analitik sentezi ile yapılmalıdır."
+            "notice": "GRADE (Grading of Recommendations Assessment, Development and Evaluation) derecelendirmesi otomatik olarak atanmamıştır ve 'GRADE Değerlendirilmedi (Not Assessed)' statüsündedir. Resmi GRADE; yanlılık riski, tutarsızlık, dolaylılık, kesinlik eksikliği ve yayın yanlılığını sonlanım bazında ve tam metinle değerlendirir. Eksik sonlanım 'değerlendirilemedi' bırakılır."
         },
         "methodological_warnings": warnings
     }
@@ -1346,7 +1564,7 @@ def _translate_clinical_conclusion_to_turkish(
 
     title_snippet = f"*{title}* çalışması ({design_name})" if title else f"{design_name}"
 
-    is_review = any(k in design_name.lower() for k in ["derleme", "kılavuz", "uzman görüşü", "review", "guideline", "editorial"])
+    is_review = any(k in design_name.lower() for k in ["derleme", "meta-analiz", "kılavuz", "uzman görüşü", "review", "guideline", "editorial"])
 
     if is_review:
         if is_conflicting:
@@ -1395,8 +1613,7 @@ def _synthesize_article_conclusion_tr(art: Dict[str, Any], query: str) -> str:
 
     summary_tr = _translate_clinical_conclusion_to_turkish("", abstract, metrics, design_name, title, pico=pico)
 
-    pts_str = " ".join([pt.lower() for pt in art.get("publication_types", [])])
-    is_review_type = any(k in design_name for k in ["Niteliksel Derleme", "Uzman Görüşü", "Kılavuz", "Editör", "Derleme"]) or any(k in pts_str for k in ["review", "guideline", "editorial"])
+    is_review_type = _excluded_from_primary_pool(design_name)
 
     review_note = ""
     if is_review_type:
@@ -1413,12 +1630,14 @@ def _synthesize_article_conclusion_tr(art: Dict[str, Any], query: str) -> str:
         eff_parts.append(", ".join(metrics["p_values"]))
     eff_val_str = "; ".join(eff_parts) if eff_parts else "Özette nicel etki ölçütü bildirilmedi"
 
-    lim_val_str = " ".join(metrics.get("causality_limitations", [])) or "Abstract-only sınırlılığı (Tam metin incelemesi önerilir)"
+    lim_val_str = " ".join(metrics.get("causality_limitations", [])) or "Yalnızca özet metnine dayalı sınırlılık (tam metin incelemesi önerilir)"
 
+    details = extract_article_clinical_details(art, query)
     return (
         f"- **{authors_short} ({year})** ({pmid_link}): {summary_tr}{review_note}\n"
         f"  - *Hasta Sayısı:* {n_val_str} | *Etki Ölçütleri:* {eff_val_str} | *Belirsizlikler:* {lim_val_str}\n"
-        f"  - *PICO Matrisi:* {pico_str}"
+        f"  - *Sorgu PICO (makale özeti değildir):* {pico_str}\n"
+        f"  - {_format_bound_claims(details)}"
     )
 
 
@@ -1441,7 +1660,7 @@ def _generate_section_12_synthesis(query: str, articles: List[Dict[str, Any]], c
         cd = classify_study_design(art.get("publication_types", []), art.get("title", ""), art.get("abstract", ""))
         d_design = cd.get("design", "")
         pts_str = " ".join([pt.lower() for pt in art.get("publication_types", [])])
-        if any(k in d_design for k in ["Niteliksel Derleme", "Uzman Görüşü", "Kılavuz", "Editör", "Olgu Sunumu"]) or any(k in pts_str for k in ["review", "guideline", "editorial"]):
+        if _excluded_from_primary_pool(d_design) or any(k in pts_str for k in ["guideline", "editorial"]):
             review_studies.append(art)
         else:
             primary_studies.append(art)
@@ -1462,7 +1681,12 @@ def _generate_section_12_synthesis(query: str, articles: List[Dict[str, Any]], c
             year = art.get("pub_year", "")
             details = extract_article_clinical_details(art, query)
 
-            quant_summaries.append(f"**{authors_short} ({year})** ({pmid_link}): {details['real_findings']} (Tasarım: {details['study_design']}, Örneklem: {details['sample_size']}, Sonlanım Ölçütleri: {details['outcomes_summary']}).")
+            quant_summaries.append(
+                f"**{authors_short} ({year})** ({pmid_link}): {details['real_findings']} "
+                f"(Tasarım: {details['study_design']}, kanıt düzeyi: {details.get('evidence_level', UNASSIGNED_EVIDENCE_LEVEL)}, "
+                f"Örneklem: {details['sample_size']}, Sonlanım Ölçütleri: {details['outcomes_summary']}). "
+                f"{_format_bound_claims(details)}"
+            )
 
         sec_lines.append(f"**{query}** odağında incelenen ampirik primer araştırmalar klinik verileri ve nicel etki ölçütlerini ortaya koymaktadır:")
         sec_lines.append("\n".join([f"- {s}" for s in quant_summaries]))
@@ -1470,13 +1694,19 @@ def _generate_section_12_synthesis(query: str, articles: List[Dict[str, Any]], c
 
     if review_studies:
         rev_citations = []
+        rev_bound = []
         for a in review_studies:
             pmid = a.get("pmid", "")
             p_url = a.get("pubmed_url", f"https://pubmed.ncbi.nlm.nih.gov/{pmid}/" if pmid else "#")
             p_link = f"[PMID: {pmid}]({p_url})" if pmid else "PMID Yok"
             rev_citations.append(f"{_format_authors_short(a.get('authors', []))} ({a.get('pub_year', '')}) {p_link}")
+            rev_bound.append(_format_bound_claims(extract_article_clinical_details(a, query)))
 
-        sec_lines.append(f"Derleme, kılavuz ve uzman görüşü niteliğindeki yayınlarda ({', '.join(rev_citations)}) klinik arka plan, patofizyolojik mekanizmalar ve genel hasta yönetim ilkeleri sentezlenmiş olup, bu yayınlar ampirik primer veri sunmadığı için kesin tedavi etkinliği çıkarılmamıştır.")
+        sec_lines.append(
+            f"Derleme, meta-analiz, kılavuz ve olgu sunumu niteliğindeki yayınlarda ({', '.join(rev_citations)}) "
+            "kesin tedavi etkinliği çıkarılmamıştır. Özette geçen sayılar aşağıdaki kaynak cümlelerine bağlıdır: "
+            + " ".join(rev_bound)
+        )
         sec_lines.append("")
 
     # 2. Çelişkili Bulgular ve Heterojenlikler
@@ -1502,13 +1732,17 @@ def _generate_section_12_synthesis(query: str, articles: List[Dict[str, Any]], c
         sec_lines.append("\n".join(conflicts))
     else:
         pmid_links_all = [f"[PMID: {a.get('pmid')}]({a.get('pubmed_url', '#')})" for a in articles if a.get("pmid")]
-        sec_lines.append(f"İncelenen çalışmalarda ({', '.join(pmid_links_all)}) hasta seçim kriterleri, örneklem büyüklükleri ve takip sürelerindeki farklılıklara bağlı metodolojik heterojenlikler mevcuttur. Bireysel kohortların sonuçları klinik bağlamda ayrı ayrı değerlendirilmelidir.")
+        sec_lines.append(f"İncelenen çalışmalarda ({', '.join(pmid_links_all)}) hasta seçim kriterleri, örneklem büyüklükleri ve takip sürelerindeki farklılıklara bağlı metodolojik heterojenlikler mevcuttur. Bireysel çalışmaların sonuçları klinik bağlamda ayrı ayrı değerlendirilmelidir.")
     sec_lines.append("")
 
     # 3. Klinik Önem ve Uygulanabilirlik
     sec_lines.append("### 🩺 Klinik Önem ve Uygulanabilirlik")
     pmid_links_primary = [f"[PMID: {a.get('pmid')}]({a.get('pubmed_url', '#')})" for a in primary_studies if a.get("pmid")]
-    sec_lines.append(f"Elde edilen klinik kanıt sentezi, hekimin **{query}** konusundaki karar destek sürecini yapılandırmayı amaçlamaktadır. Yüksek seviyeli kanıt sunan primer araştırmaların nicel bulguları ({', '.join(pmid_links_primary) if pmid_links_primary else 'bulunmamaktadır'}) klinik pratikte dikkate alınmalıdır.")
+    sec_lines.append(
+        f"Elde edilen klinik kanıt sentezi, hekimin **{query}** konusundaki karar destek sürecini yapılandırmayı amaçlamaktadır. "
+        f"Primer araştırmaların özette bildirilen nicel bulguları ({', '.join(pmid_links_primary) if pmid_links_primary else 'bulunmamaktadır'}) "
+        "kaynak cümleleriyle okunmalıdır. Çalışma tasarımından kanıt düzeyi üretilmemiştir."
+    )
     sec_lines.append("*Uyarı: Bu kanıt raporu doğrudan otomatik tedavi kararı niteliğinde değildir; kaynaksız tedavi önerisi üretilmemiştir. Sorumlu hekim klinik değerlendirmeyi bireysel hasta bağlamında yapmalıdır.*")
     sec_lines.append("")
 
@@ -1576,8 +1810,8 @@ Lütfen arama terimlerini veya filtreleri genişleterek tekrar deneyiniz.
 
     # 2. Yönetici Özeti
     report.append("## 2. Yönetici Özeti")
-    report.append(f"Bu kanıt raporu, **{query}** klinik konusu kapsamında NCBI PubMed veritabanından çekilen **{total_articles} adet doğrulanmış çalışma** incelenerek hazırlanmıştır.")
-    report.append("Özetlenen çalışmalardan elde edilen ana bulgular; biyobelirteç seviyeleri, patofizyolojik mekanizmalar, tedavi seçenekleri ve klinik yönetim algoritmaları açısından sentezlenmiştir. *Tüm analizler yayınlanmış özet (abstract) metinlerine dayanmaktadır.*\n")
+    report.append(f"Bu kanıt raporu, **{query}** sorusu için NCBI PubMed kaydından alınan **{total_articles}** yayının özetine dayanır.")
+    report.append("Çalışma tasarımı sınıflandırıldı. Kanıt düzeyi çalışma tasarımından üretilmedi. GRADE, sonlanım bazında ve yalnızca özette bulunan veriyle ön not olarak yazılır; eksik sonlanım değerlendirilemedi bırakılır. *Tüm analizler yayınlanmış özet (abstract) metinlerine dayanmaktadır.*\n")
 
     # 3. Araştırma Yöntemi ve Tarama Tarihi
     report.append("## 3. Araştırma Yöntemi ve Tarama Tarihi")
@@ -1597,20 +1831,27 @@ Lütfen arama terimlerini veya filtreleri genişleterek tekrar deneyiniz.
         pmid_link = f"[PMID: {pmid}]({art.get('pubmed_url', '#')})" if pmid else ""
         cd = classify_study_design(art.get("publication_types", []), art.get("title", ""), abs_text)
 
+        opening = _sentence_around(abs_text, 0, 1) if abs_text else ""
+        source_bit = (
+            f" Kaynak cümle: \"{opening}\" (PMID: {pmid})."
+            if opening
+            else " Kaynak cümle: değerlendirilemedi."
+        )
         background_findings.append(
             f"- **{authors_short} ({art.get('pub_year', '')})** ({pmid_link}): "
-            f"*{art.get('title', '')}* ({cd['design']}). İlgili çalışmanın patofizyolojik arka planı ve mekanizması için özet metni incelenmiş olup, doğrudan tam metin biyokimyasal/hücresel analiz verileri doğrulanmalıdır."
+            f"*{art.get('title', '')}* ({cd['design']}). Kanıt düzeyi: {cd['level']}. "
+            f"Özetten patofizyoloji veya biyobelirteç sonucu çıkarılmamıştır.{source_bit}"
         )
 
     if background_findings:
-        report.append(f"**{query}** konusu kapsamında incelenen literatür verilerinden elde edilen temel patofizyolojik ve klinik arka plan bulguları aşağıda doğrulanmış atıflarıyla sunulmaktadır:\n")
+        report.append(f"**{query}** için aşağıdaki satırlar yayın kimliğini ve çalışma tasarımını gösterir. Özet, tam metin mekanizma verisinin yerine geçmez.\n")
         report.append("\n".join(background_findings) + "\n")
     else:
         report.append(f"İncelenen {total_articles} makale özetinde **{query}** konusuna ilişkin patofizyolojik mekanizmalar ve moleküler süreçler kural tabanlı motor tarafından tam olarak çıkarılamamıştır. Ayrıntılı patofizyolojik analiz için ilgili yayınların tam metinlerinin incelenmesi önerilir.\n")
 
     # 5. Bilimsel Kanıt Tablosu
     report.append("## 5. Bilimsel Kanıt Tablosu")
-    report.append("Aşağıdaki tabloda dahil edilen çalışmaların yazar, yıl, çalışma tasarımı, kanıt seviyesi, yanlılık riski (RoB 2 / ROBINS-I) ve temel bulguları özetlenmektedir:\n")
+    report.append("Aşağıdaki tabloda yazar, yıl, çalışma tasarımı ve seçilen yanlılık aracı yer alır. Kanıt düzeyi tasarımından üretilmez. Araç seçilmiş olsa da değerlendirme yapılmadan risk derecesi verilmez.\n")
     report.append(generate_evidence_table_markdown(articles))
     report.append("\n")
 
@@ -1651,12 +1892,15 @@ Lütfen arama terimlerini veya filtreleri genişleterek tekrar deneyiniz.
         else:
             o_str = "Özette bağlı nicel sonlanım ölçütü bildirilmedi"
 
+        bound = _format_bound_claims(extract_article_clinical_details(art, query))
         comp_lines.append(
             f"- **{first_author} ({year})** ({pmid_link}):\n"
-            f"  - **Yöntem & Tasarım:** {cd['design']} ({cd['level']}) | **Yanlılık Riski:** {rob['overall_rating']}\n"
+            f"  - **Yöntem ve tasarım:** {cd['design']} | **Kanıt düzeyi:** {cd['level']}\n"
+            f"  - **Yanlılık aracı:** {rob['tool']} | **Risk derecesi:** {rob['overall_rating']}\n"
             f"  - **Hasta / Örneklem Sayısı:** {n_str}\n"
-            f"  - **Klinik Sonlanımlar & Etki Ölçütleri:** {o_str}\n"
-            f"  - **Klinik Bulgular & Etkinlik / Güvenlilik Sentezi:** {stat_summary}\n"
+            f"  - **Klinik Sonlanımlar ve Etki Ölçütleri:** {o_str}\n"
+            f"  - **Kaynağa bağlı PICO ve istatistik:** {bound}\n"
+            f"  - **Klinik Bulgular:** {stat_summary}\n"
             f"  - **Kanıt Sınırlılıkları:** {lim_str}"
         )
 
@@ -1689,9 +1933,10 @@ Lütfen arama terimlerini veya filtreleri genişleterek tekrar deneyiniz.
         rob = assess_risk_of_bias(art)
         pmid = art.get("pmid", "")
 
-        report.append(f"#### {idx}. {first_author} et al. ({year}) — *{title}*")
-        report.append(f"- **Tasarım & Seviye:** {cd['level']} ({cd['design']})")
-        report.append(f"- **Yanlılık Riski / Metodoloji:** {rob['overall_rating']} ({rob['tool']})")
+        report.append(f"#### {idx}. {first_author} ({year}) — *{title}*")
+        report.append(f"- **Çalışma tasarımı:** {cd['design']}")
+        report.append(f"- **Kanıt düzeyi:** {cd['level']}. {cd.get('evidence_level_note', EVIDENCE_LEVEL_NOTE)}")
+        report.append(f"- **Yanlılık aracı:** {rob['tool']} | **Risk derecesi:** {rob['overall_rating']}")
         report.append(f"- **Dergi:** *{art.get('journal', 'Bilinmiyor')}*")
 
         metrics = extract_study_metrics(art.get("abstract", ""))
@@ -1767,7 +2012,7 @@ Lütfen arama terimlerini veya filtreleri genişleterek tekrar deneyiniz.
             conf_lines.append(f"- **Sonlanım:** {cf['outcome']} | **Kaynaklar:** {cf['source_citations']}\n  - {cf['details']}")
         report.append("\n".join(conf_lines) + "\n")
     else:
-        report.append("Doğrudan eşleşen PICO ve çalışma tasarımına sahip makaleler arasında zıt yönde istatistiksel çelişki tespit edilmemiştir. Bununla birlikte, farklı çalışmalar arasındaki kohort büyüklükleri, alt grup özellikleri, tedavi protokolleri ve takip sürelerindeki heterojenlikler klinik bağlamda dikkate alınmalıdır.\n")
+        report.append("Doğrudan eşleşen PICO ve çalışma tasarımına sahip makaleler arasında zıt yönde istatistiksel çelişki tespit edilmemiştir. Bununla birlikte, farklı çalışmalar arasındaki örneklem büyüklükleri, alt grup özellikleri, tedavi protokolleri ve takip sürelerindeki heterojenlikler klinik bağlamda dikkate alınmalıdır.\n")
 
     # 10. Red Team Eleştirisi
     report.append("## 10. Red Team Eleştirisi")
@@ -1838,7 +2083,7 @@ def generate_llm_turkish_report(query: str, articles: List[Dict[str, Any]], api_
             f"Başlık: {art.get('title')}\n"
             f"Yazarlar: {', '.join(art.get('authors', []))}\n"
             f"Dergi / Yıl: {art.get('journal')} ({art.get('pub_year')})\n"
-            f"Makale Türü & Tasarım: {', '.join(art.get('publication_types', []))} ({cd['level']} - {cd['design']})\n"
+            f"Makale Türü ve Tasarım: {', '.join(art.get('publication_types', []))} ({cd['design']}; kanıt düzeyi: {cd['level']})\n"
             f"Özet: {art.get('abstract')}\n"
         )
 
@@ -1976,7 +2221,7 @@ def generate_html_report(query: str, articles: List[Dict[str, Any]], markdown_co
         <p><strong>Denetim Statüsü:</strong> <span class="audit-badge">{audit['status']}</span></p>
         <p><strong>GRADE Statüsü:</strong> {audit['grade_rating_policy']['grade_status']}</p>
         <p>{EXPERT_PHYSICIAN_REVIEW_LINE}</p>
-        <p><strong>Veri Kapsamı:</strong> Yalnızca Özet Metin (Abstract-Only Limitation)</p>
+        <p><strong>Veri Kapsamı:</strong> Yalnızca özet metin (Abstract-Only Limitation). Tam metin değerlendirmesi yapılmamıştır.</p>
     </div>
 
     <div>
