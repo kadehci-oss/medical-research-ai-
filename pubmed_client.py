@@ -1,8 +1,16 @@
+import logging
 import os
 import re
+import time
 import xml.etree.ElementTree as ET
 import requests
 from typing import List, Dict, Any, Optional
+
+logger = logging.getLogger(__name__)
+
+# NCBI returns 429 when E-utilities is called faster than the unkeyed rate limit.
+_RETRYABLE_STATUS = {429, 500, 502, 503, 504}
+_RETRY_DELAYS_SECONDS = (1.0, 2.0, 4.0)
 
 PUBMED_ESEARCH_URL = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi"
 PUBMED_EFETCH_URL = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi"
@@ -56,6 +64,53 @@ def eutils_identity_params() -> Dict[str, str]:
     if api_key:
         params["api_key"] = api_key
     return params
+
+
+def _retry_delay_seconds(response: requests.Response, default_delay: float) -> float:
+    """Honor a numeric Retry-After header when NCBI sends one, capped at 30s."""
+    headers = getattr(response, "headers", None)
+    raw_after = headers.get("Retry-After") if headers is not None and hasattr(headers, "get") else None
+    if isinstance(raw_after, str):
+        try:
+            return min(max(float(raw_after), 0.0), 30.0)
+        except ValueError:
+            return default_delay
+    return default_delay
+
+
+def _get_with_retry(
+    url: str,
+    params: Optional[Dict[str, Any]] = None,
+    timeout: float = 10,
+) -> requests.Response:
+    """
+    GET with a short bounded backoff on HTTP 429 and transient 5xx.
+
+    Headers come from ``ncbi_request_headers`` (tool name and contact email).
+    E-utilities callers attach ``tool``, ``email``, and an optional ``api_key``
+    on ``params`` before calling this helper. Non-integer status codes (for
+    example test doubles) are not retried. The final response is returned
+    even if it is still retryable so callers keep their existing error handling.
+    """
+    response: Optional[requests.Response] = None
+    attempts = len(_RETRY_DELAYS_SECONDS) + 1
+    for attempt in range(attempts):
+        response = requests.get(url, params=params, headers=ncbi_request_headers(), timeout=timeout)
+        status = response.status_code if isinstance(getattr(response, "status_code", None), int) else None
+        if status in _RETRYABLE_STATUS and attempt < len(_RETRY_DELAYS_SECONDS):
+            delay = _retry_delay_seconds(response, _RETRY_DELAYS_SECONDS[attempt])
+            logger.warning(
+                "HTTP %s from %s; retrying in %.1fs (attempt %s/%s)",
+                status,
+                url,
+                delay,
+                attempt + 1,
+                attempts,
+            )
+            time.sleep(delay)
+            continue
+        return response
+    return response  # pragma: no cover
 
 
 def _get_element_text(elem: Optional[ET.Element]) -> str:
@@ -247,12 +302,7 @@ def search_pubmed(
     esearch_params.update(eutils_identity_params())
 
     try:
-        response = requests.get(
-            PUBMED_ESEARCH_URL,
-            params=esearch_params,
-            headers=ncbi_request_headers(),
-            timeout=10,
-        )
+        response = _get_with_retry(PUBMED_ESEARCH_URL, params=esearch_params, timeout=10)
         response.raise_for_status()
         data = response.json()
         esearch_result = data.get("esearchresult", {})
@@ -296,12 +346,7 @@ def search_pubmed(
             "retmode": "xml"
         }
         efetch_params.update(eutils_identity_params())
-        fetch_response = requests.get(
-            PUBMED_EFETCH_URL,
-            params=efetch_params,
-            headers=ncbi_request_headers(),
-            timeout=15,
-        )
+        fetch_response = _get_with_retry(PUBMED_EFETCH_URL, params=efetch_params, timeout=15)
         fetch_response.raise_for_status()
 
         raw_articles = parse_pubmed_xml(fetch_response.text)
@@ -368,12 +413,7 @@ def verify_pmid(pmid: str) -> Dict[str, Any]:
     efetch_params.update(eutils_identity_params())
 
     try:
-        response = requests.get(
-            PUBMED_EFETCH_URL,
-            params=efetch_params,
-            headers=ncbi_request_headers(),
-            timeout=10,
-        )
+        response = _get_with_retry(PUBMED_EFETCH_URL, params=efetch_params, timeout=10)
         response.raise_for_status()
         articles = parse_pubmed_xml(response.text)
         if articles and articles[0].get("pmid") == clean_pmid:
@@ -519,7 +559,7 @@ def verify_doi(doi: str) -> Dict[str, Any]:
     # First try CrossRef API
     crossref_url = f"{CROSSREF_API_URL}{clean_doi}"
     try:
-        response = requests.get(crossref_url, headers=ncbi_request_headers(), timeout=10)
+        response = _get_with_retry(crossref_url, timeout=10)
         if response.status_code == 200:
             data = response.json().get("message", {})
             title_list = data.get("title", [])

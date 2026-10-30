@@ -10,6 +10,8 @@ from pubmed_client import (
     normalize_doi,
     verify_citation,
     ncbi_request_headers,
+    ncbi_tool_name,
+    ncbi_contact_email,
     eutils_identity_params,
 )
 
@@ -148,6 +150,34 @@ class TestPubMedClient(unittest.TestCase):
         res = search_pubmed("diabetes")
         self.assertIn("error", res)
         self.assertEqual(res["error"], "Connection timeout")
+        self.assertEqual(mock_get.call_count, 1)
+
+    @patch("pubmed_client.time.sleep")
+    @patch("requests.get")
+    def test_search_pubmed_retries_http_429(self, mock_get, mock_sleep):
+        too_many = MagicMock()
+        too_many.status_code = 429
+        too_many.headers = {"Retry-After": "0"}
+
+        ok = MagicMock()
+        ok.status_code = 200
+        ok.headers = {}
+        ok.raise_for_status.return_value = None
+        ok.json.return_value = {"esearchresult": {"count": "0", "idlist": []}}
+
+        mock_get.side_effect = [too_many, ok]
+        res = search_pubmed("heart failure")
+        self.assertEqual(res["total_count"], 0)
+        self.assertEqual(res["articles"], [])
+        self.assertNotIn("error", res)
+        self.assertEqual(mock_get.call_count, 2)
+        mock_sleep.assert_called_once_with(0.0)
+        for call in mock_get.call_args_list:
+            params = call.kwargs["params"]
+            headers = call.kwargs["headers"]
+            self.assertEqual(params["tool"], ncbi_tool_name())
+            self.assertEqual(params["email"], ncbi_contact_email())
+            self.assertIn("mailto:", headers["User-Agent"])
 
     @patch("requests.get")
     def test_verify_pmid_valid(self, mock_get):

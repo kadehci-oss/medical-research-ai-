@@ -13,8 +13,25 @@ from typing import List, Dict, Any, Optional
 
 import pubmed_client
 import report_generator
+import specialty_matrix
 
 logger = logging.getLogger(__name__)
+
+
+def _query_preserves_original_terms(original: str, enhanced: str) -> bool:
+    """True when every whitespace token of the user query still appears verbatim."""
+    if not (original or "").strip():
+        return True
+    if not enhanced:
+        return False
+    return all(token in enhanced for token in original.split())
+
+
+def _is_transport_error(message: str) -> bool:
+    """Network and rate-limit failures should not trigger a second immediate search."""
+    lowered = (message or "").lower()
+    markers = ("timeout", "timed out", "429", "too many requests", "connection", "temporarily")
+    return any(marker in lowered for marker in markers)
 
 
 class UniversalEvidenceEngine:
@@ -36,11 +53,17 @@ class UniversalEvidenceEngine:
         sort: str = "relevance",
         publication_type: Optional[str] = None,
         start_year: Optional[int] = None,
-        end_year: Optional[int] = None
+        end_year: Optional[int] = None,
+        enhance_with_specialty: bool = True,
     ) -> Dict[str, Any]:
         """
         Executes a PubMed search, verifies all retrieved article metadata (PMID, DOI, title, authors, pub_year, pub_types),
         and extracts structured parameters for each article.
+
+        When ``enhance_with_specialty`` is true, a detected specialty may OR-expand
+        a few abbreviations. The user's original tokens are kept. If the expanded
+        query returns no records, the original query is searched once. Set the flag
+        to false to send the query exactly as typed.
 
         Handles network or API errors gracefully without crashing.
         """
@@ -51,34 +74,104 @@ class UniversalEvidenceEngine:
                 "query": query,
                 "articles": [],
                 "total_count": 0,
-                "verified_articles": []
+                "verified_articles": [],
+                "executed_query": query,
+                "query_enhancement": {
+                    "original_query": query or "",
+                    "enhanced_query": query or "",
+                    "specialty": None,
+                    "applied": False,
+                    "added_terms": [],
+                    "strategy": "empty_query",
+                    "fallback_to_original": False,
+                },
             }
 
         try:
-            search_res = pubmed_client.search_pubmed(
-                query=query,
+            enhancement = specialty_matrix.enhance_query_with_specialty(
+                query,
+                apply=enhance_with_specialty,
+            )
+        except Exception as exc:
+            logger.warning("Specialty query enhancement failed: %s", exc)
+            enhancement = {
+                "original_query": query.strip(),
+                "enhanced_query": query.strip(),
+                "specialty": None,
+                "applied": False,
+                "added_terms": [],
+                "strategy": "enhancement_error",
+                "fallback_to_original": False,
+            }
+
+        search_query = (enhancement.get("enhanced_query") or query).strip()
+        if not _query_preserves_original_terms(query, search_query):
+            logger.warning("Rejecting specialty enhancement that dropped original terms")
+            search_query = query.strip()
+            enhancement["enhanced_query"] = search_query
+            enhancement["applied"] = False
+            enhancement["added_terms"] = []
+            enhancement["strategy"] = "rejected_term_loss"
+
+        def _run_search(term: str) -> Dict[str, Any]:
+            return pubmed_client.search_pubmed(
+                query=term,
                 max_results=max_results,
                 sort=sort,
                 publication_type=publication_type,
                 start_year=start_year,
-                end_year=end_year
+                end_year=end_year,
             )
+
+        try:
+            search_res = _run_search(search_query)
         except Exception as e:
             logger.error(f"PubMed API search failed: {str(e)}")
             return {
                 "status": "error",
                 "error": f"PubMed API araması sırasında hata oluştu: {str(e)}",
                 "query": query,
+                "executed_query": search_query,
+                "query_enhancement": enhancement,
                 "articles": [],
                 "total_count": 0,
                 "verified_articles": []
             }
+
+        fallback_error = str(search_res.get("error") or "")
+        if (
+            search_query != query.strip()
+            and not search_res.get("articles")
+            and not _is_transport_error(fallback_error)
+        ):
+            logger.info("Specialty-enhanced query returned no articles; retrying the original query")
+            try:
+                search_res = _run_search(query.strip())
+            except Exception as e:
+                logger.error(f"PubMed API search failed: {str(e)}")
+                return {
+                    "status": "error",
+                    "error": f"PubMed API araması sırasında hata oluştu: {str(e)}",
+                    "query": query,
+                    "executed_query": query.strip(),
+                    "query_enhancement": enhancement,
+                    "articles": [],
+                    "total_count": 0,
+                    "verified_articles": []
+                }
+            search_query = query.strip()
+            enhancement["fallback_to_original"] = True
+            enhancement["applied"] = False
+        else:
+            enhancement["fallback_to_original"] = False
 
         if "error" in search_res and not search_res.get("articles"):
             return {
                 "status": "error",
                 "error": search_res.get("error", "Arama hatası"),
                 "query": query,
+                "executed_query": search_query,
+                "query_enhancement": enhancement,
                 "articles": [],
                 "total_count": 0,
                 "verified_articles": []
@@ -123,6 +216,8 @@ class UniversalEvidenceEngine:
         return {
             "status": "success",
             "query": query,
+            "executed_query": search_query,
+            "query_enhancement": enhancement,
             "search_date": search_res.get("search_date"),
             "search_params": search_res.get("search_params"),
             "total_count": search_res.get("total_count", 0),
