@@ -1,6 +1,17 @@
+import os
 import unittest
 from unittest.mock import patch, MagicMock
-from pubmed_client import parse_pubmed_xml, search_pubmed, verify_pmid, verify_doi, normalize_title, normalize_doi, verify_citation
+from pubmed_client import (
+    parse_pubmed_xml,
+    search_pubmed,
+    verify_pmid,
+    verify_doi,
+    normalize_title,
+    normalize_doi,
+    verify_citation,
+    ncbi_request_headers,
+    eutils_identity_params,
+)
 
 SAMPLE_PUBMED_XML = """<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE PubmedArticleSet PUBLIC "-//NLM//DTD PubMedArticle, 1st January 2019//EN" "https://dtd.nlm.nih.gov/ncbi/pubmed/out/pubmed_190101.dtd">
@@ -334,6 +345,70 @@ class TestPubMedClient(unittest.TestCase):
             self.assertTrue(res["valid"])
             self.assertEqual(res["doi"], "10.1056/NEJMoa2107038")
             self.assertEqual(res["title"], "Empagliflozin Test Article")
+            sent_headers = mock_get.call_args.kwargs["headers"]
+            self.assertNotIn("api_key", sent_headers)
+            self.assertIn("mailto:", sent_headers["User-Agent"])
+
+    def test_eutils_identity_uses_env_and_omits_empty_api_key(self):
+        """NCBI tool, email, and api_key come from the environment."""
+        with patch.dict(
+            os.environ,
+            {
+                "NCBI_TOOL": "LabTool",
+                "NCBI_EMAIL": "lab-contact@example.com",
+                "NCBI_API_KEY": "  ",
+            },
+            clear=False,
+        ):
+            params = eutils_identity_params()
+            self.assertEqual(params["tool"], "LabTool")
+            self.assertEqual(params["email"], "lab-contact@example.com")
+            self.assertNotIn("api_key", params)
+            self.assertEqual(
+                ncbi_request_headers()["User-Agent"],
+                "LabTool/1.0 (mailto:lab-contact@example.com)",
+            )
+
+        with patch.dict(os.environ, {"NCBI_TOOL": "", "NCBI_EMAIL": "", "NCBI_API_KEY": ""}, clear=False):
+            params = eutils_identity_params()
+            self.assertEqual(params["tool"], "MedicalResearchAI")
+            self.assertEqual(params["email"], "medical-research-ai@example.com")
+            self.assertNotIn("api_key", params)
+            self.assertNotIn("medical_ai_app@example.com", ncbi_request_headers()["User-Agent"])
+
+    @patch("requests.get")
+    def test_search_pubmed_sends_tool_email_and_api_key(self, mock_get):
+        """esearch and efetch both receive tool, email, and api_key."""
+        mock_esearch_resp = MagicMock()
+        mock_esearch_resp.json.return_value = {
+            "esearchresult": {"count": "1", "idlist": ["34449189"]}
+        }
+        mock_esearch_resp.raise_for_status.return_value = None
+        mock_efetch_resp = MagicMock()
+        mock_efetch_resp.text = SAMPLE_PUBMED_XML
+        mock_efetch_resp.raise_for_status.return_value = None
+        mock_get.side_effect = [mock_esearch_resp, mock_efetch_resp]
+
+        with patch.dict(
+            os.environ,
+            {
+                "NCBI_TOOL": "LabTool",
+                "NCBI_EMAIL": "lab-contact@example.com",
+                "NCBI_API_KEY": "test-ncbi-key",
+            },
+            clear=False,
+        ):
+            res = search_pubmed("empagliflozin", max_results=1)
+
+        self.assertEqual(res["articles"][0]["pmid"], "34449189")
+        self.assertEqual(mock_get.call_count, 2)
+        for call in mock_get.call_args_list:
+            params = call.kwargs["params"]
+            headers = call.kwargs["headers"]
+            self.assertEqual(params["tool"], "LabTool")
+            self.assertEqual(params["email"], "lab-contact@example.com")
+            self.assertEqual(params["api_key"], "test-ncbi-key")
+            self.assertEqual(headers["User-Agent"], "LabTool/1.0 (mailto:lab-contact@example.com)")
 
 
 if __name__ == "__main__":

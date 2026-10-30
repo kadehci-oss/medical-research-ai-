@@ -1,133 +1,141 @@
-# 🩺 Medical Research AI MVP
+# Medical Research AI
 
-A physician-oriented Medical Research AI assistant built with **Python**, **Streamlit**, and **NCBI PubMed E-utilities**.
+A physician-oriented literature assistant built with Python, Streamlit, FastAPI, and NCBI PubMed E-utilities.
 
-This application enables clinicians and medical researchers to perform real-time literature searches, verify PMIDs and DOIs against official databases, and generate structured Turkish Evidence Synthesis Reports (*Türkçe Kanıt Raporu*) backed strictly by real, non-fabricated NCBI PubMed citations.
+It searches live PubMed, verifies PMIDs and DOIs against PubMed and CrossRef, and drafts a Turkish evidence synthesis report (*Türkçe Kanıt Raporu*) from those records. Bibliographic fields come from the APIs. The project rule is zero citation fabrication: do not invent PMIDs, DOIs, titles, authors, or journal names.
 
----
+**Not for clinical use.** The independent expert physician review described in [`UZMAN_HEKIM_DEGERLENDIRME.md`](UZMAN_HEKIM_DEGERLENDIRME.md) has not been done. That file is an empty protocol (scoring form, reviewer slots, and acceptance criteria), not a completed evaluation. No specialist has signed off. Do not use this tool to diagnose, treat, or make clinical decisions.
 
-## 🌟 Key Features
-
-1. **🔎 Real PubMed E-utilities Search:**
-   - Real-time integration with NCBI PubMed (`esearch` and `efetch` APIs).
-   - Filter by publication type (*Randomized Controlled Trial*, *Systematic Review*, *Meta-Analysis*, *Clinical Trial*, *Review*).
-   - Filter by publication date range and sort by relevance or date.
-   - Complete metadata retrieval: PMIDs, DOIs, article titles, authors, journals, publication year, and full abstracts.
-
-2. **✅ PMID & DOI Verification Engine:**
-   - Instantly verify PMIDs against PubMed NCBI database.
-   - Verify DOIs using CrossRef REST API and PubMed cross-referencing.
-   - View publication status and full verified bibliographic details.
-
-3. **📑 Turkish Evidence Synthesis Reports (*Türkçe Kanıt Raporu*):**
-   - Automatically synthesizes evidence from verified PubMed search results into structured Turkish reports tailored for physicians.
-   - **Structured Sections:**
-     1. **Klinik Özet ve Sentez** (Clinical Summary & Key Findings)
-     2. **Kanıt Seviyeleri ve Metodolojik Dağılım** (Levels of Evidence & Methodological Quality)
-     3. **Klinik Uyarılar ve Sınırlılıklar** (Clinical Disclaimers & Methodological Limitations)
-     4. **Doğrulanmış Kaynaklar ve Literatür Listesi** (Verified Bibliography)
-   - **Zero Citation Fabrication:** Built with strict grounding constraints. Every citation links directly to its verified PubMed page (`https://pubmed.ncbi.nlm.nih.gov/<PMID>/`).
-   - Supports both deterministic rule-based generation and optional LLM synthesis via OpenAI GPT models.
-
-4. **💻 Interactive Physician Dashboard:**
-   - Sleek multi-tab Streamlit dashboard designed for fast clinical workflow.
-   - Export reports as Markdown (`.md`) files with one click.
+**Klinik kullanım için değildir.** Bağımsız uzman hekim değerlendirmesi henüz yapılmamıştır.
 
 ---
 
-## 🏗 Architecture & Project Structure
+## Key features
+
+1. **PubMed E-utilities search** (`esearch` + `efetch`): publication-type and year filters, relevance or date sort, and metadata (PMID, DOI, title, authors, journal, year, abstract).
+2. **PMID and DOI verification:** PMID lookup on PubMed; DOI lookup on CrossRef with a PubMed cross-check. Citation checks re-fetch the PMID and compare the normalized title and DOI.
+3. **Turkish evidence report:** rule-based synthesis, with optional OpenAI synthesis when `OPENAI_API_KEY` is set. Citations point at `https://pubmed.ncbi.nlm.nih.gov/<PMID>/`.
+4. **Two interfaces:** a Streamlit dashboard (`app.py`) and a FastAPI service (`api.py`) that also exposes the universal evidence engine (`universal_evidence_engine.py`).
+
+---
+
+## Project structure
 
 ```
 .
-├── app.py                   # Streamlit web application dashboard
-├── pubmed_client.py         # PubMed E-utilities client & PMID/DOI verifiers
-├── report_generator.py      # Turkish Evidence Report synthesis engine
-├── live_ncbi_validation.py  # Live NCBI PubMed API smoke validation script
-├── ncbi_live_results.json   # Output results of live NCBI validation check
-├── UZMAN_HEKIM_DEGERLENDIRME.md # Independent Expert Physician Evaluation Protocol
+├── api.py                         # FastAPI app (search, verify, report, universal engine)
+├── app.py                         # Streamlit dashboard
+├── pubmed_client.py               # NCBI E-utilities and CrossRef client
+├── report_generator.py            # Turkish evidence-report synthesis
+├── universal_evidence_engine.py   # Disease-agnostic evidence search and synthesis
+├── all_specialty_matrix.json      # Specialty matrix used by the evidence engine
+├── live_ncbi_validation.py        # Live esearch/efetch smoke script (no mocks)
+├── ncbi_live_results.json         # Last recorded live-validation output
+├── requirements.txt               # Pinned direct dependencies
+├── UZMAN_HEKIM_DEGERLENDIRME.md   # Expert-review protocol (not yet performed)
+├── IMPLEMENTATION.md              # Architecture notes
+├── AGENTS.md                      # Contributor and agent conventions
+├── statin_myopathy_report.md      # Example generated report
 ├── .github/workflows/
-│   └── live-ncbi-validation.yml # GitHub Actions workflow for live NCBI validation
-├── tests/
-│   ├── test_pubmed_client.py   # Unit tests for PubMed client & verifiers
-│   └── test_report_generator.py # Unit tests for report synthesis & anti-hallucination
-├── AGENTS.md                # AI agent instructions & codebase conventions
-└── README.md                # Project documentation
+│   ├── ci.yml                     # pytest on push and pull request
+│   └── live-ncbi-validation.yml   # Scheduled and manual live NCBI check
+└── tests/
+    ├── test_api.py
+    ├── test_app.py
+    ├── test_heart_failure_regression.py
+    ├── test_infectious_disease_regression.py
+    ├── test_pubmed_client.py
+    ├── test_real_pubmed_e2e.py
+    ├── test_real_pubmed_regression.py
+    ├── test_report_generator.py
+    ├── test_statin_myopathy_e2e.py
+    ├── test_statin_myopathy_regression.py
+    └── test_universal_evidence_engine.py
 ```
 
 ---
 
-## 🚀 Getting Started
+## Getting started
 
 ### Prerequisites
-- Python 3.10+
-- Internet connection (for NCBI PubMed E-utilities and CrossRef API)
 
-### Installation
+- Python 3.11 or newer (3.12 is what CI and the pinned dependency set were checked with). Streamlit 1.66 and pandas 3.1 require 3.11+.
+- Network access to NCBI E-utilities and the CrossRef API.
 
-1. **Clone repository:**
-   ```bash
-   git clone https://github.com/your-org/medical-research-ai.git
-   cd medical-research-ai
-   ```
+### Install
 
-2. **Install dependencies:**
-   ```bash
-   pip install streamlit requests pytest openai python-dotenv
-   ```
-
-3. **(Optional) Set OpenAI API Key:**
-   If you wish to use OpenAI LLM synthesis for report generation, set your API key as an environment variable or enter it directly in the Streamlit sidebar:
-   ```bash
-   export OPENAI_API_KEY="your-api-key-here"
-   ```
+```bash
+git clone https://github.com/kadehci-oss/medical-research-ai-.git
+cd medical-research-ai-
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
 
 ---
 
-## 🧪 Running Tests & Live NCBI Validation
+## Environment variables
 
-### Unit & Integration Test Suite
-Run the full automated test suite using `pytest`:
-
-```bash
-pytest
-```
-
-### Live NCBI PubMed API Validation
-To verify real ESearch and EFetch calls directly against live NCBI production servers without mocks:
+| Variable | Required | Purpose |
+|---|---|---|
+| `NCBI_TOOL` | No | Tool name sent as `tool` on every E-utilities request and used in the User-Agent. Default: `MedicalResearchAI`. |
+| `NCBI_EMAIL` | No | Contact email sent as `email` on every E-utilities request and in the User-Agent. Default: `medical-research-ai@example.com` (not a personal address). Set this to a monitored mailbox before sustained use so NCBI can reach you. |
+| `NCBI_API_KEY` | No | When set, sent as `api_key` on E-utilities requests only (not to CrossRef). Raises the NCBI rate limit. Omit it to leave the parameter off the request. |
+| `OPENAI_API_KEY` | No | Enables optional LLM report synthesis. Without it, synthesis stays rule-based. The Streamlit sidebar can also take this key. |
 
 ```bash
-python live_ncbi_validation.py
+export NCBI_TOOL="MedicalResearchAI"
+export NCBI_EMAIL="you@example.com"
+export NCBI_API_KEY="your-ncbi-api-key"
+export OPENAI_API_KEY="your-openai-api-key"
 ```
 
-This generates `ncbi_live_results.json` detailing the pass/fail status of ESearch queries and EFetch paper identities (PMID, DOI, Title).
-
-This test is also executed automatically via GitHub Actions workflow (`.github/workflows/live-ncbi-validation.yml`).
+No personal email is hardcoded. `live_ncbi_validation.py` is a separate smoke script and does not read these variables.
 
 ---
 
-## 🏃 Running the Application
+## Run the applications
 
-Start the Streamlit dashboard locally:
+Streamlit dashboard (default URL `http://localhost:8501`):
 
 ```bash
 streamlit run app.py
 ```
 
-Then open your browser at `http://localhost:8501`.
+FastAPI server. The ASGI app object is `app` in `api.py`. This command was checked locally: `GET /health` returns `{"status":"ok","service":"Medical Research AI API"}`.
+
+```bash
+uvicorn api:app --host 127.0.0.1 --port 8000
+```
+
+- Health: `http://127.0.0.1:8000/health`
+- Interactive docs: `http://127.0.0.1:8000/docs`
+- `GET /api/search`
+- `GET /api/verify/pmid/{pmid}`
+- `GET /api/verify/doi/{doi}`
+- `POST /api/verify/citation`
+- `POST /api/report`
+- `POST /api/universal_engine/synthesize`
 
 ---
 
-## 🛡 Citation Integrity & Anti-Hallucination Policy
+## Tests and live NCBI check
 
-Medical safety requires absolute accuracy. Hallucinating paper citations or inventing PMIDs/DOIs is unacceptable in clinical research.
+```bash
+pytest
+python live_ncbi_validation.py
+```
 
-- **Direct API Sourcing:** All bibliographic records are fetched directly from NCBI PubMed XML outputs.
-- **Verification First:** Verification tools query live CrossRef and PubMed servers.
-- **Strict Grounding:** The report generator operates on verified PubMed payload objects only, ensuring zero fabricated PMIDs or paper titles.
+`pytest` mocks network calls. `live_ncbi_validation.py` calls production E-utilities with no mocks and writes `ncbi_live_results.json`. The same script runs from `.github/workflows/live-ncbi-validation.yml` (weekly and on manual dispatch). A passing smoke test is not a clinical validation.
 
 ---
 
-## ⚕️ Independent Expert Physician Review Disclosure
+## Citation integrity
 
-- **Evaluation Protocol:** See `UZMAN_HEKIM_DEGERLENDIRME.md` for the evaluation framework, scoring criteria, and clinical safety thresholds for independent specialist physicians.
-- **Status Notice:** **Uzman Hekim Değerlendirmesi / Onayı Henüz Tamamlanmamıştır (Yapılmadı / Tamamlanmadı).** The protocol form in `UZMAN_HEKIM_DEGERLENDIRME.md` is a baseline proposal for future double-blind expert review. No completed physician review or clinical validation approval is claimed.
+Records are parsed from PubMed XML or CrossRef JSON. The report generator is only supposed to cite articles present in that payload. A green test run does not mean a physician has reviewed the wording, evidence grades, or clinical applicability.
+
+---
+
+## Expert review status
+
+[`UZMAN_HEKIM_DEGERLENDIRME.md`](UZMAN_HEKIM_DEGERLENDIRME.md) is the protocol for a future double-blind review by at least two independent specialists. **That review has not been done.** The form is blank. This software is a research prototype, not a medical device, and it is not for clinical use.

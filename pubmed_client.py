@@ -8,9 +8,54 @@ PUBMED_ESEARCH_URL = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi
 PUBMED_EFETCH_URL = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi"
 CROSSREF_API_URL = "https://api.crossref.org/works/"
 
-DEFAULT_HEADERS = {
-    "User-Agent": "MedicalResearchAI/1.0 (mailto:medical_ai_app@example.com)"
-}
+# Non-personal fallbacks. Operators should set NCBI_TOOL and NCBI_EMAIL.
+DEFAULT_NCBI_TOOL = "MedicalResearchAI"
+DEFAULT_NCBI_EMAIL = "medical-research-ai@example.com"
+
+
+def ncbi_tool_name() -> str:
+    """Return the E-utilities tool name from ``NCBI_TOOL`` or the project default."""
+    value = os.environ.get("NCBI_TOOL", "").strip()
+    return value or DEFAULT_NCBI_TOOL
+
+
+def ncbi_contact_email() -> str:
+    """Return the contact email from ``NCBI_EMAIL`` or a non-personal default.
+
+    No real personal address is hardcoded. Set ``NCBI_EMAIL`` to an address
+    NCBI can use if a script misbehaves.
+    """
+    value = os.environ.get("NCBI_EMAIL", "").strip()
+    return value or DEFAULT_NCBI_EMAIL
+
+
+def ncbi_api_key() -> Optional[str]:
+    """Return ``NCBI_API_KEY`` when set, otherwise ``None`` so requests omit it."""
+    value = os.environ.get("NCBI_API_KEY", "").strip()
+    return value or None
+
+
+def ncbi_request_headers() -> Dict[str, str]:
+    """Build a User-Agent that identifies this client to NCBI and CrossRef."""
+    return {
+        "User-Agent": f"{ncbi_tool_name()}/1.0 (mailto:{ncbi_contact_email()})"
+    }
+
+
+def eutils_identity_params() -> Dict[str, str]:
+    """Attach NCBI etiquette fields to an E-utilities query.
+
+    ``tool`` and ``email`` are always sent. ``api_key`` is included only when
+    ``NCBI_API_KEY`` is set.
+    """
+    params: Dict[str, str] = {
+        "tool": ncbi_tool_name(),
+        "email": ncbi_contact_email(),
+    }
+    api_key = ncbi_api_key()
+    if api_key:
+        params["api_key"] = api_key
+    return params
 
 
 def _get_element_text(elem: Optional[ET.Element]) -> str:
@@ -150,9 +195,13 @@ def search_pubmed(
     end_year: Optional[int] = None
 ) -> Dict[str, Any]:
     """
-    Searches PubMed using E-utilities esearch & efetch with search date recording,
-    query logging, and article deduplication by PMID and DOI.
-    Returns dict with 'articles', 'total_count', 'query', 'search_date', 'search_params'.
+    Searches PubMed using E-utilities esearch and efetch.
+
+    Records the search date and parameters, and deduplicates articles by PMID
+    and DOI. Every E-utilities request includes ``tool`` and ``email`` from
+    ``NCBI_TOOL`` / ``NCBI_EMAIL``, and ``api_key`` when ``NCBI_API_KEY`` is set.
+    Returns a dict with ``articles``, ``total_count``, ``query``, ``search_date``,
+    and ``search_params``.
     """
     import datetime
     search_date_str = datetime.date.today().strftime("%Y-%m-%d")
@@ -195,8 +244,15 @@ def search_pubmed(
         if end_year:
             esearch_params["maxdate"] = str(end_year)
 
+    esearch_params.update(eutils_identity_params())
+
     try:
-        response = requests.get(PUBMED_ESEARCH_URL, params=esearch_params, headers=DEFAULT_HEADERS, timeout=10)
+        response = requests.get(
+            PUBMED_ESEARCH_URL,
+            params=esearch_params,
+            headers=ncbi_request_headers(),
+            timeout=10,
+        )
         response.raise_for_status()
         data = response.json()
         esearch_result = data.get("esearchresult", {})
@@ -239,7 +295,13 @@ def search_pubmed(
             "id": ",".join(id_list),
             "retmode": "xml"
         }
-        fetch_response = requests.get(PUBMED_EFETCH_URL, params=efetch_params, headers=DEFAULT_HEADERS, timeout=15)
+        efetch_params.update(eutils_identity_params())
+        fetch_response = requests.get(
+            PUBMED_EFETCH_URL,
+            params=efetch_params,
+            headers=ncbi_request_headers(),
+            timeout=15,
+        )
         fetch_response.raise_for_status()
 
         raw_articles = parse_pubmed_xml(fetch_response.text)
@@ -285,8 +347,10 @@ def search_pubmed(
 
 
 def verify_pmid(pmid: str) -> Dict[str, Any]:
-    """
-    Verifies PMID existence and fetches full metadata.
+    """Verify that a PMID exists and return its PubMed metadata.
+
+    The E-utilities request includes ``tool``, ``email``, and ``api_key`` when
+    ``NCBI_API_KEY`` is set.
     """
     clean_pmid = pmid.strip().lower().replace("pmid:", "").strip()
     if not clean_pmid.isdigit():
@@ -301,9 +365,15 @@ def verify_pmid(pmid: str) -> Dict[str, Any]:
         "id": clean_pmid,
         "retmode": "xml"
     }
+    efetch_params.update(eutils_identity_params())
 
     try:
-        response = requests.get(PUBMED_EFETCH_URL, params=efetch_params, headers=DEFAULT_HEADERS, timeout=10)
+        response = requests.get(
+            PUBMED_EFETCH_URL,
+            params=efetch_params,
+            headers=ncbi_request_headers(),
+            timeout=10,
+        )
         response.raise_for_status()
         articles = parse_pubmed_xml(response.text)
         if articles and articles[0].get("pmid") == clean_pmid:
@@ -430,8 +500,10 @@ def verify_citation(citation: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def verify_doi(doi: str) -> Dict[str, Any]:
-    """
-    Verifies DOI existence against CrossRef API and PubMed.
+    """Verify a DOI against CrossRef and, if needed, PubMed.
+
+    The CrossRef request uses the same configurable User-Agent as NCBI calls.
+    ``NCBI_API_KEY`` is sent only on E-utilities requests, not to CrossRef.
     """
     clean_doi = doi.strip()
     clean_doi = re.sub(r"^https?://(dx\.)?doi\.org/", "", clean_doi, flags=re.IGNORECASE)
@@ -447,7 +519,7 @@ def verify_doi(doi: str) -> Dict[str, Any]:
     # First try CrossRef API
     crossref_url = f"{CROSSREF_API_URL}{clean_doi}"
     try:
-        response = requests.get(crossref_url, headers=DEFAULT_HEADERS, timeout=10)
+        response = requests.get(crossref_url, headers=ncbi_request_headers(), timeout=10)
         if response.status_code == 200:
             data = response.json().get("message", {})
             title_list = data.get("title", [])
