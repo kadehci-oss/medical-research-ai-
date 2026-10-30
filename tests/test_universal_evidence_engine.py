@@ -179,6 +179,154 @@ class TestUniversalEvidenceEngine(unittest.TestCase):
         self.assertEqual(comp["primary_study_count"], 3)
         self.assertEqual(comp["consistent_findings"], [])
         self.assertEqual(comp["conflicting_findings"], [])
+        self.assertTrue(len(comp["non_comparable_studies"]) > 0)
+
+    # --- 7. Source Contamination & Metric Mixing Prevention Test ---
+    def test_source_contamination_and_metric_mixing_prevention(self):
+        cardio_art = {
+            "pmid": "10001",
+            "doi": "10.1000/cardio1",
+            "title": "Cardiology Trial for Heart Failure",
+            "authors": ["Cardio Author"],
+            "pub_year": "2023",
+            "publication_types": ["Randomized Controlled Trial"],
+            "abstract": "In 1200 patients with heart failure (n=1200), Drug A reduced mortality (HR 0.65, 95% CI 0.50-0.85, p=0.001)."
+        }
+        psych_art = {
+            "pmid": "20002",
+            "doi": "10.2000/psych1",
+            "title": "Psychiatry Trial for Major Depression",
+            "authors": ["Psych Author"],
+            "pub_year": "2024",
+            "publication_types": ["Randomized Controlled Trial"],
+            "abstract": "In 450 patients with major depression (n=450), Drug B improved remission rate (OR 2.10, 95% CI 1.40-3.15, p<0.001)."
+        }
+
+        processed = self.engine.process_and_extract_parameters([cardio_art, psych_art])
+        self.assertEqual(len(processed), 2)
+
+        # Confirm PMID 10001 contains ONLY Cardio parameters
+        c1 = processed[0] if processed[0]["pmid"] == "10001" else processed[1]
+        c2 = processed[1] if processed[1]["pmid"] == "20002" else processed[0]
+
+        self.assertEqual(c1["pmid"], "10001")
+        self.assertEqual(c1["sample_size_n"], "1200")
+        self.assertIn("HR 0.65", c1["effect_sizes"])
+        self.assertNotIn("OR 2.10", c1["effect_sizes"])
+        self.assertNotIn("450", c1["sample_size_n"])
+
+        # Confirm PMID 20002 contains ONLY Psych parameters
+        self.assertEqual(c2["pmid"], "20002")
+        self.assertEqual(c2["sample_size_n"], "450")
+        self.assertIn("OR 2.10", c2["effect_sizes"])
+        self.assertNotIn("HR 0.65", c2["effect_sizes"])
+        self.assertNotIn("1200", c2["sample_size_n"])
+
+    # --- 8. Missing Data and Unstated Metric Handling Test ---
+    def test_missing_data_and_unstated_metric_handling(self):
+        missing_art = {
+            "pmid": "30003",
+            "title": "Observational Study on Rare Syndrome",
+            "authors": ["No Data Author"],
+            "pub_year": "2020",
+            "publication_types": ["Journal Article"],
+            "abstract": "This qualitative observational study describes clinical observations in rare syndrome patients without quantitative statistical tests."
+        }
+
+        processed = self.engine.process_and_extract_parameters([missing_art])
+        p = processed[0]
+
+        self.assertIsNone(p["sample_size_n"])
+        self.assertEqual(p["effect_sizes"], [])
+        self.assertEqual(p["confidence_intervals"], [])
+        self.assertEqual(p["p_values"], [])
+
+        comp = self.engine.compare_cross_article_findings([missing_art], "Rare syndrome")
+        self.assertEqual(comp["consistent_findings"], [])
+        self.assertEqual(comp["conflicting_findings"], [])
+
+    # --- 9. Conflicting Findings Test with Matched PICO and Design ---
+    def test_conflicting_findings_with_matched_pico_and_design(self):
+        trial_positive = {
+            "pmid": "40001",
+            "doi": "10.4000/pos",
+            "title": "Efficacy of Drug X in Major Depression",
+            "authors": ["Positive Author"],
+            "pub_year": "2022",
+            "publication_types": ["Randomized Controlled Trial"],
+            "abstract": "In 300 patients with major depression (n=300), Drug X significantly reduced depression symptoms compared to placebo (OR 2.15, 95% CI 1.40-3.30, p<0.001)."
+        }
+        trial_negative = {
+            "pmid": "40002",
+            "doi": "10.4000/neg",
+            "title": "Evaluation of Drug X in Major Depression",
+            "authors": ["Negative Author"],
+            "pub_year": "2023",
+            "publication_types": ["Randomized Controlled Trial"],
+            "abstract": "In 320 patients with major depression (n=320), Drug X failed to show significant difference compared to placebo (OR 1.02, 95% CI 0.80-1.30, p=0.85)."
+        }
+
+        comp = self.engine.compare_cross_article_findings([trial_positive, trial_negative], "Drug X in major depression")
+        self.assertEqual(comp["total_articles"], 2)
+        self.assertEqual(comp["primary_study_count"], 2)
+        self.assertEqual(len(comp["conflicting_findings"]), 1)
+        self.assertIn("çelişkili veya farklı istatistiksel sonuçlar", comp["conflicting_findings"][0]["details"])
+        self.assertIn("[PMID: 40001]", comp["conflicting_findings"][0]["details"])
+        self.assertIn("[PMID: 40002]", comp["conflicting_findings"][0]["details"])
+
+    # --- 10. Consistent Findings Test with Matched PICO and Design ---
+    def test_consistent_findings_with_matched_pico_and_design(self):
+        trial1 = {
+            "pmid": "50001",
+            "doi": "10.5000/trial1",
+            "title": "Trial 1 of SGLT2i in Heart Failure",
+            "authors": ["Trial1 Author"],
+            "pub_year": "2021",
+            "publication_types": ["Randomized Controlled Trial"],
+            "abstract": "In 4000 patients with heart failure (n=4000), SGLT2 inhibitor reduced heart failure hospitalization compared to placebo (HR 0.75, 95% CI 0.65-0.87, p<0.001)."
+        }
+        trial2 = {
+            "pmid": "50002",
+            "doi": "10.5000/trial2",
+            "title": "Trial 2 of SGLT2i in Heart Failure",
+            "authors": ["Trial2 Author"],
+            "pub_year": "2022",
+            "publication_types": ["Randomized Controlled Trial"],
+            "abstract": "In 4500 patients with heart failure (n=4500), SGLT2 inhibitor reduced heart failure hospitalization compared to placebo (HR 0.79, 95% CI 0.69-0.90, p<0.001)."
+        }
+
+        comp = self.engine.compare_cross_article_findings([trial1, trial2], "SGLT2 inhibitors in heart failure")
+        self.assertEqual(len(comp["consistent_findings"]), 1)
+        self.assertIn("tutarlı istatistiksel bulgular", comp["consistent_findings"][0]["details"])
+        self.assertIn("[PMID: 50001]", comp["consistent_findings"][0]["details"])
+        self.assertIn("[PMID: 50002]", comp["consistent_findings"][0]["details"])
+
+    # --- 11. Multi-Specialty 88-Domain Compatibility Test ---
+    def test_multi_specialty_88_domain_compatibility(self):
+        dermatology_art = {
+            "pmid": "60001",
+            "doi": "10.6000/derm1",
+            "title": "Biologic Therapy in Severe Psoriasis",
+            "authors": ["Derm Author"],
+            "pub_year": "2023",
+            "publication_types": ["Randomized Controlled Trial"],
+            "abstract": "In 600 adult patients with severe plaque psoriasis (n=600), Biologic X achieved PASI 90 response compared to placebo (OR 4.50, 95% CI 3.10-6.50, p<0.0001)."
+        }
+        pmr_art = {
+            "pmid": "60002",
+            "doi": "10.6000/pmr1",
+            "title": "Robot-Assisted Gait Training in Post-Stroke Rehabilitation",
+            "authors": ["PMR Author"],
+            "pub_year": "2024",
+            "publication_types": ["Randomized Controlled Trial"],
+            "abstract": "In 150 post-stroke rehabilitation patients (n=150), robot-assisted gait training improved walking speed compared to conventional physical therapy (MD 0.25, 95% CI 0.12-0.38, p=0.001)."
+        }
+
+        synth = self.engine.generate_synthesis_report("Multi specialty clinical research", [dermatology_art, pmr_art])
+        self.assertEqual(synth["status"], "success")
+        self.assertIn("## 12. Klinik Sonuç", synth["report_markdown"])
+        self.assertIn("[PMID: 60001]", synth["report_markdown"])
+        self.assertIn("[PMID: 60002]", synth["report_markdown"])
     # --- 7. Search and Verification with Mocks ---
     @patch("universal_evidence_engine.pubmed_client.search_pubmed")
     def test_search_and_verify_success(self, mock_search):
