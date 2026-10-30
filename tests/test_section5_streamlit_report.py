@@ -5,7 +5,7 @@ from unittest.mock import patch
 
 from streamlit.testing.v1 import AppTest
 
-from report_generator import NO_NUMERIC_CLINICAL_FINDING_TR
+from report_generator import INSUFFICIENT_CLINICAL_DATA_TR
 
 
 _RAW_ABSTRACT = (
@@ -51,6 +51,25 @@ class TestSection5StreamlitReport(unittest.TestCase):
                 "pubmed_url": "https://pubmed.ncbi.nlm.nih.gov/90000022/",
                 "doi_url": "https://doi.org/10.1000/test-rct",
             },
+            {
+                "pmid": "90000023",
+                "title": "Group differences in inflammatory myopathy",
+                "authors": ["Deneme Yazar"],
+                "journal": "Test Journal",
+                "pub_year": "2025",
+                "publication_types": ["Journal Article"],
+                "abstract": (
+                    "In this retrospective study 40 patients with myositis were compared. "
+                    "Statistical comparisons were performed. "
+                    "Anti-HMGCR myopathy was increased in one group "
+                    "(OR: 4.81, CI: (1.03, 22.6), p=0.045) as was diabetes mellitus "
+                    "(OR: 2.54, CI: (1.02, 6.29), p=0.05). "
+                    "Cancer-associated myositis was lower (OR: 0.23CI: (0.08, 0.7), p=0.027)."
+                ),
+                "doi": "10.1000/test-retro",
+                "pubmed_url": "https://pubmed.ncbi.nlm.nih.gov/90000023/",
+                "doi_url": "https://doi.org/10.1000/test-retro",
+            },
         ]
         mock_search.return_value = {
             "status": "success",
@@ -78,7 +97,7 @@ class TestSection5StreamlitReport(unittest.TestCase):
         self.assertIn("## 5. Bilimsel Kanıt Tablosu", report)
         section = report.split("## 5. Bilimsel Kanıt Tablosu")[1].split("## 6.")[0]
 
-        self.assertIn(NO_NUMERIC_CLINICAL_FINDING_TR, section)
+        self.assertIn(INSUFFICIENT_CLINICAL_DATA_TR, section)
         self.assertNotIn("is a rare presentation of a statin-associated myopathy", section)
         self.assertIn("**Olgu Sunumu**", section)
         self.assertNotIn("Niteliksel Derleme", section)
@@ -89,9 +108,25 @@ class TestSection5StreamlitReport(unittest.TestCase):
         self.assertIn(_SOURCE_SENTENCE, section)
         self.assertIn("Sonlanım:", section)
 
+        grouped = section.split("PMID: 90000023", 1)[1].split("|  ", 1)[0]
+        self.assertEqual(grouped.count("Anti-HMGCR myopathy was increased"), 1)
+        self.assertIn("Sonlanım: Anti-HMGCR myopathy", grouped)
+        self.assertIn("Sonlanım: diabetes mellitus", grouped)
+        self.assertIn("Sonlanım: Cancer-associated myositis", grouped)
+        self.assertIn("Güven aralığı: 1.03 ile 22.6", grouped)
+        self.assertIn("Güven aralığı: 0.08 ile 0.7", grouped)
+        self.assertNotIn("Güven aralığı: özette bildirilmedi", grouped)
+        self.assertIn("Retrospektif Karşılaştırmalı Gözlemsel Araştırma", section)
+        heart_row = [line for line in section.splitlines() if "90000022" in line and line.startswith("|")][0]
+        self.assertNotIn("4.81", heart_row)
+        self.assertNotIn("22.6", heart_row)
+
         visible = "\n".join(getattr(block, "value", "") or "" for block in at.markdown)
-        self.assertIn(NO_NUMERIC_CLINICAL_FINDING_TR, visible)
+        self.assertIn(INSUFFICIENT_CLINICAL_DATA_TR, visible)
         self.assertIn("## 5. Bilimsel Kanıt Tablosu", visible)
+        self.assertIn("## 6. Önemli Çalışmaların Karşılaştırılması", visible)
+        self.assertIn("Hasta grubu", visible)
+        self.assertIn("Klinik sonucu doğrudan destekleyen PMID", visible)
 
 
 if __name__ == "__main__":

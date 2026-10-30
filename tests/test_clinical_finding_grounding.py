@@ -12,6 +12,7 @@ import unittest
 from unittest.mock import patch
 
 from report_generator import (
+    INSUFFICIENT_CLINICAL_DATA_TR,
     NO_NUMERIC_CLINICAL_FINDING_TR,
     classify_study_design,
     extract_grounded_clinical_findings,
@@ -153,13 +154,28 @@ class TestKlinikBulgularCellIsSourceGrounded(unittest.TestCase):
                     self.assertIn(number, finding["sentence"], f"{article['pmid']} {number} {blob}")
 
     def test_missing_effect_measure_is_stated_in_turkish_without_the_english_abstract(self):
-        for pmid in ("33372889", "35955495", "32581543", "36896367", "35503884", "38750479"):
+        # Reviews with neither an effect measure nor a patient-level finding.
+        for pmid in ("35955495", "32581543"):
             article = self.by_pmid[pmid]
             cell = format_klinik_bulgular_cell(article)
-            self.assertTrue(cell.startswith(NO_NUMERIC_CLINICAL_FINDING_TR), cell)
+            self.assertTrue(cell.startswith(INSUFFICIENT_CLINICAL_DATA_TR), cell)
             self.assertIn(f"PMID: {pmid}", cell)
             opening = _normalized(article["abstract"])[:80]
             self.assertNotIn(opening, cell, pmid)
+            self.assertNotIn("HR ", cell)
+            self.assertNotIn("odds ratio", cell.lower())
+
+        # Case reports keep a Turkish qualitative summary and the source sentence.
+        # The background opening of the abstract is not pasted in as the cell.
+        for pmid in ("33372889", "36896367", "35503884"):
+            article = self.by_pmid[pmid]
+            cell = format_klinik_bulgular_cell(article)
+            self.assertIn("Nitel klinik bulgu:", cell, pmid)
+            self.assertIn(f"PMID: {pmid}", cell)
+            self.assertIn("Kaynak cümle:", cell)
+            opening = _normalized(article["abstract"])[:80]
+            self.assertNotIn(opening, cell, pmid)
+            self.assertNotIn(NO_NUMERIC_CLINICAL_FINDING_TR, cell)
             self.assertNotIn("HR ", cell)
             self.assertNotIn("odds ratio", cell.lower())
 
@@ -213,7 +229,8 @@ class TestKlinikBulgularCellIsSourceGrounded(unittest.TestCase):
 
         for pmid in ("33372889", "35503884", "36896367"):
             row = _table_row(section, pmid)
-            self.assertIn(NO_NUMERIC_CLINICAL_FINDING_TR, row, pmid)
+            self.assertIn("Nitel klinik bulgu:", row, pmid)
+            self.assertNotIn(NO_NUMERIC_CLINICAL_FINDING_TR, row, pmid)
             opening = _normalized(self.by_pmid[pmid]["abstract"])[:80]
             self.assertNotIn(opening, row, pmid)
 
@@ -242,7 +259,7 @@ class TestKlinikBulgularCellIsSourceGrounded(unittest.TestCase):
         self.assertNotIn("odds ratio 4.2", oncology_row)
 
         html_table = generate_evidence_table_html(selected)
-        self.assertIn(NO_NUMERIC_CLINICAL_FINDING_TR, html_table)
+        self.assertIn("Nitel klinik bulgu:", html_table)
         self.assertIn("odds ratio 4.2", html_table)
         self.assertNotIn(_normalized(self.by_pmid["33372889"]["abstract"])[:80], html_table)
         markdown = generate_evidence_table_markdown(selected)
