@@ -11,7 +11,13 @@ import unittest
 import pytest
 
 from pubmed_client import search_pubmed, verify_pmid
-from report_generator import assess_risk_of_bias, classify_study_design
+from report_generator import (
+    assess_risk_of_bias,
+    classify_study_design,
+    format_klinik_bulgular_cell,
+    format_methodological_limitation,
+    _format_cross_study_comparison,
+)
 
 pytestmark = pytest.mark.skipif(
     os.environ.get("RUN_LIVE_PUBMED") != "1",
@@ -168,6 +174,84 @@ class TestLiveAbstractDesigns(unittest.TestCase):
                     failures.append(f"PMID 36896367 iki olgu anlatmasına rağmen {design['design']}")
         if failures:
             self.fail("Gerçek PubMed tasarım regresyonu:\n" + "\n".join(failures))
+
+
+class TestLiveSection56Polish(unittest.TestCase):
+    """The same section 5 and 6 rules, read from PubMed rather than the fixture."""
+
+    def test_live_imnm_abstracts_keep_turkish_section_5_and_6(self):
+        pmids = ["33447390", "28207435", "41458822", "40446701", "41010829", "33372889"]
+        articles = []
+        failures = []
+        for pmid in pmids:
+            try:
+                article = verify_pmid(pmid)
+            except Exception as exc:  # noqa: BLE001 - report the access barrier
+                failures.append(f"PMID {pmid}: PubMed erişim engeli: {exc}")
+                continue
+            if not isinstance(article, dict) or not article.get("valid"):
+                error = article.get("error") if isinstance(article, dict) else article
+                failures.append(f"PMID {pmid}: PubMed erişim engeli: {error}")
+                continue
+            articles.append(article)
+        if failures:
+            self.fail("Gerçek PubMed bölüm 5-6:\n" + "\n".join(failures))
+
+        by_pmid = {article["pmid"]: article for article in articles}
+        table = _format_cross_study_comparison(articles, {})
+
+        def row(pmid):
+            for line in table.splitlines():
+                if line.startswith("|") and pmid in line.split("|")[1]:
+                    return [part.strip() for part in line.strip().strip("|").split("|")]
+            return []
+
+        case = format_klinik_bulgular_cell(by_pmid["33447390"])
+        if "dermatomiyozit benzeri deri bulguları" not in case:
+            failures.append("PMID 33447390 olgu cümlesindeki deri bulgusu çıkarılmadı")
+        if "It presents with" in case or "should be considered" in case:
+            failures.append("PMID 33447390 genel anlatıyı olgu bulgusu saydı")
+        if "Özette sayısal veya nitel klinik bulgu yetersiz" in case:
+            failures.append("PMID 33447390 nitel bulguyu yetersiz saydı")
+
+        review = format_klinik_bulgular_cell(by_pmid["28207435"])
+        if re.search(r"Nitel klinik bulgu:\s*hasta\b", review):
+            failures.append("PMID 28207435 anlamsız 'hasta' bulgusu üretti")
+
+        pooled = format_klinik_bulgular_cell(by_pmid["41458822"])
+        if pooled.count("Remisyon bildirildi") != 1:
+            failures.append(f"PMID 41458822 remisyon tekrarı: {pooled.count('Remisyon bildirildi')}")
+
+        compare = row("40446701")
+        series = row("41010829")
+        prednisone = row("33372889")
+        if len(compare) < 6 or len(series) < 6 or len(prednisone) < 6:
+            failures.append("Bölüm 6 satırı eksik")
+        else:
+            if "self-identified" in compare[1].lower() or "hispanic versus" in compare[1].lower():
+                failures.append("PMID 40446701 hasta grubu ham İngilizce")
+            if compare[3] != "Belirtilmedi":
+                failures.append(f"PMID 40446701 müdahalesi tedavi değil: {compare[3]}")
+            if "METHODS" in compare[5] or "self-identified" in compare[5].lower():
+                failures.append("PMID 40446701 yöntem cümlesi sınırlılık oldu")
+            if "Retrospektif tasarım" not in compare[5]:
+                failures.append(f"PMID 40446701 türetilen sınırlılık yok: {compare[5]}")
+            for drug in ("kortikosteroid", "metotreksat", "IVIG", "rituksimab"):
+                if drug not in series[3]:
+                    failures.append(f"PMID 41010829 müdahalesinde {drug} yok: {series[3]}")
+            if "single institution" in series[5].lower() or series[5].lower().startswith("methods"):
+                failures.append("PMID 41010829 yöntem cümlesi sınırlılık oldu")
+            if "Küçük örneklem (n=10)" not in series[5] or "Tek merkez" not in series[5]:
+                failures.append(f"PMID 41010829 türetilen sınırlılık eksik: {series[5]}")
+            if "prednizon" not in prednisone[3] or "azatioprin" not in prednisone[3]:
+                failures.append(f"PMID 33372889 müdahalesi: {prednisone[3]}")
+            if "4.81" in series[4] or "13,000" in compare[4]:
+                failures.append("PMID satırları birbirinin sayısını taşıyor")
+        limit_404 = format_methodological_limitation(by_pmid["40446701"])
+        if "In this retrospective study" in limit_404:
+            failures.append("PMID 40446701 sınırlılık hücresi yöntem cümlesini yapıştırdı")
+        if failures:
+            self.fail("Gerçek PubMed bölüm 5-6:\n" + "\n".join(failures))
 
 
 if __name__ == "__main__":
