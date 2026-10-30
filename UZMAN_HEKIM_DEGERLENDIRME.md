@@ -1,5 +1,7 @@
 # Bağımsız uzman hekim değerlendirme protokolü — henüz onay verilmedi
 
+İnceleme malzemesi üretmek için `python generate_review_packet.py --output review_packet --pause 2` çalıştırılabilir. Betik PubMed'den taslak rapor ve boş `puanlama.csv` yazar. Puanları doldurmaz, imza toplamaz ve bu protokolün uygulandığını göstermez.
+
 ## Şartlar
 - En az iki bağımsız, ilgili branştan uzman hekim; geliştirici ve test verilerini hazırlayan kişilerden bağımsız.
 - Önceden belirlenmiş 30 klinik soru: anti-HMGCR/statin miyopatisi (10), kalp yetersizliği (10), enfeksiyon hastalıkları/antibiyotik stewardship (10). Gerçek hasta kimliği içermeyen, sentetik veya anonim klinik sorular.

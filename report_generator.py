@@ -1661,7 +1661,10 @@ Lütfen arama terimlerini veya filtreleri genişleterek tekrar deneyiniz.
     report.append("## 11. Kanıt Gücü ve Belirsizlikler")
     report.append(f"- **GRADE Değerlendirmesi:** **{audit['grade_rating_policy']['grade_status']}**")
     report.append(f"- **Açıklama:** {audit['grade_rating_policy']['notice']}")
-    report.append("- **Sınırlılıklar:** Analizlerin yalnızca özet metinlerine (abstract-only) dayanması nedeniyle tam metin detayları, ham veriler ve protokol sapmaları doğrulamaya muhtaçtır.\n")
+    report.append("- **Sınırlılıklar:** Analizlerin yalnızca özet metinlerine (abstract-only) dayanması nedeniyle tam metin detayları, ham veriler ve protokol sapmaları doğrulamaya muhtaçtır.")
+    from grade_assessment import format_preliminary_grade_markdown
+    report.append(format_preliminary_grade_markdown(query, articles))
+    report.append("")
 
     # 12. Klinik Sonuç
     report.append("## 12. Klinik Sonuç")

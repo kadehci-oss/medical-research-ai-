@@ -4,6 +4,8 @@ from pathlib import Path
 import requests
 from xml.etree import ElementTree as ET
 
+from pubmed_client import eutils_identity_params, ncbi_request_headers
+
 BASE='https://eutils.ncbi.nlm.nih.gov/entrez/eutils/'
 EXPECTED={
  '38801022': ('10.1002/mus.28114','management of immune-mediated necrotizing myopathy'),
@@ -11,10 +13,21 @@ EXPECTED={
  '34449189': ('10.1056/nejmoa2107038','empagliflozin in heart failure with a preserved ejection fraction'),
  '31535829': ('10.1056/nejmoa1911303','dapagliflozin in patients with heart failure and reduced ejection fraction'),
 }
+def build_eutils_params(params):
+    """Copy caller params and attach tool, email, and api_key when NCBI_API_KEY is set."""
+    merged = dict(params or {})
+    merged.update(eutils_identity_params())
+    return merged
+
 def get(session,path,params):
+    request_params = build_eutils_params(params)
+    headers = ncbi_request_headers()
     for attempt in range(3):
         try:
-            r=session.get(BASE+path,params=params,timeout=20,headers={'User-Agent':'medical-research-ai-validation/1.0'})
+            r=session.get(BASE+path,params=request_params,timeout=20,headers=headers)
+            if r.status_code == 429 and attempt < 2:
+                time.sleep(attempt + 1)
+                continue
             r.raise_for_status()
             return r
         except requests.RequestException:

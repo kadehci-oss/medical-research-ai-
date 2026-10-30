@@ -30,7 +30,14 @@
         "mental health",
         "depression",
         "schizophrenia",
-        "psychopharmacology"
+        "psychopharmacology",
+        "major depressive disorder",
+        "mdd",
+        "antidepressant",
+        "ssri",
+        "bipolar disorder",
+        "major depresyon",
+        "antidepresan"
       ]
     },
     {
@@ -60,7 +67,10 @@
         "rehabilitation",
         "stroke rehab",
         "musculoskeletal",
-        "physiotherapy"
+        "physiotherapy",
+        "fizik tedavi",
+        "inme rehabilitasyonu",
+        "musculoskeletal rehabilitation"
       ]
     },
     {
@@ -90,7 +100,15 @@
         "heart failure",
         "coronary artery disease",
         "arrhythmia",
-        "hypertension"
+        "hypertension",
+        "hfpef",
+        "hfref",
+        "atrial fibrillation",
+        "myocardial infarction",
+        "stemi",
+        "kalp yetersizligi",
+        "atriyal fibrilasyon",
+        "ejection fraction"
       ]
     },
     {
@@ -120,7 +138,11 @@
         "stroke",
         "epilepsy",
         "parkinson",
-        "multiple sclerosis"
+        "multiple sclerosis",
+        "migraine",
+        "inme",
+        "epilepsi",
+        "parkinson hastaligi"
       ]
     },
     {
@@ -150,7 +172,12 @@
         "chemotherapy",
         "immunotherapy",
         "breast cancer",
-        "targeted therapy"
+        "targeted therapy",
+        "nsclc",
+        "pembrolizumab",
+        "kemoterapi",
+        "kucuk hucreli disi akciger kanseri",
+        "checkpoint inhibitor"
       ]
     },
     {
@@ -180,7 +207,10 @@
         "copd",
         "asthma",
         "pneumonia",
-        "pulmonary fibrosis"
+        "pulmonary fibrosis",
+        "koah",
+        "astim",
+        "interstitial lung disease"
       ]
     },
     {
@@ -210,7 +240,12 @@
         "hepatology",
         "inflammatory bowel disease",
         "cirrhosis",
-        "endoscopy"
+        "endoscopy",
+        "crohn",
+        "ulcerative colitis",
+        "gerd",
+        "ulseratif kolit",
+        "siroz"
       ]
     },
     {
@@ -240,7 +275,14 @@
         "diabetes",
         "thyroid",
         "obesity",
-        "osteoporosis"
+        "osteoporosis",
+        "type 2 diabetes",
+        "t2dm",
+        "hba1c",
+        "glp-1",
+        "hypothyroidism",
+        "tip 2 diyabet",
+        "tiroid"
       ]
     },
     {
@@ -270,7 +312,11 @@
         "chronic kidney disease",
         "dialysis",
         "kidney transplant",
-        "glomerulonephritis"
+        "glomerulonephritis",
+        "ckd",
+        "kronik bobrek hastaligi",
+        "hemodiyaliz",
+        "aki"
       ]
     },
     {
@@ -300,7 +346,10 @@
         "rheumatoid arthritis",
         "lupus",
         "ankylosing spondylitis",
-        "vasculitis"
+        "vasculitis",
+        "sle",
+        "romatoid artrit",
+        "psoriatic arthritis"
       ]
     },
     {
@@ -330,7 +379,14 @@
         "infectious diseases and clinical microbiology",
         "clinical research",
         "evidence synthesis",
-        "pubmed"
+        "pubmed",
+        "sepsis",
+        "antibiotic stewardship",
+        "mrsa",
+        "hiv",
+        "tuberculosis",
+        "antibiyotik yonetimi",
+        "enfeksiyon"
       ]
     },
     {
@@ -360,7 +416,15 @@
         "hematology",
         "clinical research",
         "evidence synthesis",
-        "pubmed"
+        "pubmed",
+        "sickle cell",
+        "leukemia",
+        "lymphoma",
+        "anemia",
+        "orak hucre",
+        "losemi",
+        "lenfoma",
+        "aml"
       ]
     },
     {
@@ -390,7 +454,14 @@
         "allergy and immunology",
         "clinical research",
         "evidence synthesis",
-        "pubmed"
+        "pubmed",
+        "anaphylaxis",
+        "allergic rhinitis",
+        "urticaria",
+        "anafilaksi",
+        "allerjik rinit",
+        "ige",
+        "food allergy"
       ]
     },
     {
@@ -420,7 +491,13 @@
         "geriatrics",
         "clinical research",
         "evidence synthesis",
-        "pubmed"
+        "pubmed",
+        "frailty",
+        "falls in elderly",
+        "geriatric syndrome",
+        "kirilganlik",
+        "yasli dusme",
+        "polypharmacy in elderly"
       ]
     },
     {
@@ -450,7 +527,13 @@
         "intensive care medicine",
         "clinical research",
         "evidence synthesis",
-        "pubmed"
+        "pubmed",
+        "septic shock",
+        "mechanical ventilation",
+        "ards",
+        "icu",
+        "mekanik ventilasyon",
+        "vasopressor"
       ]
     },
     {
@@ -480,7 +563,13 @@
         "pediatrics",
         "clinical research",
         "evidence synthesis",
-        "pubmed"
+        "pubmed",
+        "well child",
+        "pediatric growth",
+        "cocuk sagligi",
+        "asilama takvimi",
+        "pediatric fever",
+        "cocuk gelisimi"
       ]
     },
     {
@@ -510,7 +599,12 @@
         "pediatric cardiology",
         "clinical research",
         "evidence synthesis",
-        "pubmed"
+        "pubmed",
+        "tetralogy of fallot",
+        "congenital heart disease",
+        "kawasaki disease",
+        "fallot tetralojisi",
+        "dogumsal kalp hastaligi"
       ]
     },
     {
@@ -540,7 +634,12 @@
         "pediatric neurology",
         "clinical research",
         "evidence synthesis",
-        "pubmed"
+        "pubmed",
+        "febrile seizure",
+        "west syndrome",
+        "pediatric epilepsy",
+        "febril nobet",
+        "infantile spasms"
       ]
     },
     {
@@ -570,7 +669,12 @@
         "pediatric oncology",
         "clinical research",
         "evidence synthesis",
-        "pubmed"
+        "pubmed",
+        "pediatric leukemia",
+        "neuroblastoma",
+        "wilms tumor",
+        "cocuk lukemi",
+        "noroblastom"
       ]
     },
     {
@@ -600,7 +704,11 @@
         "pediatric hematology",
         "clinical research",
         "evidence synthesis",
-        "pubmed"
+        "pubmed",
+        "pediatric sickle cell",
+        "childhood itp",
+        "hemophilia in children",
+        "thalassemia in children"
       ]
     },
     {
@@ -630,7 +738,12 @@
         "pediatric endocrinology",
         "clinical research",
         "evidence synthesis",
-        "pubmed"
+        "pubmed",
+        "type 1 diabetes in children",
+        "pediatric hypothyroidism",
+        "precocious puberty",
+        "cocuk diyabeti",
+        "erken puberte"
       ]
     },
     {
@@ -660,7 +773,11 @@
         "pediatric gastroenterology",
         "clinical research",
         "evidence synthesis",
-        "pubmed"
+        "pubmed",
+        "pediatric ibd",
+        "celiac in children",
+        "cocuk colyak",
+        "cow milk allergy infant"
       ]
     },
     {
@@ -690,7 +807,12 @@
         "pediatric infectious diseases",
         "clinical research",
         "evidence synthesis",
-        "pubmed"
+        "pubmed",
+        "pediatric sepsis",
+        "kawasaki",
+        "cocuk enfeksiyon",
+        "rsv bronchiolitis",
+        "pediatric pneumonia"
       ]
     },
     {
@@ -720,7 +842,11 @@
         "pediatric pulmonology",
         "clinical research",
         "evidence synthesis",
-        "pubmed"
+        "pubmed",
+        "pediatric asthma",
+        "cystic fibrosis child",
+        "cocuk astimi",
+        "bronchiolitis"
       ]
     },
     {
@@ -750,7 +876,13 @@
         "neonatology",
         "clinical research",
         "evidence synthesis",
-        "pubmed"
+        "pubmed",
+        "preterm infant",
+        "neonatal rds",
+        "premature newborn",
+        "yenidogan",
+        "respiratuvar distres sendromu",
+        "nicu"
       ]
     },
     {
@@ -780,7 +912,13 @@
         "child and adolescent psychiatry",
         "clinical research",
         "evidence synthesis",
-        "pubmed"
+        "pubmed",
+        "adhd",
+        "autism spectrum",
+        "child psychiatry",
+        "dehb",
+        "otizm",
+        "cocuk psikiyatrisi"
       ]
     },
     {
@@ -810,7 +948,12 @@
         "pediatric emergency medicine",
         "clinical research",
         "evidence synthesis",
-        "pubmed"
+        "pubmed",
+        "pediatric resuscitation",
+        "croup",
+        "cocuk acil",
+        "intussusception",
+        "pediatric trauma"
       ]
     },
     {
@@ -840,7 +983,12 @@
         "pediatric allergy and immunology",
         "clinical research",
         "evidence synthesis",
-        "pubmed"
+        "pubmed",
+        "pediatric anaphylaxis",
+        "atopic dermatitis child",
+        "cocuk alerji",
+        "food allergy infant",
+        "pediatric asthma allergy"
       ]
     },
     {
@@ -870,7 +1018,14 @@
         "dermatology",
         "clinical research",
         "evidence synthesis",
-        "pubmed"
+        "pubmed",
+        "psoriasis",
+        "atopic dermatitis",
+        "melanoma",
+        "akne",
+        "psoriazis",
+        "egzama",
+        "basal cell carcinoma"
       ]
     },
     {
@@ -900,7 +1055,13 @@
         "medical genetics",
         "clinical research",
         "evidence synthesis",
-        "pubmed"
+        "pubmed",
+        "karyotype",
+        "exome sequencing",
+        "genetic counseling",
+        "genetik danismanlik",
+        "chromosomal microarray",
+        "brca"
       ]
     },
     {
@@ -930,7 +1091,12 @@
         "emergency medicine",
         "clinical research",
         "evidence synthesis",
-        "pubmed"
+        "pubmed",
+        "emergency triage",
+        "anaphylaxis emergency",
+        "acil servis",
+        "travma resusitasyon",
+        "chest pain emergency"
       ]
     },
     {
@@ -960,7 +1126,12 @@
         "radiation oncology",
         "clinical research",
         "evidence synthesis",
-        "pubmed"
+        "pubmed",
+        "radiotherapy",
+        "radyoterapi",
+        "imrt",
+        "brachytherapy",
+        "stereotactic radiosurgery"
       ]
     },
     {
@@ -990,7 +1161,12 @@
         "nuclear medicine",
         "clinical research",
         "evidence synthesis",
-        "pubmed"
+        "pubmed",
+        "pet ct",
+        "scintigraphy",
+        "radionuclide",
+        "spect",
+        "radioiodine"
       ]
     },
     {
@@ -1020,7 +1196,13 @@
         "medical pharmacology",
         "clinical research",
         "evidence synthesis",
-        "pubmed"
+        "pubmed",
+        "pharmacokinetics",
+        "pharmacodynamics",
+        "drug interaction",
+        "farmakokinetik",
+        "terapotik ilac duzeyi",
+        "dose response"
       ]
     },
     {
@@ -1050,7 +1232,13 @@
         "general surgery",
         "clinical research",
         "evidence synthesis",
-        "pubmed"
+        "pubmed",
+        "appendectomy",
+        "cholecystectomy",
+        "hernia repair",
+        "apendektomi",
+        "kolesistektomi",
+        "laparoscopic surgery"
       ]
     },
     {
@@ -1080,7 +1268,12 @@
         "neurosurgery",
         "clinical research",
         "evidence synthesis",
-        "pubmed"
+        "pubmed",
+        "craniotomy",
+        "lumbar discectomy",
+        "aneurysm clipping",
+        "kraniotomi",
+        "beyin tumoru cerrahisi"
       ]
     },
     {
@@ -1110,7 +1303,13 @@
         "cardiovascular surgery",
         "clinical research",
         "evidence synthesis",
-        "pubmed"
+        "pubmed",
+        "cabg",
+        "coronary artery bypass",
+        "valve replacement",
+        "koroner baypas",
+        "aort kapak replasmani",
+        "cardiac surgery"
       ]
     },
     {
@@ -1140,7 +1339,12 @@
         "thoracic surgery",
         "clinical research",
         "evidence synthesis",
-        "pubmed"
+        "pubmed",
+        "lobectomy",
+        "thoracotomy",
+        "mediastinoscopy",
+        "lobektomi",
+        "esophageal resection"
       ]
     },
     {
@@ -1170,7 +1374,13 @@
         "orthopedics and traumatology",
         "clinical research",
         "evidence synthesis",
-        "pubmed"
+        "pubmed",
+        "hip fracture",
+        "acl reconstruction",
+        "arthroplasty",
+        "kalca kirigi",
+        "on capraz bag",
+        "ortopedi"
       ]
     },
     {
@@ -1200,7 +1410,13 @@
         "otorhinolaryngology",
         "clinical research",
         "evidence synthesis",
-        "pubmed"
+        "pubmed",
+        "otitis media",
+        "sinusitis",
+        "tonsillectomy",
+        "sinuzit",
+        "kbb",
+        "vertigo ent"
       ]
     },
     {
@@ -1230,7 +1446,13 @@
         "ophthalmology",
         "clinical research",
         "evidence synthesis",
-        "pubmed"
+        "pubmed",
+        "glaucoma",
+        "cataract",
+        "diabetic retinopathy",
+        "glokom",
+        "katarakt",
+        "makula dejenerasyonu"
       ]
     },
     {
@@ -1260,7 +1482,13 @@
         "urology",
         "clinical research",
         "evidence synthesis",
-        "pubmed"
+        "pubmed",
+        "prostate cancer",
+        "benign prostatic hyperplasia",
+        "urolithiasis",
+        "prostat kanseri",
+        "bobrek tasi",
+        "hematuria"
       ]
     },
     {
@@ -1290,7 +1518,13 @@
         "obstetrics and gynecology",
         "clinical research",
         "evidence synthesis",
-        "pubmed"
+        "pubmed",
+        "preeclampsia",
+        "endometriosis",
+        "cesarean",
+        "preeklampsi",
+        "endometriozis",
+        "gebelik"
       ]
     },
     {
@@ -1320,7 +1554,13 @@
         "plastic and reconstructive surgery",
         "clinical research",
         "evidence synthesis",
-        "pubmed"
+        "pubmed",
+        "flap reconstruction",
+        "cleft lip",
+        "burn reconstruction",
+        "yarik damak",
+        "flep",
+        "aesthetic surgery"
       ]
     },
     {
@@ -1350,7 +1590,12 @@
         "pediatric surgery",
         "clinical research",
         "evidence synthesis",
-        "pubmed"
+        "pubmed",
+        "pediatric appendicitis",
+        "pyloric stenosis",
+        "hirschsprung",
+        "invajinasyon",
+        "pediatric hernia"
       ]
     },
     {
@@ -1380,7 +1625,13 @@
         "anesthesiology and reanimation",
         "clinical research",
         "evidence synthesis",
-        "pubmed"
+        "pubmed",
+        "general anesthesia",
+        "spinal anesthesia",
+        "airway management",
+        "genel anestezi",
+        "spinal anestezi",
+        "difficult airway"
       ]
     },
     {
@@ -1410,7 +1661,13 @@
         "algology / pain medicine",
         "clinical research",
         "evidence synthesis",
-        "pubmed"
+        "pubmed",
+        "chronic pain",
+        "neuropathic pain",
+        "nerve block",
+        "kronik agri",
+        "noropatik agri",
+        "pain medicine"
       ]
     },
     {
@@ -1440,7 +1697,12 @@
         "surgical oncology",
         "clinical research",
         "evidence synthesis",
-        "pubmed"
+        "pubmed",
+        "cytoreductive surgery",
+        "hipec",
+        "lymphadenectomy",
+        "sitoredüktif cerrahi",
+        "tumor resection margin"
       ]
     },
     {
@@ -1470,7 +1732,12 @@
         "vascular surgery",
         "clinical research",
         "evidence synthesis",
-        "pubmed"
+        "pubmed",
+        "abdominal aortic aneurysm",
+        "carotid endarterectomy",
+        "peripheral artery disease",
+        "aort anevrizmasi",
+        "karotis endarterektomi"
       ]
     },
     {
@@ -1500,7 +1767,12 @@
         "perinatology / maternal-fetal medicine",
         "clinical research",
         "evidence synthesis",
-        "pubmed"
+        "pubmed",
+        "fetal growth restriction",
+        "maternal fetal medicine",
+        "prenatal diagnosis",
+        "fetal buyume kisitliligi",
+        "twin twin transfusion"
       ]
     },
     {
@@ -1530,7 +1802,13 @@
         "gynecologic oncology",
         "clinical research",
         "evidence synthesis",
-        "pubmed"
+        "pubmed",
+        "ovarian cancer",
+        "cervical cancer",
+        "endometrial cancer",
+        "over kanseri",
+        "serviks kanseri",
+        "endometrium kanseri"
       ]
     },
     {
@@ -1560,7 +1838,12 @@
         "urogynecology",
         "clinical research",
         "evidence synthesis",
-        "pubmed"
+        "pubmed",
+        "pelvic organ prolapse",
+        "stress urinary incontinence",
+        "pelvik organ prolapsusu",
+        "stres inkontinans",
+        "midurethral sling"
       ]
     },
     {
@@ -1590,7 +1873,12 @@
         "hand surgery",
         "clinical research",
         "evidence synthesis",
-        "pubmed"
+        "pubmed",
+        "carpal tunnel",
+        "flexor tendon",
+        "dupuytren",
+        "karpal tunel",
+        "tendon repair hand"
       ]
     },
     {
@@ -1620,7 +1908,12 @@
         "pediatric urology",
         "clinical research",
         "evidence synthesis",
-        "pubmed"
+        "pubmed",
+        "vesicoureteral reflux",
+        "hypospadias",
+        "posterior urethral valves",
+        "vezikoüreteral reflu",
+        "hipospadias"
       ]
     },
     {
@@ -1650,7 +1943,13 @@
         "oral and maxillofacial surgery",
         "clinical research",
         "evidence synthesis",
-        "pubmed"
+        "pubmed",
+        "orthognathic surgery",
+        "mandible fracture",
+        "impacted third molar",
+        "ortognatik cerrahi",
+        "mandibula kirigi",
+        "gomulu yirmi yas disi"
       ]
     },
     {
@@ -1680,7 +1979,13 @@
         "surgical infection and trauma surgery",
         "clinical research",
         "evidence synthesis",
-        "pubmed"
+        "pubmed",
+        "necrotizing fasciitis",
+        "damage control surgery",
+        "intraabdominal sepsis",
+        "nekrotizan fasit",
+        "travma cerrahisi",
+        "surgical site infection"
       ]
     },
     {
@@ -1710,7 +2015,13 @@
         "medical pathology",
         "clinical research",
         "evidence synthesis",
-        "pubmed"
+        "pubmed",
+        "histopathology",
+        "biopsy diagnosis",
+        "immunohistochemistry",
+        "histopatoloji",
+        "biyopsi",
+        "surgical pathology"
       ]
     },
     {
@@ -1740,7 +2051,13 @@
         "medical biochemistry",
         "clinical research",
         "evidence synthesis",
-        "pubmed"
+        "pubmed",
+        "clinical chemistry",
+        "serum biomarker",
+        "hba1c assay",
+        "klinik biyokimya",
+        "laboratuvar testi",
+        "troponin assay"
       ]
     },
     {
@@ -1770,7 +2087,12 @@
         "medical microbiology",
         "clinical research",
         "evidence synthesis",
-        "pubmed"
+        "pubmed",
+        "blood culture",
+        "antimicrobial susceptibility",
+        "pcr pathogen",
+        "kan kulturu",
+        "antibiyogram"
       ]
     },
     {
@@ -1800,7 +2122,13 @@
         "anatomy",
         "clinical research",
         "evidence synthesis",
-        "pubmed"
+        "pubmed",
+        "gross anatomy",
+        "cadaver dissection",
+        "anatomical variation",
+        "makroskopik anatomi",
+        "kadaver",
+        "human anatomy"
       ]
     },
     {
@@ -1830,7 +2158,13 @@
         "histology and embryology",
         "clinical research",
         "evidence synthesis",
-        "pubmed"
+        "pubmed",
+        "histology",
+        "embryology",
+        "gametogenesis",
+        "histoloji",
+        "embriyoloji",
+        "implantation embryo"
       ]
     },
     {
@@ -1860,7 +2194,13 @@
         "medical biology",
         "clinical research",
         "evidence synthesis",
-        "pubmed"
+        "pubmed",
+        "cell biology",
+        "apoptosis",
+        "molecular biology",
+        "hucre biyolojisi",
+        "molekuler biyoloji",
+        "signal transduction"
       ]
     },
     {
@@ -1890,7 +2230,13 @@
         "physiology",
         "clinical research",
         "evidence synthesis",
-        "pubmed"
+        "pubmed",
+        "cardiac physiology",
+        "renal physiology",
+        "membrane potential",
+        "kardiyak fizyoloji",
+        "bobrek fizyolojisi",
+        "homeostasis"
       ]
     },
     {
@@ -1920,7 +2266,13 @@
         "medical parasitology",
         "clinical research",
         "evidence synthesis",
-        "pubmed"
+        "pubmed",
+        "malaria",
+        "leishmaniasis",
+        "toxoplasma",
+        "sitma",
+        "laymanyaz",
+        "helminth"
       ]
     },
     {
@@ -1950,7 +2302,13 @@
         "history of medicine and ethics",
         "clinical research",
         "evidence synthesis",
-        "pubmed"
+        "pubmed",
+        "medical ethics",
+        "informed consent",
+        "hippocratic",
+        "aydinlatilmis onam",
+        "tip tarihi",
+        "bioethics"
       ]
     },
     {
@@ -1980,7 +2338,13 @@
         "biostatistics and medical informatics",
         "clinical research",
         "evidence synthesis",
-        "pubmed"
+        "pubmed",
+        "biostatistics",
+        "logistic regression",
+        "electronic health record",
+        "biyoistatistik",
+        "tibbi bilisim",
+        "sample size calculation"
       ]
     },
     {
@@ -2010,7 +2374,13 @@
         "basic immunology",
         "clinical research",
         "evidence synthesis",
-        "pubmed"
+        "pubmed",
+        "t cell",
+        "cytokine",
+        "antigen presentation",
+        "sitokin",
+        "temel immunoloji",
+        "mhc"
       ]
     },
     {
@@ -2040,7 +2410,12 @@
         "biophysics",
         "clinical research",
         "evidence synthesis",
-        "pubmed"
+        "pubmed",
+        "membrane biophysics",
+        "ion channel",
+        "spectroscopy protein",
+        "iyon kanali",
+        "fluorescence resonance"
       ]
     },
     {
@@ -2070,7 +2445,12 @@
         "public health",
         "clinical research",
         "evidence synthesis",
-        "pubmed"
+        "pubmed",
+        "vaccination coverage",
+        "health policy",
+        "screening program",
+        "asi kapsayiciligi",
+        "community health"
       ]
     },
     {
@@ -2100,7 +2480,12 @@
         "epidemiology",
         "clinical research",
         "evidence synthesis",
-        "pubmed"
+        "pubmed",
+        "incidence",
+        "cohort study design",
+        "odds ratio epidemiology",
+        "insidans",
+        "prevalence study"
       ]
     },
     {
@@ -2130,7 +2515,13 @@
         "environmental and occupational health",
         "clinical research",
         "evidence synthesis",
-        "pubmed"
+        "pubmed",
+        "occupational exposure",
+        "asbestos",
+        "noise induced hearing",
+        "meslek hastaligi",
+        "asbest",
+        "work related asthma"
       ]
     },
     {
@@ -2160,7 +2551,13 @@
         "medical ecology and hydroclimatology",
         "clinical research",
         "evidence synthesis",
-        "pubmed"
+        "pubmed",
+        "balneotherapy",
+        "climatotherapy",
+        "spa therapy",
+        "balneoterapi",
+        "klimatoterapi",
+        "hydroclimatology"
       ]
     },
     {
@@ -2190,7 +2587,12 @@
         "sports medicine",
         "clinical research",
         "evidence synthesis",
-        "pubmed"
+        "pubmed",
+        "sports concussion",
+        "overuse injury",
+        "athlete ecg",
+        "sporcu sarsintisi",
+        "exertional heat illness"
       ]
     },
     {
@@ -2220,7 +2622,12 @@
         "forensic medicine",
         "clinical research",
         "evidence synthesis",
-        "pubmed"
+        "pubmed",
+        "forensic autopsy",
+        "toxicology postmortem",
+        "forensic pathology",
+        "otopsi",
+        "time of death"
       ]
     },
     {
@@ -2250,7 +2657,12 @@
         "oral and maxillofacial radiology",
         "clinical research",
         "evidence synthesis",
-        "pubmed"
+        "pubmed",
+        "dental cbct",
+        "panoramic radiograph",
+        "oral radiology",
+        "dental tomografi",
+        "panoramik radyografi"
       ]
     },
     {
@@ -2280,7 +2692,12 @@
         "periodontology",
         "clinical research",
         "evidence synthesis",
-        "pubmed"
+        "pubmed",
+        "periodontitis",
+        "gingivitis",
+        "scaling root planing",
+        "dis eti",
+        "periodontal pocket"
       ]
     },
     {
@@ -2310,7 +2727,11 @@
         "endodontics",
         "clinical research",
         "evidence synthesis",
-        "pubmed"
+        "pubmed",
+        "root canal",
+        "pulpitis",
+        "apical periodontitis",
+        "kok kanal tedavisi"
       ]
     },
     {
@@ -2340,7 +2761,12 @@
         "restorative dentistry",
         "clinical research",
         "evidence synthesis",
-        "pubmed"
+        "pubmed",
+        "dental composite",
+        "dental caries restoration",
+        "inlay onlay",
+        "kompozit dolgu",
+        "dis curugu"
       ]
     },
     {
@@ -2370,7 +2796,12 @@
         "pediatric dentistry",
         "clinical research",
         "evidence synthesis",
-        "pubmed"
+        "pubmed",
+        "early childhood caries",
+        "pulpotomy",
+        "cocuk dis hekimligi",
+        "sut disi curugu",
+        "stainless steel crown"
       ]
     },
     {
@@ -2400,7 +2831,12 @@
         "orthodontics",
         "clinical research",
         "evidence synthesis",
-        "pubmed"
+        "pubmed",
+        "malocclusion",
+        "orthodontic bracket",
+        "cephalometric",
+        "malokluzyon",
+        "fixed appliance"
       ]
     },
     {
@@ -2430,7 +2866,12 @@
         "prosthodontics",
         "clinical research",
         "evidence synthesis",
-        "pubmed"
+        "pubmed",
+        "dental prosthesis",
+        "complete denture",
+        "dental implant crown",
+        "total protez",
+        "dis protezi"
       ]
     },
     {
@@ -2460,7 +2901,11 @@
         "clinical pharmacy",
         "clinical research",
         "evidence synthesis",
-        "pubmed"
+        "pubmed",
+        "medication reconciliation",
+        "antimicrobial stewardship pharmacy",
+        "ilac uzlastirmasi",
+        "therapeutic drug monitoring"
       ]
     },
     {
@@ -2490,7 +2935,12 @@
         "pharmaceutical toxicology",
         "clinical research",
         "evidence synthesis",
-        "pubmed"
+        "pubmed",
+        "drug toxicity",
+        "ld50",
+        "hepatotoxicity drug",
+        "ilac toksisitesi",
+        "overdose pharmacology"
       ]
     },
     {
@@ -2520,7 +2970,12 @@
         "pharmaceutical chemistry",
         "clinical research",
         "evidence synthesis",
-        "pubmed"
+        "pubmed",
+        "medicinal chemistry",
+        "structure activity relationship",
+        "drug synthesis",
+        "ilac kimyasi",
+        "sar molecule"
       ]
     },
     {
@@ -2550,7 +3005,12 @@
         "pharmacognosy",
         "clinical research",
         "evidence synthesis",
-        "pubmed"
+        "pubmed",
+        "herbal medicine",
+        "phytotherapy",
+        "plant extract drug",
+        "fitoterapi",
+        "alkaloid"
       ]
     },
     {
@@ -2580,7 +3040,13 @@
         "medical biotechnology and gene therapy",
         "clinical research",
         "evidence synthesis",
-        "pubmed"
+        "pubmed",
+        "crispr",
+        "gene therapy",
+        "cas9",
+        "gen tedavisi",
+        "recombinant protein",
+        "gene editing"
       ]
     },
     {
@@ -2610,7 +3076,13 @@
         "neuroscience and regenerative medicine",
         "clinical research",
         "evidence synthesis",
-        "pubmed"
+        "pubmed",
+        "stem cell neuron",
+        "neural regeneration",
+        "spinal cord regeneration",
+        "noron rejenerasyonu",
+        "kok hucre noroloji",
+        "regenerative neuroscience"
       ]
     },
     {
@@ -2640,7 +3112,13 @@
         "biomedical engineering and medical devices",
         "clinical research",
         "evidence synthesis",
-        "pubmed"
+        "pubmed",
+        "medical device",
+        "biomedical sensor",
+        "prosthetic limb engineering",
+        "tibbi cihaz",
+        "biyomedikal muhendislik",
+        "wearable monitor"
       ]
     }
   ]

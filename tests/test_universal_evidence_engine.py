@@ -352,7 +352,11 @@ class TestUniversalEvidenceEngine(unittest.TestCase):
             "query": "expanded",
             "search_date": "2026-10-30",
         }
-        res = self.engine.search_and_verify("HFpEF SGLT2 inhibitors", max_results=3)
+        res = self.engine.search_and_verify(
+            "HFpEF SGLT2 inhibitors",
+            max_results=3,
+            prefer_high_level_evidence=False,
+        )
         self.assertEqual(res["status"], "success")
         executed = mock_search.call_args.kwargs["query"]
         for token in "HFpEF SGLT2 inhibitors".split():
@@ -374,6 +378,7 @@ class TestUniversalEvidenceEngine(unittest.TestCase):
         res = self.engine.search_and_verify(
             "HFpEF SGLT2 inhibitors",
             enhance_with_specialty=False,
+            prefer_high_level_evidence=False,
         )
         self.assertEqual(mock_search.call_args.kwargs["query"], "HFpEF SGLT2 inhibitors")
         self.assertEqual(res["query_enhancement"]["strategy"], "disabled")
@@ -390,7 +395,11 @@ class TestUniversalEvidenceEngine(unittest.TestCase):
                 "search_date": "2026-10-30",
             },
         ]
-        res = self.engine.search_and_verify("HFpEF SGLT2", max_results=2)
+        res = self.engine.search_and_verify(
+            "HFpEF SGLT2",
+            max_results=2,
+            prefer_high_level_evidence=False,
+        )
         self.assertEqual(res["status"], "success")
         self.assertEqual(len(res["articles"]), 1)
         self.assertEqual(mock_search.call_count, 2)
@@ -408,6 +417,64 @@ class TestUniversalEvidenceEngine(unittest.TestCase):
         self.assertEqual(res["status"], "error")
         self.assertIn("NCBI E-utilities connection timeout", res["error"])
         self.assertEqual(res["articles"], [])
+
+    @patch("universal_evidence_engine.pubmed_client.search_pubmed")
+    def test_efficacy_search_promotes_trials_without_dropping_primary_hits(self, mock_search):
+        review = {
+            "pmid": "90001",
+            "title": "Narrative review of SGLT2 inhibitors",
+            "authors": ["A Author"],
+            "journal": "J",
+            "pub_year": "2024",
+            "publication_types": ["Review"],
+            "abstract": "This narrative review discusses SGLT2 inhibitors.",
+        }
+        trial = {
+            "pmid": "90002",
+            "title": "Empagliflozin in a randomized trial",
+            "authors": ["B Author"],
+            "journal": "J",
+            "pub_year": "2021",
+            "publication_types": ["Randomized Controlled Trial"],
+            "abstract": "In this randomized trial empagliflozin was compared with placebo. HR 0.79, 95% CI 0.69-0.90.",
+        }
+        mock_search.side_effect = [
+            {"articles": [review], "total_count": 20, "search_date": "2026-10-30"},
+            {"articles": [trial], "total_count": 5, "search_date": "2026-10-30"},
+        ]
+        res = self.engine.search_and_verify(
+            "SGLT2 inhibitors vs placebo in HFpEF",
+            max_results=5,
+            enhance_with_specialty=False,
+            prefer_high_level_evidence=True,
+        )
+        self.assertEqual(res["status"], "success")
+        self.assertEqual([art["pmid"] for art in res["articles"]], ["90002", "90001"])
+        self.assertTrue(res["evidence_ranking"]["applied"])
+        self.assertEqual(mock_search.call_count, 2)
+        second_query = mock_search.call_args_list[1].kwargs["query"]
+        self.assertIn("randomized controlled trial[pt]", second_query)
+        self.assertIn("SGLT2 inhibitors vs placebo in HFpEF", second_query)
+
+    @patch("universal_evidence_engine.pubmed_client.search_pubmed")
+    def test_background_question_does_not_add_evidence_filter(self, mock_search):
+        mock_search.return_value = {
+            "articles": [{
+                "pmid": "90003",
+                "title": "Gross anatomy of the femur",
+                "authors": ["C Author"],
+                "journal": "J",
+                "pub_year": "2020",
+                "publication_types": ["Review"],
+                "abstract": "Anatomical description.",
+            }],
+            "total_count": 1,
+            "search_date": "2026-10-30",
+        }
+        res = self.engine.search_and_verify("gross anatomy of the femur", max_results=3)
+        self.assertEqual(mock_search.call_count, 1)
+        self.assertEqual(res["evidence_ranking"]["reason"], "not_efficacy_question")
+        self.assertFalse(res["evidence_ranking"]["applied"])
 
     def test_empty_query_synthesis_handling(self):
         res = self.engine.generate_synthesis_report("", CARDIOLOGY_ARTICLES)

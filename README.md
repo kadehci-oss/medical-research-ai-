@@ -72,6 +72,14 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
+`requirements.txt` lists the direct dependencies. `requirements.lock` is a full `pip freeze` from a clean Python 3.12 virtual environment created after `pip install -r requirements.txt`. Use the lock file when the install must be reproducible:
+
+```bash
+pip install -r requirements.lock
+```
+
+Regenerate the lock file from a clean virtual environment whenever `requirements.txt` changes. Do not edit `requirements.lock` by hand.
+
 ---
 
 ## Environment variables
@@ -90,7 +98,7 @@ export NCBI_API_KEY="your-ncbi-api-key"
 export OPENAI_API_KEY="your-openai-api-key"
 ```
 
-No personal email is hardcoded. `live_ncbi_validation.py` is a separate smoke script and does not read these variables.
+No personal email is hardcoded. `live_ncbi_validation.py` sends the same `tool`, `email`, and optional `api_key` values as `pubmed_client.py`.
 
 ---
 
@@ -139,3 +147,11 @@ Records are parsed from PubMed XML or CrossRef JSON. The report generator is onl
 ## Expert review status
 
 [`UZMAN_HEKIM_DEGERLENDIRME.md`](UZMAN_HEKIM_DEGERLENDIRME.md) is the protocol for a future double-blind review by at least two independent specialists. **That review has not been done.** The form is blank. This software is a research prototype, not a medical device, and it is not for clinical use.
+
+To prepare materials for that review, without claiming it has happened:
+
+```bash
+python generate_review_packet.py --output review_packet --limit 8 --max-results 5 --pause 2
+```
+
+The command calls live PubMed, writes one Markdown file and one HTML file per question, and writes `puanlama.csv` with empty score columns that match the protocol (PICO, source identity, claim-source match, study design, safety, uncertainty, critical error, reviewer decision and signature). Pause between questions so NCBI is not called back-to-back. Filling the CSV and signing it is a human physician's job. The script does not fill scores and does not record an approval.

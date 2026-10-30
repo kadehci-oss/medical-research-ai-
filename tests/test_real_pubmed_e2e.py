@@ -187,7 +187,11 @@ class TestRealPubMedE2E(unittest.TestCase):
         query = "SGLT2 inhibitors in heart failure"
 
         engine = UniversalEvidenceEngine()
-        search_res = engine.search_and_verify(query=query, max_results=5)
+        search_res = engine.search_and_verify(
+            query=query,
+            max_results=5,
+            prefer_high_level_evidence=False,
+        )
         articles = search_res.get("articles", [])
 
         self.assertEqual(len(articles), 2)

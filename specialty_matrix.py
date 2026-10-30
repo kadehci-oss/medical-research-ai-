@@ -15,6 +15,8 @@ import re
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
 
+from specialty_terms import EXTRA_SPECIALTY_TERMS
+
 logger = logging.getLogger(__name__)
 
 _DEFAULT_MATRIX_PATH = Path(__file__).resolve().parent / "all_specialty_matrix.json"
@@ -91,12 +93,22 @@ _ALIASES: Dict[str, List[Tuple[str, int]]] = {
 
 # Synonym expansions applied only for the detected specialty. Each value is
 # OR-ed with the original token so the user's wording stays mandatory-capable.
-_EXPANSIONS: Dict[str, Dict[str, str]] = {
+_EXPANSIONS: Dict[str, Dict[str, Any]] = {
     "kardiyoloji": {
-        "hfpef": "heart failure with preserved ejection fraction",
-        "hfref": "heart failure with reduced ejection fraction",
+        "hfpef": [
+            "heart failure with preserved ejection fraction",
+            "heart failure with a preserved ejection fraction",
+            "preserved ejection fraction",
+        ],
+        "hfref": [
+            "heart failure with reduced ejection fraction",
+            "heart failure with a reduced ejection fraction",
+        ],
         "hfimpf": "heart failure with mildly reduced ejection fraction",
-        "sglt2": "sodium-glucose cotransporter 2",
+        "sglt2": [
+            "sodium-glucose cotransporter 2",
+            "sodium-glucose cotransporter-2",
+        ],
     },
     "cocuk_kardiyolojisi": {
         "hfpef": "heart failure with preserved ejection fraction",
@@ -106,7 +118,10 @@ _EXPANSIONS: Dict[str, Dict[str, str]] = {
         "glp-1": "glucagon-like peptide-1",
         "glp1": "glucagon-like peptide-1",
         "t2dm": "type 2 diabetes mellitus",
-        "sglt2": "sodium-glucose cotransporter 2",
+        "sglt2": [
+            "sodium-glucose cotransporter 2",
+            "sodium-glucose cotransporter-2",
+        ],
     },
     "cocuk_endokrinolojisi": {
         "glp-1": "glucagon-like peptide-1",
@@ -115,7 +130,10 @@ _EXPANSIONS: Dict[str, Dict[str, str]] = {
     },
     "nefroloji": {
         "ckd": "chronic kidney disease",
-        "sglt2": "sodium-glucose cotransporter 2",
+        "sglt2": [
+            "sodium-glucose cotransporter 2",
+            "sodium-glucose cotransporter-2",
+        ],
     },
     "ruh_sagligi_ve_psikiyatri": {
         "mdd": "major depressive disorder",
@@ -312,6 +330,8 @@ def _score_specialties(
             if not isinstance(keyword, str):
                 continue
             add(specialty_id, keyword, _keyword_weight(keyword))
+        for term in EXTRA_SPECIALTY_TERMS.get(specialty_id, []):
+            add(specialty_id, term, _keyword_weight(term))
 
     scored: Dict[str, Dict[str, Any]] = {}
     for specialty_id, specialty_hits in hits.items():
@@ -476,12 +496,22 @@ def enhance_query_with_specialty(
     normalized_query = _norm(original)
     parts: List[str] = []
     added: List[str] = []
+    expanded_tokens = 0
     for token in original.split():
         key = _norm(token)
-        phrase = expansions.get(key)
-        if phrase and _norm(phrase) not in normalized_query and len(added) < 3:
-            parts.append(f'({token} OR "{phrase}")')
-            added.append(phrase)
+        raw_phrase = expansions.get(key)
+        if isinstance(raw_phrase, str):
+            phrases = [raw_phrase]
+        elif isinstance(raw_phrase, list):
+            phrases = [item for item in raw_phrase if isinstance(item, str) and item.strip()]
+        else:
+            phrases = []
+        phrases = [phrase for phrase in phrases if _norm(phrase) not in normalized_query]
+        if phrases and expanded_tokens < 3:
+            quoted = " OR ".join(f'"{phrase}"' for phrase in phrases)
+            parts.append(f'({token} OR {quoted})')
+            added.extend(phrases)
+            expanded_tokens += 1
         else:
             parts.append(token)
 
