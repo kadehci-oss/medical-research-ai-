@@ -217,99 +217,385 @@ def _clean_pico_str(s: str) -> str:
     return s
 
 
-def extract_pico(query: str) -> Dict[str, str]:
-    """
-    Extracts PICO (Population, Intervention, Comparison, Outcome) framework components
-    STRICTLY from the clinical search query. Article abstracts are NOT used to infer population
-    or intervention to prevent generating incorrect patient groups from abstract snippets.
-    Unstated components default to 'Belirtilmemiş'.
-    """
-    q_clean = (query or "").strip()
+# Longer population phrases must be tried before bare prepositions (in/for/among/with).
+_EN_POP_RE = re.compile(
+    r"\b("
+    r"in pediatric patients with|in paediatric patients with|"
+    r"in patients with|in adults with|in children with|"
+    r"among patients with|among adults with|among children with|"
+    r"for patients with|patients with|"
+    r"in|for|among|with"
+    r")\b",
+    re.IGNORECASE,
+)
+_TR_POP_RE = re.compile(
+    r"\b("
+    r"tanısı olan hastalarda|tanili hastalarda|tanılı hastalarda|"
+    r"hastalarında|hastalarinda|hastalarda|"
+    r"bireylerde|çocuklarda|cocuklarda|"
+    r"erişkinlerde|eriskinlerde|yetişkinlerde|yetiskinlerde|"
+    r"olgularında|olgularinda|olgularda"
+    r")\b",
+    re.IGNORECASE,
+)
+_EN_FULL_POP_RE = re.compile(
+    r"^(.*?)\s+\b("
+    r"in pediatric patients with|in paediatric patients with|"
+    r"in patients with|in adults with|in children with|"
+    r"among patients with|among adults with|among children with|"
+    r"for patients with|patients with|"
+    r"in|for|among|with"
+    r")\b\s+(.*)$",
+    re.IGNORECASE,
+)
+_SHORT_POP_MARKERS = {"in", "for", "among", "with"}
 
+# kind: "a" = comparator follows the cue (vs Y), "b" = comparator precedes the cue
+# (Y ile karşılaştırıldığında), "ambiguous" = resolved from the surrounding text.
+_COMPARISON_CUES = [
+    ("b", re.compile(r"ile\s+karşılaştırıldığında", re.IGNORECASE)),
+    ("b", re.compile(r"ile\s+karsilastirildiginda", re.IGNORECASE)),
+    ("b", re.compile(r"ile\s+kıyaslandığında", re.IGNORECASE)),
+    ("b", re.compile(r"ile\s+kiyaslandiginda", re.IGNORECASE)),
+    ("b", re.compile(r"ile\s+kıyasla", re.IGNORECASE)),
+    ("b", re.compile(r"ile\s+kiyasla", re.IGNORECASE)),
+    ("b", re.compile(r"karşılaştırıldığında", re.IGNORECASE)),
+    ("b", re.compile(r"karsilastirildiginda", re.IGNORECASE)),
+    ("b", re.compile(r"kıyaslandığında", re.IGNORECASE)),
+    ("b", re.compile(r"kiyaslandiginda", re.IGNORECASE)),
+    ("ambiguous", re.compile(r"karşısında", re.IGNORECASE)),
+    ("ambiguous", re.compile(r"karsisinda", re.IGNORECASE)),
+    ("ambiguous", re.compile(r"kıyasla", re.IGNORECASE)),
+    ("ambiguous", re.compile(r"(?<!\w)kiyasla(?!\w)", re.IGNORECASE)),
+    ("a", re.compile(r"karşılaştırmalı", re.IGNORECASE)),
+    ("a", re.compile(r"karsilastirmali", re.IGNORECASE)),
+    ("ambiguous", re.compile(r"(?<!\w)karşı(?!\w)", re.IGNORECASE)),
+    ("ambiguous", re.compile(r"(?<!\w)karsi(?!\w)", re.IGNORECASE)),
+    ("a", re.compile(r"\bas\s+compared\s+(?:to|with|against)\b", re.IGNORECASE)),
+    ("a", re.compile(r"\bcompared\s+(?:to|with|against)\b", re.IGNORECASE)),
+    ("a", re.compile(r"\bin\s+comparison\s+(?:to|with)\b", re.IGNORECASE)),
+    ("a", re.compile(r"\brelative\s+to\b", re.IGNORECASE)),
+    ("a", re.compile(r"\bversus\b", re.IGNORECASE)),
+    ("a", re.compile(r"(?<!\w)vs\.?(?!\w)", re.IGNORECASE)),
+    ("a", re.compile(r"\bagainst\b", re.IGNORECASE)),
+]
+_OUTCOME_RES = [
+    re.compile(
+        r"\b(?:primary|secondary|clinical)\s+outcome(?:s)?(?:\s+(?:of|was|:))?\s+(?P<out>[^,.;]{3,80})",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"\bon\s+(?P<out>HbA1c|all-cause mortality|cardiovascular mortality|cardiovascular death|"
+        r"mortality|hospitali[sz]ations?|MACE|major adverse cardiovascular events|"
+        r"glyca?emic control|seizure freedom|seizures|remission|quality of life|"
+        r"adverse events|kidney failure|bleeding)\b",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"\bfor\s+(?:the\s+)?(?:reducing\s+|reduction\s+of\s+|prevention\s+of\s+|the\s+prevention\s+of\s+)?"
+        r"(?P<out>all-cause mortality|cardiovascular mortality|cardiovascular death|mortality|"
+        r"hospitali[sz]ations?|MACE|HbA1c|glyca?emic control|seizure freedom|seizures|remission|"
+        r"quality of life|adverse events|kidney failure|bleeding)\b",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"\b(?P<out>HbA1c|kardiyovasküler mortalite|kardiyovaskuler mortalite|"
+        r"tüm nedenli mortalite|tum nedenli mortalite|ölüm oranı|olum orani|"
+        r"hastaneye yatış|hastaneye yatis|hastane yatışı|hastane yatisi|"
+        r"glisemik kontrol|nöbet kontrolü|nobet kontrolu|remisyon|sağkalım|sagkalim|"
+        r"yaşam kalitesi|yasam kalitesi|yan etki|mortalite)\b"
+        r"(?:\s+(?:üzerine(?:ki)?(?:\s+etkisi)?|uzerine(?:ki)?(?:\s+etkisi)?|açısından|acisindan|sonlanımı|sonlanimi|sonlanım|sonlanim))?",
+        re.IGNORECASE,
+    ),
+]
+# Do not combine Turkish capitals with re.IGNORECASE: Python treats İ as i.
+_TR_LETTER_RE = re.compile(r"[çğıöşüÇĞİÖŞÜ]")
+_TR_WORD_HINT_RE = re.compile(
+    r"\b("
+    r"hastalarda|hastalarında|hastalarinda|karşı|karsi|kıyasla|kiyasla|"
+    r"karşılaştırıldığında|karsilastirildiginda|çocuklarda|cocuklarda|"
+    r"üzerine|uzerine|mortalite|etkisi|tedavisi|bireylerde|için|icin"
+    r")\b",
+    re.IGNORECASE,
+)
+_PICO_STRUCTURE_RE = re.compile(
+    r"\b(in|for|among|vs\.?|versus|compared|with|hasta|karşı|karsi|etkisi|tedavisi|"
+    r"üzerine|uzerine|children|patients|adults)\b",
+    re.IGNORECASE,
+)
+
+
+def _label_pico(text: str, turkish: bool = False) -> str:
+    """Uppercase the first letter without lowercasing acronyms already in the string."""
+    cleaned = _clean_pico_str(text)
+    if not cleaned:
+        return ""
+    first = cleaned[0]
+    use_turkish_i = turkish or bool(re.search(r"[çğıöşüÇĞİÖŞÜ]", cleaned))
+    if use_turkish_i and first == "i":
+        first = "İ"
+    elif first == "ı":
+        first = "I"
+    elif first.isalpha():
+        first = first.upper()
+    return first + cleaned[1:]
+
+
+def _collapse_ws(text: str) -> str:
+    return re.sub(r"\s+", " ", text or "").strip(" ,;:")
+
+
+def _is_turkish_query(query: str) -> bool:
+    text = query or ""
+    return bool(_TR_LETTER_RE.search(text) or _TR_WORD_HINT_RE.search(text))
+
+
+def _strip_tr_nominal(word: str) -> str:
+    """Drop a trailing Turkish genitive or dative suffix from one token, conservatively."""
+    if not word:
+        return word
+    genitive = re.match(r"^(?P<stem>.+(?:leri|ları|lari))(?:nin|nın|nun|nün)$", word, re.IGNORECASE)
+    if genitive and len(genitive.group("stem")) >= 3:
+        return genitive.group("stem")
+    if re.search(r"[çğıöşüÇĞİÖŞÜ]", word):
+        marked = re.match(r"^(?P<stem>.{4,}?)(?:nin|nın|nun|nün)$", word, re.IGNORECASE)
+        if marked:
+            word = marked.group("stem")
+    if len(word) >= 7 and re.search(r"[aeıioöuü](?:ya|ye)$", word, re.IGNORECASE):
+        return word[:-2]
+    # Keep plural markers (inhibitörleri). A final vowel is stripped only for a
+    # dative such as "insüline", not for "-ler/-lar/-leri".
+    if re.search(r"(?:leri|ları|lari|ler|lar)$", word, re.IGNORECASE):
+        return word
+    if (
+        re.search(r"[çğıöşüÇĞİÖŞÜ]", word)
+        and len(word) >= 6
+        and re.search(r"[bcçdfgğhjklmnprsştvyz][aeıiuü]$", word, re.IGNORECASE)
+    ):
+        return word[:-1]
+    return word
+
+
+def _strip_tr_phrase(phrase: str, turkish: bool) -> str:
+    phrase = _collapse_ws(phrase)
+    if not phrase or not turkish:
+        return phrase
+    words = phrase.split()
+    words[-1] = _strip_tr_nominal(words[-1])
+    if len(words[-1]) < 3:
+        return phrase
+    return " ".join(words)
+
+
+def _population_from_marker(marker: str, after: str) -> str:
+    """Build the population span. Short prepositions are not part of the label."""
+    after = _collapse_ws(after)
+    marker_l = (marker or "").lower()
+    if marker_l in _SHORT_POP_MARKERS:
+        return after
+    lead = re.match(r"^(in|for|among|with)\s+", marker or "", re.IGNORECASE)
+    if lead:
+        rest = marker[lead.end():].strip()
+        return _collapse_ws(f"{rest} {after}")
+    return _collapse_ws(f"{marker} {after}")
+
+
+def _peel_tr_population(text: str) -> tuple:
+    """Return (population, remainder) when a Turkish population marker is present."""
+    cleaned = _collapse_ws(text)
+    if not cleaned:
+        return "", ""
+    match = _TR_POP_RE.search(cleaned)
+    if not match:
+        return "", cleaned
+    before = _collapse_ws(cleaned[:match.start()])
+    after = _collapse_ws(cleaned[match.end():])
+    if not before:
+        if after:
+            return match.group(0), after
+        return "", cleaned
+    population = _collapse_ws(f"{before} {match.group(0)}")
+    return population, after
+
+
+def _split_en_right(right: str) -> tuple:
+    """Return (population, comparison) for text that follows a type-A comparison cue."""
+    right = _collapse_ws(right)
+    if not right:
+        return "", ""
+    match = _EN_POP_RE.search(right)
+    if not match:
+        return "", right
+    before = _collapse_ws(right[:match.start()])
+    after = _collapse_ws(right[match.end():])
+    if not after:
+        return "", right
+    return _population_from_marker(match.group(1), after), before
+
+
+def _find_comparison_cue(text: str):
+    """Return (kind, match) for the earliest, then longest, comparison cue."""
+    best = None
+    for kind, pattern in _COMPARISON_CUES:
+        match = pattern.search(text)
+        if not match:
+            continue
+        rank = (match.start(), -len(match.group(0)))
+        if best is None or rank < best[0]:
+            best = (rank, kind, match)
+    if best is None:
+        return None, None
+    return best[1], best[2]
+
+
+def _resolve_comparison_kind(kind: str, left: str, right: str) -> str:
+    if kind != "ambiguous":
+        return kind
+    if _TR_POP_RE.search(right or "") or (not (right or "").strip() and len((left or "").split()) >= 2):
+        return "b"
+    return "a"
+
+
+def _split_comparator_before_cue(left: str) -> tuple:
+    """Return (intervention, comparison) for text before a type-B cue."""
+    left = _collapse_ws(left)
+    if not left:
+        return "", ""
+    if "," in left:
+        head, tail = left.rsplit(",", 1)
+        head, tail = _collapse_ws(head), _collapse_ws(tail)
+        if head and tail:
+            return head, tail
+    words = left.split()
+    if len(words) == 1:
+        return "", words[0]
+    return " ".join(words[:-1]), words[-1]
+
+
+def _extract_outcome_span(query: str) -> tuple:
+    """Return (outcome, query_without_outcome). Unstated outcomes stay empty."""
+    for pattern in _OUTCOME_RES:
+        match = pattern.search(query)
+        if not match:
+            continue
+        outcome = _collapse_ws(match.group("out"))
+        remaining = _collapse_ws(query[:match.start()] + " " + query[match.end():])
+        if outcome and len(remaining) >= 3:
+            return outcome, remaining
+    return "", query
+
+
+def _split_uncompared(working: str) -> tuple:
+    """Return (population, intervention) when the query has no comparison cue."""
+    tr_pop, tr_rest = _peel_tr_population(working)
+    if tr_pop:
+        return tr_pop, tr_rest
+    match = _EN_FULL_POP_RE.search(working)
+    if match and match.group(1).strip() and match.group(3).strip():
+        population = _population_from_marker(match.group(2), match.group(3))
+        return population, _collapse_ws(match.group(1))
+    return "", ""
+
+
+def _pico_defaults(
+    population: str,
+    intervention: str,
+    comparison: str,
+    outcome: str,
+    turkish: bool = False,
+) -> Dict[str, str]:
+    return {
+        "population": _label_pico(population, turkish) or "Belirtilmemiş",
+        "intervention": _label_pico(intervention, turkish) or "Belirtilmemiş",
+        "comparison": _label_pico(comparison, turkish) or "Belirtilmemiş",
+        "outcome": _label_pico(outcome, turkish) or "Belirtilmemiş",
+    }
+
+
+def extract_pico_improved(query: str) -> Dict[str, str]:
+    """
+    Extract PICO elements strictly from the clinical query text.
+
+    English cues include vs/versus/compared with/in comparison with and population
+    markers such as "in patients with", "in adults with", "in children with",
+    and "among". Turkish cues include "ile karşılaştırıldığında", "karşı",
+    "kıyasla", and population markers such as "hastalarında", "çocuklarda",
+    and "erişkinlerde". Outcome terms are taken only from an explicit cue
+    (for example "on HbA1c", "cardiovascular mortality", "mortalite",
+    "üzerine etkisi"). Abstracts are never consulted.
+
+    Unstated components are "Belirtilmemiş". Keyword-only strings that lack a
+    PICO cue are left unspecified so a bag of search terms is not relabelled
+    as an intervention.
+    """
+    q_clean = _collapse_ws(query or "")
+    if not q_clean:
+        return _pico_defaults("", "", "", "")
+
+    turkish = _is_turkish_query(q_clean)
+    outcome, working = _extract_outcome_span(q_clean)
     population = ""
     intervention = ""
     comparison = ""
-    outcome = ""
 
-    if q_clean:
-        # Check for explicit Comparison in Query
-        comp_match = re.search(r"\b(versus|vs\.?|compared (?:to|with)|against)\b", q_clean, re.IGNORECASE)
-        tr_comp_match = re.search(r"\b(karşı|karşılaştırmalı|kıyasla|ile karşılaştırıldığında)\b", q_clean, re.IGNORECASE)
-
-        if comp_match or tr_comp_match:
-            split_keyword = comp_match.group(0) if comp_match else tr_comp_match.group(0)
-            parts = re.split(re.escape(split_keyword), q_clean, flags=re.IGNORECASE, maxsplit=1)
-            left_side = parts[0].strip()
-            right_side = parts[1].strip() if len(parts) > 1 else ""
-
-            # Check if population is in right_side (e.g., "in patients with...") or left_side
-            pop_match = re.search(r"\b(in patients with|in adults with|in children with|in|for|among|hastalarda|hastalarında|tanılı hastalarda)\b\s*(.*)", right_side, re.IGNORECASE)
-            tr_pop_match = re.search(r"(.*?)\s+(?:hastalarda|hastalarında|bireylerde)\b", left_side, re.IGNORECASE)
-
-            if pop_match and pop_match.group(2):
-                if not population:
-                    population = pop_match.group(2).strip().capitalize()
-                comp_text = right_side[:pop_match.start()].strip()
-                if comp_text and not comparison:
-                    comparison = comp_text.capitalize()
-            elif not comparison and right_side:
-                # e.g., "SGLT2 inhibitors vs placebo"
-                right_pop_sep = re.search(r"\b(in|for|among)\b\s*(.*)", right_side, re.IGNORECASE)
-                if right_pop_sep:
-                    comparison = right_side[:right_pop_sep.start()].strip().capitalize()
-                    if not population and right_pop_sep.group(2):
-                        population = right_pop_sep.group(2).strip().capitalize()
-                else:
-                    comparison = right_side.capitalize()
-
-            if tr_pop_match and not population:
-                population = tr_pop_match.group(0).strip()
-                left_side = re.sub(re.escape(tr_pop_match.group(0)), "", left_side, flags=re.IGNORECASE).strip()
-
-            if left_side and not intervention:
-                intervention = left_side
-
+    kind, cue = _find_comparison_cue(working)
+    if cue is not None:
+        left = _collapse_ws(working[:cue.start()])
+        right = _collapse_ws(working[cue.end():])
+        resolved = _resolve_comparison_kind(kind, left, right)
+        if resolved == "b":
+            intervention, comparison = _split_comparator_before_cue(left)
+            tr_pop, tr_rest = _peel_tr_population(intervention)
+            if tr_pop:
+                population = tr_pop
+                intervention = tr_rest
+            if not population:
+                tr_pop, tr_rest = _peel_tr_population(right)
+                if tr_pop:
+                    population = tr_pop
+                    if not intervention and tr_rest:
+                        intervention = tr_rest
+            if not population:
+                en_pop, en_before = _split_en_right(right)
+                if en_pop:
+                    population = en_pop
+                    if en_before and not comparison:
+                        comparison = en_before
+                elif right and not comparison:
+                    comparison = right
         else:
-            # Query does not have explicit comparison. Check for structured population vs intervention patterns
-            # English: "[Intervention] in patients with [Population]" or "[Intervention] in [Population]" or "[Intervention] for [Population]"
-            pop_pattern = re.search(r"^(.*?)\s+\b(in patients with|in adults with|in children with|in|for|among|with)\s+(.*)$", q_clean, re.IGNORECASE)
-            # Turkish: "[Population] hastalarda [Intervention] kullanımı/etkisi" or "[Population] hastalarında [Intervention]"
-            tr_pop_pattern = re.search(r"^(.*?)\s+(?:hastalarda|hastalarında|tanılı hastalarda|bireylerde)\s+(.*)$", q_clean, re.IGNORECASE)
+            population, comparison = _split_en_right(right)
+            tr_pop, tr_rest = _peel_tr_population(left)
+            if tr_pop:
+                intervention = tr_rest
+                if not population:
+                    population = tr_pop
+            else:
+                intervention = left
+            if not comparison and right and not population:
+                comparison = right
+    else:
+        population, intervention = _split_uncompared(working)
 
-            if pop_pattern:
-                if not intervention and pop_pattern.group(1):
-                    intervention = pop_pattern.group(1).strip().capitalize()
-                if not population and pop_pattern.group(3):
-                    population = pop_pattern.group(3).strip().capitalize()
-            elif tr_pop_pattern:
-                if not population and tr_pop_pattern.group(1):
-                    population = f"{tr_pop_pattern.group(1).strip()} hastalarında".capitalize()
-                if not intervention and tr_pop_pattern.group(2):
-                    intervention = tr_pop_pattern.group(2).strip().capitalize()
+    intervention = _strip_tr_phrase(intervention, turkish)
+    comparison = _strip_tr_phrase(comparison, turkish)
+    population = _collapse_ws(population)
+    outcome = _collapse_ws(outcome)
 
-        # Strict check for keyword-only queries (e.g. "statin myopathy anti-HMGCR")
-        # If intervention was set to the entire query and query is an unstructured keyword list
-        if intervention and intervention.lower() == q_clean.lower():
-            is_structured = bool(re.search(r"\b(in|for|among|vs|versus|compared|with|hastalarda|hastalarında|karşı|etkisi|tedavisi)\b", q_clean, re.IGNORECASE))
-            if not is_structured:
-                intervention = ""
+    if intervention and intervention.lower() == q_clean.lower() and not _PICO_STRUCTURE_RE.search(q_clean):
+        intervention = ""
 
-    # Apply Strict Defaults (Must be "Belirtilmemiş" if unstated in query)
-    if not population:
-        population = "Belirtilmemiş"
-    if not intervention:
-        intervention = "Belirtilmemiş"
-    if not comparison:
-        comparison = "Belirtilmemiş"
-    if not outcome:
-        outcome = "Belirtilmemiş"
+    return _pico_defaults(population, intervention, comparison, outcome, turkish=turkish)
 
-    return {
-        "population": _clean_pico_str(population),
-        "intervention": _clean_pico_str(intervention),
-        "comparison": _clean_pico_str(comparison),
-        "outcome": _clean_pico_str(outcome)
-    }
+
+def extract_pico(query: str) -> Dict[str, str]:
+    """
+    Public PICO extractor. Alias of extract_pico_improved so existing callers
+    and tests keep working. Components that the query does not state stay
+    "Belirtilmemiş". Article abstracts are not used.
+    """
+    return extract_pico_improved(query)
+
 
 
 def assess_risk_of_bias(article: Dict[str, Any]) -> Dict[str, Any]:

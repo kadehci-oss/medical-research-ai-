@@ -7,6 +7,7 @@ from report_generator import (
     classify_study_design,
     assess_risk_of_bias,
     extract_pico,
+    extract_pico_improved,
     extract_study_metrics,
     generate_evidence_table_markdown,
     generate_evidence_table_html,
@@ -287,6 +288,88 @@ class TestReportGenerator(unittest.TestCase):
         self.assertEqual(pico["population"], "Belirtilmemiş")
         self.assertEqual(pico["intervention"], "Belirtilmemiş")
         self.assertEqual(pico["comparison"], "Belirtilmemiş")
+
+    def test_extract_pico_improved_is_public_alias(self):
+        query = "Empagliflozin compared with placebo for cardiovascular mortality in patients with HFrEF"
+        self.assertEqual(extract_pico(query), extract_pico_improved(query))
+
+    def test_extract_pico_english_comparison_population_and_outcome(self):
+        glp = extract_pico("GLP-1 agonists versus insulin on HbA1c in adults with type 2 diabetes")
+        self.assertEqual(glp["intervention"], "GLP-1 agonists")
+        self.assertEqual(glp["comparison"], "Insulin")
+        self.assertEqual(glp["population"], "Adults with type 2 diabetes")
+        self.assertEqual(glp["outcome"], "HbA1c")
+
+        mortality = extract_pico(
+            "Empagliflozin compared with placebo for cardiovascular mortality in patients with HFrEF"
+        )
+        self.assertEqual(mortality["intervention"], "Empagliflozin")
+        self.assertEqual(mortality["comparison"], "Placebo")
+        self.assertEqual(mortality["population"], "Patients with HFrEF")
+        self.assertEqual(mortality["outcome"], "Cardiovascular mortality")
+
+        kidney = extract_pico(
+            "dapagliflozin versus placebo among adults with chronic kidney disease on kidney failure"
+        )
+        self.assertEqual(kidney["intervention"], "Dapagliflozin")
+        self.assertEqual(kidney["comparison"], "Placebo")
+        self.assertEqual(kidney["population"], "Adults with chronic kidney disease")
+        self.assertEqual(kidney["outcome"], "Kidney failure")
+
+        head_to_head = extract_pico("Empagliflozin in comparison with placebo in patients with HFpEF")
+        self.assertEqual(head_to_head["intervention"], "Empagliflozin")
+        self.assertEqual(head_to_head["comparison"], "Placebo")
+        self.assertEqual(head_to_head["population"], "Patients with HFpEF")
+        self.assertEqual(head_to_head["outcome"], "Belirtilmemiş")
+
+    def test_extract_pico_turkish_comparison_population_and_outcome(self):
+        diabetes = extract_pico(
+            "Tip 2 diyabet hastalarında GLP-1 agonistlerinin insülin ile karşılaştırıldığında HbA1c üzerine etkisi"
+        )
+        self.assertEqual(diabetes["population"], "Tip 2 diyabet hastalarında")
+        self.assertEqual(diabetes["intervention"], "GLP-1 agonistleri")
+        self.assertEqual(diabetes["comparison"], "İnsülin")
+        self.assertEqual(diabetes["outcome"], "HbA1c")
+
+        hf = extract_pico(
+            "SGLT2 inhibitörleri plaseboya karşı kalp yetersizliği hastalarında mortalite"
+        )
+        self.assertEqual(hf["intervention"], "SGLT2 inhibitörleri")
+        self.assertEqual(hf["comparison"], "Plasebo")
+        self.assertEqual(hf["population"], "Kalp yetersizliği hastalarında")
+        self.assertEqual(hf["outcome"], "Mortalite")
+
+        plain = extract_pico(
+            "SGLT2 inhibitörleri plasebo ile karşılaştırıldığında kalp yetersizliği hastalarında mortalite"
+        )
+        self.assertEqual(plain["intervention"], "SGLT2 inhibitörleri")
+        self.assertEqual(plain["comparison"], "Plasebo")
+        self.assertEqual(plain["population"], "Kalp yetersizliği hastalarında")
+        self.assertEqual(plain["outcome"], "Mortalite")
+
+        children = extract_pico("çocuklarda febril nöbet")
+        self.assertEqual(children["population"], "Çocuklarda")
+        self.assertEqual(children["intervention"], "Febril nöbet")
+        self.assertEqual(children["comparison"], "Belirtilmemiş")
+        self.assertEqual(children["outcome"], "Belirtilmemiş")
+
+    def test_extract_pico_short_clinical_questions_keep_outcome_unstated(self):
+        crispr = extract_pico("CRISPR in sickle cell disease")
+        self.assertEqual(crispr["intervention"], "CRISPR")
+        self.assertEqual(crispr["population"], "Sickle cell disease")
+        self.assertEqual(crispr["comparison"], "Belirtilmemiş")
+        self.assertEqual(crispr["outcome"], "Belirtilmemiş")
+
+        seizure = extract_pico("Febrile seizure in children")
+        self.assertEqual(seizure["intervention"], "Febrile seizure")
+        self.assertEqual(seizure["population"], "Children")
+        self.assertEqual(seizure["outcome"], "Belirtilmemiş")
+
+        depression = extract_pico("Psilocybin for major depressive disorder")
+        self.assertEqual(depression["intervention"], "Psilocybin")
+        self.assertEqual(depression["population"], "Major depressive disorder")
+        self.assertEqual(depression["comparison"], "Belirtilmemiş")
+        self.assertEqual(depression["outcome"], "Belirtilmemiş")
 
     def test_synthesize_article_conclusion_tr_diverse_medical_conditions(self):
         # 1. Oncology with explicit quantitative metrics

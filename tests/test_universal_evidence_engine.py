@@ -341,6 +341,63 @@ class TestUniversalEvidenceEngine(unittest.TestCase):
         self.assertEqual(res["status"], "success")
         self.assertEqual(len(res["articles"]), 1)
         self.assertEqual(res["articles"][0]["verification_status"], "verified")
+        self.assertEqual(mock_search.call_count, 1)
+        self.assertEqual(mock_search.call_args.kwargs["query"], "heart failure")
+
+    @patch("universal_evidence_engine.pubmed_client.search_pubmed")
+    def test_search_and_verify_specialty_expansion_preserves_terms(self, mock_search):
+        mock_search.return_value = {
+            "articles": CARDIOLOGY_ARTICLES,
+            "total_count": 1,
+            "query": "expanded",
+            "search_date": "2026-10-30",
+        }
+        res = self.engine.search_and_verify("HFpEF SGLT2 inhibitors", max_results=3)
+        self.assertEqual(res["status"], "success")
+        executed = mock_search.call_args.kwargs["query"]
+        for token in "HFpEF SGLT2 inhibitors".split():
+            self.assertIn(token, executed)
+        self.assertIn("heart failure with preserved ejection fraction", executed)
+        self.assertNotIn(" AND ", f" {executed} ")
+        self.assertEqual(res["query"], "HFpEF SGLT2 inhibitors")
+        self.assertEqual(res["query_enhancement"]["specialty"]["id"], "kardiyoloji")
+        self.assertFalse(res["query_enhancement"]["fallback_to_original"])
+        self.assertEqual(mock_search.call_count, 1)
+
+    @patch("universal_evidence_engine.pubmed_client.search_pubmed")
+    def test_search_and_verify_can_disable_specialty_enhancement(self, mock_search):
+        mock_search.return_value = {
+            "articles": CARDIOLOGY_ARTICLES,
+            "total_count": 1,
+            "search_date": "2026-10-30",
+        }
+        res = self.engine.search_and_verify(
+            "HFpEF SGLT2 inhibitors",
+            enhance_with_specialty=False,
+        )
+        self.assertEqual(mock_search.call_args.kwargs["query"], "HFpEF SGLT2 inhibitors")
+        self.assertEqual(res["query_enhancement"]["strategy"], "disabled")
+        self.assertFalse(res["query_enhancement"]["applied"])
+        self.assertEqual(res["query_enhancement"]["specialty"]["id"], "kardiyoloji")
+
+    @patch("universal_evidence_engine.pubmed_client.search_pubmed")
+    def test_search_and_verify_falls_back_when_enhanced_query_is_empty(self, mock_search):
+        mock_search.side_effect = [
+            {"articles": [], "total_count": 0, "search_date": "2026-10-30"},
+            {
+                "articles": CARDIOLOGY_ARTICLES,
+                "total_count": 1,
+                "search_date": "2026-10-30",
+            },
+        ]
+        res = self.engine.search_and_verify("HFpEF SGLT2", max_results=2)
+        self.assertEqual(res["status"], "success")
+        self.assertEqual(len(res["articles"]), 1)
+        self.assertEqual(mock_search.call_count, 2)
+        self.assertEqual(mock_search.call_args_list[1].kwargs["query"], "HFpEF SGLT2")
+        self.assertIn("HFpEF", mock_search.call_args_list[0].kwargs["query"])
+        self.assertTrue(res["query_enhancement"]["fallback_to_original"])
+        self.assertEqual(res["executed_query"], "HFpEF SGLT2")
 
     # --- 8. Safe Fallback and Error Handling Tests ---
     @patch("universal_evidence_engine.pubmed_client.search_pubmed")

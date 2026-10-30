@@ -14,6 +14,35 @@ from report_generator import (
     assess_risk_of_bias
 )
 
+def _render_specialty_caption(search_res: dict) -> None:
+    """Show the detected specialty without hiding the query that was actually sent."""
+    enhancement = search_res.get("query_enhancement") or {}
+    specialty = enhancement.get("specialty") or {}
+    if specialty.get("specialty_name"):
+        alternatives = specialty.get("alternatives") or []
+        alternative_text = ""
+        if alternatives:
+            names = ", ".join(
+                item.get("specialty_name") or item.get("id", "")
+                for item in alternatives[:2]
+                if item.get("specialty_name") or item.get("id")
+            )
+            if names:
+                alternative_text = f" Diğer olası eşleşmeler: {names}."
+        st.caption(
+            f"Algılanan uzmanlık: {specialty['specialty_name']} "
+            f"({specialty.get('specialty_name_en', '')}). "
+            "Özgün sorgu terimleri korundu. Eş anlamlı genişletme yalnızca güvenli kısaltmalar için uygulandı."
+            f"{alternative_text}"
+        )
+    executed = (search_res.get("executed_query") or "").strip()
+    original = (search_res.get("query") or "").strip()
+    if executed and executed != original:
+        st.caption(f"PubMed sorgusu (eş anlamlı genişletme): {executed}")
+    if enhancement.get("fallback_to_original"):
+        st.caption("Genişletilmiş sorgu kayıt döndürmedi. Sonuçlar özgün sorgu ile alındı.")
+
+
 # Page config
 st.set_page_config(
     page_title="Medical Research AI - Evrensel Klinik Kanıt Motoru",
@@ -178,6 +207,7 @@ def main():
                 st.warning("Belirtilen kriterlere uygun literatür kaydı bulunamadı.")
             else:
                 st.markdown(f"**Bulunan Toplam Kayıt:** {total_count} | **Gösterilen:** {len(articles)}")
+                _render_specialty_caption(res)
                 for idx, art in enumerate(articles, 1):
                     cd = classify_study_design(art.get("publication_types", []), art.get("title", ""), art.get("abstract", ""))
                     rob = assess_risk_of_bias(art)
