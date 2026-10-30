@@ -15,7 +15,7 @@ The instructions in this file apply to the entire repository.
 
 2. **`report_generator.py`**:
    - Generates structured Turkish Evidence Synthesis Reports ("Türkçe Kanıt Raporu").
-   - Implements evidence level classification based on publication types (Meta-analysis, RCT, Cohort, Review, etc.).
+   - Classifies study design (RCT, cohort, case-control, cross-sectional, case report, case series, systematic review, meta-analysis, guideline) without assigning an evidence grade from the design alone.
    - Contains both a rule-based deterministic synthesizer and an optional OpenAI LLM synthesizer with strict anti-hallucination grounding prompt constraints.
 
 3. **`app.py`**:

@@ -48,8 +48,10 @@ class TestPreliminaryGrade(unittest.TestCase):
         note = assess_preliminary_grade(article, "")
         self.assertEqual(note["domains"]["risk_of_bias"]["status"], "ciddi düşürme")
         self.assertEqual(note["domains"]["imprecision"]["status"], "değerlendirilemedi")
-        self.assertEqual(note["preliminary_level"], "Orta")
-        self.assertEqual(note["applied_downgrades"], 1)
+        self.assertEqual(note["preliminary_level"], "değerlendirilemedi")
+        self.assertEqual(note["applied_downgrades"], 0)
+        self.assertEqual(note["outcomes"][0]["outcome"], "değerlendirilemedi")
+        self.assertEqual(note["outcomes"][0]["preliminary_level"], "değerlendirilemedi")
 
     def test_meta_analysis_uses_reported_i2_only(self):
         article = {

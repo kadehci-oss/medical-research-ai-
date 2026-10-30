@@ -52,15 +52,18 @@ class TestReportGenerator(unittest.TestCase):
 
     def test_classify_study_design(self):
         rct = classify_study_design(["Randomized Controlled Trial"], "Title", "Abstract")
-        self.assertEqual(rct["level"], "Seviye 2")
+        self.assertEqual(rct["level"], "Değerlendirilemedi")
+        self.assertIsNone(rct["level_num"])
         self.assertIn("Rastgele Kontrollü", rct["design"])
 
         meta = classify_study_design(["Systematic Review"], "Meta-analysis title", "Abstract")
-        self.assertEqual(meta["level"], "Seviye 1")
+        self.assertEqual(meta["level"], "Değerlendirilemedi")
         self.assertIn("Sistematik Derleme", meta["design"])
+        self.assertIn("Meta-Analiz", meta["design"])
 
         cohort = classify_study_design([], "Prospective Cohort Study", "A cohort of patients")
-        self.assertEqual(cohort["level"], "Seviye 3")
+        self.assertEqual(cohort["level"], "Değerlendirilemedi")
+        self.assertEqual(cohort["design"], "Kohort Çalışması (Gözlemsel)")
 
     def test_classify_study_design_nlm_preliminary_priority(self):
         # NLM publication type Cohort Studies should take priority over background mention of "Systematic Review"
@@ -69,7 +72,7 @@ class TestReportGenerator(unittest.TestCase):
             "Observational study on hypertension",
             "A systematic review was previously conducted on this topic. In our cohort of 500 patients..."
         )
-        self.assertEqual(res["level"], "Seviye 3")
+        self.assertEqual(res["level"], "Değerlendirilemedi")
         self.assertEqual(res["design"], "Kohort Çalışması (Gözlemsel)")
 
     def test_assess_risk_of_bias_not_assessed(self):
@@ -81,35 +84,38 @@ class TestReportGenerator(unittest.TestCase):
             self.assertIn("Değerlendirilmedi", domain_val)
 
     def test_assess_risk_of_bias_tool_assignment_by_article_type(self):
-        # 1. Systematic Review / Meta-Analysis -> AMSTAR 2 / ROBIS
+        # 1. Systematic Review / Meta-Analysis -> ROBIS, no risk degree
         meta_art = {
             "title": "Empagliflozin in Heart Failure: A Systematic Review and Meta-Analysis",
             "publication_types": ["Meta-Analysis", "Systematic Review"],
             "abstract": "We performed a systematic review and meta-analysis of RCTs."
         }
         rob_meta = assess_risk_of_bias(meta_art)
-        self.assertEqual(rob_meta["overall_rating"], "Uygulanamaz (Not Applicable)")
-        self.assertEqual(rob_meta["tool"], "AMSTAR 2 / ROBIS (Sistematik Derleme)")
+        self.assertEqual(rob_meta["overall_rating"], "Değerlendirilmedi (Not Assessed)")
+        self.assertEqual(rob_meta["tool"], "ROBIS (Risk of Bias in Systematic Reviews)")
+        self.assertFalse(rob_meta["risk_assigned"])
 
-        # 2. Narrative Review -> Uygulanamaz
+        # 2. Narrative Review -> no RoB tool and no risk degree
         review_art = {
             "title": "Recent advances in heart failure therapy",
             "publication_types": ["Review"],
             "abstract": "In this review we summarize recent developments."
         }
         rob_rev = assess_risk_of_bias(review_art)
-        self.assertEqual(rob_rev["overall_rating"], "Uygulanamaz (Not Applicable)")
+        self.assertEqual(rob_rev["overall_rating"], "Değerlendirilmedi (Not Assessed)")
         self.assertEqual(rob_rev["tool"], "Uygulanamaz (Not Applicable)")
+        self.assertFalse(rob_rev["risk_assigned"])
 
-        # 3. Case Report -> Uygulanamaz
+        # 3. Case Report -> JBI, still unrated
         case_art = {
             "title": "SGLT2 inhibitor induced ketoacidosis: a case report",
             "publication_types": ["Case Reports"],
             "abstract": "We present a case of euglycemic ketoacidosis."
         }
         rob_case = assess_risk_of_bias(case_art)
-        self.assertEqual(rob_case["overall_rating"], "Uygulanamaz (Not Applicable)")
-        self.assertEqual(rob_case["tool"], "Uygulanamaz (Not Applicable)")
+        self.assertEqual(rob_case["overall_rating"], "Değerlendirilmedi (Not Assessed)")
+        self.assertEqual(rob_case["tool"], "JBI Olgu Sunumu Değerlendirme Listesi")
+        self.assertFalse(rob_case["risk_assigned"])
 
         # 4. RCT -> RoB 2
         rct_art = {
@@ -158,7 +164,8 @@ class TestReportGenerator(unittest.TestCase):
 
     def test_classify_evidence_level(self):
         level_rct = _classify_evidence_level(["Randomized Controlled Trial"], "Title", "Abstract")
-        self.assertIn("Seviye 2", level_rct)
+        self.assertIn("Değerlendirilemedi", level_rct)
+        self.assertNotIn("Seviye", level_rct)
 
     def test_evidence_table_markdown_generation(self):
         table_md = generate_evidence_table_markdown(SAMPLE_ARTICLES)
@@ -632,8 +639,8 @@ class TestReportGenerator(unittest.TestCase):
             "Exposure histories were compared between groups.",
         )
         self.assertEqual(design["design"], "Vaka-Kontrol Çalışması")
-        self.assertEqual(design["level"], "Seviye 4")
-        self.assertEqual(design["level_num"], 4)
+        self.assertEqual(design["level"], "Değerlendirilemedi")
+        self.assertIsNone(design["level_num"])
 
         singular = classify_study_design(
             ["Case-Control Study"],

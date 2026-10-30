@@ -71,7 +71,8 @@ class TestHeartFailureRegression(unittest.TestCase):
         details = extract_article_clinical_details(art, "Empagliflozin in heart failure with preserved ejection fraction")
 
         self.assertEqual(details["sample_size"], "n = 5988")
-        self.assertIn("Seviye 2", details["study_design"])
+        self.assertIn("Rastgele Kontrollü", details["study_design"])
+        self.assertEqual(details["evidence_level"], "Değerlendirilemedi")
         self.assertEqual(details["comparison"], "Placebo")
         self.assertIn("HR 0.79", details["outcomes_summary"])
 

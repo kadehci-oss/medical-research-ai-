@@ -388,6 +388,8 @@ class UniversalEvidenceEngine:
                 "concomitant_treatments": metrics.get("concomitant_treatments", []),
                 "causality_limitations": metrics.get("causality_limitations", []),
                 "risk_of_bias": rob,
+                "provenance": details.get("provenance", {}),
+                "evidence_level": details.get("evidence_level") or design.get("level"),
                 "real_findings": details.get("real_findings", ""),
                 "abstract_only": len(abstract) < 100 or "Özet bulunamadı" in abstract
             })
@@ -452,8 +454,8 @@ class UniversalEvidenceEngine:
             comp_match = True
 
         # 4. Study Design Compatibility Check
-        is_rev1 = any(k in des1 for k in ["Derleme", "Kılavuz", "Uzman Görüşü", "Editör", "Review", "Editorial", "Guideline"])
-        is_rev2 = any(k in des2 for k in ["Derleme", "Kılavuz", "Uzman Görüşü", "Editör", "Review", "Editorial", "Guideline"])
+        is_rev1 = any(k in des1 for k in ["Derleme", "Meta-Analiz", "Kılavuz", "Uzman Görüşü", "Editör", "Review", "Editorial", "Guideline"])
+        is_rev2 = any(k in des2 for k in ["Derleme", "Meta-Analiz", "Kılavuz", "Uzman Görüşü", "Editör", "Review", "Editorial", "Guideline"])
         design_compatible = (is_rev1 == is_rev2)
 
         # 5. Outcome Match Check
@@ -547,8 +549,9 @@ class UniversalEvidenceEngine:
 
         processed = self.process_and_extract_parameters(articles, query)
 
-        primary_studies = [p for p in processed if not any(k in p["study_design"]["design"] for k in ["Derleme", "Kılavuz", "Uzman Görüşü", "Editör", "Review", "Editorial", "Guideline"])]
-        review_studies = [p for p in processed if any(k in p["study_design"]["design"] for k in ["Derleme", "Kılavuz", "Uzman Görüşü", "Editör", "Review", "Editorial", "Guideline"])]
+        _nonprimary = ("Derleme", "Meta-Analiz", "Kılavuz", "Uzman Görüşü", "Editör", "Review", "Editorial", "Guideline")
+        primary_studies = [p for p in processed if not any(k in p["study_design"]["design"] for k in _nonprimary)]
+        review_studies = [p for p in processed if any(k in p["study_design"]["design"] for k in _nonprimary)]
 
         consistent = []
         conflicting = []
@@ -570,7 +573,9 @@ class UniversalEvidenceEngine:
                 "title": p.get("title"),
                 "study_design": p["study_design"]["design"],
                 "evidence_level": p["study_design"]["level"],
+                "evidence_level_note": p["study_design"].get("evidence_level_note", ""),
                 "patient_population": p.get("patient_population"),
+                "provenance": p.get("provenance"),
                 "sample_size_n": p.get("sample_size_n"),
                 "intervention": p.get("intervention"),
                 "comparison": p.get("comparison"),

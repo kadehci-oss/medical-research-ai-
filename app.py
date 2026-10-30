@@ -219,15 +219,35 @@ def main():
                     cd = classify_study_design(art.get("publication_types", []), art.get("title", ""), art.get("abstract", ""))
                     rob = assess_risk_of_bias(art)
                     art_details = extract_article_clinical_details(art, search_query if 'search_query' in locals() else "")
-                    with st.expander(f"{idx}. {art['title']} ({art['pub_year']}) - [{cd['level']}]", expanded=(idx <= 3)):
+                    with st.expander(f"{idx}. {art['title']} ({art['pub_year']}) - {cd['design']}", expanded=(idx <= 3)):
                         st.markdown(f"**Yazarlar:** {', '.join(art['authors']) if art['authors'] else 'Bilinmiyor'}")
                         st.markdown(f"**Dergi:** {art['journal']} ({art['pub_year']})")
-                        st.markdown(f"**Çalışma Tasarımı:** `{cd['design']}` ({cd['level']})")
-                        st.markdown(f"**Yanlılık Riski ({rob['tool']}):** `{rob['overall_rating']}`")
+                        st.markdown(f"**Çalışma Tasarımı:** `{cd['design']}`")
+                        st.markdown(f"**Kanıt düzeyi:** `{cd['level']}`")
+                        st.caption(cd.get("evidence_level_note") or "")
+                        st.markdown(f"**Yanlılık aracı ({rob['tool']}):** `{rob['overall_rating']}`")
+                        st.caption(rob.get("rating_policy") or "Değerlendirme yapılmadan risk derecesi verilmez.")
 
                         st.markdown(f"**Hasta Grubu:** {art_details['patient_group']} | **Örneklem (n):** {art_details['sample_size']}")
                         st.markdown(f"**Müdahale:** {art_details['intervention']} | **Karşılaştırma:** {art_details['comparison']}")
-                        st.markdown(f"**Sonlanımlar & Metrikler:** {art_details['outcomes_summary']}")
+                        st.markdown(f"**Sonlanımlar ve metrikler:** {art_details['outcomes_summary']}")
+                        provenance = art_details.get("provenance") or {}
+                        if provenance:
+                            st.markdown("**Kaynak cümleleri ve PMID**")
+                            for label, key in (
+                                ("Hasta grubu", "population"),
+                                ("Örneklem", "sample_size"),
+                                ("Müdahale", "intervention"),
+                                ("Karşılaştırıcı", "comparison"),
+                            ):
+                                item = provenance.get(key) or {}
+                                sentence = item.get("source_sentence") or "değerlendirilemedi"
+                                st.caption(f"{label}: {item.get('value') or 'değerlendirilemedi'} — {sentence} (PMID: {provenance.get('pmid') or art.get('pmid') or 'yok'})")
+                            for om in provenance.get("outcomes") or []:
+                                st.caption(
+                                    f"Sonlanım {om.get('outcome')}: {', '.join(om.get('metrics') or []) or 'değerlendirilemedi'} — "
+                                    f"{om.get('source_sentence') or 'değerlendirilemedi'} (PMID: {om.get('pmid') or art.get('pmid') or 'yok'})"
+                                )
 
                         badges_html = []
                         if art.get('pmid'):
@@ -402,10 +422,13 @@ def main():
                             with st.expander(f"Çalışma #{s_idx}: {s_item.get('authors_short')} ({s_item.get('pub_year')}) — {s_item.get('study_design')}", expanded=(s_idx == 1)):
                                 st.markdown(f"**Başlık:** {s_item.get('title')}")
                                 st.markdown(f"**Atıf & Kaynak Bağlantıları:** {s_item.get('source_citations')}")
-                                st.markdown(f"**Tasarım & Kanıt Seviyesi:** `{s_item.get('study_design')}` ({s_item.get('evidence_level')})")
+                                st.markdown(f"**Çalışma tasarımı:** `{s_item.get('study_design')}`")
+                                st.markdown(f"**Kanıt düzeyi:** `{s_item.get('evidence_level')}`")
+                                st.caption(s_item.get("evidence_level_note") or "Kanıt düzeyi çalışma tasarımından üretilmez.")
                                 st.markdown(f"**Popülasyon:** {s_item.get('patient_population')} | **Örneklem (n):** {s_item.get('sample_size_n') or 'Özette bildirilmedi'}")
                                 st.markdown(f"**Müdahale:** {s_item.get('intervention')} | **Karşılaştırma:** {s_item.get('comparison')}")
-                                st.markdown(f"**Yanlılık Riski (RoB):** `{s_item.get('risk_of_bias')}`")
+                                st.markdown(f"**Yanlılık durumu:** `{s_item.get('risk_of_bias')}`")
+                                st.caption("Araç seçilmiş olsa da değerlendirme yapılmadan risk derecesi verilmez.")
 
                                 st.markdown("**Klinik Sonlanımlar ve Etki Ölçütleri:**")
                                 o_metrics = s_item.get("outcome_metrics", [])
@@ -484,13 +507,14 @@ def main():
                         a_rob = assess_risk_of_bias(a_item)
                         a_details = extract_article_clinical_details(a_item, query)
                         with st.expander(f"Makale #{a_idx}: {a_item.get('title')} — {a_rob['overall_rating']}"):
-                            st.markdown(f"**Tasarım:** {a_details['study_design']} | **Örneklem:** {a_details['sample_size']}")
+                            st.markdown(f"**Tasarım:** {a_details['study_design']} | **Kanıt düzeyi:** {a_details.get('evidence_level', 'Değerlendirilemedi')} | **Örneklem:** {a_details['sample_size']}")
                             st.markdown(f"**Hasta Grubu:** {a_details['patient_group']}")
                             st.markdown(f"**Müdahale:** {a_details['intervention']} | **Karşılaştırma:** {a_details['comparison']}")
                             st.markdown(f"**Sonlanımlar:** {a_details['outcomes_summary']}")
                             st.markdown(f"**Gerçek Bulgular:** {a_details['real_findings']}")
                             st.markdown("---")
-                            st.markdown(f"**Yanlılık Riski Aracı:** {a_rob['tool']} — `{a_rob['overall_rating']}`")
+                            st.markdown(f"**Yanlılık aracı:** {a_rob['tool']} — `{a_rob['overall_rating']}`")
+                            st.caption(a_rob.get("rating_policy") or "Değerlendirme yapılmadan risk derecesi verilmez.")
                             st.markdown("**Domain Detayları:**")
                             st.json(a_rob["domains"])
 
