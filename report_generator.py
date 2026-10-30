@@ -9,6 +9,97 @@ except ImportError:
 
 from pubmed_client import verify_citation
 
+# Reports must never read as if a physician has signed off.
+EXPERT_PHYSICIAN_REVIEW_STATUS = "Yapılmadı"
+EXPERT_PHYSICIAN_REVIEW_LINE = f"Uzman Hekim Değerlendirmesi: {EXPERT_PHYSICIAN_REVIEW_STATUS}"
+
+MANDATORY_CLINICAL_REPORT_SECTIONS = [
+    "## 1. Klinik Araştırma Sorusu",
+    "## 2. Yönetici Özeti",
+    "## 3. Araştırma Yöntemi ve Tarama Tarihi",
+    "## 4. Klinik Arka Plan ve Patofizyoloji",
+    "## 5. Bilimsel Kanıt Tablosu",
+    "## 6. Önemli Çalışmaların Karşılaştırılması",
+    "## 7. Tedavi Etkinliği ve Güvenlilik",
+    "## 8. Güncel Klinik Kılavuzlar",
+    "## 9. Çelişkili Bilimsel Bulgular",
+    "## 10. Red Team Eleştirisi",
+    "## 11. Kanıt Gücü ve Belirsizlikler",
+    "## 12. Klinik Sonuç",
+    "## 13. Doğrulanmış Kaynakça",
+]
+
+_FORBIDDEN_REPORT_CLAIMS = [
+    (r"100\s*/\s*100", "100/100 asılsız puan/puanlama iddiası"),
+    (r"0%\s*halüsinasyon", "0% halüsinasyon asılsız iddiası"),
+    (r"%0\s*halüsinasyon", "%0 halüsinasyon asılsız iddiası"),
+    (r"sallama\s*(0%|%0|sıfır)", "Sıfır sallama/uydurma asılsız iddiası"),
+    (r"klinik olarak %?100 doğrulandı", "Klinik olarak %100 doğrulandı asılsız iddiası"),
+    (
+        r"uzman hekim değerlendirmesi tamamlan(?:mış(?:tır)?|dı|miştir)",
+        "Uzman hekim değerlendirmesi tamamlandı asılsız iddiası",
+    ),
+]
+
+
+def validate_clinical_report_quality(report_text: str) -> Dict[str, Any]:
+    """
+    Check a clinical evidence report for required sections and forbidden overclaims.
+
+    Validity requires every current mandatory section and no forbidden claim.
+    Missing abstract-only, GRADE Not Assessed, or expert-review disclosures are
+    warnings. An explicit no-result report is valid without the 13 sections.
+    """
+    if not report_text or not isinstance(report_text, str):
+        return {
+            "valid": False,
+            "missing_sections": list(MANDATORY_CLINICAL_REPORT_SECTIONS),
+            "detected_false_claims": [],
+            "warnings": ["Rapor metni boş veya geçersiz formatta."],
+            "error": "Rapor metni boş veya geçersiz formatta.",
+        }
+
+    if "⚠️ Sonuç Bulunamadı" in report_text or "kriterlere uygun makale bulunamamıştır" in report_text:
+        warnings = []
+        if EXPERT_PHYSICIAN_REVIEW_LINE not in report_text:
+            warnings.append("Uzman Hekim Değerlendirmesi: Yapılmadı bildirimi eksik.")
+        detected_false_claims = [
+            description
+            for pattern, description in _FORBIDDEN_REPORT_CLAIMS
+            if re.search(pattern, report_text, re.IGNORECASE)
+        ]
+        return {
+            "valid": len(detected_false_claims) == 0,
+            "missing_sections": [],
+            "detected_false_claims": detected_false_claims,
+            "warnings": warnings,
+            "empty_results": True,
+        }
+
+    missing_sections = [sec for sec in MANDATORY_CLINICAL_REPORT_SECTIONS if sec not in report_text]
+    warnings = []
+
+    if not re.search(r"\b(abstract|öze[tt])\b", report_text, re.IGNORECASE):
+        warnings.append("Özet (abstract-only) sınırlılığı bildirimi eksik.")
+
+    if "GRADE Değerlendirilmedi" not in report_text and "Not Assessed" not in report_text:
+        warnings.append("GRADE Değerlendirilmedi (Not Assessed) statüsü bildirimi eksik.")
+
+    if EXPERT_PHYSICIAN_REVIEW_LINE not in report_text:
+        warnings.append("Uzman Hekim Değerlendirmesi: Yapılmadı bildirimi eksik.")
+
+    detected_false_claims = []
+    for pattern, description in _FORBIDDEN_REPORT_CLAIMS:
+        if re.search(pattern, report_text, re.IGNORECASE):
+            detected_false_claims.append(description)
+
+    return {
+        "valid": len(missing_sections) == 0 and len(detected_false_claims) == 0,
+        "missing_sections": missing_sections,
+        "detected_false_claims": detected_false_claims,
+        "warnings": warnings,
+    }
+
 
 def _format_authors_short(authors: List[str]) -> str:
     if not authors:
@@ -55,6 +146,14 @@ def classify_study_design(pub_types: List[str], title: str, abstract: str) -> Di
             "level": "Seviye 2",
             "level_num": 2,
             "badge_color": "#059669"
+        }
+    # More specific than the generic observational bucket, which PubMed often co-tags.
+    if any("case-control" in pt or "case control" in pt or "vaka-kontrol" in pt for pt in pts):
+        return {
+            "design": "Vaka-Kontrol Çalışması",
+            "level": "Seviye 4",
+            "level_num": 4,
+            "badge_color": "#DC2626"
         }
     if any("observational study" in pt or "cohort" in pt or "longitudinal" in pt or "prospective study" in pt for pt in pts):
         return {
@@ -681,10 +780,22 @@ def assess_risk_of_bias(article: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
+# Longer phrases precede shorter ones so "standardized mean difference" is not read as "mean difference".
+_EFFECT_MEASURE_ALTERNATION = (
+    "HR|OR|RR|WMD|IRR|SMD|MD|"
+    "hazard ratio|odds ratio|relative risk|"
+    "incidence rate ratio|standardized mean difference|mean difference"
+)
+_EFFECT_MEASURE_RE = re.compile(
+    rf"\b(?:{_EFFECT_MEASURE_ALTERNATION})\s*[:=, ]?\s*-?\d+\.?\d*\b",
+    re.IGNORECASE,
+)
+
+
 def extract_outcome_metrics(abstract: str) -> List[Dict[str, Any]]:
     """
-    Parses abstract sentences/clauses and binds HR, RR, OR, 95% CI, and p-values
-    directly to their respective clinical outcomes. Preserves outcome associations.
+    Parses abstract sentences/clauses and binds HR, RR, OR, IRR, SMD, MD, 95% CI,
+    and p-values directly to their respective clinical outcomes.
     Returns a list of dicts: [{"outcome": str, "metrics": List[str], "sentence": str}]
     """
     if not abstract:
@@ -698,11 +809,15 @@ def extract_outcome_metrics(abstract: str) -> List[Dict[str, Any]]:
         if not raw_clean:
             continue
 
-        eff_count = len(re.findall(r"\b(?:HR|OR|RR|MD|WMD|hazard ratio|odds ratio|relative risk|mean difference)\s*[:=, ]?\s*-?\d+\.?\d*\b", raw_clean, re.IGNORECASE))
+        eff_count = len(_EFFECT_MEASURE_RE.findall(raw_clean))
         p_count = len(re.findall(r"\b(?:p|P)\s*[=<]\s*0?\.\d+\b", raw_clean))
 
         if eff_count > 1 or (eff_count >= 1 and p_count > 1):
-            sub_parts = re.split(r'(?<=\))\s*(?:and\s+|,|\s+while\s+)|(?:\b(?:and|,)\s+)(?=[A-Za-z\s]+?\b(?:HR|OR|RR|MD|WMD|hazard ratio|odds ratio|relative risk|mean difference|p\s*[=<]))', raw_clean, flags=re.IGNORECASE)
+            sub_parts = re.split(
+                rf"(?<=\))\s*(?:and\s+|,|\s+while\s+)|(?:\b(?:and|,)\s+)(?=[A-Za-z\s]+?\b(?:{_EFFECT_MEASURE_ALTERNATION}|p\s*[=<]))",
+                raw_clean,
+                flags=re.IGNORECASE,
+            )
             for sp in sub_parts:
                 if sp.strip():
                     clauses.append(sp.strip())
@@ -727,7 +842,7 @@ def extract_outcome_metrics(abstract: str) -> List[Dict[str, Any]]:
         if not clause_clean:
             continue
 
-        effect_sizes = re.findall(r"\b(?:HR|OR|RR|MD|WMD|hazard ratio|odds ratio|relative risk|mean difference)\s*[:=, ]?\s*-?\d+\.?\d*\b", clause_clean, re.IGNORECASE)
+        effect_sizes = _EFFECT_MEASURE_RE.findall(clause_clean)
         cis = re.findall(r"\b(?:95%\s*CI|CI\s*95%)\s*[:=]?\s*\[?\s*\d+\.?\d*\s*(?:to|-|,)\s*\d+\.?\d*\s*\]?", clause_clean, re.IGNORECASE)
         p_vals = re.findall(r"\b(?:p|P)\s*[=<]\s*0?\.\d+\b", clause_clean)
 
@@ -743,7 +858,11 @@ def extract_outcome_metrics(abstract: str) -> List[Dict[str, Any]]:
                 break
 
         if not outcome_name:
-            metric_match = re.search(r"\b(?:HR|OR|RR|MD|WMD|hazard ratio|odds ratio|relative risk|mean difference|95%\s*CI|95%CI|CI|p|P)(?:\s*interaction|\s*value)?\b", clause_clean, re.IGNORECASE)
+            metric_match = re.search(
+                rf"\b(?:{_EFFECT_MEASURE_ALTERNATION}|95%\s*CI|95%CI|CI|p|P)(?:\s*interaction|\s*value)?\b",
+                clause_clean,
+                re.IGNORECASE,
+            )
             if metric_match:
                 prefix = clause_clean[:metric_match.start()].strip()
                 prefix = re.sub(r"\b(?:compared (?:to|with)|vs\.?|versus|against)\s+[^.,;\n]*$", "", prefix, flags=re.IGNORECASE).strip()
@@ -753,7 +872,10 @@ def extract_outcome_metrics(abstract: str) -> List[Dict[str, Any]]:
                 words = prefix.split()
                 if len(words) > 0:
                     cand_name = " ".join(words[-4:]).strip().capitalize()
-                    if cand_name and not cand_name.lower().startswith(("hazard", "odds", "relative", "mean", "p", "ci", "hr", "or", "rr", "md")):
+                    if cand_name and not cand_name.lower().startswith((
+                        "hazard", "odds", "relative", "mean", "incidence", "standardized",
+                        "p", "ci", "hr", "or", "rr", "md", "irr", "smd", "wmd",
+                    )):
                         outcome_name = cand_name
 
         if not outcome_name:
@@ -770,7 +892,7 @@ def extract_outcome_metrics(abstract: str) -> List[Dict[str, Any]]:
 
 def extract_study_metrics(abstract: str) -> Dict[str, Any]:
     """
-    Extracts numerical metrics (sample size n, effect sizes HR/OR/RR/MD, 95% CI, p-values,
+    Extracts numerical metrics (sample size n, effect sizes HR/OR/RR/IRR/SMD/MD, 95% CI, p-values,
     outcome-bound metrics, concomitant treatments, and causality/methodological limitations)
     strictly from abstract text if explicitly present. Never fabricates missing metrics.
     """
@@ -801,7 +923,7 @@ def extract_study_metrics(abstract: str) -> Dict[str, Any]:
     if n_match:
         n_val = n_match.group(1).replace(",", "")
 
-    effect_sizes = re.findall(r"\b(?:HR|OR|RR|MD|WMD|hazard ratio|odds ratio|relative risk|mean difference)\s*[:=, ]?\s*-?\d+\.?\d*\b", abstract_clean, re.IGNORECASE)
+    effect_sizes = _EFFECT_MEASURE_RE.findall(abstract_clean)
     cis = re.findall(r"\[?\s*\b(?:95%\s*CI|95%CI|CI\s*95%)\b\s*[:=,]?\s*-?\d+\.?\d*\s*(?:to|-|–|,)\s*-?\d+\.?\d*\s*\]?", abstract_clean, re.IGNORECASE)
     p_vals = re.findall(r"\b(?:p|P)(?:interaction|-value)?\s*[=<]\s*(?:0?\.\d+|\d+\.?\d*|\.\d+)\b", abstract_clean)
 
@@ -1154,6 +1276,8 @@ def perform_red_team_audit(query: str, articles: List[Dict[str, Any]]) -> Dict[s
         "metadata_retrieval_source": "NCBI PubMed E-utilities API",
         "abstract_only_limitation": "Tüm sentez ve analizler yalnızca yayınlanmış özet (abstract) metinlerine dayanmaktadır. Tam metin (full-text) değerlendirmesi yapılmamıştır.",
         "clinical_validation_status": "Klinik Doğrulama Yapılmamıştır (No Clinical Validation Claimed)",
+        "expert_physician_review": EXPERT_PHYSICIAN_REVIEW_STATUS,
+        "physician_review_status": EXPERT_PHYSICIAN_REVIEW_STATUS,
         "citation_integrity": {
             "total_articles": total,
             "verified_citations": verified_count,
@@ -1421,6 +1545,8 @@ def generate_rule_based_turkish_report(query: str, articles: List[Dict[str, Any]
     if not articles:
         return f"""# 📑 Türkçe Klinik Araştırma Raporu
 
+{EXPERT_PHYSICIAN_REVIEW_LINE}
+
 ## 1. Klinik Araştırma Sorusu
 {query}
 
@@ -1437,6 +1563,7 @@ Lütfen arama terimlerini veya filtreleri genişleterek tekrar deneyiniz.
 
     report = []
     report.append("# 📑 Türkçe Klinik Araştırma Raporu\n")
+    report.append(f"{EXPERT_PHYSICIAN_REVIEW_LINE}\n")
 
     # 1. Klinik Araştırma Sorusu
     report.append("## 1. Klinik Araştırma Sorusu")
@@ -1649,6 +1776,7 @@ Lütfen arama terimlerini veya filtreleri genişleterek tekrar deneyiniz.
     report.append(f"- **Mükerrer PMID Tespiti:** {'Evet (Ayıklandı)' if audit['citation_integrity']['duplicate_pmids_found'] else 'Mükerrer kayıt yok'}")
     report.append(f"- **Metodolojik Sınırlılık:** {audit['abstract_only_limitation']}")
     report.append(f"- **Klinik Doğrulama:** {audit['clinical_validation_status']}")
+    report.append(f"- {EXPERT_PHYSICIAN_REVIEW_LINE}")
     if audit["methodological_warnings"]:
         report.append("- **Tespit Edilen Metodolojik Uyarılar:**")
         for warn in audit["methodological_warnings"]:
@@ -1722,10 +1850,11 @@ def generate_llm_turkish_report(query: str, articles: List[Dict[str, Any]], api_
         "kullanarak tıp hekimleri için Türkçe Klinik Araştırma Raporu hazırlamaktır.\n\n"
         "KESİN KURALLAR VE KLİNİK RAPORLAMA KISITLARI:\n"
         "1. KESİNLİKLE uydurma atıf, uydurma PMID, uydurma makale veya kaynak gösterme! Yalnızca verilen makalelerdeki gerçek verileri kullan.\n"
-        "2. KESİNLİKLE '100/100 doğrulandı', '0% halüsinasyon riski' veya 'klinik olarak doğrulanmıştır' gibi asılsız iddialarda BULUNMA!\n"
+        "2. KESİNLİKLE '100/100 doğrulandı', '0% halüsinasyon riski', 'uzman hekim değerlendirmesi tamamlandı' veya 'klinik olarak doğrulanmıştır' gibi asılsız iddialarda BULUNMA!\n"
         "3. KESİNLİKLE otomatik GRADE derecelendirmesi uydurma! GRADE statüsünün 'GRADE Değerlendirilmedi (Not Assessed)' olduğunu açıkça belirt.\n"
         "4. Raporda analizlerin yalnızca özet (abstract) metinlerine dayandığını, tam metin incelemesi olmadığını vurgula.\n"
-        "5. Rapor KESİNLİKLE aşağıdaki 13 ANA BÖLÜMÜ tam başlıklarıyla içermelidir:\n"
+        f"5. Raporda şu satır AYNEN yer almalıdır: '{EXPERT_PHYSICIAN_REVIEW_LINE}'. Bu rapor klinik imza veya uzman onayı anlamına gelmez.\n"
+        "6. Rapor KESİNLİKLE aşağıdaki 13 ANA BÖLÜMÜ tam başlıklarıyla içermelidir:\n"
         "   - # 📑 Türkçe Klinik Araştırma Raporu\n"
         "   - ## 1. Klinik Araştırma Sorusu\n"
         "   - ## 2. Yönetici Özeti\n"
@@ -1740,10 +1869,10 @@ def generate_llm_turkish_report(query: str, articles: List[Dict[str, Any]], api_
         "   - ## 11. Kanıt Gücü ve Belirsizlikler\n"
         "   - ## 12. Klinik Sonuç\n"
         "   - ## 13. Doğrulanmış Kaynakça\n\n"
-        "6. BÖLÜM 12 (Klinik Sonuç) İÇİN ÖZEL KURALLAR:\n"
+        "7. BÖLÜM 12 (Klinik Sonuç) İÇİN ÖZEL KURALLAR:\n"
         "   - Bölüm 12'de kaynaklara dayalı, Türkçe, karşılaştırmalı bir değerlendirme üret.\n"
         "   - Derleme/kılavuz/uzman görüşü niteliğindeki yayınlardan kesin tedavi etkinliği KESİNLİKLE ÇIKARMA!\n"
-        "   - Çalışmaların hasta sayılarını (n), etki ölçütlerini (HR, OR, RR, MD, %95 GA, p) ve belirsizlikleri/sınırlılıkları [PMID: xxx] kaynaklarıyla göster.\n"
+        "   - Çalışmaların hasta sayılarını (n), etki ölçütlerini (HR, OR, RR, IRR, SMD, MD, %95 GA, p) ve belirsizlikleri/sınırlılıkları [PMID: xxx] kaynaklarıyla göster.\n"
     )
 
     user_prompt = (
@@ -1846,6 +1975,7 @@ def generate_html_report(query: str, articles: List[Dict[str, Any]], markdown_co
         <p><strong>Rapor Türü:</strong> Tıbbi Araştırma Destek Raporu (NCBI PubMed Veritabanı)</p>
         <p><strong>Denetim Statüsü:</strong> <span class="audit-badge">{audit['status']}</span></p>
         <p><strong>GRADE Statüsü:</strong> {audit['grade_rating_policy']['grade_status']}</p>
+        <p>{EXPERT_PHYSICIAN_REVIEW_LINE}</p>
         <p><strong>Veri Kapsamı:</strong> Yalnızca Özet Metin (Abstract-Only Limitation)</p>
     </div>
 

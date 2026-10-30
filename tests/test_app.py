@@ -51,6 +51,11 @@ class TestAppRegression(unittest.TestCase):
 
         self.assertIn("generated_report", at.session_state)
         self.assertEqual(at.session_state["generated_report"], "# Report for Query 1")
+        metric_labels = [metric.label for metric in at.metric]
+        metric_values = [str(metric.value) for metric in at.metric]
+        self.assertIn("Uzman Hekim Değerlendirmesi", metric_labels)
+        self.assertIn("Yapılmadı", metric_values)
+        self.assertTrue(at.error or at.warning)
 
         # Now perform a NEW search
         mock_search.return_value = {

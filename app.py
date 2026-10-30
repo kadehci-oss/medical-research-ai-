@@ -11,7 +11,8 @@ from report_generator import (
     classify_study_design,
     extract_pico,
     extract_article_clinical_details,
-    assess_risk_of_bias
+    assess_risk_of_bias,
+    validate_clinical_report_quality,
 )
 
 def _render_specialty_caption(search_res: dict) -> None:
@@ -315,7 +316,7 @@ def main():
             audit_res = perform_red_team_audit(query, articles)
 
             # Audit Summary Cards
-            col_a1, col_a2, col_a3, col_a4 = st.columns(4)
+            col_a1, col_a2, col_a3, col_a4, col_a5 = st.columns(5)
             with col_a1:
                 st.metric("Toplam Kaynak", len(articles))
             with col_a2:
@@ -324,10 +325,13 @@ def main():
                 st.metric("Veri Kapsamı", "Yalnızca Özet (Abstract)")
             with col_a4:
                 st.metric("GRADE Statüsü", "Değerlendirilmedi")
+            with col_a5:
+                st.metric("Uzman Hekim Değerlendirmesi", audit_res.get("expert_physician_review", "Yapılmadı"))
 
             st.markdown(
                 f"""<div class="grade-notice-card">
-                📌 <strong>GRADE Derecelendirme Politikası:</strong> {audit_res['grade_rating_policy']['notice']}
+                📌 <strong>GRADE Derecelendirme Politikası:</strong> {audit_res['grade_rating_policy']['notice']}<br>
+                ⚠️ <strong>Uzman Hekim Değerlendirmesi: Yapılmadı</strong> — bu çıktı klinik onay veya imza anlamına gelmez.
                 </div>""",
                 unsafe_allow_html=True
             )
@@ -361,6 +365,16 @@ def main():
 
             if "generated_report" in st.session_state:
                 st.markdown("---")
+                quality_qc = validate_clinical_report_quality(st.session_state["generated_report"])
+                if not quality_qc.get("valid"):
+                    problems = []
+                    if quality_qc.get("missing_sections"):
+                        problems.append("Eksik zorunlu bölümler: " + "; ".join(quality_qc["missing_sections"]))
+                    if quality_qc.get("detected_false_claims"):
+                        problems.append("Yasaklı aşırı iddialar: " + "; ".join(quality_qc["detected_false_claims"]))
+                    st.error("Rapor kalite kontrolü başarısız. " + " ".join(problems))
+                if quality_qc.get("warnings"):
+                    st.warning("Rapor kalite kontrolü uyarıları: " + "; ".join(quality_qc["warnings"]))
 
                 pico_res = extract_pico(query)
                 cross_comp = st.session_state.get("generated_cross_comp", {})
