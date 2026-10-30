@@ -41,6 +41,12 @@ def _render_specialty_caption(search_res: dict) -> None:
         st.caption(f"PubMed sorgusu (eş anlamlı genişletme): {executed}")
     if enhancement.get("fallback_to_original"):
         st.caption("Genişletilmiş sorgu kayıt döndürmedi. Sonuçlar özgün sorgu ile alındı.")
+    ranking = search_res.get("evidence_ranking") or {}
+    if ranking.get("applied"):
+        st.caption(
+            "Etkinlik sorusu olduğu için randomize çalışmalar ve sistematik derlemeler listenin başına alındı. "
+            "İlk aramanın kayıtları listede duruyor."
+        )
 
 
 # Page config

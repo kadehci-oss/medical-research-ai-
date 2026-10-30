@@ -34,6 +34,108 @@ def _is_transport_error(message: str) -> bool:
     return any(marker in lowered for marker in markers)
 
 
+_EFFICACY_CUES = (
+    "efficacy", "effectiveness", "versus", " vs ", "vs.", "compared",
+    "inhibitor", "agonist", "placebo", "plasebo", "etkinlik", "tedavi",
+    "karşılaştır", "karsilastir", "karşı",
+)
+
+_HIGH_LEVEL_FILTER = (
+    "(randomized controlled trial[pt] OR systematic review[pt] OR meta-analysis[pt])"
+)
+
+
+def is_efficacy_question(query: str) -> bool:
+    """True when the question asks about treatment effect rather than background description."""
+    folded = (query or "").casefold()
+    return any(cue.casefold() in folded for cue in _EFFICACY_CUES)
+
+
+def _evidence_rank(article: Dict[str, Any]) -> int:
+    """Lower rank is shown first: RCT, then systematic review/meta-analysis, then other trials."""
+    blob = " ".join(article.get("publication_types") or []).casefold()
+    blob = f"{blob} {(article.get('title') or '').casefold()}"
+    if "randomized controlled trial" in blob or "rastgele kontrollü" in blob:
+        return 0
+    if "meta-analysis" in blob or "systematic review" in blob or "sistematik derleme" in blob:
+        return 1
+    if "clinical trial" in blob:
+        return 2
+    return 3
+
+
+def merge_ranked_articles(
+    primary: List[Dict[str, Any]],
+    high_level: List[Dict[str, Any]],
+) -> List[Dict[str, Any]]:
+    """Put trials and reviews first without dropping any primary PubMed hit."""
+    ordered_high = [art for _, art in sorted(enumerate(high_level), key=lambda item: (_evidence_rank(item[1]), item[0]))]
+    merged: List[Dict[str, Any]] = []
+    seen = set()
+
+    def _add(art: Dict[str, Any]) -> None:
+        pmid = str(art.get("pmid") or "").strip()
+        if pmid:
+            if pmid in seen:
+                return
+            seen.add(pmid)
+        merged.append(art)
+
+    for art in ordered_high:
+        _add(art)
+    for art in primary:
+        _add(art)
+    return merged
+
+
+def _maybe_prefer_high_level_evidence(
+    query: str,
+    search_query: str,
+    search_res: Dict[str, Any],
+    enabled: bool,
+    publication_type: Optional[str],
+    run_search,
+) -> Dict[str, Any]:
+    """Prepend RCT/SR/MA hits for efficacy questions. Never removes primary hits."""
+    if not enabled:
+        return {"applied": False, "reason": "disabled"}
+    if publication_type not in (None, "", "Tümü"):
+        return {"applied": False, "reason": "publication_type_already_filtered"}
+    if not is_efficacy_question(query):
+        return {"applied": False, "reason": "not_efficacy_question"}
+    primary = list(search_res.get("articles") or [])
+    if not primary:
+        return {"applied": False, "reason": "no_primary_hits"}
+    high_query = f"({search_query}) AND {_HIGH_LEVEL_FILTER}"
+    try:
+        high_res = run_search(high_query)
+    except Exception as exc:
+        logger.warning("High-level evidence search failed: %s", exc)
+        return {"applied": False, "reason": "high_level_search_failed", "high_level_query": high_query}
+    if high_res.get("error") and not high_res.get("articles"):
+        if _is_transport_error(str(high_res.get("error"))):
+            return {"applied": False, "reason": "high_level_transport_error", "high_level_query": high_query}
+        return {"applied": False, "reason": "high_level_search_failed", "high_level_query": high_query}
+    high_articles = list(high_res.get("articles") or [])
+    if not high_articles:
+        return {
+            "applied": False,
+            "reason": "no_high_level_hits",
+            "high_level_query": high_query,
+            "primary_count": len(primary),
+        }
+    merged = merge_ranked_articles(primary, high_articles)
+    search_res["articles"] = merged
+    return {
+        "applied": True,
+        "reason": "efficacy_question",
+        "high_level_query": high_query,
+        "high_level_count": len(high_articles),
+        "primary_count": len(primary),
+        "returned_count": len(merged),
+    }
+
+
 class UniversalEvidenceEngine:
     """
     Universal Medical Research Engine that works across all medical specialties.
@@ -55,6 +157,7 @@ class UniversalEvidenceEngine:
         start_year: Optional[int] = None,
         end_year: Optional[int] = None,
         enhance_with_specialty: bool = True,
+        prefer_high_level_evidence: bool = True,
     ) -> Dict[str, Any]:
         """
         Executes a PubMed search, verifies all retrieved article metadata (PMID, DOI, title, authors, pub_year, pub_types),
@@ -64,6 +167,11 @@ class UniversalEvidenceEngine:
         a few abbreviations. The user's original tokens are kept. If the expanded
         query returns no records, the original query is searched once. Set the flag
         to false to send the query exactly as typed.
+
+        When the question is about intervention efficacy and
+        ``prefer_high_level_evidence`` is true, a second PubMed query restricted to
+        RCTs, systematic reviews, and meta-analyses is merged in front. Every
+        article from the first query is kept.
 
         Handles network or API errors gracefully without crashing.
         """
@@ -172,11 +280,20 @@ class UniversalEvidenceEngine:
                 "query": query,
                 "executed_query": search_query,
                 "query_enhancement": enhancement,
+                "evidence_ranking": {"applied": False, "reason": "primary_search_failed"},
                 "articles": [],
                 "total_count": 0,
                 "verified_articles": []
             }
 
+        evidence_ranking = _maybe_prefer_high_level_evidence(
+            query=query,
+            search_query=search_query,
+            search_res=search_res,
+            enabled=prefer_high_level_evidence,
+            publication_type=publication_type,
+            run_search=_run_search,
+        )
         raw_articles = search_res.get("articles", [])
         verified_articles = []
         verification_summaries = []
@@ -218,6 +335,7 @@ class UniversalEvidenceEngine:
             "query": query,
             "executed_query": search_query,
             "query_enhancement": enhancement,
+            "evidence_ranking": evidence_ranking,
             "search_date": search_res.get("search_date"),
             "search_params": search_res.get("search_params"),
             "total_count": search_res.get("total_count", 0),
