@@ -130,6 +130,8 @@ _DESIGN_LABELS = {
     "cohort": "Kohort Çalışması (Gözlemsel)",
     "case_report": "Olgu Sunumu",
     "case_series": "Olgu Serisi",
+    "retrospective_case_series": "Retrospektif Klinik Olgu Serisi",
+    "retrospective_comparative": "Retrospektif Karşılaştırmalı Gözlemsel Araştırma",
     "guideline": "Klinik Kılavuz",
     "consensus": "Konsensüs Raporu",
     "editorial": "Editör Yazısı / Mektup / Yorum",
@@ -232,6 +234,51 @@ _EFFECTIVENESS_RE = re.compile(
     r"\b(effectiveness|efficacy|treated with|placebo|plasebo|etkinlik)\b",
     re.IGNORECASE,
 )
+# A cited series ("two cases have been reported") is not this paper's design.
+_CITED_CASE_RE = re.compile(
+    r"\b(?:previously\s+reported|previously\s+described|have\s+been\s+reported|"
+    r"have\s+been\s+described|was\s+reported|were\s+reported|in\s+the\s+literature|"
+    r"earlier\s+series|prior\s+reports?|published\s+cases|previously\s+published)\b",
+    re.IGNORECASE,
+)
+_OWN_PATIENT_VOICE_RE = re.compile(
+    r"\b(?:we\s+(?:report|present|describe|included|reviewed|analysed|analyzed)|"
+    r"here\s+we\s+present|both\s+patients|our\s+patients|this\s+(?:series|study)|"
+    r"were\s+included|are\s+described)\b",
+    re.IGNORECASE,
+)
+_BOTH_PATIENTS_RE = re.compile(r"\bboth\s+patients\b", re.IGNORECASE)
+_INCLUDED_COUNT_RE = re.compile(
+    rf"\b(?:{_AT_LEAST_TWO_PATIENTS})\s+"
+    rf"(?:consecutive\s+|adult\s+|pediatric\s+|paediatric\s+)?"
+    rf"(?:patients|cases|women|men|children)\b"
+    rf"(?:(?!\.\s).){{0,180}}?"
+    rf"\b(?:were|was)\s+(?:included|reviewed|analyzed|analysed|identified|enrolled)\b",
+    re.IGNORECASE,
+)
+_RETRO_REVIEWED_N_RE = re.compile(
+    rf"\bwe\s+retrospectively\s+(?:reviewed|analyzed|analysed|identified|included)\s+"
+    rf"(?:the\s+records\s+of\s+)?(?:{_AT_LEAST_TWO_PATIENTS})\s+"
+    rf"(?:consecutive\s+)?(?:patients|cases)\b|"
+    rf"\bretrospective\s+(?:review|series|analysis|study)\s+of\s+"
+    rf"(?:{_AT_LEAST_TWO_PATIENTS})\s+(?:consecutive\s+)?(?:patients|cases)\b",
+    re.IGNORECASE,
+)
+_OWN_RETRO_RE = re.compile(
+    r"\b(?:in\s+this|this|our|a)\s+retrospective\s+"
+    r"(?:study|analysis|comparison|review|series|chart\s+review)\b|"
+    r"\bwe\s+retrospectively\s+(?:reviewed|analyzed|analysed|compared|identified|included)\b",
+    re.IGNORECASE,
+)
+_STATISTICAL_COMPARE_RE = re.compile(
+    r"\bstatistical\s+comparisons?\b",
+    re.IGNORECASE,
+)
+_VERSUS_GROUPS_RE = re.compile(r"\bversus\b|\bvs\.?\b", re.IGNORECASE)
+_LITERATURE_REVIEW_RE = re.compile(
+    r"\breview(?:ed)?\s+the\s+literature\b|\bliterature\s+review\b|\bof\s+the\s+literature\b",
+    re.IGNORECASE,
+)
 
 
 def _design_record(design_key: str) -> Dict[str, Any]:
@@ -320,6 +367,77 @@ def _case_report_in_text(blob: str, title: str, abstract: str) -> bool:
     return False
 
 
+def _match_is_cited_case(text: str, match: re.Match) -> bool:
+    """True when the matched patients belong to a paper this one cites."""
+    sentence = _sentence_around(text, match.start(), match.end())
+    if not sentence:
+        return False
+    if _OWN_PATIENT_VOICE_RE.search(sentence):
+        return False
+    return bool(_CITED_CASE_RE.search(sentence))
+
+
+def _own_case_series_match(text: str) -> bool:
+    """True when this paper, not a citation, describes several of its own patients."""
+    if not text:
+        return False
+    for match in _CASE_SERIES_RE.finditer(text):
+        before = text[max(0, match.start() - 60):match.start()]
+        after = text[match.end():match.end() + 48]
+        if _BACKGROUND_BEFORE_RE.search(before) or _BACKGROUND_AFTER_RE.search(after):
+            continue
+        if _match_is_cited_case(text, match):
+            continue
+        return True
+    if _own_design_match(text, _BOTH_PATIENTS_RE):
+        return True
+    return False
+
+
+def _counted_patient_series(text: str) -> bool:
+    """A stated count of at least two of this paper's own patients."""
+    if not text:
+        return False
+    if _own_case_series_match(text):
+        return True
+    for pattern in (_INCLUDED_COUNT_RE, _RETRO_REVIEWED_N_RE):
+        for match in pattern.finditer(text):
+            before = text[max(0, match.start() - 60):match.start()]
+            if _BACKGROUND_BEFORE_RE.search(before):
+                continue
+            if _match_is_cited_case(text, match):
+                continue
+            return True
+    return False
+
+
+def _several_own_patients(title: str, abstract: str) -> bool:
+    return _counted_patient_series(f"{title or ''}\n{abstract or ''}")
+
+
+def _retrospective_design_key(title: str, abstract: str) -> Optional[str]:
+    """Retrospective comparison of groups, or a retrospective series of patients.
+
+    Cohort, case-control, cross-sectional, and trial labels are decided earlier.
+    Retrospective wording without a comparison or a counted series stays unresolved.
+    """
+    blob = f"{title or ''}\n{abstract or ''}"
+    if not _own_design_match(blob, _OWN_RETRO_RE):
+        return None
+    counted = _counted_patient_series(blob)
+    if _own_design_match(blob, _LITERATURE_REVIEW_RE) and not counted:
+        return None
+    comparative = _own_design_match(blob, _STATISTICAL_COMPARE_RE) or (
+        _own_design_match(blob, _VERSUS_GROUPS_RE) and bool(_EFFECT_MEASURE_RE.search(blob))
+    )
+    explicit_series = _own_case_series_match(blob)
+    if comparative and not explicit_series:
+        return "retrospective_comparative"
+    if explicit_series or counted:
+        return "retrospective_case_series"
+    return None
+
+
 def _case_evidence_key(title: str, abstract: str) -> Optional[str]:
     """Case series or case report cues that describe this paper's own patients.
 
@@ -331,7 +449,7 @@ def _case_evidence_key(title: str, abstract: str) -> Optional[str]:
     title = title or ""
     abstract = abstract or ""
     for blob in (title, abstract):
-        if _own_design_match(blob, _CASE_SERIES_RE):
+        if _own_case_series_match(blob):
             return "case_series"
     for blob in (title, abstract):
         if _case_report_in_text(blob, title, abstract) or _own_design_match(blob, _YEAR_OLD_CASE_RE):
@@ -360,25 +478,39 @@ def _text_design_key(title: str, abstract: str) -> Optional[str]:
             return "case_control"
         if _own_design_match(blob, _CROSS_RE):
             return "cross_sectional"
-        if _own_design_match(blob, _CASE_SERIES_RE):
-            return "case_series"
+        if _own_case_series_match(blob):
+            key = "case_series"
+            break
         if _case_report_in_text(blob, title, abstract):
-            return "case_report"
+            key = "case_report"
+            break
         if _own_design_match(blob, _COHORT_RE):
-            return "cohort"
+            key = "cohort"
+            break
         if allow_follow and _own_design_match(blob, _FOLLOW_RE):
-            return "cohort"
+            key = "cohort"
+            break
         if _own_design_match(blob, _DIAG_RE):
-            return "diagnostic_accuracy"
+            key = "diagnostic_accuracy"
+            break
         # Age alone is weaker than a named design in the same field, but it is
         # still a case report when nothing stronger was stated.
         if _own_design_match(blob, _YEAR_OLD_CASE_RE):
-            return "case_report"
-    if _NARRATIVE_TITLE_RE.search(title) or (
-        re.search(r"\breview\b", title, re.IGNORECASE) and not _own_design_match(title, _SR_RE)
+            key = "case_report"
+            break
+    else:
+        key = None
+    if key is None and (
+        _NARRATIVE_TITLE_RE.search(title) or (
+            re.search(r"\breview\b", title, re.IGNORECASE) and not _own_design_match(title, _SR_RE)
+        )
     ):
         return "narrative_review"
-    return None
+    if key in (None, "case_series"):
+        retro = _retrospective_design_key(title, abstract)
+        if retro == "retrospective_case_series" or (retro == "retrospective_comparative" and key is None):
+            return retro
+    return key
 
 
 def classify_study_design(pub_types: List[str], title: str, abstract: str) -> Dict[str, Any]:
@@ -419,7 +551,15 @@ def classify_study_design(pub_types: List[str], title: str, abstract: str) -> Di
         return _design_record("cohort")
 
     if _has_pub_type(pts, "case reports", "case report"):
-        if text_key == "case_series":
+        # The NLM tag is a single-patient label unless the abstract clearly
+        # describes several of this paper's own patients. A cited series does
+        # not count. An uncertain abstract stays a case report.
+        if text_key in ("case_series", "retrospective_case_series", "retrospective_comparative"):
+            return _design_record(text_key)
+        if _several_own_patients(title, abstract):
+            retro = _retrospective_design_key(title, abstract)
+            if retro:
+                return _design_record(retro)
             return _design_record("case_series")
         return _design_record("case_report")
 
@@ -438,7 +578,10 @@ def classify_study_design(pub_types: List[str], title: str, abstract: str) -> Di
         return _design_record("clinical_trial")
 
     if _has_pub_type(pts, "comparative study"):
-        if text_key in ("cohort", "case_control", "cross_sectional", "rct", "case_series", "case_report"):
+        if text_key in (
+            "cohort", "case_control", "cross_sectional", "rct", "case_series", "case_report",
+            "retrospective_comparative", "retrospective_case_series",
+        ):
             return _design_record(text_key)
         return _design_record("comparative")
 
@@ -462,7 +605,10 @@ def classify_study_design(pub_types: List[str], title: str, abstract: str) -> Di
         return _design_record("narrative_review")
 
     if _has_pub_type(pts, "observational study", "prospective studies", "longitudinal studies"):
-        if text_key in ("cohort", "case_control", "cross_sectional", "case_series", "case_report", "rct", "diagnostic_accuracy"):
+        if text_key in (
+            "cohort", "case_control", "cross_sectional", "case_series", "case_report", "rct",
+            "diagnostic_accuracy", "retrospective_comparative", "retrospective_case_series",
+        ):
             return _design_record(text_key)
         if _own_design_match(f"{title or ''} {abstract or ''}", _FOLLOW_RE):
             return _design_record("cohort")
@@ -951,7 +1097,7 @@ def assess_risk_of_bias(article: Dict[str, Any]) -> Dict[str, Any]:
             "Olgu sunumu için JBI listesi seçildi. Değerlendirme yapılmadığı için risk derecesi verilmedi.",
         )
 
-    if design_key == "case_series":
+    if design_key in ("case_series", "retrospective_case_series"):
         return _unassessed_bias(
             "JBI Olgu Serisi Değerlendirme Listesi",
             design_name,
@@ -975,7 +1121,10 @@ def assess_risk_of_bias(article: Dict[str, Any]) -> Dict[str, Any]:
             "Tanı doğruluğu çalışması için QUADAS-2 seçildi. Değerlendirme yapılmadığı için risk derecesi verilmedi.",
         )
 
-    if design_key in ("cohort", "case_control", "comparative", "observational_unspecified"):
+    if design_key in (
+        "cohort", "case_control", "comparative", "observational_unspecified",
+        "retrospective_comparative",
+    ):
         use_robins = design_key != "case_control" and bool(_INTERVENTION_RE.search(blob))
         if design_key == "case_control" and _EFFECTIVENESS_RE.search(blob):
             use_robins = True
@@ -1028,7 +1177,7 @@ _EFFECT_MEASURE_ALTERNATION = (
     "incidence rate ratio|standardized mean difference|mean difference"
 )
 _EFFECT_MEASURE_RE = re.compile(
-    rf"\b(?:{_EFFECT_MEASURE_ALTERNATION})\s*[:=, ]?\s*-?\d+\.?\d*\b",
+    rf"\b(?:{_EFFECT_MEASURE_ALTERNATION})\s*[:=, ]?\s*-?\d+\.?\d*(?!\d)",
     re.IGNORECASE,
 )
 
@@ -1084,7 +1233,7 @@ def extract_outcome_metrics(abstract: str) -> List[Dict[str, Any]]:
             continue
 
         effect_sizes = _EFFECT_MEASURE_RE.findall(clause_clean)
-        cis = re.findall(r"\b(?:95%\s*CI|CI\s*95%)\s*[:=]?\s*\[?\s*\d+\.?\d*\s*(?:to|-|,)\s*\d+\.?\d*\s*\]?", clause_clean, re.IGNORECASE)
+        cis = [item["raw"] for item in _collect_confidence_intervals(clause_clean)]
         p_vals = re.findall(r"\b(?:p|P)\s*[=<]\s*0?\.\d+\b", clause_clean)
 
         combined_metrics = list(dict.fromkeys(effect_sizes + cis + p_vals))
@@ -1168,7 +1317,7 @@ def extract_study_metrics(abstract: str) -> Dict[str, Any]:
         n_sentence = _sentence_around(abstract_clean, n_match.start(), n_match.end())
 
     effect_sizes = _EFFECT_MEASURE_RE.findall(abstract_clean)
-    cis = re.findall(r"\[?\s*\b(?:95%\s*CI|95%CI|CI\s*95%)\b\s*[:=,]?\s*-?\d+\.?\d*\s*(?:to|-|–|,)\s*-?\d+\.?\d*\s*\]?", abstract_clean, re.IGNORECASE)
+    cis = [item["raw"] for item in _collect_confidence_intervals(abstract_clean)]
     p_vals = re.findall(r"\b(?:p|P)(?:interaction|-value)?\s*[=<]\s*(?:0?\.\d+|\d+\.?\d*|\.\d+)\b", abstract_clean)
 
     outcome_metrics = extract_outcome_metrics(abstract_clean)
@@ -1420,6 +1569,7 @@ def _format_bound_claims(details: Dict[str, Any]) -> str:
 # Outcome names, effect-measure wording, numbers, and the source sentence stay
 # in the language of the abstract. Nothing is translated or invented.
 NO_NUMERIC_CLINICAL_FINDING_TR = "Özette sayısal klinik bulgu bulunamadı"
+INSUFFICIENT_CLINICAL_DATA_TR = "Özette sayısal veya nitel klinik bulgu yetersiz"
 _UNNAMED_OUTCOME_TR = "özette adlandırılmadı"
 _UNNAMED_EFFECT_TR = "özette adlandırılmadı"
 _MISSING_CI_TR = "özette bildirilmedi"
@@ -1434,19 +1584,38 @@ _EFFECT_PHRASE_RE = re.compile(
 # Uppercase only, so the conjunction "or" is not read as an odds ratio.
 _EFFECT_ACRONYM_RE = re.compile(r"\b(HR|OR|RR|IRR|SMD|WMD|MD)\b")
 _FINDING_NUMBER_RE = re.compile(r"[-−]?\d+(?:\.\d+)?")
+# "CI: (a, b)", "95% CI a–b", "[a, b]", and "0.23CI: (a, b)" (no space before CI).
+# A percent sign may sit on either bound ("12.0% to 13.6%"). Bare brackets count
+# only when they follow the estimate, so a citation like "[1, 2]" is not a CI.
 _CI_RE = re.compile(
-    r"(?:\[\s*)?"
+    r"(?:"
     r"(?:95\s*%\s*(?:confidence\s+intervals?|CI)|"
     r"(?:confidence\s+intervals?)\s*,?\s*95\s*%|"
-    r"\bCI\s*,?\s*95\s*%)"
+    r"(?<![A-Za-z])CI(?![A-Za-z])\s*,?\s*95\s*%)"
     r"(?![A-Za-z])"
     r"(?:\s*\[\s*CI\s*\])?"
     r"\s*[:=,]?\s*"
-    r"\[?\s*"
-    r"(?P<low>[-−]?\d+(?:\.\d+)?)"
+    r"(?:\(\s*|\[\s*)?"
+    r"(?P<low>[-−]?\d+(?:\.\d+)?)%?"
     r"\s*(?:to|–|—|-|−|,)\s*"
-    r"(?P<high>[-−]?\d+(?:\.\d+)?)"
-    r"\s*\]?",
+    r"(?P<high>[-−]?\d+(?:\.\d+)?)%?"
+    r"\s*(?:\)|\])?"
+    r"|"
+    r"(?:95\s*%\s*)?(?<![A-Za-z])CI(?![A-Za-z])"
+    r"\s*[:=]\s*"
+    r"(?:\(\s*|\[\s*)"
+    r"(?P<low_paren>[-−]?\d+(?:\.\d+)?)%?"
+    r"\s*(?:,|to|–|—|-|−)\s*"
+    r"(?P<high_paren>[-−]?\d+(?:\.\d+)?)%?"
+    r"\s*(?:\)|\])"
+    r"|"
+    r"(?<=\d)\s*"
+    r"\[\s*(?P<low_bracket>[-−]?\d+(?:\.\d+)?)\s*(?:,|to|–|—|-|−)\s*(?P<high_bracket>[-−]?\d+(?:\.\d+)?)\s*\]"
+    r")",
+    re.IGNORECASE,
+)
+_P_VALUE_RE = re.compile(
+    r"\bp\s*([=<])\s*(0?\.\d+|\d+(?:\.\d+)?)",
     re.IGNORECASE,
 )
 # Longer phrases first so "body weight" wins over "weight".
@@ -1548,6 +1717,92 @@ def _outcome_from_gap(sentence: str, name_end: int, value_start: int, anchor: in
     return _keyword_outcome(sentence, anchor) or _UNNAMED_OUTCOME_TR
 
 
+_LEADING_FILLER_RE = re.compile(
+    r"^(?:however|therefore|thus|also|in addition|furthermore|and|or|while|whereas|but)\b[,:\s]*",
+    re.IGNORECASE,
+)
+_LEADING_THERE_RE = re.compile(
+    r"^(?:there\s+(?:was|were)|as\s+(?:was|were))\s+(?:a\s+|an\s+|the\s+)?"
+    r"(?:lesser|greater|higher|lower|increased|decreased|reduced|more|less)?\s*",
+    re.IGNORECASE,
+)
+_TRAILING_RELATION_RE = re.compile(
+    r"\s+(?:was|were)\s+(?:increased|decreased|higher|lower|reduced|greater|lesser|less|more|associated)\b.*$",
+    re.IGNORECASE,
+)
+_TRAILING_COMPARED_RE = re.compile(
+    r"\s+compared\s+(?:to|with|versus)\s+.+$",
+    re.IGNORECASE,
+)
+_TRAILING_GROUP_RE = re.compile(
+    r"\s+(?:in|among|between)\s+[A-Z][\w\-]*(?:\s+[A-Z][\w\-]*){0,3}\s*$"
+)
+
+
+def _enclosing_open_paren(sentence: str, index: int):
+    """Index of the '(' that contains index, if the effect sits inside parentheses."""
+    depth = 0
+    for cursor in range(index, -1, -1):
+        char = sentence[cursor]
+        if char == ")":
+            depth += 1
+        elif char == "(":
+            if depth == 0:
+                return cursor
+            depth -= 1
+    return None
+
+
+def _clean_outcome_clause(clause: str) -> str:
+    clause = _LEADING_FILLER_RE.sub("", clause.strip())
+    clause = _LEADING_THERE_RE.sub("", clause.strip())
+    clause = _TRAILING_RELATION_RE.sub("", clause)
+    clause = _TRAILING_COMPARED_RE.sub("", clause)
+    clause = _TRAILING_GROUP_RE.sub("", clause)
+    clause = re.sub(r"\s+", " ", clause).strip(" ,;:")
+    if not clause or not re.search(r"[A-Za-z]{3,}", clause) or len(clause) > 90:
+        return ""
+    if re.fullmatch(
+        r"(?:the|a|an|patients?|groups?|hispanics?|non-hispanics?)",
+        clause,
+        re.IGNORECASE,
+    ):
+        return ""
+    return clause
+
+
+def _prefer_local_outcome(local: str, outcome: str) -> bool:
+    """Use the clause next to this effect when a keyword was borrowed or too short."""
+    if not local:
+        return False
+    if re.search(
+        r"\d|%|\b(?:respectively|group|treated|patients)\b|\b(?:was|were|had)\b",
+        local,
+        re.IGNORECASE,
+    ):
+        return False
+    if outcome == _UNNAMED_OUTCOME_TR:
+        return True
+    if outcome.lower() not in local.lower():
+        return True
+    return local.lower().endswith(outcome.lower()) and len(local) > len(outcome) + 1
+
+
+def _local_outcome_phrase(sentence: str, anchor: int) -> str:
+    """Noun phrase that governs this effect, copied from the same sentence."""
+    paren = _enclosing_open_paren(sentence, anchor)
+    prefix = sentence[:paren] if paren is not None else sentence[:anchor]
+    cut = max(prefix.rfind(")"), prefix.rfind("."), prefix.rfind(";"))
+    return _clean_outcome_clause(prefix[cut + 1:])
+
+
+def _p_between(sentence: str, start: int, end: int) -> str:
+    match = _P_VALUE_RE.search(sentence, start, end)
+    if not match:
+        return ""
+    return f"p {match.group(1)} {match.group(2)}"
+
+
 def _collect_named_effects(sentence: str) -> List[Dict[str, Any]]:
     """Named effect measures whose numeric value is in the same sentence."""
     candidates = []
@@ -1581,15 +1836,33 @@ def _collect_named_effects(sentence: str) -> List[Dict[str, Any]]:
     return kept
 
 
+def _ci_bounds(match: re.Match) -> tuple:
+    """Return (low, high) from whichever CI alternative matched."""
+    for low_name, high_name in (
+        ("low", "high"),
+        ("low_paren", "high_paren"),
+        ("low_bracket", "high_bracket"),
+    ):
+        low = match.group(low_name)
+        high = match.group(high_name)
+        if low is not None and high is not None:
+            return low, high
+    return "", ""
+
+
 def _collect_confidence_intervals(sentence: str) -> List[Dict[str, Any]]:
     intervals = []
     for match in _CI_RE.finditer(sentence):
+        low, high = _ci_bounds(match)
+        if not low or not high:
+            continue
         intervals.append({
-            "low": match.group("low"),
-            "high": match.group("high"),
+            "low": low,
+            "high": high,
             "start": match.start(),
             "end": match.end(),
-            "text": f"{match.group('low')} ile {match.group('high')}",
+            "text": f"{low} ile {high}",
+            "raw": match.group(0),
         })
     return intervals
 
@@ -1628,6 +1901,17 @@ def _pair_effects_with_intervals(effects: List[Dict[str, Any]], intervals: List[
     return pairs, ambiguous_notes
 
 
+def _sentence_has_clinical_result(sentence: str) -> bool:
+    """True when a p-value sits in a result sentence rather than a methods aside."""
+    return bool(re.search(
+        r"\b(?:reduction|reduced|difference|improved|improvement|associated|higher|lower|"
+        r"increased|decreased|significant|score|rates?|survival|remission|relapse|"
+        r"mortality|response|outcome)\b",
+        sentence,
+        re.IGNORECASE,
+    ))
+
+
 def extract_grounded_clinical_findings(abstract: str) -> List[Dict[str, str]]:
     """Turkish-labeled findings taken only from effect measures and CIs in the abstract.
 
@@ -1641,24 +1925,43 @@ def extract_grounded_clinical_findings(abstract: str) -> List[Dict[str, str]]:
         if effects:
             pairs, ambiguous = _pair_effects_with_intervals(effects, intervals)
             ambiguous_text = "; ".join(note for note in ambiguous if note)
-            for effect, interval in pairs:
+            for index, (effect, interval) in enumerate(pairs):
                 outcome = _outcome_from_gap(
                     sentence, effect["name_end"], effect["value_start"], effect["name_start"]
                 )
+                local = _local_outcome_phrase(sentence, effect["name_start"])
+                if _prefer_local_outcome(local, outcome):
+                    outcome = local
                 if interval is not None:
                     ci_text = interval["text"]
                 elif ambiguous_text:
                     ci_text = f"{_UNPAIRED_CI_TR} ({ambiguous_text})"
                 else:
                     ci_text = _MISSING_CI_TR
+                next_start = effects[index + 1]["name_start"] if index + 1 < len(effects) else len(sentence)
+                p_text = _p_between(sentence, effect["value_end"], next_start)
                 findings.append({
                     "outcome": outcome,
                     "effect": f"{effect['name']} {effect['value']}",
                     "ci": ci_text,
+                    "p": p_text,
                     "sentence": sentence,
                 })
             continue
         if not intervals:
+            p_matches = list(_P_VALUE_RE.finditer(sentence))
+            if p_matches and _sentence_has_clinical_result(sentence):
+                for match in p_matches:
+                    outcome = _local_outcome_phrase(sentence, match.start()) or _keyword_outcome(
+                        sentence, match.start()
+                    ) or _UNNAMED_OUTCOME_TR
+                    findings.append({
+                        "outcome": outcome,
+                        "effect": f"p {match.group(1)} {match.group(2)}",
+                        "ci": _MISSING_CI_TR,
+                        "p": "",
+                        "sentence": sentence,
+                    })
             continue
         for interval in intervals:
             point = _point_before_ci(sentence, interval["start"])
@@ -1671,30 +1974,351 @@ def extract_grounded_clinical_findings(abstract: str) -> List[Dict[str, str]]:
                 "outcome": outcome,
                 "effect": effect,
                 "ci": interval["text"],
+                "p": "",
                 "sentence": sentence,
             })
     return findings
 
 
-def format_klinik_bulgular_cell(article: Dict[str, Any]) -> str:
-    """Klinik Bulgular cell: Turkish labels, source numbers, exact source sentence.
+_NUMBER_WORDS = {
+    "one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6,
+    "seven": 7, "eight": 8, "nine": 9, "ten": 10, "eleven": 11, "twelve": 12,
+}
+_TENS_WORDS = {
+    "twenty": 20, "thirty": 30, "forty": 40, "fifty": 50,
+    "sixty": 60, "seventy": 70, "eighty": 80, "ninety": 90,
+}
+_DRUG_TR = (
+    (r"corticosteroids?", "kortikosteroid"),
+    (r"prednisone", "prednizon"),
+    (r"methotrexate", "metotreksat"),
+    (r"azathioprine", "azatioprin"),
+    (r"tacrolimus", "takrolimus"),
+    (r"mycophenolate", "mikofenolat"),
+    (r"rituximab", "rituksimab"),
+    (r"intravenous immunoglobulin|\bIVIG\b", "IVIG"),
+    (r"immunosuppress\w+", "immünosupresif tedavi"),
+)
+_SYMPTOM_TR = (
+    ("progressive proximal muscle weakness", "ilerleyici proksimal kas güçsüzlüğü"),
+    ("proximal muscle weakness", "proksimal kas güçsüzlüğü"),
+    ("bilateral lower extremity pain", "iki taraflı alt ekstremite ağrısı"),
+    ("progressive weakness", "ilerleyici güçsüzlük"),
+    ("muscle weakness", "kas güçsüzlüğü"),
+    ("myalgia", "miyalji"),
+    ("weakness", "güçsüzlük"),
+    ("fever", "ateş"),
+    ("pain", "ağrı"),
+)
+_HEDGE_SENTENCE_RE = re.compile(
+    r"\b(?:usually|typically|in general|may cause|can cause|this review summarizes)\b",
+    re.IGNORECASE,
+)
+_TREATMENT_CUE_RE = re.compile(
+    r"\b(?:treatment|treated|therapy|received|administered)\b",
+    re.IGNORECASE,
+)
+_RESULT_CUE_RE = re.compile(
+    r"\b(?:she|he|the patient|both patients|were included|was included|treatment included|"
+    r"ranged from|were confirmed|diagnoses were|we included|our patients|presented with|"
+    r"symptom resolution|remission|relapse)\b",
+    re.IGNORECASE,
+)
 
-    The raw abstract is never copied in. When no effect measure or confidence
-    interval can be read from the abstract, the cell says so in Turkish.
+
+def _parse_count_token(token: str) -> str:
+    """Return a digit string copied from a numeral or a plain English number word."""
+    raw = (token or "").strip().lower().replace(" ", "-")
+    if re.fullmatch(r"\d[\d,]*", raw):
+        return raw.replace(",", "")
+    if raw in _NUMBER_WORDS:
+        return str(_NUMBER_WORDS[raw])
+    if "-" in raw:
+        left, right = raw.split("-", 1)
+        if left in _TENS_WORDS and right in _NUMBER_WORDS:
+            return str(_TENS_WORDS[left] + _NUMBER_WORDS[right])
+    if raw in _TENS_WORDS:
+        return str(_TENS_WORDS[raw])
+    return ""
+
+
+def _background_sentence(sentence: str) -> bool:
+    if not _HEDGE_SENTENCE_RE.search(sentence):
+        return False
+    return not bool(_OWN_PATIENT_VOICE_RE.search(sentence) or re.search(r"\b(?:she|he|the patient)\b", sentence, re.IGNORECASE))
+
+
+def _profile_from_sentence(sentence: str) -> List[Dict[str, str]]:
+    """Turkish facts copied from one sentence. Empty when the sentence does not state them."""
+    if not sentence or _background_sentence(sentence):
+        return []
+    items = []
+
+    sample_bits = []
+    patient_counts = list(re.finditer(
+        r"\b([A-Za-z]+(?:-[A-Za-z]+)?|\d[\d,]*)\s+patients\b",
+        sentence,
+        re.IGNORECASE,
+    ))
+    for index, match in enumerate(patient_counts):
+        count = _parse_count_token(match.group(1))
+        if not count:
+            continue
+        window_end = patient_counts[index + 1].start() if index + 1 < len(patient_counts) else match.end() + 70
+        window = sentence[match.end():window_end]
+        has_non = re.search(r"non[-\s]?hispanic", window, re.IGNORECASE)
+        has_hispanic = re.search(r"(?<!non-)(?<!non)hispanic", window, re.IGNORECASE)
+        gloss = ""
+        # Both labels in one clause name the groups being split, not one subgroup.
+        if has_non and not has_hispanic:
+            gloss = " Hispanik olmayan"
+        elif has_hispanic and not has_non:
+            gloss = " Hispanik"
+        percent = re.search(r"\((\d+(?:\.\d+)?)\s*%\)", window)
+        if percent:
+            gloss += f" (%{percent.group(1)})"
+        if re.search(r"history of statin", window, re.IGNORECASE):
+            gloss += " statin öykülü"
+        sample_bits.append(f"{count} hasta{gloss}")
+    n_eq = re.search(r"\bn\s*=\s*(\d[\d,]*)", sentence, re.IGNORECASE)
+    if n_eq and not sample_bits:
+        sample_bits.append(f"n = {n_eq.group(1).replace(',', '')}")
+    women = re.search(r"\b([A-Za-z]+|\d+)\s+women\b", sentence, re.IGNORECASE)
+    men = re.search(r"\b([A-Za-z]+|\d+)\s+men\b", sentence, re.IGNORECASE)
+    if women and men:
+        women_n = _parse_count_token(women.group(1))
+        men_n = _parse_count_token(men.group(1))
+        if women_n and men_n:
+            sample_bits.append(f"{women_n} kadın, {men_n} erkek")
+    age = re.search(
+        r"median age of\s+(\d+)\s*\(range,?\s*(\d+)\s*[-–]\s*(\d+)\)",
+        sentence,
+        re.IGNORECASE,
+    )
+    if age:
+        sample_bits.append(f"ortanca yaş {age.group(1)} (aralık {age.group(2)}-{age.group(3)})")
+    else:
+        year_old = re.search(r"\b(\d{1,3})-year-old\b", sentence, re.IGNORECASE)
+        if year_old and (
+            _OWN_PATIENT_VOICE_RE.search(sentence)
+            or _YEAR_OLD_CASE_RE.search(sentence)
+            or re.search(r"\b(?:woman|man|female|male|she|he)\b", sentence, re.IGNORECASE)
+        ):
+            sex = ""
+            if re.search(r"\b(?:woman|female|girl)\b", sentence, re.IGNORECASE):
+                sex = " kadın"
+            elif re.search(r"\b(?:man|male|boy)\b", sentence, re.IGNORECASE):
+                sex = " erkek"
+            sample_bits.append(f"{year_old.group(1)} yaşında{sex}")
+    if sample_bits:
+        items.append({
+            "category": "sample",
+            "line": "Örneklem ve hasta özellikleri: " + "; ".join(sample_bits) + ".",
+            "sentence": sentence,
+        })
+
+    own_result = bool(
+        _OWN_PATIENT_VOICE_RE.search(sentence)
+        or _RESULT_CUE_RE.search(sentence)
+        or _YEAR_OLD_CASE_RE.search(sentence)
+    )
+    if not own_result:
+        return items
+
+    criteria = re.search(
+        r"criteria for\s+([^.]{2,40}?)\s+of the\s+([A-Z][^.]{3,80})",
+        sentence,
+    )
+    if criteria:
+        items.append({
+            "category": "diagnosis",
+            "line": f"Tanı ölçütü: {criteria.group(2).strip()} {criteria.group(1).strip()} ölçütleri.",
+            "sentence": sentence,
+        })
+    antibodies = []
+    if re.search(r"antibod|titer|positive", sentence, re.IGNORECASE):
+        for match in re.finditer(r"anti[-\s]?[A-Za-z0-9]+", sentence, re.IGNORECASE):
+            token = match.group(0).replace(" ", "")
+            if re.fullmatch(r"anti(?:body|bodies)", token, re.IGNORECASE):
+                continue
+            if token.lower() not in {item.lower() for item in antibodies}:
+                antibodies.append(token)
+    if antibodies:
+        items.append({
+            "category": "biomarker",
+            "line": "Biyobelirteç: " + ", ".join(f"{token} antikoru" for token in antibodies) + ".",
+            "sentence": sentence,
+        })
+
+    if re.search(r"\bCK\b|creatine kinase", sentence, re.IGNORECASE):
+        ck_bits = []
+        ranged = re.search(
+            r"from\s+([\d,]+)\s+to\s+(?:over\s+)?([\d,]+)\s*(IU/L|U/L)?",
+            sentence,
+            re.IGNORECASE,
+        )
+        if ranged:
+            unit = f" {ranged.group(3)}" if ranged.group(3) else ""
+            upper = ranged.group(2)
+            over = bool(re.search(r"over\s+" + re.escape(upper), sentence, re.IGNORECASE))
+            ck_bits.append(
+                f"CK düzeyi: {ranged.group(1)} ile {upper}{unit}" + (" üstü" if over else "")
+            )
+        if re.search(r"normali[sz]ation of CK|CK levels?\s+(?:normali[sz]|fell|decreas)", sentence, re.IGNORECASE):
+            ck_bits.append("CK değişimi: normalleşme bildirildi")
+        elif re.search(r"fluctuat|downward", sentence, re.IGNORECASE):
+            days = re.search(r"(\d+)\s+days", sentence, re.IGNORECASE)
+            if days:
+                ck_bits.append(f"CK değişimi: tedaviden sonra {days.group(1)} günde dalgalanma ve azalma eğilimi")
+            else:
+                ck_bits.append("CK değişimi bildirildi")
+        elif re.search(r"elevated creatine kinase|\belevated CK\b", sentence, re.IGNORECASE):
+            ck_bits.append("CK yüksekliği bildirildi")
+        if ck_bits:
+            items.append({
+                "category": "ck",
+                "line": ". ".join(ck_bits) + ".",
+                "sentence": sentence,
+            })
+
+    if _TREATMENT_CUE_RE.search(sentence):
+        drugs = []
+        for pattern, label in _DRUG_TR:
+            if re.search(pattern, sentence, re.IGNORECASE) and label not in drugs:
+                drugs.append(label)
+        if drugs:
+            items.append({
+                "category": "treatment",
+                "line": "Tedavi: " + ", ".join(drugs) + ".",
+                "sentence": sentence,
+            })
+
+    response_bits = []
+    if re.search(r"symptom resolution|symptoms resolved|clinical improvement", sentence, re.IGNORECASE):
+        response_bits.append("Tedavi yanıtı: belirti gerilemesi bildirildi")
+    if re.search(r"\bremission\b", sentence, re.IGNORECASE):
+        response_bits.append("Remisyon bildirildi")
+    if re.search(r"\brelaps", sentence, re.IGNORECASE):
+        percent = re.search(r"(\d+\s*[–\-]\s*\d+\s*%|\d+\s*%)", sentence)
+        if percent:
+            response_bits.append(f"Nüks: {percent.group(1).replace(' ', '')}")
+        else:
+            response_bits.append("Nüks bildirildi")
+    if re.search(r"adverse effect|complication", sentence, re.IGNORECASE):
+        response_bits.append("Komplikasyon veya advers etki bildirildi")
+    delay = re.search(r"diagnostic delay was\s+(\d+)\s+days", sentence, re.IGNORECASE)
+    if delay:
+        response_bits.append(f"Tanı gecikmesi: {delay.group(1)} gün")
+    follow = re.search(
+        r"(?:follow(?:ed|[- ]up)|over)\s+(\d+)\s+(day|month|year)s?",
+        sentence,
+        re.IGNORECASE,
+    )
+    if follow:
+        unit = {"day": "gün", "month": "ay", "year": "yıl"}[follow.group(2).lower()]
+        response_bits.append(f"Takip: {follow.group(1)} {unit}")
+    if response_bits:
+        items.append({
+            "category": "course",
+            "line": ". ".join(response_bits) + ".",
+            "sentence": sentence,
+        })
+
+    own_case = bool(
+        _OWN_PATIENT_VOICE_RE.search(sentence)
+        or _YEAR_OLD_CASE_RE.search(sentence)
+        or re.search(r"\b(?:presented with|the patient|a case of)\b", sentence, re.IGNORECASE)
+    )
+    if own_case:
+        symptoms = []
+        lowered = sentence.lower()
+        consumed = [False] * len(lowered)
+        for phrase, label in _SYMPTOM_TR:
+            start = lowered.find(phrase)
+            if start < 0:
+                continue
+            end = start + len(phrase)
+            if any(consumed[start:end]):
+                continue
+            for cursor in range(start, end):
+                consumed[cursor] = True
+            symptoms.append(label)
+        months = re.search(r"\b(\d+)\s+months?\b", sentence, re.IGNORECASE)
+        days = re.search(r"\b(\d+)\s+days?\b", sentence, re.IGNORECASE)
+        who = ""
+        if re.search(r"\bboth patients\b", sentence, re.IGNORECASE):
+            who = "iki hasta"
+        elif re.search(r"\b(?:a|the) patient\b", sentence, re.IGNORECASE):
+            who = "hasta"
+        statin = "statin tedavisi sırasında" if re.search(r"\bstatins?\b", sentence, re.IGNORECASE) and symptoms else ""
+        bits = []
+        if who:
+            bits.append(who)
+        if months and symptoms:
+            bits.append(f"{months.group(1)} aydır")
+        elif days and symptoms:
+            bits.append(f"{days.group(1)} gündür")
+        bits.extend(symptoms)
+        if statin:
+            bits.append(statin)
+        if symptoms or (who and not re.search(r"antibod|titer", sentence, re.IGNORECASE)):
+            items.append({
+                "category": "qualitative",
+                "line": "Nitel klinik bulgu: " + ", ".join(bits) + ".",
+                "sentence": sentence,
+            })
+    return items
+
+
+def extract_clinical_profile(abstract: str) -> List[Dict[str, str]]:
+    """Grounded Turkish clinical facts. Nothing is added when the sentence lacks it."""
+    profile = []
+    for sentence in _finding_sentences(abstract):
+        profile.extend(_profile_from_sentence(sentence))
+    return profile
+
+
+def format_klinik_bulgular_cell(article: Dict[str, Any]) -> str:
+    """Klinik Bulgular cell: Turkish summary, each fact tied to one source sentence.
+
+    The raw abstract is not pasted in. Effects that share a sentence are grouped
+    under that sentence. When neither a quantitative nor a qualitative finding
+    can be read, the cell says the abstract data are insufficient.
     """
     pmid = str((article or {}).get("pmid") or "").strip() or "yok"
-    findings = extract_grounded_clinical_findings((article or {}).get("abstract") or "")
-    if not findings:
-        return f"{NO_NUMERIC_CLINICAL_FINDING_TR} (PMID: {pmid})."
-    parts = []
+    abstract = (article or {}).get("abstract") or ""
+    findings = extract_grounded_clinical_findings(abstract)
+    profile = extract_clinical_profile(abstract)
+    if not findings and not profile:
+        return f"{INSUFFICIENT_CLINICAL_DATA_TR} (PMID: {pmid})."
+
+    order = []
+    buckets = {}
+
+    def _add(sentence: str, kind: str, text: str) -> None:
+        if sentence not in buckets:
+            buckets[sentence] = {"profile": [], "effects": []}
+            order.append(sentence)
+        buckets[sentence][kind].append(text)
+
+    for item in profile:
+        _add(item["sentence"], "profile", item["line"])
     for item in findings:
-        sentence = item["sentence"].replace("|", "/").replace("\n", " ")
-        parts.append(
-            f"PMID: {pmid}. Sonlanım: {item['outcome']}. "
-            f"Etki ölçütü: {item['effect']}. "
-            f"Güven aralığı: {item['ci']}. "
-            f"Kaynak cümle: \"{sentence}\"."
+        p_bit = f" p değeri: {item['p']}." if item.get("p") else ""
+        _add(
+            item["sentence"],
+            "effects",
+            f"Sonlanım: {item['outcome']}. Etki ölçütü: {item['effect']}. "
+            f"Güven aralığı: {item['ci']}.{p_bit}",
         )
+
+    parts = [f"PMID: {pmid}."]
+    for sentence in order:
+        shown = sentence.replace("|", "/").replace("\n", " ")
+        block = [f'Kaynak cümle: "{shown}".']
+        block.extend(buckets[sentence]["profile"])
+        block.extend(buckets[sentence]["effects"])
+        parts.append(" ".join(block))
     return " ".join(parts)
 
 
@@ -2176,6 +2800,98 @@ def _generate_section_12_synthesis(query: str, articles: List[Dict[str, Any]], c
     return "\n".join(sec_lines)
 
 
+def _cell(text: str, limit: int = 360) -> str:
+    cleaned = re.sub(r"\s+", " ", (text or "").replace("|", "/").replace("\n", " ")).strip()
+    if len(cleaned) > limit:
+        return cleaned[: limit - 1] + "…"
+    return cleaned or "özette bildirilmedi"
+
+
+def _format_cross_study_comparison(articles: List[Dict[str, Any]], pico: Optional[Dict[str, str]] = None) -> str:
+    """Compare studies on population, design, intervention, findings, and limits.
+
+    Every cell is taken from that article alone. A number from one PMID is not
+    written into another PMID's row. PMIDs are listed as supporting the clinical
+    result only when their own abstract states an effect or a qualitative finding.
+    """
+    query_outcome = ((pico or {}).get("outcome") or "").strip()
+    lines = [
+        "Karşılaştırma hasta grubu, tasarım, müdahale, bulgular, çelişkiler ve metodolojik "
+        "sınırlılıklar üzerinden yapılır. Her satır yalnızca o PMID'nin özetine bağlıdır.",
+        "",
+        "| PMID | Hasta grubu | Tasarım | Müdahale | Bulgular | Metodolojik sınırlılık |",
+        "|---|---|---|---|---|---|",
+    ]
+    supporters = []
+    for art in articles:
+        pmid = str(art.get("pmid") or "").strip() or "yok"
+        design = classify_study_design(
+            art.get("publication_types", []),
+            art.get("title", ""),
+            art.get("abstract", ""),
+        )
+        details = extract_article_clinical_details(art, "")
+        profile = extract_clinical_profile(art.get("abstract") or "")
+        findings = extract_grounded_clinical_findings(art.get("abstract") or "")
+        metrics = extract_study_metrics(art.get("abstract") or "")
+        patient_bits = []
+        if details.get("patient_group") and details["patient_group"] not in ("Belirtilmedi", "değerlendirilemedi"):
+            patient_bits.append(details["patient_group"])
+        if details.get("sample_size") and details["sample_size"] not in ("Özette bildirilmedi", "değerlendirilemedi"):
+            patient_bits.append(details["sample_size"])
+        for item in profile:
+            if item["category"] == "sample":
+                patient_bits.append(item["line"])
+        finding_bits = []
+        for item in findings:
+            bit = f"{item['outcome']}: {item['effect']}"
+            if item.get("ci") and item["ci"] != _MISSING_CI_TR:
+                bit += f" (GA {item['ci']})"
+            if item.get("p"):
+                bit += f", {item['p']}"
+            finding_bits.append(bit)
+        for item in profile:
+            if item["category"] in ("ck", "treatment", "course", "qualitative", "biomarker", "diagnosis"):
+                finding_bits.append(item["line"])
+        if not finding_bits:
+            finding_bits.append(INSUFFICIENT_CLINICAL_DATA_TR)
+        limits = [item.strip() for item in (metrics.get("causality_limitations") or []) if item.strip()]
+        limit = limits[0] if limits else "Özette spesifik metodolojik sınırlılık bildirilmedi"
+        lines.append(
+            "| {pmid} | {patient} | {design} | {intervention} | {findings} | {limit} |".format(
+                pmid=pmid,
+                patient=_cell("; ".join(patient_bits)),
+                design=_cell(design["design"]),
+                intervention=_cell(details.get("intervention") or ""),
+                findings=_cell("; ".join(finding_bits)),
+                limit=_cell(limit),
+            )
+        )
+        if findings or any(item["category"] in ("course", "qualitative", "ck", "treatment") for item in profile):
+            supporters.append(pmid)
+
+    lines.append("")
+    if supporters:
+        cited = ", ".join(f"PMID: {pmid}" for pmid in supporters)
+        outcome_bit = f" Sorgu sonlanımı: {query_outcome}." if query_outcome and query_outcome != "Belirtilmemiş" else ""
+        lines.append(
+            "Klinik sonucu doğrudan destekleyen PMID'ler, kendi özetinde etki ölçütü, "
+            f"CK/tedavi yanıtı veya nitel olgu bulgusu bulunanlardır: {cited}.{outcome_bit} "
+            "Destek ifadesi başka bir makalenin sayısına dayanmaz."
+        )
+    else:
+        lines.append(
+            "Klinik sonucu doğrudan destekleyen PMID saptanamadı. Özetlerde bağlı etki ölçütü "
+            "veya nitel klinik bulgu yok; eksik destek uydurulmadı."
+        )
+    lines.append(
+        "Çelişki yalnızca aynı sonlanım için farklı yön bildiren PMID çiftlerinde kurulur. "
+        "Aşağıdaki tutarlılık ve çelişki maddeleri bu kurala uyar."
+    )
+    lines.append("")
+    return "\n".join(lines)
+
+
 def generate_rule_based_turkish_report(query: str, articles: List[Dict[str, Any]], search_metadata: Optional[Dict[str, Any]] = None) -> str:
     """Generates an advanced structured, deterministic Turkish evidence report with 13 explicit sections."""
     import datetime
@@ -2260,9 +2976,10 @@ Lütfen arama terimlerini veya filtreleri genişleterek tekrar deneyiniz.
     report.append(
         "Aşağıdaki tabloda yazar, yıl, çalışma tasarımı ve seçilen yanlılık aracı yer alır. "
         "Kanıt düzeyi tasarımından üretilmez. Araç seçilmiş olsa da değerlendirme yapılmadan risk derecesi verilmez. "
-        "Klinik Bulgular hücresi ham özet metni değildir. Her sayısal sonuç PMID, sonlanım, etki ölçütü "
-        "(değer ve varsa güven aralığı) ve kaynak cümle ile gösterilir. Özette çıkarılabilir sayısal bulgu yoksa "
-        "bu açıkça yazılır. Kaynakta olmayan sayı, güven aralığı veya sonlanım üretilmez.\n"
+        "Klinik Bulgular hücresi ham özet metni değildir. Her bulgu PMID ve kaynak cümle ile gösterilir. "
+        "Aynı cümledeki etki ölçütleri o cümlenin altında bir kez toplanır. Sayısal sonuç yoksa özetteki nitel "
+        "klinik bulgular yazılır. İkisi de yoksa veri yetersizliği açıkça belirtilir. Kaynakta olmayan sayı, "
+        "güven aralığı, sonlanım veya hasta özelliği üretilmez.\n"
     )
     report.append(generate_evidence_table_markdown(articles))
     report.append("\n")
@@ -2277,6 +2994,7 @@ Lütfen arama terimlerini veya filtreleri genişleterek tekrar deneyiniz.
 
     # 6. Önemli Çalışmaların Karşılaştırılması
     report.append("## 6. Önemli Çalışmaların Karşılaştırılması")
+    report.append(_format_cross_study_comparison(articles, pico))
     report.append("### 📊 Karşılaştırmalı Sentez Matrisi")
 
     comp_lines = []
@@ -2377,10 +3095,8 @@ Lütfen arama terimlerini veya filtreleri genişleterek tekrar deneyiniz.
         else:
             report.append("- **Metodolojik / Nedensellik Sınırlılıkları:** Özette spesifik nedensellik sınırlılığı vurgulanmamıştır.")
 
-        abstract_snippet = art.get("abstract", "").strip()
-        if len(abstract_snippet) > 350:
-            abstract_snippet = abstract_snippet[:347] + "..."
-        report.append(f"- **Ana Özet:** {abstract_snippet}")
+        grounded = format_klinik_bulgular_cell(art)
+        report.append(f"- **Kaynağa bağlı klinik bulgular:** {grounded}")
         report.append(f"- **Atıf:** [PMID: {pmid}]({art.get('pubmed_url', '#')})" + (f" | [DOI: {art.get('doi')}]({art.get('doi_url', '#')})" if art.get("doi") else "") + "\n")
 
     # 7. Tedavi Etkinliği ve Güvenlilik

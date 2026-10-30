@@ -84,12 +84,21 @@ class TestLivePubMedDesignRegression(unittest.TestCase):
 
 
 # Statin-associated IMNM records. A generic Review tag must not hide a case report.
+# 36896367 is tagged Case Reports. Its abstract describes two of the paper's own
+# patients, so the series label is the one the general rule produces.
 LIVE_IMNM_DESIGNS = {
     "33372889": "case_report",
     "36896367": "case_series",
     "41458822": "systematic_review",
     "35955495": "narrative_review",
     "32581543": "narrative_review",
+}
+
+# Designs read from the abstract, not from a PMID table inside the classifier.
+LIVE_ABSTRACT_DESIGNS = {
+    "40446701": "retrospective_comparative",
+    "41010829": "retrospective_case_series",
+    "36896367": "case_series",
 }
 
 
@@ -122,6 +131,43 @@ class TestLiveImnmDesigns(unittest.TestCase):
                 failures.append(f"PMID {pmid} kanıt düzeyi {design['level']}")
         if failures:
             self.fail("Gerçek PubMed IMNM regresyonu:\n" + "\n".join(failures))
+
+
+class TestLiveAbstractDesigns(unittest.TestCase):
+    def test_live_retrospective_and_case_report_rules(self):
+        failures = []
+        for pmid, expected in LIVE_ABSTRACT_DESIGNS.items():
+            try:
+                article = verify_pmid(pmid)
+            except Exception as exc:  # noqa: BLE001 - report the access barrier
+                failures.append(f"PMID {pmid}: PubMed erişim engeli: {exc}")
+                continue
+            if not isinstance(article, dict) or not article.get("valid"):
+                error = article.get("error") if isinstance(article, dict) else article
+                failures.append(f"PMID {pmid}: PubMed erişim engeli: {error}")
+                continue
+            abstract = article.get("abstract") or ""
+            design = classify_study_design(
+                article.get("publication_types") or [],
+                article.get("title") or "",
+                abstract,
+            )
+            if design["design_key"] != expected:
+                failures.append(
+                    f"PMID {pmid}: tasarım {design['design_key']} ({design['design']}), "
+                    f"beklenen {expected}; yayın türleri {article.get('publication_types')}"
+                )
+            if pmid == "36896367":
+                several = bool(re.search(r"\btwo cases\b|\bboth patients\b", abstract, re.IGNORECASE))
+                tagged = any("case report" in (pt or "").lower() for pt in (article.get("publication_types") or []))
+                if not tagged:
+                    failures.append(f"PMID 36896367 yayın türünde Case Reports yok: {article.get('publication_types')}")
+                if not several:
+                    failures.append("PMID 36896367 özeti birden fazla hastayı açıkça anlatmıyor; olgu sunumu beklenirdi")
+                if design["design_key"] != "case_series":
+                    failures.append(f"PMID 36896367 iki olgu anlatmasına rağmen {design['design']}")
+        if failures:
+            self.fail("Gerçek PubMed tasarım regresyonu:\n" + "\n".join(failures))
 
 
 if __name__ == "__main__":
