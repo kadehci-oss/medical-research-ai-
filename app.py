@@ -150,6 +150,7 @@ def main():
             st.session_state.pop("generated_report", None)
             st.session_state.pop("generated_html_report", None)
             st.session_state.pop("generated_report_query", None)
+            st.session_state.pop("generated_cross_comp", None)
             start_yr = int(start_year) if start_year and not pd.isna(start_year) else None
             end_yr = int(end_year) if end_year and not pd.isna(end_year) else None
             with st.spinner("PubMed veritabanı sorgulanıyor (Evrensel Kanıt Motoru)..."):
@@ -273,6 +274,7 @@ def main():
             if st.session_state.get("generated_report_query") != query:
                 st.session_state.pop("generated_report", None)
                 st.session_state.pop("generated_html_report", None)
+                st.session_state.pop("generated_cross_comp", None)
 
             audit_res = perform_red_team_audit(query, articles)
 
@@ -297,6 +299,7 @@ def main():
             if st.button("📑 Türkçe Kanıt Raporunu ve Tabloları Oluştur", type="primary", use_container_width=True):
                 st.session_state.pop("generated_report", None)
                 st.session_state.pop("generated_html_report", None)
+                st.session_state.pop("generated_cross_comp", None)
                 with st.spinner("Evrensel Kanıt Motoru klinik kanıt raporunu, Red Team denetimini ve tabloları hazırlıyor..."):
                     search_meta = {
                         "search_date": st.session_state["search_results"].get("search_date"),
@@ -314,17 +317,21 @@ def main():
                     )
                     report_md = synth_res.get("report_markdown", "")
                     html_report = synth_res.get("report_html", "")
+                    cross_comp = synth_res.get("cross_comparison", {})
                     st.session_state["generated_report"] = report_md
                     st.session_state["generated_html_report"] = html_report
+                    st.session_state["generated_cross_comp"] = cross_comp
                     st.session_state["generated_report_query"] = query
 
             if "generated_report" in st.session_state:
                 st.markdown("---")
 
                 pico_res = extract_pico(query)
+                cross_comp = st.session_state.get("generated_cross_comp", {})
 
-                report_subtab1, report_subtab2, report_subtab3, report_subtab4 = st.tabs([
+                report_subtab1, report_subtab2, report_subtab3, report_subtab4, report_subtab5 = st.tabs([
                     "📄 Tam Kanıt Raporu (Markdown)",
+                    "🔄 Çapraz Çalışma Karşılaştırması",
                     "📊 Yapılandırılmış Kanıt Tablosu",
                     "🎯 PICO & RoB Değerlendirmesi",
                     "🛡️ Red Team Denetim Detayları"
@@ -334,11 +341,82 @@ def main():
                     st.markdown(st.session_state["generated_report"])
 
                 with report_subtab2:
+                    st.subheader("🔄 Çapraz Çalışma Karşılaştırma Matrisi (Cross-Study Evidence Matrix)")
+                    st.write("Elde edilen yayınların PMID kaynakları, klinik sonlanımları, etki ölçütleri, tutarlı/çelişkili bulguları ve karşılaştırılamama gerekçeleri aşağıda sunulmaktadır.")
+
+                    # 1. Bireysel Çalışma Sentezi ve Etki Ölçütleri
+                    st.markdown("#### 🔬 1. Çalışma Bazlı Klinik Sonlanımlar & Etki Ölçütleri")
+                    ind_summaries = cross_comp.get("individual_article_summaries", [])
+                    if ind_summaries:
+                        for s_idx, s_item in enumerate(ind_summaries, 1):
+                            with st.expander(f"Çalışma #{s_idx}: {s_item.get('authors_short')} ({s_item.get('pub_year')}) — {s_item.get('study_design')}", expanded=(s_idx == 1)):
+                                st.markdown(f"**Başlık:** {s_item.get('title')}")
+                                st.markdown(f"**Atıf & Kaynak Bağlantıları:** {s_item.get('source_citations')}")
+                                st.markdown(f"**Tasarım & Kanıt Seviyesi:** `{s_item.get('study_design')}` ({s_item.get('evidence_level')})")
+                                st.markdown(f"**Popülasyon:** {s_item.get('patient_population')} | **Örneklem (n):** {s_item.get('sample_size_n') or 'Özette bildirilmedi'}")
+                                st.markdown(f"**Müdahale:** {s_item.get('intervention')} | **Karşılaştırma:** {s_item.get('comparison')}")
+                                st.markdown(f"**Yanlılık Riski (RoB):** `{s_item.get('risk_of_bias')}`")
+
+                                st.markdown("**Klinik Sonlanımlar ve Etki Ölçütleri:**")
+                                o_metrics = s_item.get("outcome_metrics", [])
+                                if o_metrics:
+                                    for om in o_metrics:
+                                        m_str = ", ".join(om.get("metrics", [])) if om.get("metrics") else "Özette nicel etki ölçütü yok"
+                                        st.markdown(f"- 📌 **{om.get('outcome')}:** `{m_str}`")
+                                        st.caption(f"Cümle bağlamı: {om.get('sentence')}")
+                                else:
+                                    st.write("Özette doğrudan bağlı nicel sonlanım ölçütü tespit edilmemiştir.")
+
+                                st.info(f"**Gerçek Bulgular Sentezi:** {s_item.get('real_findings')}")
+                    else:
+                        st.info("Çalışma bazlı özet verisi bulunamadı.")
+
+                    st.markdown("---")
+
+                    # 2. Tutarlı Klinik Bulgular
+                    st.markdown("#### ✅ 2. Tutarlı Klinik Bulgular")
+                    consistent_list = cross_comp.get("consistent_findings", [])
+                    if consistent_list:
+                        for c_item in consistent_list:
+                            st.success(f"**Sonlanım:** {c_item.get('outcome')}\n\n**Kaynak Atıfları:** {c_item.get('source_citations')}\n\n{c_item.get('details')}")
+                    else:
+                        st.info("💡 Doğrudan eşleşen PICO ve çalışma tasarımına sahip makaleler arasında tutarlı sonlanım çifti saptanmamıştır veya çalışmalar metodolojik açıdan heterojendir.")
+
+                    st.markdown("---")
+
+                    # 3. Çelişkili Klinik Bulgular
+                    st.markdown("#### ⚠️ 3. Çelişkili Klinik Bulgular")
+                    conflicting_list = cross_comp.get("conflicting_findings", [])
+                    if conflicting_list:
+                        for cf_item in conflicting_list:
+                            st.warning(f"**Sonlanım:** {cf_item.get('outcome')}\n\n**Kaynak Atıfları:** {cf_item.get('source_citations')}\n\n{cf_item.get('details')}")
+                    else:
+                        st.info("💡 Doğrudan eşleşen PICO ve çalışma tasarımına sahip makaleler arasında zıt yönde istatistiksel çelişki tespit edilmemiştir.")
+
+                    st.markdown("---")
+
+                    # 4. Karşılaştırılamama Durumları ve Gerekçeleri
+                    st.markdown("#### 🚫 4. Karşılaştırılamama Durumları ve Gerekçeleri")
+                    non_comp_list = cross_comp.get("non_comparable_studies", [])
+                    if non_comp_list:
+                        for nc_item in non_comp_list:
+                            st.markdown(f"- **Kaynak Atıfları:** {nc_item.get('source_citations')}\n  - **Karşılaştırılamama Gerekçesi:** {nc_item.get('reason')}")
+                    else:
+                        st.info("💡 İncelenen tüm primer çalışmalar birbiriyle karşılaştırılabilir PICO yapısına sahiptir.")
+
+                    st.markdown("---")
+
+                    # 5. Metodolojik Heterojenlik ve Sınırlılıklar
+                    st.markdown("#### 📉 5. Metodolojik Heterojenlik & Kanıt Sınırlılıkları")
+                    st.write(f"**Metodolojik Heterojenlik:** {cross_comp.get('methodological_heterogeneity', 'Veri yok.')}")
+                    st.caption(f"📌 **Kanıt Sınırlılığı Uyarısı:** {cross_comp.get('evidence_limitation_notice', 'Veri yok.')}")
+
+                with report_subtab3:
                     st.subheader("📊 Yapılandırılmış Tıbbi Kanıt Tablosu")
                     html_table = generate_evidence_table_html(articles)
                     st.components.v1.html(html_table, height=500, scrolling=True)
 
-                with report_subtab3:
+                with report_subtab4:
                     st.subheader("🎯 Klinik PICO Çerçevesi")
                     p1, p2, p3, p4 = st.columns(4)
                     with p1:

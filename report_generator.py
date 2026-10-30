@@ -412,11 +412,11 @@ def extract_outcome_metrics(abstract: str) -> List[Dict[str, Any]]:
         if not raw_clean:
             continue
 
-        eff_count = len(re.findall(r"\b(?:HR|OR|RR|MD|WMD)\s*[:=]?\s*-?\d+\.?\d*\b", raw_clean, re.IGNORECASE))
+        eff_count = len(re.findall(r"\b(?:HR|OR|RR|MD|WMD|hazard ratio|odds ratio|relative risk|mean difference)\s*[:=, ]?\s*-?\d+\.?\d*\b", raw_clean, re.IGNORECASE))
         p_count = len(re.findall(r"\b(?:p|P)\s*[=<]\s*0?\.\d+\b", raw_clean))
 
         if eff_count > 1 or (eff_count >= 1 and p_count > 1):
-            sub_parts = re.split(r'(?<=\))\s*(?:and\s+|,|\s+while\s+)|(?:\b(?:and|,)\s+)(?=[A-Za-z\s]+?\b(?:HR|OR|RR|MD|WMD|p\s*[=<]))', raw_clean, flags=re.IGNORECASE)
+            sub_parts = re.split(r'(?<=\))\s*(?:and\s+|,|\s+while\s+)|(?:\b(?:and|,)\s+)(?=[A-Za-z\s]+?\b(?:HR|OR|RR|MD|WMD|hazard ratio|odds ratio|relative risk|mean difference|p\s*[=<]))', raw_clean, flags=re.IGNORECASE)
             for sp in sub_parts:
                 if sp.strip():
                     clauses.append(sp.strip())
@@ -441,7 +441,7 @@ def extract_outcome_metrics(abstract: str) -> List[Dict[str, Any]]:
         if not clause_clean:
             continue
 
-        effect_sizes = re.findall(r"\b(?:HR|OR|RR|MD|WMD)\s*[:=]?\s*-?\d+\.?\d*\b", clause_clean, re.IGNORECASE)
+        effect_sizes = re.findall(r"\b(?:HR|OR|RR|MD|WMD|hazard ratio|odds ratio|relative risk|mean difference)\s*[:=, ]?\s*-?\d+\.?\d*\b", clause_clean, re.IGNORECASE)
         cis = re.findall(r"\b(?:95%\s*CI|CI\s*95%)\s*[:=]?\s*\[?\s*\d+\.?\d*\s*(?:to|-|,)\s*\d+\.?\d*\s*\]?", clause_clean, re.IGNORECASE)
         p_vals = re.findall(r"\b(?:p|P)\s*[=<]\s*0?\.\d+\b", clause_clean)
 
@@ -495,10 +495,10 @@ def extract_study_metrics(abstract: str) -> Dict[str, Any]:
             "causality_limitations": []
         }
 
-    n_match = re.search(r"\b(?:n\s*=\s*|total of\s+|sample of\s+|enrolled\s+|included\s+)(\d[\d,]*)\b", abstract, re.IGNORECASE)
+    n_match = re.search(r"\b(?:n\s*=\s*|total of\s+|sample of\s+|enrolled\s+|included\s+|assigned\s+|randomly assigned\s+|randomized\s+|randomised\s+)(\d[\d,]*)\b", abstract, re.IGNORECASE)
     n_val = n_match.group(1).replace(",", "") if n_match else None
 
-    effect_sizes = re.findall(r"\b(?:HR|OR|RR|MD|WMD)\s*[:=]?\s*-?\d+\.?\d*\b", abstract, re.IGNORECASE)
+    effect_sizes = re.findall(r"\b(?:HR|OR|RR|MD|WMD|hazard ratio|odds ratio|relative risk|mean difference)\s*[:=, ]?\s*-?\d+\.?\d*\b", abstract, re.IGNORECASE)
     cis = re.findall(r"\b(?:95%\s*CI|CI\s*95%)\s*[:=]?\s*\[?\s*\d+\.?\d*\s*(?:to|-|,)\s*\d+\.?\d*\s*\]?", abstract, re.IGNORECASE)
     p_vals = re.findall(r"\b(?:p|P)\s*[=<]\s*0?\.\d+\b", abstract)
 
@@ -1177,25 +1177,44 @@ Lütfen arama terimlerini veya filtreleri genişleterek tekrar deneyiniz.
         stat_summary = _translate_clinical_conclusion_to_turkish("", art.get("abstract", ""), metrics, cd["design"], art.get("title", ""), pico=pico)
         lim_str = " ".join(metrics.get("causality_limitations", [])) or "Özette spesifik metodolojik sınırlılık vurgulanmamıştır (Tam metin incelemesi önerilir)."
 
+        outcomes_list = extract_outcome_metrics(art.get("abstract", ""))
+        o_str_parts = []
+        if outcomes_list:
+            for om in outcomes_list:
+                m_str = ", ".join(om.get("metrics", [])) if om.get("metrics") else "Özette nicel etki ölçütü yok"
+                o_str_parts.append(f"{om['outcome']} ({m_str})")
+            o_str = "; ".join(o_str_parts)
+        else:
+            o_str = "Özette bağlı nicel sonlanım ölçütü bildirilmedi"
+
         comp_lines.append(
             f"- **{first_author} ({year})** ({pmid_link}):\n"
             f"  - **Yöntem & Tasarım:** {cd['design']} ({cd['level']}) | **Yanlılık Riski:** {rob['overall_rating']}\n"
             f"  - **Hasta / Örneklem Sayısı:** {n_str}\n"
+            f"  - **Klinik Sonlanımlar & Etki Ölçütleri:** {o_str}\n"
             f"  - **Klinik Bulgular & Etkinlik / Güvenlilik Sentezi:** {stat_summary}\n"
             f"  - **Kanıt Sınırlılıkları:** {lim_str}"
         )
 
-    if cross_comp and cross_comp.get("consistent_findings"):
-        comp_lines.append("\n**Tutarlı Klinik Bulgular:**")
-        for cf in cross_comp["consistent_findings"]:
-            comp_lines.append(f"- {cf['details']}")
-
-    if cross_comp and cross_comp.get("non_comparable_studies"):
-        comp_lines.append("\n**Karşılaştırılabilirlik Durumu ve Gerekçeler:**")
-        for nc in cross_comp["non_comparable_studies"]:
-            comp_lines.append(f"- {nc['reason']}")
-
     report.append("\n".join(comp_lines) + "\n")
+
+    report.append("### ✅ Tutarlı Klinik Bulgular")
+    if cross_comp and cross_comp.get("consistent_findings"):
+        c_lines = []
+        for cf in cross_comp["consistent_findings"]:
+            c_lines.append(f"- **Sonlanım:** {cf['outcome']} | **Kaynaklar:** {cf['source_citations']}\n  - {cf['details']}")
+        report.append("\n".join(c_lines) + "\n")
+    else:
+        report.append("Doğrudan eşleşen PICO ve çalışma tasarımına sahip makaleler arasında tutarlı sonlanım çifti saptanmamıştır veya çalışmalar metodolojik açıdan heterojendir.\n")
+
+    report.append("### 🚫 Karşılaştırılamama Durumları ve Gerekçeleri")
+    if cross_comp and cross_comp.get("non_comparable_studies"):
+        nc_lines = []
+        for nc in cross_comp["non_comparable_studies"]:
+            nc_lines.append(f"- **Kaynaklar:** {nc['source_citations']}\n  - **Gerekçe:** {nc['reason']}")
+        report.append("\n".join(nc_lines) + "\n")
+    else:
+        report.append("İncelenen tüm primer çalışmalar birbiriyle karşılaştırılabilir PICO yapısına sahiptir.\n")
 
     report.append("### 📑 Bireysel Çalışma Detayları")
     for idx, art in enumerate(articles, 1):
@@ -1281,7 +1300,7 @@ Lütfen arama terimlerini veya filtreleri genişleterek tekrar deneyiniz.
     if cross_comp and cross_comp.get("conflicting_findings"):
         conf_lines = []
         for cf in cross_comp["conflicting_findings"]:
-            conf_lines.append(f"- {cf['details']}")
+            conf_lines.append(f"- **Sonlanım:** {cf['outcome']} | **Kaynaklar:** {cf['source_citations']}\n  - {cf['details']}")
         report.append("\n".join(conf_lines) + "\n")
     else:
         report.append("Doğrudan eşleşen PICO ve çalışma tasarımına sahip makaleler arasında zıt yönde istatistiksel çelişki tespit edilmemiştir. Bununla birlikte, farklı çalışmalar arasındaki kohort büyüklükleri, alt grup özellikleri, tedavi protokolleri ve takip sürelerindeki heterojenlikler klinik bağlamda dikkate alınmalıdır.\n")
