@@ -1,0 +1,2647 @@
+{
+  "total_specialties": 88,
+  "schema_version": "1.0",
+  "description": "Evrensel Medical Research AI platformu için 88 tıbbi uzmanlık ve araştırma alanını kapsayan kapsamlı matris verisi.",
+  "specialties": [
+    {
+      "id": "ruh_sagligi_ve_psikiyatri",
+      "specialty_name": "Ruh Sağlığı ve Psikiyatri",
+      "specialty_name_en": "Mental Health and Psychiatry",
+      "category": "Dahili Tıp Bilimleri",
+      "description": "Duygulanım, davranış, bilişsel fonksiyonlar ve ruhsal bozuklukların tanı, tedavi ve önlenmesi üzerine uzmanlaşmış tıp dalı.",
+      "sub_focus_areas": [
+        "Duygulanım Bozuklukları ve Majör Depresyon",
+        "Anksiyete ve Panik Bozukluklar",
+        "Şizofreni ve Psikotik Bozukluklar",
+        "Bipolar Bozukluk ve Duyudurum Spektrumu",
+        "Obsesif-Kompulsif ve İlişkili Bozukluklar",
+        "Travma ve Stresle İlişkili Bozukluklar (TSSB)",
+        "Nörogelişimsel ve Çocuk/Ergen Psikiyatrisi",
+        "Geriyatrik Psikiyatri ve Demans Yönetimi",
+        "Madde Kullanım ve Bağımlılık Bozuklukları",
+        "Yeme Bozuklukları (Anoreksiya/Bulimiya)",
+        "Kişilik Bozuklukları ve Psikoterapi",
+        "Uyku-Uyanıklık Bozuklukları",
+        "Psikofarmakoloji ve Nöromodülasyon (EKT/TMS)",
+        "Toplum Ruh Sağlığı ve Konsültasyon-Liyazon"
+      ],
+      "search_keywords": [
+        "psychiatry",
+        "mental health",
+        "depression",
+        "schizophrenia",
+        "psychopharmacology"
+      ]
+    },
+    {
+      "id": "fizik_tedavi_ve_rehabilitasyon",
+      "specialty_name": "Fizik Tedavi ve Rehabilitasyon",
+      "specialty_name_en": "Physical Medicine and Rehabilitation",
+      "category": "Dahili Tıp Bilimleri",
+      "description": "Kas-iskelet, nörolojik ve kardiyovasküler sistem bozukluklarında fonksiyonel iyileşme ve rehabilitasyonu hedefleyen uzmanlık dalı.",
+      "sub_focus_areas": [
+        "Nörolojik Rehabilitasyon (İnme/İnme Sonrası)",
+        "Kas-İskelet Sistemi ve Kas Ağrıları",
+        "Ortopedik Rehabilitasyon ve Protez-Ortez",
+        "Romatizmal Hastalıklar ve Rehabilitasyon",
+        "Pediatrik Rehabilitasyon (Serebral Palsi)",
+        "Kardiyopulmoner Rehabilitasyon",
+        "Spinal Kord Yaralanmaları ve Rehabilitasyonu",
+        "Travmatik Beyin Hasarı Rehabilitasyonu",
+        "Geriyatrik Rehabilitasyon ve Düşme Önleme",
+        "Ağrı Yönetimi ve Algoloji Uygulamaları",
+        "Sporcu Sağlığı ve Rehabilitasyonu",
+        "Egzersiz Fizyolojisi ve Reçetelendirilmesi",
+        "Lenfödem ve Yumuşak Doku Rehabilitasyonu",
+        "Mesleki ve Endüstriyel Rehabilitasyon"
+      ],
+      "search_keywords": [
+        "physical medicine",
+        "rehabilitation",
+        "stroke rehab",
+        "musculoskeletal",
+        "physiotherapy"
+      ]
+    },
+    {
+      "id": "kardiyoloji",
+      "specialty_name": "Kardiyoloji",
+      "specialty_name_en": "Cardiology",
+      "category": "Dahili Tıp Bilimleri",
+      "description": "Kalp ve dolaşım sistemi hastalıklarının tanı, tedavi ve önlenmesini kapsayan klinik tıp dalı.",
+      "sub_focus_areas": [
+        "İskemik Kalp Hastalığı ve Koroner Arter Hastalığı",
+        "Kalp Yetersizliği ve Kardiyomiyopatiler",
+        "Kardiyak Aritmiler ve Elektrofizyoloji",
+        "Hipertansiyon ve Vasküler Hastalıklar",
+        "Kapak Hastalıkları ve TAVİ Uygulamaları",
+        "Girişimsel Kardiyoloji ve Stentleme",
+        "Kardiyak Görüntüleme (Eko/Kardiyak MR/BT)",
+        "Erişkin Doğuştan Kalp Hastalıkları",
+        "Kardiyo-Onkoloji",
+        "Kardiyak Rehabilitasyon ve Önleyici Kardiyoloji",
+        "Perikard ve Miyokard Hastalıkları",
+        "Aort Hastalıkları ve Endovasküler Tedavi",
+        "Kardiyak Aciller ve Yoğun Bakım",
+        "Pulmoner Hipertansiyon ve Sağ Kalp Yetmezliği"
+      ],
+      "search_keywords": [
+        "cardiology",
+        "heart failure",
+        "coronary artery disease",
+        "arrhythmia",
+        "hypertension"
+      ]
+    },
+    {
+      "id": "noroloji",
+      "specialty_name": "Nöroloji",
+      "specialty_name_en": "Neurology",
+      "category": "Dahili Tıp Bilimleri",
+      "description": "Merkezi ve çevresel sinir sistemi hastalıklarının tanı ve medikal tedavisini inceleyen tıp dalı.",
+      "sub_focus_areas": [
+        "Serebrovasküler Hastalıklar ve İnme",
+        "Epilepsi ve Elektroensefalografi (EEG)",
+        "Hareket Bozuklukları ve Parkinson Hastalığı",
+        "Multiple Skleroz ve Nöroimmünoloji",
+        "Demans ve Alzheimer Hastalığı",
+        "Nöromüsküler Hastalıklar ve EMG",
+        "Baş Ağrısı ve Migren Yönetimi",
+        "Nöro-Onkoloji",
+        "Nöroyoğun Bakım",
+        "Nöro-Otoloji ve Baş Dönmesi",
+        "Periferik Nöropatiler ve Motor Nöron Hastalığı",
+        "Nörodejeneratif Hastalıklar",
+        "Uyku Bozuklukları Nörolojisi",
+        "Klinik Nörofizyoloji"
+      ],
+      "search_keywords": [
+        "neurology",
+        "stroke",
+        "epilepsy",
+        "parkinson",
+        "multiple sclerosis"
+      ]
+    },
+    {
+      "id": "tibbi_onkoloji",
+      "specialty_name": "Tıbbi Onkoloji",
+      "specialty_name_en": "Medical Oncology",
+      "category": "Dahili Tıp Bilimleri",
+      "description": "Kötü huylu tümörlerin sistemik tedavisi (kemoterapi, immünoterapi, hedefe yönelik tedaviler) üzerine odaklanan bilim dalı.",
+      "sub_focus_areas": [
+        "Akciğer Kanseri Sistemik Tedavileri",
+        "Meme Kanseri ve Moleküler Alt Tipleri",
+        "Gastrointestinal Kanserler (Kolorektal/Mide)",
+        "Jinekolojik Kanser Tıbbi Tedavisi",
+        "Ürolojik Kanserler (Prostat/Böbrek/Mesane)",
+        "Kanser İmmünoterapisi ve İmmün Kontrol Noktaları",
+        "Hedefe Yönelik Akıllı İlaçlar ve Kinaz İnhibitörleri",
+        "Destekleyici Tedavi ve Palyatif Bakım",
+        "Kanser Genetiği ve Hassas Onkoloji",
+        "Baş-Boyun Kanserleri",
+        "Sarkomlar ve Nadir Tümörler",
+        "Kanser Sürveyansı ve Taramaları",
+        "Nöroendokrin Tümörler",
+        "Kemoterapi Toksisite ve Yan Etki Yönetimi"
+      ],
+      "search_keywords": [
+        "medical oncology",
+        "chemotherapy",
+        "immunotherapy",
+        "breast cancer",
+        "targeted therapy"
+      ]
+    },
+    {
+      "id": "gogus_hastaliklari",
+      "specialty_name": "Göğüs Hastalıkları",
+      "specialty_name_en": "Pulmonology",
+      "category": "Dahili Tıp Bilimleri",
+      "description": "Solunum sistemi hastalıklarının tanı, tedavi ve takibini üstlenen tıbbi uzmanlık alanı.",
+      "sub_focus_areas": [
+        "Astım ve Alerjik Solunum Hastalıkları",
+        "Kronik Obstrüktif Akciğer Hastalığı (KOAH)",
+        "İnterstisyel Akciğer Hastalıkları ve Pulmoner Fibrozis",
+        "Akciğer Enfeksiyonları ve Pnömoni",
+        "Tüberküloz ve Mikobakteriyel Hastalıklar",
+        "Pulmoner Emboli ve Vasküler Solunum Hastalıkları",
+        "Uyku Apnesi ve Solunumsal Uyku Bozuklukları",
+        "Girişimsel Bronkoskopi ve Plevral İşlemler",
+        "Solunum Yetmezliği ve Non-İnvaziv Ventilasyon",
+        "Akciğer Kanseri Tanı ve Evrelemesi",
+        "Plevra Hastalıkları ve Plevral Efüzyon",
+        "Mesleki Akciğer Hastalıkları",
+        "Kistik Fibrozis ve Bronşiektazi",
+        "Pulmoner Rehabilitasyon"
+      ],
+      "search_keywords": [
+        "pulmonology",
+        "copd",
+        "asthma",
+        "pneumonia",
+        "pulmonary fibrosis"
+      ]
+    },
+    {
+      "id": "gastroenteroloji",
+      "specialty_name": "Gastroenteroloji",
+      "specialty_name_en": "Gastroenterology",
+      "category": "Dahili Tıp Bilimleri",
+      "description": "Yemek borusu, mide, bağırsak, karaciğer, safra kesesi ve pankreas hastalıklarını inceleyen uzmanlık dalı.",
+      "sub_focus_areas": [
+        "İnflamatuar Bağırsak Hastalıkları (Crohn/Ülseratif Kolit)",
+        "Karaciğer Hastalıkları ve Siroz (Hepatoloji)",
+        "Gastrointestinal Kanser Taramaları ve Polipektomi",
+        "Asit, Peptik Ülser ve GÖRH Yönetimi",
+        "Safra Yolları ve Pankreas Hastalıkları (ERCP)",
+        "Girişimsel Endoskopi ve Kolonoskopi",
+        "Fonksiyonel Gastrointestinal Bozukluklar (İBS)",
+        "Viral Hepatitler (Hepatit B ve C)",
+        "Yağlı Karaciğer Hastalığı (MASLD/MASH)",
+        "Gastrointestinal Kanamalar ve Acil Endoskopi",
+        "Çölyak ve Malabsorpsiyon Sendromları",
+        "Gastrointestinal Motilite Bozuklukları",
+        "Karaciğer Nakli Öncesi ve Sonrası Takip",
+        "Beslenme ve Enteral/Parenteral Destek"
+      ],
+      "search_keywords": [
+        "gastroenterology",
+        "hepatology",
+        "inflammatory bowel disease",
+        "cirrhosis",
+        "endoscopy"
+      ]
+    },
+    {
+      "id": "endokrinoloji_ve_metabolizma",
+      "specialty_name": "Endokrinoloji ve Metabolizma Hastalıkları",
+      "specialty_name_en": "Endocrinology and Metabolism",
+      "category": "Dahili Tıp Bilimleri",
+      "description": "Hormonal sistem, iç salgı bezleri ve metabolizma bozukluklarının tanı ve tedavisini gerçekleştiren tıp branşı.",
+      "sub_focus_areas": [
+        "Tip 1 ve Tip 2 Diyabet Yönetimi",
+        "Tiroid Hastalıkları ve Tiroid Kanseri",
+        "Obezite ve Bariyatri Metabolik Yönetimi",
+        "Böbrek Üstü Bezi Hastalıkları (Adrenal)",
+        "Hipofiz ve Hipotalamus Hastalıkları",
+        "Kemik Metabolizması ve Osteoporoz",
+        "Hipotireoidizm ve Hipertireoidizm",
+        "Polikistik Over Sendromu (PKOS) ve Hirsutizm",
+        "Lipid Bozuklukları ve Hiperlipidemi",
+        "Nöroendokrin Tümörler",
+        "Diyabetik Ayak ve Mikrovasküler Komplikasyonlar",
+        "Kalsiyum ve Paratiroid Bozuklukları",
+        "Pediatrik Geçişli Endokrinopatiler",
+        "Gebelikte Endokrin Bozukluklar (Gestasyonel Diyabet)"
+      ],
+      "search_keywords": [
+        "endocrinology",
+        "diabetes",
+        "thyroid",
+        "obesity",
+        "osteoporosis"
+      ]
+    },
+    {
+      "id": "nefroloji",
+      "specialty_name": "Nefroloji",
+      "specialty_name_en": "Nephrology",
+      "category": "Dahili Tıp Bilimleri",
+      "description": "Böbrek hastalıkları, hipertansiyon, diyaliz ve böbrek nakli süreçlerini kapsayan uzmanlık alanı.",
+      "sub_focus_areas": [
+        "Kronik Böbrek Hastalığı (KBH) ve Evreleme",
+        "Akut Böbrek Hasarı (ABH)",
+        "Glomerüler Hastalıklar ve Glomerulonefritler",
+        "Hemodiyaliz ve Periton Diyalizi",
+        "Böbrek Nakli (Transplantasyon Nefrolojisi)",
+        "Hipertansiyon ve Renal Vasküler Hastalıklar",
+        "Sıvı-Elektrolit ve Asit-Baz Bozuklukları",
+        "Diyabetik Nefropati",
+        "Polikistik Böbrek Hastalığı ve Genetik Böbrek Hastalıkları",
+        "Böbrek Biyopsisi Değerlendirmesi",
+        "Tübulointerstisyel Nefrit",
+        "Kardiyorenal ve Hepatorenal Sendromlar",
+        "Gebelikte Böbrek Hastalıkları",
+        "Nefrolitiyazis ve Metabolik Taş Analizi"
+      ],
+      "search_keywords": [
+        "nephrology",
+        "chronic kidney disease",
+        "dialysis",
+        "kidney transplant",
+        "glomerulonephritis"
+      ]
+    },
+    {
+      "id": "romatoloji",
+      "specialty_name": "Romatoloji",
+      "specialty_name_en": "Rheumatology",
+      "category": "Dahili Tıp Bilimleri",
+      "description": "Romatizmal, ototoimmün ve iltihabi kas-iskelet sistemi hastalıklarını inceleyen uzmanlık dalı.",
+      "sub_focus_areas": [
+        "Romatoid Artrit Tanı ve Biyolojik Tedavisi",
+        "Sistemik Lupus Eritematozus (SLE)",
+        "Ankilozan Spondilit ve Aksiyel Spondiloartrit",
+        "Psoriyatik Artrit ve Spondiloartropatiler",
+        "Vaskülitler (ANCA İlişkili Vaskülitler/Behçet)",
+        "Sistemik Skleroz (Skleroderma)",
+        "Sjögren Sendromu",
+        "Gut ve Kristal Artritleri",
+        "Otoinflamatuar Hastalıklar (AİHF/FMF)",
+        "Miyozit ve İnflamatuar Kas Hastalıkları",
+        "Osteoartrit ve Yumuşak Doku Romatizması",
+        "Romatolojik Hastalıklarda Biyolojik Ajanlar",
+        "Antifosfolipid Sendromu",
+        "Gebelikte Romatolojik Hastalık Yönetimi"
+      ],
+      "search_keywords": [
+        "rheumatology",
+        "rheumatoid arthritis",
+        "lupus",
+        "ankylosing spondylitis",
+        "vasculitis"
+      ]
+    },
+    {
+      "id": "enfeksiyon_hastaliklari",
+      "specialty_name": "Enfeksiyon Hastalıkları ve Klinik Mikrobiyoloji",
+      "specialty_name_en": "Infectious Diseases and Clinical Microbiology",
+      "category": "Dahili Tıp Bilimleri",
+      "description": "Bakteriyel, viral, fungal ve paraziter enfeksiyonların tanı, tedavi ve kontrolünü sağlayan uzmanlık dalı.",
+      "sub_focus_areas": [
+        "Enfeksiyon Hastalıkları ve Klinik Mikrobiyoloji Temel Tanı Yöntemleri ve Değerlendirme",
+        "Enfeksiyon Hastalıkları ve Klinik Mikrobiyoloji İleri Tedavi Protokolleri ve İlaç Yönetimi",
+        "Enfeksiyon Hastalıkları ve Klinik Mikrobiyoloji Akut ve Acil Klinik Durumlar",
+        "Enfeksiyon Hastalıkları ve Klinik Mikrobiyoloji Kronik Hastalık Takibi ve Sürveyans",
+        "Enfeksiyon Hastalıkları ve Klinik Mikrobiyoloji Minimal İnvaziv ve Girişimsel Yaklaşımlar",
+        "Enfeksiyon Hastalıkları ve Klinik Mikrobiyoloji Pediatrik ve Geriyatrik Özel Popülasyonlar",
+        "Enfeksiyon Hastalıkları ve Klinik Mikrobiyoloji Biyomarker ve Laboratuvar Tanı Yöntemleri",
+        "Enfeksiyon Hastalıkları ve Klinik Mikrobiyoloji Komplikasyon Yönetimi ve Hasta Güvenliği",
+        "Enfeksiyon Hastalıkları ve Klinik Mikrobiyoloji Rejeneratif ve Moleküler Tıp Uygulamaları",
+        "Enfeksiyon Hastalıkları ve Klinik Mikrobiyoloji Multidisipliner Konsey ve Bakım Yönetimi",
+        "Enfeksiyon Hastalıkları ve Klinik Mikrobiyoloji Koruyucu Tıp ve Risk Faktörleri Değerlendirmesi",
+        "Enfeksiyon Hastalıkları ve Klinik Mikrobiyoloji Dijital Sağlık ve Tıbbi Teknolojiler",
+        "Enfeksiyon Hastalıkları ve Klinik Mikrobiyoloji Rehabitasyon ve Yaşam Kalitesi İyileştirme",
+        "Enfeksiyon Hastalıkları ve Klinik Mikrobiyoloji Klinik Araştırmalar ve Kanıta Dayalı Uygulamalar"
+      ],
+      "search_keywords": [
+        "enfeksiyon hastaliklari",
+        "infectious diseases and clinical microbiology",
+        "clinical research",
+        "evidence synthesis",
+        "pubmed"
+      ]
+    },
+    {
+      "id": "hematoloji",
+      "specialty_name": "Hematoloji",
+      "specialty_name_en": "Hematology",
+      "category": "Dahili Tıp Bilimleri",
+      "description": "Kan, kemik iliği ve lenf sistemi hastalıklarını inceleyen tıbbi uzmanlık branşı.",
+      "sub_focus_areas": [
+        "Hematoloji Temel Tanı Yöntemleri ve Değerlendirme",
+        "Hematoloji İleri Tedavi Protokolleri ve İlaç Yönetimi",
+        "Hematoloji Akut ve Acil Klinik Durumlar",
+        "Hematoloji Kronik Hastalık Takibi ve Sürveyans",
+        "Hematoloji Minimal İnvaziv ve Girişimsel Yaklaşımlar",
+        "Hematoloji Pediatrik ve Geriyatrik Özel Popülasyonlar",
+        "Hematoloji Biyomarker ve Laboratuvar Tanı Yöntemleri",
+        "Hematoloji Komplikasyon Yönetimi ve Hasta Güvenliği",
+        "Hematoloji Rejeneratif ve Moleküler Tıp Uygulamaları",
+        "Hematoloji Multidisipliner Konsey ve Bakım Yönetimi",
+        "Hematoloji Koruyucu Tıp ve Risk Faktörleri Değerlendirmesi",
+        "Hematoloji Dijital Sağlık ve Tıbbi Teknolojiler",
+        "Hematoloji Rehabitasyon ve Yaşam Kalitesi İyileştirme",
+        "Hematoloji Klinik Araştırmalar ve Kanıta Dayalı Uygulamalar"
+      ],
+      "search_keywords": [
+        "hematoloji",
+        "hematology",
+        "clinical research",
+        "evidence synthesis",
+        "pubmed"
+      ]
+    },
+    {
+      "id": "alerji_ve_immunoloji",
+      "specialty_name": "Alerji ve İmmünoloji",
+      "specialty_name_en": "Allergy and Immunology",
+      "category": "Dahili Tıp Bilimleri",
+      "description": "Bağışıklık sistemi bozuklukları, alerjik reaksiyonlar ve otoimmüniteleri inceleyen bilim dalı.",
+      "sub_focus_areas": [
+        "Alerji ve İmmünoloji Temel Tanı Yöntemleri ve Değerlendirme",
+        "Alerji ve İmmünoloji İleri Tedavi Protokolleri ve İlaç Yönetimi",
+        "Alerji ve İmmünoloji Akut ve Acil Klinik Durumlar",
+        "Alerji ve İmmünoloji Kronik Hastalık Takibi ve Sürveyans",
+        "Alerji ve İmmünoloji Minimal İnvaziv ve Girişimsel Yaklaşımlar",
+        "Alerji ve İmmünoloji Pediatrik ve Geriyatrik Özel Popülasyonlar",
+        "Alerji ve İmmünoloji Biyomarker ve Laboratuvar Tanı Yöntemleri",
+        "Alerji ve İmmünoloji Komplikasyon Yönetimi ve Hasta Güvenliği",
+        "Alerji ve İmmünoloji Rejeneratif ve Moleküler Tıp Uygulamaları",
+        "Alerji ve İmmünoloji Multidisipliner Konsey ve Bakım Yönetimi",
+        "Alerji ve İmmünoloji Koruyucu Tıp ve Risk Faktörleri Değerlendirmesi",
+        "Alerji ve İmmünoloji Dijital Sağlık ve Tıbbi Teknolojiler",
+        "Alerji ve İmmünoloji Rehabitasyon ve Yaşam Kalitesi İyileştirme",
+        "Alerji ve İmmünoloji Klinik Araştırmalar ve Kanıta Dayalı Uygulamalar"
+      ],
+      "search_keywords": [
+        "alerji ve immunoloji",
+        "allergy and immunology",
+        "clinical research",
+        "evidence synthesis",
+        "pubmed"
+      ]
+    },
+    {
+      "id": "geriatri",
+      "specialty_name": "Geriatri",
+      "specialty_name_en": "Geriatrics",
+      "category": "Dahili Tıp Bilimleri",
+      "description": "Yaşlı bireylerin sağlığı, kronik hastalık yönetimi ve geriyatrik sendromları kapsayan dal.",
+      "sub_focus_areas": [
+        "Geriatri Temel Tanı Yöntemleri ve Değerlendirme",
+        "Geriatri İleri Tedavi Protokolleri ve İlaç Yönetimi",
+        "Geriatri Akut ve Acil Klinik Durumlar",
+        "Geriatri Kronik Hastalık Takibi ve Sürveyans",
+        "Geriatri Minimal İnvaziv ve Girişimsel Yaklaşımlar",
+        "Geriatri Pediatrik ve Geriyatrik Özel Popülasyonlar",
+        "Geriatri Biyomarker ve Laboratuvar Tanı Yöntemleri",
+        "Geriatri Komplikasyon Yönetimi ve Hasta Güvenliği",
+        "Geriatri Rejeneratif ve Moleküler Tıp Uygulamaları",
+        "Geriatri Multidisipliner Konsey ve Bakım Yönetimi",
+        "Geriatri Koruyucu Tıp ve Risk Faktörleri Değerlendirmesi",
+        "Geriatri Dijital Sağlık ve Tıbbi Teknolojiler",
+        "Geriatri Rehabitasyon ve Yaşam Kalitesi İyileştirme",
+        "Geriatri Klinik Araştırmalar ve Kanıta Dayalı Uygulamalar"
+      ],
+      "search_keywords": [
+        "geriatri",
+        "geriatrics",
+        "clinical research",
+        "evidence synthesis",
+        "pubmed"
+      ]
+    },
+    {
+      "id": "yogun_bakim",
+      "specialty_name": "Yoğun Bakım",
+      "specialty_name_en": "Intensive Care Medicine",
+      "category": "Dahili Tıp Bilimleri",
+      "description": "Kritik hastaların organ yetmezliği ve yaşam desteği süreçlerini yöneten uzmanlık alanı.",
+      "sub_focus_areas": [
+        "Yoğun Bakım Temel Tanı Yöntemleri ve Değerlendirme",
+        "Yoğun Bakım İleri Tedavi Protokolleri ve İlaç Yönetimi",
+        "Yoğun Bakım Akut ve Acil Klinik Durumlar",
+        "Yoğun Bakım Kronik Hastalık Takibi ve Sürveyans",
+        "Yoğun Bakım Minimal İnvaziv ve Girişimsel Yaklaşımlar",
+        "Yoğun Bakım Pediatrik ve Geriyatrik Özel Popülasyonlar",
+        "Yoğun Bakım Biyomarker ve Laboratuvar Tanı Yöntemleri",
+        "Yoğun Bakım Komplikasyon Yönetimi ve Hasta Güvenliği",
+        "Yoğun Bakım Rejeneratif ve Moleküler Tıp Uygulamaları",
+        "Yoğun Bakım Multidisipliner Konsey ve Bakım Yönetimi",
+        "Yoğun Bakım Koruyucu Tıp ve Risk Faktörleri Değerlendirmesi",
+        "Yoğun Bakım Dijital Sağlık ve Tıbbi Teknolojiler",
+        "Yoğun Bakım Rehabitasyon ve Yaşam Kalitesi İyileştirme",
+        "Yoğun Bakım Klinik Araştırmalar ve Kanıta Dayalı Uygulamalar"
+      ],
+      "search_keywords": [
+        "yogun bakim",
+        "intensive care medicine",
+        "clinical research",
+        "evidence synthesis",
+        "pubmed"
+      ]
+    },
+    {
+      "id": "cocuk_sagligi_ve_hastaliklari",
+      "specialty_name": "Çocuk Sağlığı ve Hastalıkları (Pediatri)",
+      "specialty_name_en": "Pediatrics",
+      "category": "Dahili Tıp Bilimleri",
+      "description": "Bebek, çocuk ve ergenlik dönemindeki bireylerin gelişim ve sağlık süreçlerini kapsar.",
+      "sub_focus_areas": [
+        "Çocuk Sağlığı ve Hastalıkları (Pediatri) Temel Tanı Yöntemleri ve Değerlendirme",
+        "Çocuk Sağlığı ve Hastalıkları (Pediatri) İleri Tedavi Protokolleri ve İlaç Yönetimi",
+        "Çocuk Sağlığı ve Hastalıkları (Pediatri) Akut ve Acil Klinik Durumlar",
+        "Çocuk Sağlığı ve Hastalıkları (Pediatri) Kronik Hastalık Takibi ve Sürveyans",
+        "Çocuk Sağlığı ve Hastalıkları (Pediatri) Minimal İnvaziv ve Girişimsel Yaklaşımlar",
+        "Çocuk Sağlığı ve Hastalıkları (Pediatri) Pediatrik ve Geriyatrik Özel Popülasyonlar",
+        "Çocuk Sağlığı ve Hastalıkları (Pediatri) Biyomarker ve Laboratuvar Tanı Yöntemleri",
+        "Çocuk Sağlığı ve Hastalıkları (Pediatri) Komplikasyon Yönetimi ve Hasta Güvenliği",
+        "Çocuk Sağlığı ve Hastalıkları (Pediatri) Rejeneratif ve Moleküler Tıp Uygulamaları",
+        "Çocuk Sağlığı ve Hastalıkları (Pediatri) Multidisipliner Konsey ve Bakım Yönetimi",
+        "Çocuk Sağlığı ve Hastalıkları (Pediatri) Koruyucu Tıp ve Risk Faktörleri Değerlendirmesi",
+        "Çocuk Sağlığı ve Hastalıkları (Pediatri) Dijital Sağlık ve Tıbbi Teknolojiler",
+        "Çocuk Sağlığı ve Hastalıkları (Pediatri) Rehabitasyon ve Yaşam Kalitesi İyileştirme",
+        "Çocuk Sağlığı ve Hastalıkları (Pediatri) Klinik Araştırmalar ve Kanıta Dayalı Uygulamalar"
+      ],
+      "search_keywords": [
+        "cocuk sagligi ve hastaliklari",
+        "pediatrics",
+        "clinical research",
+        "evidence synthesis",
+        "pubmed"
+      ]
+    },
+    {
+      "id": "cocuk_kardiyolojisi",
+      "specialty_name": "Çocuk Kardiyolojisi",
+      "specialty_name_en": "Pediatric Cardiology",
+      "category": "Dahili Tıp Bilimleri",
+      "description": "Çocuklarda doğuştan ve sonradan gelişen kalp hastalıklarını inceleyen uzmanlık branşı.",
+      "sub_focus_areas": [
+        "Çocuk Kardiyolojisi Temel Tanı Yöntemleri ve Değerlendirme",
+        "Çocuk Kardiyolojisi İleri Tedavi Protokolleri ve İlaç Yönetimi",
+        "Çocuk Kardiyolojisi Akut ve Acil Klinik Durumlar",
+        "Çocuk Kardiyolojisi Kronik Hastalık Takibi ve Sürveyans",
+        "Çocuk Kardiyolojisi Minimal İnvaziv ve Girişimsel Yaklaşımlar",
+        "Çocuk Kardiyolojisi Pediatrik ve Geriyatrik Özel Popülasyonlar",
+        "Çocuk Kardiyolojisi Biyomarker ve Laboratuvar Tanı Yöntemleri",
+        "Çocuk Kardiyolojisi Komplikasyon Yönetimi ve Hasta Güvenliği",
+        "Çocuk Kardiyolojisi Rejeneratif ve Moleküler Tıp Uygulamaları",
+        "Çocuk Kardiyolojisi Multidisipliner Konsey ve Bakım Yönetimi",
+        "Çocuk Kardiyolojisi Koruyucu Tıp ve Risk Faktörleri Değerlendirmesi",
+        "Çocuk Kardiyolojisi Dijital Sağlık ve Tıbbi Teknolojiler",
+        "Çocuk Kardiyolojisi Rehabitasyon ve Yaşam Kalitesi İyileştirme",
+        "Çocuk Kardiyolojisi Klinik Araştırmalar ve Kanıta Dayalı Uygulamalar"
+      ],
+      "search_keywords": [
+        "cocuk kardiyolojisi",
+        "pediatric cardiology",
+        "clinical research",
+        "evidence synthesis",
+        "pubmed"
+      ]
+    },
+    {
+      "id": "cocuk_norolojisi",
+      "specialty_name": "Çocuk Nörolojisi",
+      "specialty_name_en": "Pediatric Neurology",
+      "category": "Dahili Tıp Bilimleri",
+      "description": "Bebek ve çocuklarda sinir sistemi hastalıkları, gelişimsel gerilikler ve epilepsiyi inceler.",
+      "sub_focus_areas": [
+        "Çocuk Nörolojisi Temel Tanı Yöntemleri ve Değerlendirme",
+        "Çocuk Nörolojisi İleri Tedavi Protokolleri ve İlaç Yönetimi",
+        "Çocuk Nörolojisi Akut ve Acil Klinik Durumlar",
+        "Çocuk Nörolojisi Kronik Hastalık Takibi ve Sürveyans",
+        "Çocuk Nörolojisi Minimal İnvaziv ve Girişimsel Yaklaşımlar",
+        "Çocuk Nörolojisi Pediatrik ve Geriyatrik Özel Popülasyonlar",
+        "Çocuk Nörolojisi Biyomarker ve Laboratuvar Tanı Yöntemleri",
+        "Çocuk Nörolojisi Komplikasyon Yönetimi ve Hasta Güvenliği",
+        "Çocuk Nörolojisi Rejeneratif ve Moleküler Tıp Uygulamaları",
+        "Çocuk Nörolojisi Multidisipliner Konsey ve Bakım Yönetimi",
+        "Çocuk Nörolojisi Koruyucu Tıp ve Risk Faktörleri Değerlendirmesi",
+        "Çocuk Nörolojisi Dijital Sağlık ve Tıbbi Teknolojiler",
+        "Çocuk Nörolojisi Rehabitasyon ve Yaşam Kalitesi İyileştirme",
+        "Çocuk Nörolojisi Klinik Araştırmalar ve Kanıta Dayalı Uygulamalar"
+      ],
+      "search_keywords": [
+        "cocuk norolojisi",
+        "pediatric neurology",
+        "clinical research",
+        "evidence synthesis",
+        "pubmed"
+      ]
+    },
+    {
+      "id": "cocuk_onkolojisi",
+      "specialty_name": "Çocuk Onkolojisi",
+      "specialty_name_en": "Pediatric Oncology",
+      "category": "Dahili Tıp Bilimleri",
+      "description": "Çocukluk çağı kanserleri ve tümörlerinin tanı ve tedavisini gerçekleştiren tıp dalı.",
+      "sub_focus_areas": [
+        "Çocuk Onkolojisi Temel Tanı Yöntemleri ve Değerlendirme",
+        "Çocuk Onkolojisi İleri Tedavi Protokolleri ve İlaç Yönetimi",
+        "Çocuk Onkolojisi Akut ve Acil Klinik Durumlar",
+        "Çocuk Onkolojisi Kronik Hastalık Takibi ve Sürveyans",
+        "Çocuk Onkolojisi Minimal İnvaziv ve Girişimsel Yaklaşımlar",
+        "Çocuk Onkolojisi Pediatrik ve Geriyatrik Özel Popülasyonlar",
+        "Çocuk Onkolojisi Biyomarker ve Laboratuvar Tanı Yöntemleri",
+        "Çocuk Onkolojisi Komplikasyon Yönetimi ve Hasta Güvenliği",
+        "Çocuk Onkolojisi Rejeneratif ve Moleküler Tıp Uygulamaları",
+        "Çocuk Onkolojisi Multidisipliner Konsey ve Bakım Yönetimi",
+        "Çocuk Onkolojisi Koruyucu Tıp ve Risk Faktörleri Değerlendirmesi",
+        "Çocuk Onkolojisi Dijital Sağlık ve Tıbbi Teknolojiler",
+        "Çocuk Onkolojisi Rehabitasyon ve Yaşam Kalitesi İyileştirme",
+        "Çocuk Onkolojisi Klinik Araştırmalar ve Kanıta Dayalı Uygulamalar"
+      ],
+      "search_keywords": [
+        "cocuk onkolojisi",
+        "pediatric oncology",
+        "clinical research",
+        "evidence synthesis",
+        "pubmed"
+      ]
+    },
+    {
+      "id": "cocuk_hematolojisi",
+      "specialty_name": "Çocuk Hematolojisi",
+      "specialty_name_en": "Pediatric Hematology",
+      "category": "Dahili Tıp Bilimleri",
+      "description": "Çocukluk çağındaki kan hastalıkları, anemiler ve pıhtılaşma bozukluklarını inceler.",
+      "sub_focus_areas": [
+        "Çocuk Hematolojisi Temel Tanı Yöntemleri ve Değerlendirme",
+        "Çocuk Hematolojisi İleri Tedavi Protokolleri ve İlaç Yönetimi",
+        "Çocuk Hematolojisi Akut ve Acil Klinik Durumlar",
+        "Çocuk Hematolojisi Kronik Hastalık Takibi ve Sürveyans",
+        "Çocuk Hematolojisi Minimal İnvaziv ve Girişimsel Yaklaşımlar",
+        "Çocuk Hematolojisi Pediatrik ve Geriyatrik Özel Popülasyonlar",
+        "Çocuk Hematolojisi Biyomarker ve Laboratuvar Tanı Yöntemleri",
+        "Çocuk Hematolojisi Komplikasyon Yönetimi ve Hasta Güvenliği",
+        "Çocuk Hematolojisi Rejeneratif ve Moleküler Tıp Uygulamaları",
+        "Çocuk Hematolojisi Multidisipliner Konsey ve Bakım Yönetimi",
+        "Çocuk Hematolojisi Koruyucu Tıp ve Risk Faktörleri Değerlendirmesi",
+        "Çocuk Hematolojisi Dijital Sağlık ve Tıbbi Teknolojiler",
+        "Çocuk Hematolojisi Rehabitasyon ve Yaşam Kalitesi İyileştirme",
+        "Çocuk Hematolojisi Klinik Araştırmalar ve Kanıta Dayalı Uygulamalar"
+      ],
+      "search_keywords": [
+        "cocuk hematolojisi",
+        "pediatric hematology",
+        "clinical research",
+        "evidence synthesis",
+        "pubmed"
+      ]
+    },
+    {
+      "id": "cocuk_endokrinolojisi",
+      "specialty_name": "Çocuk Endokrinolojisi",
+      "specialty_name_en": "Pediatric Endocrinology",
+      "category": "Dahili Tıp Bilimleri",
+      "description": "Çocuklarda büyüme, gelişme, tiroid ve diyabet gibi hormonal bozuklukları yönetir.",
+      "sub_focus_areas": [
+        "Çocuk Endokrinolojisi Temel Tanı Yöntemleri ve Değerlendirme",
+        "Çocuk Endokrinolojisi İleri Tedavi Protokolleri ve İlaç Yönetimi",
+        "Çocuk Endokrinolojisi Akut ve Acil Klinik Durumlar",
+        "Çocuk Endokrinolojisi Kronik Hastalık Takibi ve Sürveyans",
+        "Çocuk Endokrinolojisi Minimal İnvaziv ve Girişimsel Yaklaşımlar",
+        "Çocuk Endokrinolojisi Pediatrik ve Geriyatrik Özel Popülasyonlar",
+        "Çocuk Endokrinolojisi Biyomarker ve Laboratuvar Tanı Yöntemleri",
+        "Çocuk Endokrinolojisi Komplikasyon Yönetimi ve Hasta Güvenliği",
+        "Çocuk Endokrinolojisi Rejeneratif ve Moleküler Tıp Uygulamaları",
+        "Çocuk Endokrinolojisi Multidisipliner Konsey ve Bakım Yönetimi",
+        "Çocuk Endokrinolojisi Koruyucu Tıp ve Risk Faktörleri Değerlendirmesi",
+        "Çocuk Endokrinolojisi Dijital Sağlık ve Tıbbi Teknolojiler",
+        "Çocuk Endokrinolojisi Rehabitasyon ve Yaşam Kalitesi İyileştirme",
+        "Çocuk Endokrinolojisi Klinik Araştırmalar ve Kanıta Dayalı Uygulamalar"
+      ],
+      "search_keywords": [
+        "cocuk endokrinolojisi",
+        "pediatric endocrinology",
+        "clinical research",
+        "evidence synthesis",
+        "pubmed"
+      ]
+    },
+    {
+      "id": "cocuk_gastroenterolojisi",
+      "specialty_name": "Çocuk Gastroenterolojisi",
+      "specialty_name_en": "Pediatric Gastroenterology",
+      "category": "Dahili Tıp Bilimleri",
+      "description": "Çocukluk çağı sindirim sistemi, karaciğer ve beslenme bozukluklarını inceler.",
+      "sub_focus_areas": [
+        "Çocuk Gastroenterolojisi Temel Tanı Yöntemleri ve Değerlendirme",
+        "Çocuk Gastroenterolojisi İleri Tedavi Protokolleri ve İlaç Yönetimi",
+        "Çocuk Gastroenterolojisi Akut ve Acil Klinik Durumlar",
+        "Çocuk Gastroenterolojisi Kronik Hastalık Takibi ve Sürveyans",
+        "Çocuk Gastroenterolojisi Minimal İnvaziv ve Girişimsel Yaklaşımlar",
+        "Çocuk Gastroenterolojisi Pediatrik ve Geriyatrik Özel Popülasyonlar",
+        "Çocuk Gastroenterolojisi Biyomarker ve Laboratuvar Tanı Yöntemleri",
+        "Çocuk Gastroenterolojisi Komplikasyon Yönetimi ve Hasta Güvenliği",
+        "Çocuk Gastroenterolojisi Rejeneratif ve Moleküler Tıp Uygulamaları",
+        "Çocuk Gastroenterolojisi Multidisipliner Konsey ve Bakım Yönetimi",
+        "Çocuk Gastroenterolojisi Koruyucu Tıp ve Risk Faktörleri Değerlendirmesi",
+        "Çocuk Gastroenterolojisi Dijital Sağlık ve Tıbbi Teknolojiler",
+        "Çocuk Gastroenterolojisi Rehabitasyon ve Yaşam Kalitesi İyileştirme",
+        "Çocuk Gastroenterolojisi Klinik Araştırmalar ve Kanıta Dayalı Uygulamalar"
+      ],
+      "search_keywords": [
+        "cocuk gastroenterolojisi",
+        "pediatric gastroenterology",
+        "clinical research",
+        "evidence synthesis",
+        "pubmed"
+      ]
+    },
+    {
+      "id": "cocuk_enfeksiyon_hastaliklari",
+      "specialty_name": "Çocuk Enfeksiyon Hastalıkları",
+      "specialty_name_en": "Pediatric Infectious Diseases",
+      "category": "Dahili Tıp Bilimleri",
+      "description": "Çocuklarda görülen çocukluk çağı enfeksiyonları ve aşılamaları yöneten tıp branşı.",
+      "sub_focus_areas": [
+        "Çocuk Enfeksiyon Hastalıkları Temel Tanı Yöntemleri ve Değerlendirme",
+        "Çocuk Enfeksiyon Hastalıkları İleri Tedavi Protokolleri ve İlaç Yönetimi",
+        "Çocuk Enfeksiyon Hastalıkları Akut ve Acil Klinik Durumlar",
+        "Çocuk Enfeksiyon Hastalıkları Kronik Hastalık Takibi ve Sürveyans",
+        "Çocuk Enfeksiyon Hastalıkları Minimal İnvaziv ve Girişimsel Yaklaşımlar",
+        "Çocuk Enfeksiyon Hastalıkları Pediatrik ve Geriyatrik Özel Popülasyonlar",
+        "Çocuk Enfeksiyon Hastalıkları Biyomarker ve Laboratuvar Tanı Yöntemleri",
+        "Çocuk Enfeksiyon Hastalıkları Komplikasyon Yönetimi ve Hasta Güvenliği",
+        "Çocuk Enfeksiyon Hastalıkları Rejeneratif ve Moleküler Tıp Uygulamaları",
+        "Çocuk Enfeksiyon Hastalıkları Multidisipliner Konsey ve Bakım Yönetimi",
+        "Çocuk Enfeksiyon Hastalıkları Koruyucu Tıp ve Risk Faktörleri Değerlendirmesi",
+        "Çocuk Enfeksiyon Hastalıkları Dijital Sağlık ve Tıbbi Teknolojiler",
+        "Çocuk Enfeksiyon Hastalıkları Rehabitasyon ve Yaşam Kalitesi İyileştirme",
+        "Çocuk Enfeksiyon Hastalıkları Klinik Araştırmalar ve Kanıta Dayalı Uygulamalar"
+      ],
+      "search_keywords": [
+        "cocuk enfeksiyon hastaliklari",
+        "pediatric infectious diseases",
+        "clinical research",
+        "evidence synthesis",
+        "pubmed"
+      ]
+    },
+    {
+      "id": "cocuk_gogus_hastaliklari",
+      "specialty_name": "Çocuk Göğüs Hastalıkları",
+      "specialty_name_en": "Pediatric Pulmonology",
+      "category": "Dahili Tıp Bilimleri",
+      "description": "Çocukluk çağı astım, kistik fibrozis ve solunum sistemi rahatsızlıklarını inceler.",
+      "sub_focus_areas": [
+        "Çocuk Göğüs Hastalıkları Temel Tanı Yöntemleri ve Değerlendirme",
+        "Çocuk Göğüs Hastalıkları İleri Tedavi Protokolleri ve İlaç Yönetimi",
+        "Çocuk Göğüs Hastalıkları Akut ve Acil Klinik Durumlar",
+        "Çocuk Göğüs Hastalıkları Kronik Hastalık Takibi ve Sürveyans",
+        "Çocuk Göğüs Hastalıkları Minimal İnvaziv ve Girişimsel Yaklaşımlar",
+        "Çocuk Göğüs Hastalıkları Pediatrik ve Geriyatrik Özel Popülasyonlar",
+        "Çocuk Göğüs Hastalıkları Biyomarker ve Laboratuvar Tanı Yöntemleri",
+        "Çocuk Göğüs Hastalıkları Komplikasyon Yönetimi ve Hasta Güvenliği",
+        "Çocuk Göğüs Hastalıkları Rejeneratif ve Moleküler Tıp Uygulamaları",
+        "Çocuk Göğüs Hastalıkları Multidisipliner Konsey ve Bakım Yönetimi",
+        "Çocuk Göğüs Hastalıkları Koruyucu Tıp ve Risk Faktörleri Değerlendirmesi",
+        "Çocuk Göğüs Hastalıkları Dijital Sağlık ve Tıbbi Teknolojiler",
+        "Çocuk Göğüs Hastalıkları Rehabitasyon ve Yaşam Kalitesi İyileştirme",
+        "Çocuk Göğüs Hastalıkları Klinik Araştırmalar ve Kanıta Dayalı Uygulamalar"
+      ],
+      "search_keywords": [
+        "cocuk gogus hastaliklari",
+        "pediatric pulmonology",
+        "clinical research",
+        "evidence synthesis",
+        "pubmed"
+      ]
+    },
+    {
+      "id": "neonatoloji",
+      "specialty_name": "Neonatoloji (Yenidoğan)",
+      "specialty_name_en": "Neonatology",
+      "category": "Dahili Tıp Bilimleri",
+      "description": "Yenidoğan ve prematüre bebeklerin bakımı, kuvöz takibi ve hastalıklarıyla ilgilenir.",
+      "sub_focus_areas": [
+        "Neonatoloji (Yenidoğan) Temel Tanı Yöntemleri ve Değerlendirme",
+        "Neonatoloji (Yenidoğan) İleri Tedavi Protokolleri ve İlaç Yönetimi",
+        "Neonatoloji (Yenidoğan) Akut ve Acil Klinik Durumlar",
+        "Neonatoloji (Yenidoğan) Kronik Hastalık Takibi ve Sürveyans",
+        "Neonatoloji (Yenidoğan) Minimal İnvaziv ve Girişimsel Yaklaşımlar",
+        "Neonatoloji (Yenidoğan) Pediatrik ve Geriyatrik Özel Popülasyonlar",
+        "Neonatoloji (Yenidoğan) Biyomarker ve Laboratuvar Tanı Yöntemleri",
+        "Neonatoloji (Yenidoğan) Komplikasyon Yönetimi ve Hasta Güvenliği",
+        "Neonatoloji (Yenidoğan) Rejeneratif ve Moleküler Tıp Uygulamaları",
+        "Neonatoloji (Yenidoğan) Multidisipliner Konsey ve Bakım Yönetimi",
+        "Neonatoloji (Yenidoğan) Koruyucu Tıp ve Risk Faktörleri Değerlendirmesi",
+        "Neonatoloji (Yenidoğan) Dijital Sağlık ve Tıbbi Teknolojiler",
+        "Neonatoloji (Yenidoğan) Rehabitasyon ve Yaşam Kalitesi İyileştirme",
+        "Neonatoloji (Yenidoğan) Klinik Araştırmalar ve Kanıta Dayalı Uygulamalar"
+      ],
+      "search_keywords": [
+        "neonatoloji",
+        "neonatology",
+        "clinical research",
+        "evidence synthesis",
+        "pubmed"
+      ]
+    },
+    {
+      "id": "cocuk_ruh_sagligi",
+      "specialty_name": "Çocuk ve Ergen Ruh Sağlığı",
+      "specialty_name_en": "Child and Adolescent Psychiatry",
+      "category": "Dahili Tıp Bilimleri",
+      "description": "Çocuk ve ergenlerde ruhsal, davranışsal ve gelişimsel bozuklukları inceleyen bilim dalı.",
+      "sub_focus_areas": [
+        "Çocuk ve Ergen Ruh Sağlığı Temel Tanı Yöntemleri ve Değerlendirme",
+        "Çocuk ve Ergen Ruh Sağlığı İleri Tedavi Protokolleri ve İlaç Yönetimi",
+        "Çocuk ve Ergen Ruh Sağlığı Akut ve Acil Klinik Durumlar",
+        "Çocuk ve Ergen Ruh Sağlığı Kronik Hastalık Takibi ve Sürveyans",
+        "Çocuk ve Ergen Ruh Sağlığı Minimal İnvaziv ve Girişimsel Yaklaşımlar",
+        "Çocuk ve Ergen Ruh Sağlığı Pediatrik ve Geriyatrik Özel Popülasyonlar",
+        "Çocuk ve Ergen Ruh Sağlığı Biyomarker ve Laboratuvar Tanı Yöntemleri",
+        "Çocuk ve Ergen Ruh Sağlığı Komplikasyon Yönetimi ve Hasta Güvenliği",
+        "Çocuk ve Ergen Ruh Sağlığı Rejeneratif ve Moleküler Tıp Uygulamaları",
+        "Çocuk ve Ergen Ruh Sağlığı Multidisipliner Konsey ve Bakım Yönetimi",
+        "Çocuk ve Ergen Ruh Sağlığı Koruyucu Tıp ve Risk Faktörleri Değerlendirmesi",
+        "Çocuk ve Ergen Ruh Sağlığı Dijital Sağlık ve Tıbbi Teknolojiler",
+        "Çocuk ve Ergen Ruh Sağlığı Rehabitasyon ve Yaşam Kalitesi İyileştirme",
+        "Çocuk ve Ergen Ruh Sağlığı Klinik Araştırmalar ve Kanıta Dayalı Uygulamalar"
+      ],
+      "search_keywords": [
+        "cocuk ruh sagligi",
+        "child and adolescent psychiatry",
+        "clinical research",
+        "evidence synthesis",
+        "pubmed"
+      ]
+    },
+    {
+      "id": "cocuk_acil_tip",
+      "specialty_name": "Çocuk Acil Tıp",
+      "specialty_name_en": "Pediatric Emergency Medicine",
+      "category": "Dahili Tıp Bilimleri",
+      "description": "Çocuk hastaların acil durum değerlendirmesi ve kritik müdahalelerini kapsar.",
+      "sub_focus_areas": [
+        "Çocuk Acil Tıp Temel Tanı Yöntemleri ve Değerlendirme",
+        "Çocuk Acil Tıp İleri Tedavi Protokolleri ve İlaç Yönetimi",
+        "Çocuk Acil Tıp Akut ve Acil Klinik Durumlar",
+        "Çocuk Acil Tıp Kronik Hastalık Takibi ve Sürveyans",
+        "Çocuk Acil Tıp Minimal İnvaziv ve Girişimsel Yaklaşımlar",
+        "Çocuk Acil Tıp Pediatrik ve Geriyatrik Özel Popülasyonlar",
+        "Çocuk Acil Tıp Biyomarker ve Laboratuvar Tanı Yöntemleri",
+        "Çocuk Acil Tıp Komplikasyon Yönetimi ve Hasta Güvenliği",
+        "Çocuk Acil Tıp Rejeneratif ve Moleküler Tıp Uygulamaları",
+        "Çocuk Acil Tıp Multidisipliner Konsey ve Bakım Yönetimi",
+        "Çocuk Acil Tıp Koruyucu Tıp ve Risk Faktörleri Değerlendirmesi",
+        "Çocuk Acil Tıp Dijital Sağlık ve Tıbbi Teknolojiler",
+        "Çocuk Acil Tıp Rehabitasyon ve Yaşam Kalitesi İyileştirme",
+        "Çocuk Acil Tıp Klinik Araştırmalar ve Kanıta Dayalı Uygulamalar"
+      ],
+      "search_keywords": [
+        "cocuk acil tip",
+        "pediatric emergency medicine",
+        "clinical research",
+        "evidence synthesis",
+        "pubmed"
+      ]
+    },
+    {
+      "id": "cocuk_alerji_immunoloji",
+      "specialty_name": "Çocuk Alerji ve İmmünoloji",
+      "specialty_name_en": "Pediatric Allergy and Immunology",
+      "category": "Dahili Tıp Bilimleri",
+      "description": "Çocuklarda besin alerjileri, astım ve bağışıklık yetmezliklerini inceleyen alan.",
+      "sub_focus_areas": [
+        "Çocuk Alerji ve İmmünoloji Temel Tanı Yöntemleri ve Değerlendirme",
+        "Çocuk Alerji ve İmmünoloji İleri Tedavi Protokolleri ve İlaç Yönetimi",
+        "Çocuk Alerji ve İmmünoloji Akut ve Acil Klinik Durumlar",
+        "Çocuk Alerji ve İmmünoloji Kronik Hastalık Takibi ve Sürveyans",
+        "Çocuk Alerji ve İmmünoloji Minimal İnvaziv ve Girişimsel Yaklaşımlar",
+        "Çocuk Alerji ve İmmünoloji Pediatrik ve Geriyatrik Özel Popülasyonlar",
+        "Çocuk Alerji ve İmmünoloji Biyomarker ve Laboratuvar Tanı Yöntemleri",
+        "Çocuk Alerji ve İmmünoloji Komplikasyon Yönetimi ve Hasta Güvenliği",
+        "Çocuk Alerji ve İmmünoloji Rejeneratif ve Moleküler Tıp Uygulamaları",
+        "Çocuk Alerji ve İmmünoloji Multidisipliner Konsey ve Bakım Yönetimi",
+        "Çocuk Alerji ve İmmünoloji Koruyucu Tıp ve Risk Faktörleri Değerlendirmesi",
+        "Çocuk Alerji ve İmmünoloji Dijital Sağlık ve Tıbbi Teknolojiler",
+        "Çocuk Alerji ve İmmünoloji Rehabitasyon ve Yaşam Kalitesi İyileştirme",
+        "Çocuk Alerji ve İmmünoloji Klinik Araştırmalar ve Kanıta Dayalı Uygulamalar"
+      ],
+      "search_keywords": [
+        "cocuk alerji immunoloji",
+        "pediatric allergy and immunology",
+        "clinical research",
+        "evidence synthesis",
+        "pubmed"
+      ]
+    },
+    {
+      "id": "dermatoloji",
+      "specialty_name": "Dermatoloji (Deri ve Zührevi Hastalıklar)",
+      "specialty_name_en": "Dermatology",
+      "category": "Dahili Tıp Bilimleri",
+      "description": "Cilt, saç, tırnak ve mukoza hastalıkları ile zührevi hastalıkların tanı ve tedavisini üstlenir.",
+      "sub_focus_areas": [
+        "Dermatoloji (Deri ve Zührevi Hastalıklar) Temel Tanı Yöntemleri ve Değerlendirme",
+        "Dermatoloji (Deri ve Zührevi Hastalıklar) İleri Tedavi Protokolleri ve İlaç Yönetimi",
+        "Dermatoloji (Deri ve Zührevi Hastalıklar) Akut ve Acil Klinik Durumlar",
+        "Dermatoloji (Deri ve Zührevi Hastalıklar) Kronik Hastalık Takibi ve Sürveyans",
+        "Dermatoloji (Deri ve Zührevi Hastalıklar) Minimal İnvaziv ve Girişimsel Yaklaşımlar",
+        "Dermatoloji (Deri ve Zührevi Hastalıklar) Pediatrik ve Geriyatrik Özel Popülasyonlar",
+        "Dermatoloji (Deri ve Zührevi Hastalıklar) Biyomarker ve Laboratuvar Tanı Yöntemleri",
+        "Dermatoloji (Deri ve Zührevi Hastalıklar) Komplikasyon Yönetimi ve Hasta Güvenliği",
+        "Dermatoloji (Deri ve Zührevi Hastalıklar) Rejeneratif ve Moleküler Tıp Uygulamaları",
+        "Dermatoloji (Deri ve Zührevi Hastalıklar) Multidisipliner Konsey ve Bakım Yönetimi",
+        "Dermatoloji (Deri ve Zührevi Hastalıklar) Koruyucu Tıp ve Risk Faktörleri Değerlendirmesi",
+        "Dermatoloji (Deri ve Zührevi Hastalıklar) Dijital Sağlık ve Tıbbi Teknolojiler",
+        "Dermatoloji (Deri ve Zührevi Hastalıklar) Rehabitasyon ve Yaşam Kalitesi İyileştirme",
+        "Dermatoloji (Deri ve Zührevi Hastalıklar) Klinik Araştırmalar ve Kanıta Dayalı Uygulamalar"
+      ],
+      "search_keywords": [
+        "dermatoloji",
+        "dermatology",
+        "clinical research",
+        "evidence synthesis",
+        "pubmed"
+      ]
+    },
+    {
+      "id": "tibbi_genetik",
+      "specialty_name": "Tıbbi Genetik",
+      "specialty_name_en": "Medical Genetics",
+      "category": "Dahili Tıp Bilimleri",
+      "description": "Kalıtsal hastalıkların moleküler tanısı, genetik danışmanlık ve genomik analizi kapsar.",
+      "sub_focus_areas": [
+        "Tıbbi Genetik Temel Tanı Yöntemleri ve Değerlendirme",
+        "Tıbbi Genetik İleri Tedavi Protokolleri ve İlaç Yönetimi",
+        "Tıbbi Genetik Akut ve Acil Klinik Durumlar",
+        "Tıbbi Genetik Kronik Hastalık Takibi ve Sürveyans",
+        "Tıbbi Genetik Minimal İnvaziv ve Girişimsel Yaklaşımlar",
+        "Tıbbi Genetik Pediatrik ve Geriyatrik Özel Popülasyonlar",
+        "Tıbbi Genetik Biyomarker ve Laboratuvar Tanı Yöntemleri",
+        "Tıbbi Genetik Komplikasyon Yönetimi ve Hasta Güvenliği",
+        "Tıbbi Genetik Rejeneratif ve Moleküler Tıp Uygulamaları",
+        "Tıbbi Genetik Multidisipliner Konsey ve Bakım Yönetimi",
+        "Tıbbi Genetik Koruyucu Tıp ve Risk Faktörleri Değerlendirmesi",
+        "Tıbbi Genetik Dijital Sağlık ve Tıbbi Teknolojiler",
+        "Tıbbi Genetik Rehabitasyon ve Yaşam Kalitesi İyileştirme",
+        "Tıbbi Genetik Klinik Araştırmalar ve Kanıta Dayalı Uygulamalar"
+      ],
+      "search_keywords": [
+        "tibbi genetik",
+        "medical genetics",
+        "clinical research",
+        "evidence synthesis",
+        "pubmed"
+      ]
+    },
+    {
+      "id": "acil_tip",
+      "specialty_name": "Acil Tıp",
+      "specialty_name_en": "Emergency Medicine",
+      "category": "Dahili Tıp Bilimleri",
+      "description": "Akut gelişen hastalık ve yaralanmalarda acil değerlendirme, resüsitasyon ve stabilizasyon sunar.",
+      "sub_focus_areas": [
+        "Acil Tıp Temel Tanı Yöntemleri ve Değerlendirme",
+        "Acil Tıp İleri Tedavi Protokolleri ve İlaç Yönetimi",
+        "Acil Tıp Akut ve Acil Klinik Durumlar",
+        "Acil Tıp Kronik Hastalık Takibi ve Sürveyans",
+        "Acil Tıp Minimal İnvaziv ve Girişimsel Yaklaşımlar",
+        "Acil Tıp Pediatrik ve Geriyatrik Özel Popülasyonlar",
+        "Acil Tıp Biyomarker ve Laboratuvar Tanı Yöntemleri",
+        "Acil Tıp Komplikasyon Yönetimi ve Hasta Güvenliği",
+        "Acil Tıp Rejeneratif ve Moleküler Tıp Uygulamaları",
+        "Acil Tıp Multidisipliner Konsey ve Bakım Yönetimi",
+        "Acil Tıp Koruyucu Tıp ve Risk Faktörleri Değerlendirmesi",
+        "Acil Tıp Dijital Sağlık ve Tıbbi Teknolojiler",
+        "Acil Tıp Rehabitasyon ve Yaşam Kalitesi İyileştirme",
+        "Acil Tıp Klinik Araştırmalar ve Kanıta Dayalı Uygulamalar"
+      ],
+      "search_keywords": [
+        "acil tip",
+        "emergency medicine",
+        "clinical research",
+        "evidence synthesis",
+        "pubmed"
+      ]
+    },
+    {
+      "id": "radyasyon_onkolojisi",
+      "specialty_name": "Radyasyon Onkolojisi",
+      "specialty_name_en": "Radiation Oncology",
+      "category": "Dahili Tıp Bilimleri",
+      "description": "Kanser tedavisinde iyonize radyasyon uygulamaları ve radyoterapi planlamasını yürütür.",
+      "sub_focus_areas": [
+        "Radyasyon Onkolojisi Temel Tanı Yöntemleri ve Değerlendirme",
+        "Radyasyon Onkolojisi İleri Tedavi Protokolleri ve İlaç Yönetimi",
+        "Radyasyon Onkolojisi Akut ve Acil Klinik Durumlar",
+        "Radyasyon Onkolojisi Kronik Hastalık Takibi ve Sürveyans",
+        "Radyasyon Onkolojisi Minimal İnvaziv ve Girişimsel Yaklaşımlar",
+        "Radyasyon Onkolojisi Pediatrik ve Geriyatrik Özel Popülasyonlar",
+        "Radyasyon Onkolojisi Biyomarker ve Laboratuvar Tanı Yöntemleri",
+        "Radyasyon Onkolojisi Komplikasyon Yönetimi ve Hasta Güvenliği",
+        "Radyasyon Onkolojisi Rejeneratif ve Moleküler Tıp Uygulamaları",
+        "Radyasyon Onkolojisi Multidisipliner Konsey ve Bakım Yönetimi",
+        "Radyasyon Onkolojisi Koruyucu Tıp ve Risk Faktörleri Değerlendirmesi",
+        "Radyasyon Onkolojisi Dijital Sağlık ve Tıbbi Teknolojiler",
+        "Radyasyon Onkolojisi Rehabitasyon ve Yaşam Kalitesi İyileştirme",
+        "Radyasyon Onkolojisi Klinik Araştırmalar ve Kanıta Dayalı Uygulamalar"
+      ],
+      "search_keywords": [
+        "radyasyon onkolojisi",
+        "radiation oncology",
+        "clinical research",
+        "evidence synthesis",
+        "pubmed"
+      ]
+    },
+    {
+      "id": "nukleer_tip",
+      "specialty_name": "Nükleer Tıp",
+      "specialty_name_en": "Nuclear Medicine",
+      "category": "Dahili Tıp Bilimleri",
+      "description": "Radyoaktif maddeler kullanılarak moleküler görüntüleme (PET/BT, SPECT) ve radyonüklid tedavi sunar.",
+      "sub_focus_areas": [
+        "Nükleer Tıp Temel Tanı Yöntemleri ve Değerlendirme",
+        "Nükleer Tıp İleri Tedavi Protokolleri ve İlaç Yönetimi",
+        "Nükleer Tıp Akut ve Acil Klinik Durumlar",
+        "Nükleer Tıp Kronik Hastalık Takibi ve Sürveyans",
+        "Nükleer Tıp Minimal İnvaziv ve Girişimsel Yaklaşımlar",
+        "Nükleer Tıp Pediatrik ve Geriyatrik Özel Popülasyonlar",
+        "Nükleer Tıp Biyomarker ve Laboratuvar Tanı Yöntemleri",
+        "Nükleer Tıp Komplikasyon Yönetimi ve Hasta Güvenliği",
+        "Nükleer Tıp Rejeneratif ve Moleküler Tıp Uygulamaları",
+        "Nükleer Tıp Multidisipliner Konsey ve Bakım Yönetimi",
+        "Nükleer Tıp Koruyucu Tıp ve Risk Faktörleri Değerlendirmesi",
+        "Nükleer Tıp Dijital Sağlık ve Tıbbi Teknolojiler",
+        "Nükleer Tıp Rehabitasyon ve Yaşam Kalitesi İyileştirme",
+        "Nükleer Tıp Klinik Araştırmalar ve Kanıta Dayalı Uygulamalar"
+      ],
+      "search_keywords": [
+        "nukleer tip",
+        "nuclear medicine",
+        "clinical research",
+        "evidence synthesis",
+        "pubmed"
+      ]
+    },
+    {
+      "id": "tibbi_farmakoloji",
+      "specialty_name": "Tıbbi Farmakoloji",
+      "specialty_name_en": "Medical Pharmacology",
+      "category": "Dahili Tıp Bilimleri",
+      "description": "İlaçların etki mekanizmaları, toksisitesi, farmakokinetiği ve akılcı ilaç kullanımını inceler.",
+      "sub_focus_areas": [
+        "Tıbbi Farmakoloji Temel Tanı Yöntemleri ve Değerlendirme",
+        "Tıbbi Farmakoloji İleri Tedavi Protokolleri ve İlaç Yönetimi",
+        "Tıbbi Farmakoloji Akut ve Acil Klinik Durumlar",
+        "Tıbbi Farmakoloji Kronik Hastalık Takibi ve Sürveyans",
+        "Tıbbi Farmakoloji Minimal İnvaziv ve Girişimsel Yaklaşımlar",
+        "Tıbbi Farmakoloji Pediatrik ve Geriyatrik Özel Popülasyonlar",
+        "Tıbbi Farmakoloji Biyomarker ve Laboratuvar Tanı Yöntemleri",
+        "Tıbbi Farmakoloji Komplikasyon Yönetimi ve Hasta Güvenliği",
+        "Tıbbi Farmakoloji Rejeneratif ve Moleküler Tıp Uygulamaları",
+        "Tıbbi Farmakoloji Multidisipliner Konsey ve Bakım Yönetimi",
+        "Tıbbi Farmakoloji Koruyucu Tıp ve Risk Faktörleri Değerlendirmesi",
+        "Tıbbi Farmakoloji Dijital Sağlık ve Tıbbi Teknolojiler",
+        "Tıbbi Farmakoloji Rehabitasyon ve Yaşam Kalitesi İyileştirme",
+        "Tıbbi Farmakoloji Klinik Araştırmalar ve Kanıta Dayalı Uygulamalar"
+      ],
+      "search_keywords": [
+        "tibbi farmakoloji",
+        "medical pharmacology",
+        "clinical research",
+        "evidence synthesis",
+        "pubmed"
+      ]
+    },
+    {
+      "id": "genel_cerrahi",
+      "specialty_name": "Genel Cerrahi",
+      "specialty_name_en": "General Surgery",
+      "category": "Cerrahi Tıp Bilimleri",
+      "description": "Karın organları, meme, troid ve yumuşak doku cerrahi hastalıklarının operatif tedavisini üstlenir.",
+      "sub_focus_areas": [
+        "Genel Cerrahi Temel Tanı Yöntemleri ve Değerlendirme",
+        "Genel Cerrahi İleri Tedavi Protokolleri ve İlaç Yönetimi",
+        "Genel Cerrahi Akut ve Acil Klinik Durumlar",
+        "Genel Cerrahi Kronik Hastalık Takibi ve Sürveyans",
+        "Genel Cerrahi Minimal İnvaziv ve Girişimsel Yaklaşımlar",
+        "Genel Cerrahi Pediatrik ve Geriyatrik Özel Popülasyonlar",
+        "Genel Cerrahi Cerrahi ve Operatif Yaklaşımlar",
+        "Genel Cerrahi Komplikasyon Yönetimi ve Hasta Güvenliği",
+        "Genel Cerrahi Rejeneratif ve Moleküler Tıp Uygulamaları",
+        "Genel Cerrahi Multidisipliner Konsey ve Bakım Yönetimi",
+        "Genel Cerrahi Koruyucu Tıp ve Risk Faktörleri Değerlendirmesi",
+        "Genel Cerrahi Dijital Sağlık ve Tıbbi Teknolojiler",
+        "Genel Cerrahi Rehabitasyon ve Yaşam Kalitesi İyileştirme",
+        "Genel Cerrahi Klinik Araştırmalar ve Kanıta Dayalı Uygulamalar"
+      ],
+      "search_keywords": [
+        "genel cerrahi",
+        "general surgery",
+        "clinical research",
+        "evidence synthesis",
+        "pubmed"
+      ]
+    },
+    {
+      "id": "beyin_ve_sinir_cerrahisi",
+      "specialty_name": "Beyin ve Sinir Cerrahisi (Nöroşirürji)",
+      "specialty_name_en": "Neurosurgery",
+      "category": "Cerrahi Tıp Bilimleri",
+      "description": "Beyin, omurilik ve periferik sinir sistemi cerrahi hastalıklarını tedavi eder.",
+      "sub_focus_areas": [
+        "Beyin ve Sinir Cerrahisi (Nöroşirürji) Temel Tanı Yöntemleri ve Değerlendirme",
+        "Beyin ve Sinir Cerrahisi (Nöroşirürji) İleri Tedavi Protokolleri ve İlaç Yönetimi",
+        "Beyin ve Sinir Cerrahisi (Nöroşirürji) Akut ve Acil Klinik Durumlar",
+        "Beyin ve Sinir Cerrahisi (Nöroşirürji) Kronik Hastalık Takibi ve Sürveyans",
+        "Beyin ve Sinir Cerrahisi (Nöroşirürji) Minimal İnvaziv ve Girişimsel Yaklaşımlar",
+        "Beyin ve Sinir Cerrahisi (Nöroşirürji) Pediatrik ve Geriyatrik Özel Popülasyonlar",
+        "Beyin ve Sinir Cerrahisi (Nöroşirürji) Cerrahi ve Operatif Yaklaşımlar",
+        "Beyin ve Sinir Cerrahisi (Nöroşirürji) Komplikasyon Yönetimi ve Hasta Güvenliği",
+        "Beyin ve Sinir Cerrahisi (Nöroşirürji) Rejeneratif ve Moleküler Tıp Uygulamaları",
+        "Beyin ve Sinir Cerrahisi (Nöroşirürji) Multidisipliner Konsey ve Bakım Yönetimi",
+        "Beyin ve Sinir Cerrahisi (Nöroşirürji) Koruyucu Tıp ve Risk Faktörleri Değerlendirmesi",
+        "Beyin ve Sinir Cerrahisi (Nöroşirürji) Dijital Sağlık ve Tıbbi Teknolojiler",
+        "Beyin ve Sinir Cerrahisi (Nöroşirürji) Rehabitasyon ve Yaşam Kalitesi İyileştirme",
+        "Beyin ve Sinir Cerrahisi (Nöroşirürji) Klinik Araştırmalar ve Kanıta Dayalı Uygulamalar"
+      ],
+      "search_keywords": [
+        "beyin ve sinir cerrahisi",
+        "neurosurgery",
+        "clinical research",
+        "evidence synthesis",
+        "pubmed"
+      ]
+    },
+    {
+      "id": "kalp_ve_damar_cerrahisi",
+      "specialty_name": "Kalp ve Damar Cerrahisi",
+      "specialty_name_en": "Cardiovascular Surgery",
+      "category": "Cerrahi Tıp Bilimleri",
+      "description": "Kalp kapakları, koroner arterler ve damar sistemi ameliyatlarını gerçekleştiren cerrahi dal.",
+      "sub_focus_areas": [
+        "Kalp ve Damar Cerrahisi Temel Tanı Yöntemleri ve Değerlendirme",
+        "Kalp ve Damar Cerrahisi İleri Tedavi Protokolleri ve İlaç Yönetimi",
+        "Kalp ve Damar Cerrahisi Akut ve Acil Klinik Durumlar",
+        "Kalp ve Damar Cerrahisi Kronik Hastalık Takibi ve Sürveyans",
+        "Kalp ve Damar Cerrahisi Minimal İnvaziv ve Girişimsel Yaklaşımlar",
+        "Kalp ve Damar Cerrahisi Pediatrik ve Geriyatrik Özel Popülasyonlar",
+        "Kalp ve Damar Cerrahisi Cerrahi ve Operatif Yaklaşımlar",
+        "Kalp ve Damar Cerrahisi Komplikasyon Yönetimi ve Hasta Güvenliği",
+        "Kalp ve Damar Cerrahisi Rejeneratif ve Moleküler Tıp Uygulamaları",
+        "Kalp ve Damar Cerrahisi Multidisipliner Konsey ve Bakım Yönetimi",
+        "Kalp ve Damar Cerrahisi Koruyucu Tıp ve Risk Faktörleri Değerlendirmesi",
+        "Kalp ve Damar Cerrahisi Dijital Sağlık ve Tıbbi Teknolojiler",
+        "Kalp ve Damar Cerrahisi Rehabitasyon ve Yaşam Kalitesi İyileştirme",
+        "Kalp ve Damar Cerrahisi Klinik Araştırmalar ve Kanıta Dayalı Uygulamalar"
+      ],
+      "search_keywords": [
+        "kalp ve damar cerrahisi",
+        "cardiovascular surgery",
+        "clinical research",
+        "evidence synthesis",
+        "pubmed"
+      ]
+    },
+    {
+      "id": "gogus_cerrahisi",
+      "specialty_name": "Göğüs Cerrahisi",
+      "specialty_name_en": "Thoracic Surgery",
+      "category": "Cerrahi Tıp Bilimleri",
+      "description": "Akciğer, plevra, mediastinum ve göğüs duvarı cerrahi müdahalelerini yönetir.",
+      "sub_focus_areas": [
+        "Göğüs Cerrahisi Temel Tanı Yöntemleri ve Değerlendirme",
+        "Göğüs Cerrahisi İleri Tedavi Protokolleri ve İlaç Yönetimi",
+        "Göğüs Cerrahisi Akut ve Acil Klinik Durumlar",
+        "Göğüs Cerrahisi Kronik Hastalık Takibi ve Sürveyans",
+        "Göğüs Cerrahisi Minimal İnvaziv ve Girişimsel Yaklaşımlar",
+        "Göğüs Cerrahisi Pediatrik ve Geriyatrik Özel Popülasyonlar",
+        "Göğüs Cerrahisi Cerrahi ve Operatif Yaklaşımlar",
+        "Göğüs Cerrahisi Komplikasyon Yönetimi ve Hasta Güvenliği",
+        "Göğüs Cerrahisi Rejeneratif ve Moleküler Tıp Uygulamaları",
+        "Göğüs Cerrahisi Multidisipliner Konsey ve Bakım Yönetimi",
+        "Göğüs Cerrahisi Koruyucu Tıp ve Risk Faktörleri Değerlendirmesi",
+        "Göğüs Cerrahisi Dijital Sağlık ve Tıbbi Teknolojiler",
+        "Göğüs Cerrahisi Rehabitasyon ve Yaşam Kalitesi İyileştirme",
+        "Göğüs Cerrahisi Klinik Araştırmalar ve Kanıta Dayalı Uygulamalar"
+      ],
+      "search_keywords": [
+        "gogus cerrahisi",
+        "thoracic surgery",
+        "clinical research",
+        "evidence synthesis",
+        "pubmed"
+      ]
+    },
+    {
+      "id": "ortopedi_ve_travmatoloji",
+      "specialty_name": "Ortopedik ve Travmatoloji",
+      "specialty_name_en": "Orthopedics and Traumatology",
+      "category": "Cerrahi Tıp Bilimleri",
+      "description": "Kas-iskelet sistemi kırıkları, protez cerrahisi ve travmatolojiyi inceler.",
+      "sub_focus_areas": [
+        "Ortopedik ve Travmatoloji Temel Tanı Yöntemleri ve Değerlendirme",
+        "Ortopedik ve Travmatoloji İleri Tedavi Protokolleri ve İlaç Yönetimi",
+        "Ortopedik ve Travmatoloji Akut ve Acil Klinik Durumlar",
+        "Ortopedik ve Travmatoloji Kronik Hastalık Takibi ve Sürveyans",
+        "Ortopedik ve Travmatoloji Minimal İnvaziv ve Girişimsel Yaklaşımlar",
+        "Ortopedik ve Travmatoloji Pediatrik ve Geriyatrik Özel Popülasyonlar",
+        "Ortopedik ve Travmatoloji Cerrahi ve Operatif Yaklaşımlar",
+        "Ortopedik ve Travmatoloji Komplikasyon Yönetimi ve Hasta Güvenliği",
+        "Ortopedik ve Travmatoloji Rejeneratif ve Moleküler Tıp Uygulamaları",
+        "Ortopedik ve Travmatoloji Multidisipliner Konsey ve Bakım Yönetimi",
+        "Ortopedik ve Travmatoloji Koruyucu Tıp ve Risk Faktörleri Değerlendirmesi",
+        "Ortopedik ve Travmatoloji Dijital Sağlık ve Tıbbi Teknolojiler",
+        "Ortopedik ve Travmatoloji Rehabitasyon ve Yaşam Kalitesi İyileştirme",
+        "Ortopedik ve Travmatoloji Klinik Araştırmalar ve Kanıta Dayalı Uygulamalar"
+      ],
+      "search_keywords": [
+        "ortopedi ve travmatoloji",
+        "orthopedics and traumatology",
+        "clinical research",
+        "evidence synthesis",
+        "pubmed"
+      ]
+    },
+    {
+      "id": "kulak_burun_bogaz",
+      "specialty_name": "Kulak Burun Boğaz Hastalıkları (KBB)",
+      "specialty_name_en": "Otorhinolaryngology",
+      "category": "Cerrahi Tıp Bilimleri",
+      "description": "Baş-boyun, kulak, burun ve boğaz hastalıklarının medikal ve cerrahi tedavisini sunar.",
+      "sub_focus_areas": [
+        "Kulak Burun Boğaz Hastalıkları (KBB) Temel Tanı Yöntemleri ve Değerlendirme",
+        "Kulak Burun Boğaz Hastalıkları (KBB) İleri Tedavi Protokolleri ve İlaç Yönetimi",
+        "Kulak Burun Boğaz Hastalıkları (KBB) Akut ve Acil Klinik Durumlar",
+        "Kulak Burun Boğaz Hastalıkları (KBB) Kronik Hastalık Takibi ve Sürveyans",
+        "Kulak Burun Boğaz Hastalıkları (KBB) Minimal İnvaziv ve Girişimsel Yaklaşımlar",
+        "Kulak Burun Boğaz Hastalıkları (KBB) Pediatrik ve Geriyatrik Özel Popülasyonlar",
+        "Kulak Burun Boğaz Hastalıkları (KBB) Cerrahi ve Operatif Yaklaşımlar",
+        "Kulak Burun Boğaz Hastalıkları (KBB) Komplikasyon Yönetimi ve Hasta Güvenliği",
+        "Kulak Burun Boğaz Hastalıkları (KBB) Rejeneratif ve Moleküler Tıp Uygulamaları",
+        "Kulak Burun Boğaz Hastalıkları (KBB) Multidisipliner Konsey ve Bakım Yönetimi",
+        "Kulak Burun Boğaz Hastalıkları (KBB) Koruyucu Tıp ve Risk Faktörleri Değerlendirmesi",
+        "Kulak Burun Boğaz Hastalıkları (KBB) Dijital Sağlık ve Tıbbi Teknolojiler",
+        "Kulak Burun Boğaz Hastalıkları (KBB) Rehabitasyon ve Yaşam Kalitesi İyileştirme",
+        "Kulak Burun Boğaz Hastalıkları (KBB) Klinik Araştırmalar ve Kanıta Dayalı Uygulamalar"
+      ],
+      "search_keywords": [
+        "kulak burun bogaz",
+        "otorhinolaryngology",
+        "clinical research",
+        "evidence synthesis",
+        "pubmed"
+      ]
+    },
+    {
+      "id": "goz_hastaliklari",
+      "specialty_name": "Göz Hastalıkları (Oftalmoloji)",
+      "specialty_name_en": "Ophthalmology",
+      "category": "Cerrahi Tıp Bilimleri",
+      "description": "Göz ve görme yolları hastalıklarının cerrahi ve medikal tedavisini üstlenir.",
+      "sub_focus_areas": [
+        "Göz Hastalıkları (Oftalmoloji) Temel Tanı Yöntemleri ve Değerlendirme",
+        "Göz Hastalıkları (Oftalmoloji) İleri Tedavi Protokolleri ve İlaç Yönetimi",
+        "Göz Hastalıkları (Oftalmoloji) Akut ve Acil Klinik Durumlar",
+        "Göz Hastalıkları (Oftalmoloji) Kronik Hastalık Takibi ve Sürveyans",
+        "Göz Hastalıkları (Oftalmoloji) Minimal İnvaziv ve Girişimsel Yaklaşımlar",
+        "Göz Hastalıkları (Oftalmoloji) Pediatrik ve Geriyatrik Özel Popülasyonlar",
+        "Göz Hastalıkları (Oftalmoloji) Cerrahi ve Operatif Yaklaşımlar",
+        "Göz Hastalıkları (Oftalmoloji) Komplikasyon Yönetimi ve Hasta Güvenliği",
+        "Göz Hastalıkları (Oftalmoloji) Rejeneratif ve Moleküler Tıp Uygulamaları",
+        "Göz Hastalıkları (Oftalmoloji) Multidisipliner Konsey ve Bakım Yönetimi",
+        "Göz Hastalıkları (Oftalmoloji) Koruyucu Tıp ve Risk Faktörleri Değerlendirmesi",
+        "Göz Hastalıkları (Oftalmoloji) Dijital Sağlık ve Tıbbi Teknolojiler",
+        "Göz Hastalıkları (Oftalmoloji) Rehabitasyon ve Yaşam Kalitesi İyileştirme",
+        "Göz Hastalıkları (Oftalmoloji) Klinik Araştırmalar ve Kanıta Dayalı Uygulamalar"
+      ],
+      "search_keywords": [
+        "goz hastaliklari",
+        "ophthalmology",
+        "clinical research",
+        "evidence synthesis",
+        "pubmed"
+      ]
+    },
+    {
+      "id": "uroloji",
+      "specialty_name": "Üroloji",
+      "specialty_name_en": "Urology",
+      "category": "Cerrahi Tıp Bilimleri",
+      "description": "Erkek ve kadın boşaltım sistemi ile erkek üreme organı cerrahi hastalıklarını tedavi eder.",
+      "sub_focus_areas": [
+        "Üroloji Temel Tanı Yöntemleri ve Değerlendirme",
+        "Üroloji İleri Tedavi Protokolleri ve İlaç Yönetimi",
+        "Üroloji Akut ve Acil Klinik Durumlar",
+        "Üroloji Kronik Hastalık Takibi ve Sürveyans",
+        "Üroloji Minimal İnvaziv ve Girişimsel Yaklaşımlar",
+        "Üroloji Pediatrik ve Geriyatrik Özel Popülasyonlar",
+        "Üroloji Cerrahi ve Operatif Yaklaşımlar",
+        "Üroloji Komplikasyon Yönetimi ve Hasta Güvenliği",
+        "Üroloji Rejeneratif ve Moleküler Tıp Uygulamaları",
+        "Üroloji Multidisipliner Konsey ve Bakım Yönetimi",
+        "Üroloji Koruyucu Tıp ve Risk Faktörleri Değerlendirmesi",
+        "Üroloji Dijital Sağlık ve Tıbbi Teknolojiler",
+        "Üroloji Rehabitasyon ve Yaşam Kalitesi İyileştirme",
+        "Üroloji Klinik Araştırmalar ve Kanıta Dayalı Uygulamalar"
+      ],
+      "search_keywords": [
+        "uroloji",
+        "urology",
+        "clinical research",
+        "evidence synthesis",
+        "pubmed"
+      ]
+    },
+    {
+      "id": "kadin_hastaliklari_ve_dogum",
+      "specialty_name": "Kadın Hastalıkları ve Doğum",
+      "specialty_name_en": "Obstetrics and Gynecology",
+      "category": "Cerrahi Tıp Bilimleri",
+      "description": "Gebelik, doğum, jinekolojik cerrahi ve üreme sağlığını kapsayan uzmanlık alanı.",
+      "sub_focus_areas": [
+        "Kadın Hastalıkları ve Doğum Temel Tanı Yöntemleri ve Değerlendirme",
+        "Kadın Hastalıkları ve Doğum İleri Tedavi Protokolleri ve İlaç Yönetimi",
+        "Kadın Hastalıkları ve Doğum Akut ve Acil Klinik Durumlar",
+        "Kadın Hastalıkları ve Doğum Kronik Hastalık Takibi ve Sürveyans",
+        "Kadın Hastalıkları ve Doğum Minimal İnvaziv ve Girişimsel Yaklaşımlar",
+        "Kadın Hastalıkları ve Doğum Pediatrik ve Geriyatrik Özel Popülasyonlar",
+        "Kadın Hastalıkları ve Doğum Cerrahi ve Operatif Yaklaşımlar",
+        "Kadın Hastalıkları ve Doğum Komplikasyon Yönetimi ve Hasta Güvenliği",
+        "Kadın Hastalıkları ve Doğum Rejeneratif ve Moleküler Tıp Uygulamaları",
+        "Kadın Hastalıkları ve Doğum Multidisipliner Konsey ve Bakım Yönetimi",
+        "Kadın Hastalıkları ve Doğum Koruyucu Tıp ve Risk Faktörleri Değerlendirmesi",
+        "Kadın Hastalıkları ve Doğum Dijital Sağlık ve Tıbbi Teknolojiler",
+        "Kadın Hastalıkları ve Doğum Rehabitasyon ve Yaşam Kalitesi İyileştirme",
+        "Kadın Hastalıkları ve Doğum Klinik Araştırmalar ve Kanıta Dayalı Uygulamalar"
+      ],
+      "search_keywords": [
+        "kadin hastaliklari ve dogum",
+        "obstetrics and gynecology",
+        "clinical research",
+        "evidence synthesis",
+        "pubmed"
+      ]
+    },
+    {
+      "id": "plastik_rekonstruktif_cerrahi",
+      "specialty_name": "Plastik, Rekonstrüktif ve Estetik Cerrahi",
+      "specialty_name_en": "Plastic and Reconstructive Surgery",
+      "category": "Cerrahi Tıp Bilimleri",
+      "description": "Doku kayıplarının onarımı, rekonstrüksiyon ve estetik cerrahi müdahaleleri yönetir.",
+      "sub_focus_areas": [
+        "Plastik, Rekonstrüktif ve Estetik Cerrahi Temel Tanı Yöntemleri ve Değerlendirme",
+        "Plastik, Rekonstrüktif ve Estetik Cerrahi İleri Tedavi Protokolleri ve İlaç Yönetimi",
+        "Plastik, Rekonstrüktif ve Estetik Cerrahi Akut ve Acil Klinik Durumlar",
+        "Plastik, Rekonstrüktif ve Estetik Cerrahi Kronik Hastalık Takibi ve Sürveyans",
+        "Plastik, Rekonstrüktif ve Estetik Cerrahi Minimal İnvaziv ve Girişimsel Yaklaşımlar",
+        "Plastik, Rekonstrüktif ve Estetik Cerrahi Pediatrik ve Geriyatrik Özel Popülasyonlar",
+        "Plastik, Rekonstrüktif ve Estetik Cerrahi Cerrahi ve Operatif Yaklaşımlar",
+        "Plastik, Rekonstrüktif ve Estetik Cerrahi Komplikasyon Yönetimi ve Hasta Güvenliği",
+        "Plastik, Rekonstrüktif ve Estetik Cerrahi Rejeneratif ve Moleküler Tıp Uygulamaları",
+        "Plastik, Rekonstrüktif ve Estetik Cerrahi Multidisipliner Konsey ve Bakım Yönetimi",
+        "Plastik, Rekonstrüktif ve Estetik Cerrahi Koruyucu Tıp ve Risk Faktörleri Değerlendirmesi",
+        "Plastik, Rekonstrüktif ve Estetik Cerrahi Dijital Sağlık ve Tıbbi Teknolojiler",
+        "Plastik, Rekonstrüktif ve Estetik Cerrahi Rehabitasyon ve Yaşam Kalitesi İyileştirme",
+        "Plastik, Rekonstrüktif ve Estetik Cerrahi Klinik Araştırmalar ve Kanıta Dayalı Uygulamalar"
+      ],
+      "search_keywords": [
+        "plastik rekonstruktif cerrahi",
+        "plastic and reconstructive surgery",
+        "clinical research",
+        "evidence synthesis",
+        "pubmed"
+      ]
+    },
+    {
+      "id": "cocuk_cerrahisi",
+      "specialty_name": "Çocuk Cerrahisi",
+      "specialty_name_en": "Pediatric Surgery",
+      "category": "Cerrahi Tıp Bilimleri",
+      "description": "Bebek ve çocuklardaki doğumsal ve edinsel cerrahi hastalıkları ameliyat eder.",
+      "sub_focus_areas": [
+        "Çocuk Cerrahisi Temel Tanı Yöntemleri ve Değerlendirme",
+        "Çocuk Cerrahisi İleri Tedavi Protokolleri ve İlaç Yönetimi",
+        "Çocuk Cerrahisi Akut ve Acil Klinik Durumlar",
+        "Çocuk Cerrahisi Kronik Hastalık Takibi ve Sürveyans",
+        "Çocuk Cerrahisi Minimal İnvaziv ve Girişimsel Yaklaşımlar",
+        "Çocuk Cerrahisi Pediatrik ve Geriyatrik Özel Popülasyonlar",
+        "Çocuk Cerrahisi Cerrahi ve Operatif Yaklaşımlar",
+        "Çocuk Cerrahisi Komplikasyon Yönetimi ve Hasta Güvenliği",
+        "Çocuk Cerrahisi Rejeneratif ve Moleküler Tıp Uygulamaları",
+        "Çocuk Cerrahisi Multidisipliner Konsey ve Bakım Yönetimi",
+        "Çocuk Cerrahisi Koruyucu Tıp ve Risk Faktörleri Değerlendirmesi",
+        "Çocuk Cerrahisi Dijital Sağlık ve Tıbbi Teknolojiler",
+        "Çocuk Cerrahisi Rehabitasyon ve Yaşam Kalitesi İyileştirme",
+        "Çocuk Cerrahisi Klinik Araştırmalar ve Kanıta Dayalı Uygulamalar"
+      ],
+      "search_keywords": [
+        "cocuk cerrahisi",
+        "pediatric surgery",
+        "clinical research",
+        "evidence synthesis",
+        "pubmed"
+      ]
+    },
+    {
+      "id": "anesteziyoloji_ve_reanimasyon",
+      "specialty_name": "Anesteziyoloji ve Reanimasyon",
+      "specialty_name_en": "Anesthesiology and Reanimation",
+      "category": "Cerrahi Tıp Bilimleri",
+      "description": "Cerrahi operasyonlarda anestezi yönetimi, ağrı kontrolü ve reanimasyonu üstlenir.",
+      "sub_focus_areas": [
+        "Anesteziyoloji ve Reanimasyon Temel Tanı Yöntemleri ve Değerlendirme",
+        "Anesteziyoloji ve Reanimasyon İleri Tedavi Protokolleri ve İlaç Yönetimi",
+        "Anesteziyoloji ve Reanimasyon Akut ve Acil Klinik Durumlar",
+        "Anesteziyoloji ve Reanimasyon Kronik Hastalık Takibi ve Sürveyans",
+        "Anesteziyoloji ve Reanimasyon Minimal İnvaziv ve Girişimsel Yaklaşımlar",
+        "Anesteziyoloji ve Reanimasyon Pediatrik ve Geriyatrik Özel Popülasyonlar",
+        "Anesteziyoloji ve Reanimasyon Cerrahi ve Operatif Yaklaşımlar",
+        "Anesteziyoloji ve Reanimasyon Komplikasyon Yönetimi ve Hasta Güvenliği",
+        "Anesteziyoloji ve Reanimasyon Rejeneratif ve Moleküler Tıp Uygulamaları",
+        "Anesteziyoloji ve Reanimasyon Multidisipliner Konsey ve Bakım Yönetimi",
+        "Anesteziyoloji ve Reanimasyon Koruyucu Tıp ve Risk Faktörleri Değerlendirmesi",
+        "Anesteziyoloji ve Reanimasyon Dijital Sağlık ve Tıbbi Teknolojiler",
+        "Anesteziyoloji ve Reanimasyon Rehabitasyon ve Yaşam Kalitesi İyileştirme",
+        "Anesteziyoloji ve Reanimasyon Klinik Araştırmalar ve Kanıta Dayalı Uygulamalar"
+      ],
+      "search_keywords": [
+        "anesteziyoloji ve reanimasyon",
+        "anesthesiology and reanimation",
+        "clinical research",
+        "evidence synthesis",
+        "pubmed"
+      ]
+    },
+    {
+      "id": "algoloji",
+      "specialty_name": "Algoloji (Ağrı Bilimi)",
+      "specialty_name_en": "Algology / Pain Medicine",
+      "category": "Cerrahi Tıp Bilimleri",
+      "description": "Kronik ve şiddetli ağrıların invaziv ve medikal yönetimini gerçekleştiren uzmanlık dalı.",
+      "sub_focus_areas": [
+        "Algoloji (Ağrı Bilimi) Temel Tanı Yöntemleri ve Değerlendirme",
+        "Algoloji (Ağrı Bilimi) İleri Tedavi Protokolleri ve İlaç Yönetimi",
+        "Algoloji (Ağrı Bilimi) Akut ve Acil Klinik Durumlar",
+        "Algoloji (Ağrı Bilimi) Kronik Hastalık Takibi ve Sürveyans",
+        "Algoloji (Ağrı Bilimi) Minimal İnvaziv ve Girişimsel Yaklaşımlar",
+        "Algoloji (Ağrı Bilimi) Pediatrik ve Geriyatrik Özel Popülasyonlar",
+        "Algoloji (Ağrı Bilimi) Cerrahi ve Operatif Yaklaşımlar",
+        "Algoloji (Ağrı Bilimi) Komplikasyon Yönetimi ve Hasta Güvenliği",
+        "Algoloji (Ağrı Bilimi) Rejeneratif ve Moleküler Tıp Uygulamaları",
+        "Algoloji (Ağrı Bilimi) Multidisipliner Konsey ve Bakım Yönetimi",
+        "Algoloji (Ağrı Bilimi) Koruyucu Tıp ve Risk Faktörleri Değerlendirmesi",
+        "Algoloji (Ağrı Bilimi) Dijital Sağlık ve Tıbbi Teknolojiler",
+        "Algoloji (Ağrı Bilimi) Rehabitasyon ve Yaşam Kalitesi İyileştirme",
+        "Algoloji (Ağrı Bilimi) Klinik Araştırmalar ve Kanıta Dayalı Uygulamalar"
+      ],
+      "search_keywords": [
+        "algoloji",
+        "algology / pain medicine",
+        "clinical research",
+        "evidence synthesis",
+        "pubmed"
+      ]
+    },
+    {
+      "id": "cerrahi_onkoloji",
+      "specialty_name": "Cerrahi Onkoloji",
+      "specialty_name_en": "Surgical Oncology",
+      "category": "Cerrahi Tıp Bilimleri",
+      "description": "Kötü huylu tümörlerin cerrahi rezeksiyonu ve onkolojik rekonstrüksiyonunu yönetir.",
+      "sub_focus_areas": [
+        "Cerrahi Onkoloji Temel Tanı Yöntemleri ve Değerlendirme",
+        "Cerrahi Onkoloji İleri Tedavi Protokolleri ve İlaç Yönetimi",
+        "Cerrahi Onkoloji Akut ve Acil Klinik Durumlar",
+        "Cerrahi Onkoloji Kronik Hastalık Takibi ve Sürveyans",
+        "Cerrahi Onkoloji Minimal İnvaziv ve Girişimsel Yaklaşımlar",
+        "Cerrahi Onkoloji Pediatrik ve Geriyatrik Özel Popülasyonlar",
+        "Cerrahi Onkoloji Cerrahi ve Operatif Yaklaşımlar",
+        "Cerrahi Onkoloji Komplikasyon Yönetimi ve Hasta Güvenliği",
+        "Cerrahi Onkoloji Rejeneratif ve Moleküler Tıp Uygulamaları",
+        "Cerrahi Onkoloji Multidisipliner Konsey ve Bakım Yönetimi",
+        "Cerrahi Onkoloji Koruyucu Tıp ve Risk Faktörleri Değerlendirmesi",
+        "Cerrahi Onkoloji Dijital Sağlık ve Tıbbi Teknolojiler",
+        "Cerrahi Onkoloji Rehabitasyon ve Yaşam Kalitesi İyileştirme",
+        "Cerrahi Onkoloji Klinik Araştırmalar ve Kanıta Dayalı Uygulamalar"
+      ],
+      "search_keywords": [
+        "cerrahi onkoloji",
+        "surgical oncology",
+        "clinical research",
+        "evidence synthesis",
+        "pubmed"
+      ]
+    },
+    {
+      "id": "vaskuler_cerrahi",
+      "specialty_name": "Vasküler Cerrahi",
+      "specialty_name_en": "Vascular Surgery",
+      "category": "Cerrahi Tıp Bilimleri",
+      "description": "Periferik damar hastalıkları, anevrizma ve varislerin cerrahi ve endovasküler tedavisini yapar.",
+      "sub_focus_areas": [
+        "Vasküler Cerrahi Temel Tanı Yöntemleri ve Değerlendirme",
+        "Vasküler Cerrahi İleri Tedavi Protokolleri ve İlaç Yönetimi",
+        "Vasküler Cerrahi Akut ve Acil Klinik Durumlar",
+        "Vasküler Cerrahi Kronik Hastalık Takibi ve Sürveyans",
+        "Vasküler Cerrahi Minimal İnvaziv ve Girişimsel Yaklaşımlar",
+        "Vasküler Cerrahi Pediatrik ve Geriyatrik Özel Popülasyonlar",
+        "Vasküler Cerrahi Cerrahi ve Operatif Yaklaşımlar",
+        "Vasküler Cerrahi Komplikasyon Yönetimi ve Hasta Güvenliği",
+        "Vasküler Cerrahi Rejeneratif ve Moleküler Tıp Uygulamaları",
+        "Vasküler Cerrahi Multidisipliner Konsey ve Bakım Yönetimi",
+        "Vasküler Cerrahi Koruyucu Tıp ve Risk Faktörleri Değerlendirmesi",
+        "Vasküler Cerrahi Dijital Sağlık ve Tıbbi Teknolojiler",
+        "Vasküler Cerrahi Rehabitasyon ve Yaşam Kalitesi İyileştirme",
+        "Vasküler Cerrahi Klinik Araştırmalar ve Kanıta Dayalı Uygulamalar"
+      ],
+      "search_keywords": [
+        "vaskuler cerrahi",
+        "vascular surgery",
+        "clinical research",
+        "evidence synthesis",
+        "pubmed"
+      ]
+    },
+    {
+      "id": "perinatoloji",
+      "specialty_name": "Perinatoloji (Yüksek Riskli Gebelikler)",
+      "specialty_name_en": "Perinatology / Maternal-Fetal Medicine",
+      "category": "Cerrahi Tıp Bilimleri",
+      "description": "Riskli gebeliklerin fetal ve maternal takibi ile anne-bebek sağlığını korur.",
+      "sub_focus_areas": [
+        "Perinatoloji (Yüksek Riskli Gebelikler) Temel Tanı Yöntemleri ve Değerlendirme",
+        "Perinatoloji (Yüksek Riskli Gebelikler) İleri Tedavi Protokolleri ve İlaç Yönetimi",
+        "Perinatoloji (Yüksek Riskli Gebelikler) Akut ve Acil Klinik Durumlar",
+        "Perinatoloji (Yüksek Riskli Gebelikler) Kronik Hastalık Takibi ve Sürveyans",
+        "Perinatoloji (Yüksek Riskli Gebelikler) Minimal İnvaziv ve Girişimsel Yaklaşımlar",
+        "Perinatoloji (Yüksek Riskli Gebelikler) Pediatrik ve Geriyatrik Özel Popülasyonlar",
+        "Perinatoloji (Yüksek Riskli Gebelikler) Cerrahi ve Operatif Yaklaşımlar",
+        "Perinatoloji (Yüksek Riskli Gebelikler) Komplikasyon Yönetimi ve Hasta Güvenliği",
+        "Perinatoloji (Yüksek Riskli Gebelikler) Rejeneratif ve Moleküler Tıp Uygulamaları",
+        "Perinatoloji (Yüksek Riskli Gebelikler) Multidisipliner Konsey ve Bakım Yönetimi",
+        "Perinatoloji (Yüksek Riskli Gebelikler) Koruyucu Tıp ve Risk Faktörleri Değerlendirmesi",
+        "Perinatoloji (Yüksek Riskli Gebelikler) Dijital Sağlık ve Tıbbi Teknolojiler",
+        "Perinatoloji (Yüksek Riskli Gebelikler) Rehabitasyon ve Yaşam Kalitesi İyileştirme",
+        "Perinatoloji (Yüksek Riskli Gebelikler) Klinik Araştırmalar ve Kanıta Dayalı Uygulamalar"
+      ],
+      "search_keywords": [
+        "perinatoloji",
+        "perinatology / maternal-fetal medicine",
+        "clinical research",
+        "evidence synthesis",
+        "pubmed"
+      ]
+    },
+    {
+      "id": "jinekolojik_onkoloji",
+      "specialty_name": "Jinekolojik Onkoloji Cerrahisi",
+      "specialty_name_en": "Gynecologic Oncology",
+      "category": "Cerrahi Tıp Bilimleri",
+      "description": "Kadın üreme organı kanserlerinin radikal cerrahi tedavisini üstlenen branş.",
+      "sub_focus_areas": [
+        "Jinekolojik Onkoloji Cerrahisi Temel Tanı Yöntemleri ve Değerlendirme",
+        "Jinekolojik Onkoloji Cerrahisi İleri Tedavi Protokolleri ve İlaç Yönetimi",
+        "Jinekolojik Onkoloji Cerrahisi Akut ve Acil Klinik Durumlar",
+        "Jinekolojik Onkoloji Cerrahisi Kronik Hastalık Takibi ve Sürveyans",
+        "Jinekolojik Onkoloji Cerrahisi Minimal İnvaziv ve Girişimsel Yaklaşımlar",
+        "Jinekolojik Onkoloji Cerrahisi Pediatrik ve Geriyatrik Özel Popülasyonlar",
+        "Jinekolojik Onkoloji Cerrahisi Cerrahi ve Operatif Yaklaşımlar",
+        "Jinekolojik Onkoloji Cerrahisi Komplikasyon Yönetimi ve Hasta Güvenliği",
+        "Jinekolojik Onkoloji Cerrahisi Rejeneratif ve Moleküler Tıp Uygulamaları",
+        "Jinekolojik Onkoloji Cerrahisi Multidisipliner Konsey ve Bakım Yönetimi",
+        "Jinekolojik Onkoloji Cerrahisi Koruyucu Tıp ve Risk Faktörleri Değerlendirmesi",
+        "Jinekolojik Onkoloji Cerrahisi Dijital Sağlık ve Tıbbi Teknolojiler",
+        "Jinekolojik Onkoloji Cerrahisi Rehabitasyon ve Yaşam Kalitesi İyileştirme",
+        "Jinekolojik Onkoloji Cerrahisi Klinik Araştırmalar ve Kanıta Dayalı Uygulamalar"
+      ],
+      "search_keywords": [
+        "jinekolojik onkoloji",
+        "gynecologic oncology",
+        "clinical research",
+        "evidence synthesis",
+        "pubmed"
+      ]
+    },
+    {
+      "id": "urojinekoloji",
+      "specialty_name": "Ürojinekoloji",
+      "specialty_name_en": "Urogynecology",
+      "category": "Cerrahi Tıp Bilimleri",
+      "description": "Kadın pelvik taban bozuklukları, idrar kaçırma ve organ sarkmalarının cerrahisini yönetir.",
+      "sub_focus_areas": [
+        "Ürojinekoloji Temel Tanı Yöntemleri ve Değerlendirme",
+        "Ürojinekoloji İleri Tedavi Protokolleri ve İlaç Yönetimi",
+        "Ürojinekoloji Akut ve Acil Klinik Durumlar",
+        "Ürojinekoloji Kronik Hastalık Takibi ve Sürveyans",
+        "Ürojinekoloji Minimal İnvaziv ve Girişimsel Yaklaşımlar",
+        "Ürojinekoloji Pediatrik ve Geriyatrik Özel Popülasyonlar",
+        "Ürojinekoloji Cerrahi ve Operatif Yaklaşımlar",
+        "Ürojinekoloji Komplikasyon Yönetimi ve Hasta Güvenliği",
+        "Ürojinekoloji Rejeneratif ve Moleküler Tıp Uygulamaları",
+        "Ürojinekoloji Multidisipliner Konsey ve Bakım Yönetimi",
+        "Ürojinekoloji Koruyucu Tıp ve Risk Faktörleri Değerlendirmesi",
+        "Ürojinekoloji Dijital Sağlık ve Tıbbi Teknolojiler",
+        "Ürojinekoloji Rehabitasyon ve Yaşam Kalitesi İyileştirme",
+        "Ürojinekoloji Klinik Araştırmalar ve Kanıta Dayalı Uygulamalar"
+      ],
+      "search_keywords": [
+        "urojinekoloji",
+        "urogynecology",
+        "clinical research",
+        "evidence synthesis",
+        "pubmed"
+      ]
+    },
+    {
+      "id": "el_cerrahisi",
+      "specialty_name": "El Cerrahisi",
+      "specialty_name_en": "Hand Surgery",
+      "category": "Cerrahi Tıp Bilimleri",
+      "description": "El, el bileği ve mikrocerrahi gerektiren üst ekstremite yaralanmalarını tedavi eder.",
+      "sub_focus_areas": [
+        "El Cerrahisi Temel Tanı Yöntemleri ve Değerlendirme",
+        "El Cerrahisi İleri Tedavi Protokolleri ve İlaç Yönetimi",
+        "El Cerrahisi Akut ve Acil Klinik Durumlar",
+        "El Cerrahisi Kronik Hastalık Takibi ve Sürveyans",
+        "El Cerrahisi Minimal İnvaziv ve Girişimsel Yaklaşımlar",
+        "El Cerrahisi Pediatrik ve Geriyatrik Özel Popülasyonlar",
+        "El Cerrahisi Cerrahi ve Operatif Yaklaşımlar",
+        "El Cerrahisi Komplikasyon Yönetimi ve Hasta Güvenliği",
+        "El Cerrahisi Rejeneratif ve Moleküler Tıp Uygulamaları",
+        "El Cerrahisi Multidisipliner Konsey ve Bakım Yönetimi",
+        "El Cerrahisi Koruyucu Tıp ve Risk Faktörleri Değerlendirmesi",
+        "El Cerrahisi Dijital Sağlık ve Tıbbi Teknolojiler",
+        "El Cerrahisi Rehabitasyon ve Yaşam Kalitesi İyileştirme",
+        "El Cerrahisi Klinik Araştırmalar ve Kanıta Dayalı Uygulamalar"
+      ],
+      "search_keywords": [
+        "el cerrahisi",
+        "hand surgery",
+        "clinical research",
+        "evidence synthesis",
+        "pubmed"
+      ]
+    },
+    {
+      "id": "cocuk_urolojisi",
+      "specialty_name": "Çocuk Ürolojisi",
+      "specialty_name_en": "Pediatric Urology",
+      "category": "Cerrahi Tıp Bilimleri",
+      "description": "Çocuklarda doğuştan gelen böbrek ve idrar yolu cerrahi anomalilerini düzeltir.",
+      "sub_focus_areas": [
+        "Çocuk Ürolojisi Temel Tanı Yöntemleri ve Değerlendirme",
+        "Çocuk Ürolojisi İleri Tedavi Protokolleri ve İlaç Yönetimi",
+        "Çocuk Ürolojisi Akut ve Acil Klinik Durumlar",
+        "Çocuk Ürolojisi Kronik Hastalık Takibi ve Sürveyans",
+        "Çocuk Ürolojisi Minimal İnvaziv ve Girişimsel Yaklaşımlar",
+        "Çocuk Ürolojisi Pediatrik ve Geriyatrik Özel Popülasyonlar",
+        "Çocuk Ürolojisi Cerrahi ve Operatif Yaklaşımlar",
+        "Çocuk Ürolojisi Komplikasyon Yönetimi ve Hasta Güvenliği",
+        "Çocuk Ürolojisi Rejeneratif ve Moleküler Tıp Uygulamaları",
+        "Çocuk Ürolojisi Multidisipliner Konsey ve Bakım Yönetimi",
+        "Çocuk Ürolojisi Koruyucu Tıp ve Risk Faktörleri Değerlendirmesi",
+        "Çocuk Ürolojisi Dijital Sağlık ve Tıbbi Teknolojiler",
+        "Çocuk Ürolojisi Rehabitasyon ve Yaşam Kalitesi İyileştirme",
+        "Çocuk Ürolojisi Klinik Araştırmalar ve Kanıta Dayalı Uygulamalar"
+      ],
+      "search_keywords": [
+        "cocuk urolojisi",
+        "pediatric urology",
+        "clinical research",
+        "evidence synthesis",
+        "pubmed"
+      ]
+    },
+    {
+      "id": "agiz_dis_cene_cerrahisi",
+      "specialty_name": "Ağız, Diş ve Çene Cerrahisi",
+      "specialty_name_en": "Oral and Maxillofacial Surgery",
+      "category": "Cerrahi Tıp Bilimleri",
+      "description": "Çene kırıkları, tümörleri ve implant cerrahisi uygulamalarını kapsar.",
+      "sub_focus_areas": [
+        "Ağız, Diş ve Çene Cerrahisi Temel Tanı Yöntemleri ve Değerlendirme",
+        "Ağız, Diş ve Çene Cerrahisi İleri Tedavi Protokolleri ve İlaç Yönetimi",
+        "Ağız, Diş ve Çene Cerrahisi Akut ve Acil Klinik Durumlar",
+        "Ağız, Diş ve Çene Cerrahisi Kronik Hastalık Takibi ve Sürveyans",
+        "Ağız, Diş ve Çene Cerrahisi Minimal İnvaziv ve Girişimsel Yaklaşımlar",
+        "Ağız, Diş ve Çene Cerrahisi Pediatrik ve Geriyatrik Özel Popülasyonlar",
+        "Ağız, Diş ve Çene Cerrahisi Cerrahi ve Operatif Yaklaşımlar",
+        "Ağız, Diş ve Çene Cerrahisi Komplikasyon Yönetimi ve Hasta Güvenliği",
+        "Ağız, Diş ve Çene Cerrahisi Rejeneratif ve Moleküler Tıp Uygulamaları",
+        "Ağız, Diş ve Çene Cerrahisi Multidisipliner Konsey ve Bakım Yönetimi",
+        "Ağız, Diş ve Çene Cerrahisi Koruyucu Tıp ve Risk Faktörleri Değerlendirmesi",
+        "Ağız, Diş ve Çene Cerrahisi Dijital Sağlık ve Tıbbi Teknolojiler",
+        "Ağız, Diş ve Çene Cerrahisi Rehabitasyon ve Yaşam Kalitesi İyileştirme",
+        "Ağız, Diş ve Çene Cerrahisi Klinik Araştırmalar ve Kanıta Dayalı Uygulamalar"
+      ],
+      "search_keywords": [
+        "agiz dis cene cerrahisi",
+        "oral and maxillofacial surgery",
+        "clinical research",
+        "evidence synthesis",
+        "pubmed"
+      ]
+    },
+    {
+      "id": "cerrahi_enfeksiyon_travma",
+      "specialty_name": "Cerrahi Enfeksiyon ve Travma Cerrahisi",
+      "specialty_name_en": "Surgical Infection and Trauma Surgery",
+      "category": "Cerrahi Tıp Bilimleri",
+      "description": "Ağır travma hastalarının acil cerrahi müdahalesi ve cerrahi enfeksiyon takibini yapar.",
+      "sub_focus_areas": [
+        "Cerrahi Enfeksiyon ve Travma Cerrahisi Temel Tanı Yöntemleri ve Değerlendirme",
+        "Cerrahi Enfeksiyon ve Travma Cerrahisi İleri Tedavi Protokolleri ve İlaç Yönetimi",
+        "Cerrahi Enfeksiyon ve Travma Cerrahisi Akut ve Acil Klinik Durumlar",
+        "Cerrahi Enfeksiyon ve Travma Cerrahisi Kronik Hastalık Takibi ve Sürveyans",
+        "Cerrahi Enfeksiyon ve Travma Cerrahisi Minimal İnvaziv ve Girişimsel Yaklaşımlar",
+        "Cerrahi Enfeksiyon ve Travma Cerrahisi Pediatrik ve Geriyatrik Özel Popülasyonlar",
+        "Cerrahi Enfeksiyon ve Travma Cerrahisi Cerrahi ve Operatif Yaklaşımlar",
+        "Cerrahi Enfeksiyon ve Travma Cerrahisi Komplikasyon Yönetimi ve Hasta Güvenliği",
+        "Cerrahi Enfeksiyon ve Travma Cerrahisi Rejeneratif ve Moleküler Tıp Uygulamaları",
+        "Cerrahi Enfeksiyon ve Travma Cerrahisi Multidisipliner Konsey ve Bakım Yönetimi",
+        "Cerrahi Enfeksiyon ve Travma Cerrahisi Koruyucu Tıp ve Risk Faktörleri Değerlendirmesi",
+        "Cerrahi Enfeksiyon ve Travma Cerrahisi Dijital Sağlık ve Tıbbi Teknolojiler",
+        "Cerrahi Enfeksiyon ve Travma Cerrahisi Rehabitasyon ve Yaşam Kalitesi İyileştirme",
+        "Cerrahi Enfeksiyon ve Travma Cerrahisi Klinik Araştırmalar ve Kanıta Dayalı Uygulamalar"
+      ],
+      "search_keywords": [
+        "cerrahi enfeksiyon travma",
+        "surgical infection and trauma surgery",
+        "clinical research",
+        "evidence synthesis",
+        "pubmed"
+      ]
+    },
+    {
+      "id": "tibbi_patoloji",
+      "specialty_name": "Tıbbi Patoloji",
+      "specialty_name_en": "Medical Pathology",
+      "category": "Temel Tıp Bilimleri",
+      "description": "Doku ve hücre örneklerinin histopatolojik incelemesiyle hastalık tanısı koyan bilim dalı.",
+      "sub_focus_areas": [
+        "Tıbbi Patoloji Temel Tanı Yöntemleri ve Değerlendirme",
+        "Tıbbi Patoloji İleri Tedavi Protokolleri ve İlaç Yönetimi",
+        "Tıbbi Patoloji Akut ve Acil Klinik Durumlar",
+        "Tıbbi Patoloji Kronik Hastalık Takibi ve Sürveyans",
+        "Tıbbi Patoloji Minimal İnvaziv ve Girişimsel Yaklaşımlar",
+        "Tıbbi Patoloji Pediatrik ve Geriyatrik Özel Popülasyonlar",
+        "Tıbbi Patoloji Biyomarker ve Laboratuvar Tanı Yöntemleri",
+        "Tıbbi Patoloji Komplikasyon Yönetimi ve Hasta Güvenliği",
+        "Tıbbi Patoloji Rejeneratif ve Moleküler Tıp Uygulamaları",
+        "Tıbbi Patoloji Multidisipliner Konsey ve Bakım Yönetimi",
+        "Tıbbi Patoloji Koruyucu Tıp ve Risk Faktörleri Değerlendirmesi",
+        "Tıbbi Patoloji Dijital Sağlık ve Tıbbi Teknolojiler",
+        "Tıbbi Patoloji Rehabitasyon ve Yaşam Kalitesi İyileştirme",
+        "Tıbbi Patoloji Klinik Araştırmalar ve Kanıta Dayalı Uygulamalar"
+      ],
+      "search_keywords": [
+        "tibbi patoloji",
+        "medical pathology",
+        "clinical research",
+        "evidence synthesis",
+        "pubmed"
+      ]
+    },
+    {
+      "id": "tibbi_biyokimya",
+      "specialty_name": "Tıbbi Biyokimya",
+      "specialty_name_en": "Medical Biochemistry",
+      "category": "Temel Tıp Bilimleri",
+      "description": "Vücut sıvılarındaki biyokimyasal parametrelerin analizi ve laboratuvar tanısını kapsar.",
+      "sub_focus_areas": [
+        "Tıbbi Biyokimya Temel Tanı Yöntemleri ve Değerlendirme",
+        "Tıbbi Biyokimya İleri Tedavi Protokolleri ve İlaç Yönetimi",
+        "Tıbbi Biyokimya Akut ve Acil Klinik Durumlar",
+        "Tıbbi Biyokimya Kronik Hastalık Takibi ve Sürveyans",
+        "Tıbbi Biyokimya Minimal İnvaziv ve Girişimsel Yaklaşımlar",
+        "Tıbbi Biyokimya Pediatrik ve Geriyatrik Özel Popülasyonlar",
+        "Tıbbi Biyokimya Biyomarker ve Laboratuvar Tanı Yöntemleri",
+        "Tıbbi Biyokimya Komplikasyon Yönetimi ve Hasta Güvenliği",
+        "Tıbbi Biyokimya Rejeneratif ve Moleküler Tıp Uygulamaları",
+        "Tıbbi Biyokimya Multidisipliner Konsey ve Bakım Yönetimi",
+        "Tıbbi Biyokimya Koruyucu Tıp ve Risk Faktörleri Değerlendirmesi",
+        "Tıbbi Biyokimya Dijital Sağlık ve Tıbbi Teknolojiler",
+        "Tıbbi Biyokimya Rehabitasyon ve Yaşam Kalitesi İyileştirme",
+        "Tıbbi Biyokimya Klinik Araştırmalar ve Kanıta Dayalı Uygulamalar"
+      ],
+      "search_keywords": [
+        "tibbi biyokimya",
+        "medical biochemistry",
+        "clinical research",
+        "evidence synthesis",
+        "pubmed"
+      ]
+    },
+    {
+      "id": "tibbi_mikrobiyoloji",
+      "specialty_name": "Tıbbi Mikrobiyoloji",
+      "specialty_name_en": "Medical Microbiology",
+      "category": "Temel Tıp Bilimleri",
+      "description": "Patojen mikroorganizmaların izolasyonu, tiplendirilmesi ve antibiyotik duyarlılık testlerini yürütür.",
+      "sub_focus_areas": [
+        "Tıbbi Mikrobiyoloji Temel Tanı Yöntemleri ve Değerlendirme",
+        "Tıbbi Mikrobiyoloji İleri Tedavi Protokolleri ve İlaç Yönetimi",
+        "Tıbbi Mikrobiyoloji Akut ve Acil Klinik Durumlar",
+        "Tıbbi Mikrobiyoloji Kronik Hastalık Takibi ve Sürveyans",
+        "Tıbbi Mikrobiyoloji Minimal İnvaziv ve Girişimsel Yaklaşımlar",
+        "Tıbbi Mikrobiyoloji Pediatrik ve Geriyatrik Özel Popülasyonlar",
+        "Tıbbi Mikrobiyoloji Biyomarker ve Laboratuvar Tanı Yöntemleri",
+        "Tıbbi Mikrobiyoloji Komplikasyon Yönetimi ve Hasta Güvenliği",
+        "Tıbbi Mikrobiyoloji Rejeneratif ve Moleküler Tıp Uygulamaları",
+        "Tıbbi Mikrobiyoloji Multidisipliner Konsey ve Bakım Yönetimi",
+        "Tıbbi Mikrobiyoloji Koruyucu Tıp ve Risk Faktörleri Değerlendirmesi",
+        "Tıbbi Mikrobiyoloji Dijital Sağlık ve Tıbbi Teknolojiler",
+        "Tıbbi Mikrobiyoloji Rehabitasyon ve Yaşam Kalitesi İyileştirme",
+        "Tıbbi Mikrobiyoloji Klinik Araştırmalar ve Kanıta Dayalı Uygulamalar"
+      ],
+      "search_keywords": [
+        "tibbi mikrobiyoloji",
+        "medical microbiology",
+        "clinical research",
+        "evidence synthesis",
+        "pubmed"
+      ]
+    },
+    {
+      "id": "anatomi",
+      "specialty_name": "Anatomi",
+      "specialty_name_en": "Anatomy",
+      "category": "Temel Tıp Bilimleri",
+      "description": "İnsan vücudunun normal yapısı, organ ilişkileri ve kadavra anatomisini inceleyen ana bilim dalı.",
+      "sub_focus_areas": [
+        "Anatomi Temel Tanı Yöntemleri ve Değerlendirme",
+        "Anatomi İleri Tedavi Protokolleri ve İlaç Yönetimi",
+        "Anatomi Akut ve Acil Klinik Durumlar",
+        "Anatomi Kronik Hastalık Takibi ve Sürveyans",
+        "Anatomi Minimal İnvaziv ve Girişimsel Yaklaşımlar",
+        "Anatomi Pediatrik ve Geriyatrik Özel Popülasyonlar",
+        "Anatomi Biyomarker ve Laboratuvar Tanı Yöntemleri",
+        "Anatomi Komplikasyon Yönetimi ve Hasta Güvenliği",
+        "Anatomi Rejeneratif ve Moleküler Tıp Uygulamaları",
+        "Anatomi Multidisipliner Konsey ve Bakım Yönetimi",
+        "Anatomi Koruyucu Tıp ve Risk Faktörleri Değerlendirmesi",
+        "Anatomi Dijital Sağlık ve Tıbbi Teknolojiler",
+        "Anatomi Rehabitasyon ve Yaşam Kalitesi İyileştirme",
+        "Anatomi Klinik Araştırmalar ve Kanıta Dayalı Uygulamalar"
+      ],
+      "search_keywords": [
+        "anatomi",
+        "anatomy",
+        "clinical research",
+        "evidence synthesis",
+        "pubmed"
+      ]
+    },
+    {
+      "id": "histoloji_ve_embriyoloji",
+      "specialty_name": "Histoloji ve Embriyoloji",
+      "specialty_name_en": "Histology and Embryology",
+      "category": "Temel Tıp Bilimleri",
+      "description": "Doku mikroyapıları ve doğum öncesi embriyonik gelişim evrelerini inceleyen bilim branşı.",
+      "sub_focus_areas": [
+        "Histoloji ve Embriyoloji Temel Tanı Yöntemleri ve Değerlendirme",
+        "Histoloji ve Embriyoloji İleri Tedavi Protokolleri ve İlaç Yönetimi",
+        "Histoloji ve Embriyoloji Akut ve Acil Klinik Durumlar",
+        "Histoloji ve Embriyoloji Kronik Hastalık Takibi ve Sürveyans",
+        "Histoloji ve Embriyoloji Minimal İnvaziv ve Girişimsel Yaklaşımlar",
+        "Histoloji ve Embriyoloji Pediatrik ve Geriyatrik Özel Popülasyonlar",
+        "Histoloji ve Embriyoloji Biyomarker ve Laboratuvar Tanı Yöntemleri",
+        "Histoloji ve Embriyoloji Komplikasyon Yönetimi ve Hasta Güvenliği",
+        "Histoloji ve Embriyoloji Rejeneratif ve Moleküler Tıp Uygulamaları",
+        "Histoloji ve Embriyoloji Multidisipliner Konsey ve Bakım Yönetimi",
+        "Histoloji ve Embriyoloji Koruyucu Tıp ve Risk Faktörleri Değerlendirmesi",
+        "Histoloji ve Embriyoloji Dijital Sağlık ve Tıbbi Teknolojiler",
+        "Histoloji ve Embriyoloji Rehabitasyon ve Yaşam Kalitesi İyileştirme",
+        "Histoloji ve Embriyoloji Klinik Araştırmalar ve Kanıta Dayalı Uygulamalar"
+      ],
+      "search_keywords": [
+        "histoloji ve embriyoloji",
+        "histology and embryology",
+        "clinical research",
+        "evidence synthesis",
+        "pubmed"
+      ]
+    },
+    {
+      "id": "tibbi_biyoloji",
+      "specialty_name": "Tıbbi Biyoloji",
+      "specialty_name_en": "Medical Biology",
+      "category": "Temel Tıp Bilimleri",
+      "description": "Hücresel mekanizmalar, moleküler biyoloji ve gen ekspresyonlarını tıp perspektifinden inceler.",
+      "sub_focus_areas": [
+        "Tıbbi Biyoloji Temel Tanı Yöntemleri ve Değerlendirme",
+        "Tıbbi Biyoloji İleri Tedavi Protokolleri ve İlaç Yönetimi",
+        "Tıbbi Biyoloji Akut ve Acil Klinik Durumlar",
+        "Tıbbi Biyoloji Kronik Hastalık Takibi ve Sürveyans",
+        "Tıbbi Biyoloji Minimal İnvaziv ve Girişimsel Yaklaşımlar",
+        "Tıbbi Biyoloji Pediatrik ve Geriyatrik Özel Popülasyonlar",
+        "Tıbbi Biyoloji Biyomarker ve Laboratuvar Tanı Yöntemleri",
+        "Tıbbi Biyoloji Komplikasyon Yönetimi ve Hasta Güvenliği",
+        "Tıbbi Biyoloji Rejeneratif ve Moleküler Tıp Uygulamaları",
+        "Tıbbi Biyoloji Multidisipliner Konsey ve Bakım Yönetimi",
+        "Tıbbi Biyoloji Koruyucu Tıp ve Risk Faktörleri Değerlendirmesi",
+        "Tıbbi Biyoloji Dijital Sağlık ve Tıbbi Teknolojiler",
+        "Tıbbi Biyoloji Rehabitasyon ve Yaşam Kalitesi İyileştirme",
+        "Tıbbi Biyoloji Klinik Araştırmalar ve Kanıta Dayalı Uygulamalar"
+      ],
+      "search_keywords": [
+        "tibbi biyoloji",
+        "medical biology",
+        "clinical research",
+        "evidence synthesis",
+        "pubmed"
+      ]
+    },
+    {
+      "id": "fizyoloji",
+      "specialty_name": "Fizyoloji",
+      "specialty_name_en": "Physiology",
+      "category": "Temel Tıp Bilimleri",
+      "description": "İnsan vücudu organ ve sistemlerinin normal çalışma mekanizmalarını araştırır.",
+      "sub_focus_areas": [
+        "Fizyoloji Temel Tanı Yöntemleri ve Değerlendirme",
+        "Fizyoloji İleri Tedavi Protokolleri ve İlaç Yönetimi",
+        "Fizyoloji Akut ve Acil Klinik Durumlar",
+        "Fizyoloji Kronik Hastalık Takibi ve Sürveyans",
+        "Fizyoloji Minimal İnvaziv ve Girişimsel Yaklaşımlar",
+        "Fizyoloji Pediatrik ve Geriyatrik Özel Popülasyonlar",
+        "Fizyoloji Biyomarker ve Laboratuvar Tanı Yöntemleri",
+        "Fizyoloji Komplikasyon Yönetimi ve Hasta Güvenliği",
+        "Fizyoloji Rejeneratif ve Moleküler Tıp Uygulamaları",
+        "Fizyoloji Multidisipliner Konsey ve Bakım Yönetimi",
+        "Fizyoloji Koruyucu Tıp ve Risk Faktörleri Değerlendirmesi",
+        "Fizyoloji Dijital Sağlık ve Tıbbi Teknolojiler",
+        "Fizyoloji Rehabitasyon ve Yaşam Kalitesi İyileştirme",
+        "Fizyoloji Klinik Araştırmalar ve Kanıta Dayalı Uygulamalar"
+      ],
+      "search_keywords": [
+        "fizyoloji",
+        "physiology",
+        "clinical research",
+        "evidence synthesis",
+        "pubmed"
+      ]
+    },
+    {
+      "id": "tibbi_parazitoloji",
+      "specialty_name": "Tıbbi Parazitoloji",
+      "specialty_name_en": "Medical Parasitology",
+      "category": "Temel Tıp Bilimleri",
+      "description": "İnsanda hastalık yapan parazitlerin biyolojisi, tanısı ve tedavisini inceleyen bilim alanı.",
+      "sub_focus_areas": [
+        "Tıbbi Parazitoloji Temel Tanı Yöntemleri ve Değerlendirme",
+        "Tıbbi Parazitoloji İleri Tedavi Protokolleri ve İlaç Yönetimi",
+        "Tıbbi Parazitoloji Akut ve Acil Klinik Durumlar",
+        "Tıbbi Parazitoloji Kronik Hastalık Takibi ve Sürveyans",
+        "Tıbbi Parazitoloji Minimal İnvaziv ve Girişimsel Yaklaşımlar",
+        "Tıbbi Parazitoloji Pediatrik ve Geriyatrik Özel Popülasyonlar",
+        "Tıbbi Parazitoloji Biyomarker ve Laboratuvar Tanı Yöntemleri",
+        "Tıbbi Parazitoloji Komplikasyon Yönetimi ve Hasta Güvenliği",
+        "Tıbbi Parazitoloji Rejeneratif ve Moleküler Tıp Uygulamaları",
+        "Tıbbi Parazitoloji Multidisipliner Konsey ve Bakım Yönetimi",
+        "Tıbbi Parazitoloji Koruyucu Tıp ve Risk Faktörleri Değerlendirmesi",
+        "Tıbbi Parazitoloji Dijital Sağlık ve Tıbbi Teknolojiler",
+        "Tıbbi Parazitoloji Rehabitasyon ve Yaşam Kalitesi İyileştirme",
+        "Tıbbi Parazitoloji Klinik Araştırmalar ve Kanıta Dayalı Uygulamalar"
+      ],
+      "search_keywords": [
+        "tibbi parazitoloji",
+        "medical parasitology",
+        "clinical research",
+        "evidence synthesis",
+        "pubmed"
+      ]
+    },
+    {
+      "id": "tip_tarihi_ve_etik",
+      "specialty_name": "Tıp Tarihi ve Etik",
+      "specialty_name_en": "History of Medicine and Ethics",
+      "category": "Temel Tıp Bilimleri",
+      "description": "Tıp tarihi, deontoloji, bioetik ve klinik araştırma etiği ilkesini inceler.",
+      "sub_focus_areas": [
+        "Tıp Tarihi ve Etik Temel Tanı Yöntemleri ve Değerlendirme",
+        "Tıp Tarihi ve Etik İleri Tedavi Protokolleri ve İlaç Yönetimi",
+        "Tıp Tarihi ve Etik Akut ve Acil Klinik Durumlar",
+        "Tıp Tarihi ve Etik Kronik Hastalık Takibi ve Sürveyans",
+        "Tıp Tarihi ve Etik Minimal İnvaziv ve Girişimsel Yaklaşımlar",
+        "Tıp Tarihi ve Etik Pediatrik ve Geriyatrik Özel Popülasyonlar",
+        "Tıp Tarihi ve Etik Biyomarker ve Laboratuvar Tanı Yöntemleri",
+        "Tıp Tarihi ve Etik Komplikasyon Yönetimi ve Hasta Güvenliği",
+        "Tıp Tarihi ve Etik Rejeneratif ve Moleküler Tıp Uygulamaları",
+        "Tıp Tarihi ve Etik Multidisipliner Konsey ve Bakım Yönetimi",
+        "Tıp Tarihi ve Etik Koruyucu Tıp ve Risk Faktörleri Değerlendirmesi",
+        "Tıp Tarihi ve Etik Dijital Sağlık ve Tıbbi Teknolojiler",
+        "Tıp Tarihi ve Etik Rehabitasyon ve Yaşam Kalitesi İyileştirme",
+        "Tıp Tarihi ve Etik Klinik Araştırmalar ve Kanıta Dayalı Uygulamalar"
+      ],
+      "search_keywords": [
+        "tip tarihi ve etik",
+        "history of medicine and ethics",
+        "clinical research",
+        "evidence synthesis",
+        "pubmed"
+      ]
+    },
+    {
+      "id": "biyoistatistik_ve_tibbi_bilisim",
+      "specialty_name": "Biyoistatistik ve Tıbbi Bilişim",
+      "specialty_name_en": "Biostatistics and Medical Informatics",
+      "category": "Temel Tıp Bilimleri",
+      "description": "Sağlık verilerinin istatistiksel analizi, tıbbi yapay zeka ve sağlık bilişim sistemlerini geliştirir.",
+      "sub_focus_areas": [
+        "Biyoistatistik ve Tıbbi Bilişim Temel Tanı Yöntemleri ve Değerlendirme",
+        "Biyoistatistik ve Tıbbi Bilişim İleri Tedavi Protokolleri ve İlaç Yönetimi",
+        "Biyoistatistik ve Tıbbi Bilişim Akut ve Acil Klinik Durumlar",
+        "Biyoistatistik ve Tıbbi Bilişim Kronik Hastalık Takibi ve Sürveyans",
+        "Biyoistatistik ve Tıbbi Bilişim Minimal İnvaziv ve Girişimsel Yaklaşımlar",
+        "Biyoistatistik ve Tıbbi Bilişim Pediatrik ve Geriyatrik Özel Popülasyonlar",
+        "Biyoistatistik ve Tıbbi Bilişim Biyomarker ve Laboratuvar Tanı Yöntemleri",
+        "Biyoistatistik ve Tıbbi Bilişim Komplikasyon Yönetimi ve Hasta Güvenliği",
+        "Biyoistatistik ve Tıbbi Bilişim Rejeneratif ve Moleküler Tıp Uygulamaları",
+        "Biyoistatistik ve Tıbbi Bilişim Multidisipliner Konsey ve Bakım Yönetimi",
+        "Biyoistatistik ve Tıbbi Bilişim Koruyucu Tıp ve Risk Faktörleri Değerlendirmesi",
+        "Biyoistatistik ve Tıbbi Bilişim Dijital Sağlık ve Tıbbi Teknolojiler",
+        "Biyoistatistik ve Tıbbi Bilişim Rehabitasyon ve Yaşam Kalitesi İyileştirme",
+        "Biyoistatistik ve Tıbbi Bilişim Klinik Araştırmalar ve Kanıta Dayalı Uygulamalar"
+      ],
+      "search_keywords": [
+        "biyoistatistik ve tibbi bilisim",
+        "biostatistics and medical informatics",
+        "clinical research",
+        "evidence synthesis",
+        "pubmed"
+      ]
+    },
+    {
+      "id": "immunoloji_temel",
+      "specialty_name": "Temel İmmünoloji",
+      "specialty_name_en": "Basic Immunology",
+      "category": "Temel Tıp Bilimleri",
+      "description": "Bağışıklık hücrelerinin hücresel ve moleküler çalışma prensiplerini araştırır.",
+      "sub_focus_areas": [
+        "Temel İmmünoloji Temel Tanı Yöntemleri ve Değerlendirme",
+        "Temel İmmünoloji İleri Tedavi Protokolleri ve İlaç Yönetimi",
+        "Temel İmmünoloji Akut ve Acil Klinik Durumlar",
+        "Temel İmmünoloji Kronik Hastalık Takibi ve Sürveyans",
+        "Temel İmmünoloji Minimal İnvaziv ve Girişimsel Yaklaşımlar",
+        "Temel İmmünoloji Pediatrik ve Geriyatrik Özel Popülasyonlar",
+        "Temel İmmünoloji Biyomarker ve Laboratuvar Tanı Yöntemleri",
+        "Temel İmmünoloji Komplikasyon Yönetimi ve Hasta Güvenliği",
+        "Temel İmmünoloji Rejeneratif ve Moleküler Tıp Uygulamaları",
+        "Temel İmmünoloji Multidisipliner Konsey ve Bakım Yönetimi",
+        "Temel İmmünoloji Koruyucu Tıp ve Risk Faktörleri Değerlendirmesi",
+        "Temel İmmünoloji Dijital Sağlık ve Tıbbi Teknolojiler",
+        "Temel İmmünoloji Rehabitasyon ve Yaşam Kalitesi İyileştirme",
+        "Temel İmmünoloji Klinik Araştırmalar ve Kanıta Dayalı Uygulamalar"
+      ],
+      "search_keywords": [
+        "immunoloji temel",
+        "basic immunology",
+        "clinical research",
+        "evidence synthesis",
+        "pubmed"
+      ]
+    },
+    {
+      "id": "biyofizik",
+      "specialty_name": "Biyofizik",
+      "specialty_name_en": "Biophysics",
+      "category": "Temel Tıp Bilimleri",
+      "description": "Biyolojik sistemlerdeki fiziksel prensipleri, zar potansiyellerini ve tıbbi görüntüleme fiziğini inceler.",
+      "sub_focus_areas": [
+        "Biyofizik Temel Tanı Yöntemleri ve Değerlendirme",
+        "Biyofizik İleri Tedavi Protokolleri ve İlaç Yönetimi",
+        "Biyofizik Akut ve Acil Klinik Durumlar",
+        "Biyofizik Kronik Hastalık Takibi ve Sürveyans",
+        "Biyofizik Minimal İnvaziv ve Girişimsel Yaklaşımlar",
+        "Biyofizik Pediatrik ve Geriyatrik Özel Popülasyonlar",
+        "Biyofizik Biyomarker ve Laboratuvar Tanı Yöntemleri",
+        "Biyofizik Komplikasyon Yönetimi ve Hasta Güvenliği",
+        "Biyofizik Rejeneratif ve Moleküler Tıp Uygulamaları",
+        "Biyofizik Multidisipliner Konsey ve Bakım Yönetimi",
+        "Biyofizik Koruyucu Tıp ve Risk Faktörleri Değerlendirmesi",
+        "Biyofizik Dijital Sağlık ve Tıbbi Teknolojiler",
+        "Biyofizik Rehabitasyon ve Yaşam Kalitesi İyileştirme",
+        "Biyofizik Klinik Araştırmalar ve Kanıta Dayalı Uygulamalar"
+      ],
+      "search_keywords": [
+        "biyofizik",
+        "biophysics",
+        "clinical research",
+        "evidence synthesis",
+        "pubmed"
+      ]
+    },
+    {
+      "id": "halk_sagligi",
+      "specialty_name": "Halk Sağlığı",
+      "specialty_name_en": "Public Health",
+      "category": "Halk Sağlığı ve Önleyici Tıp",
+      "description": "Toplum sağlığının korunması, koruyucu hekimlik ve sağlık politikalarını yürütür.",
+      "sub_focus_areas": [
+        "Halk Sağlığı Temel Tanı Yöntemleri ve Değerlendirme",
+        "Halk Sağlığı İleri Tedavi Protokolleri ve İlaç Yönetimi",
+        "Halk Sağlığı Akut ve Acil Klinik Durumlar",
+        "Halk Sağlığı Kronik Hastalık Takibi ve Sürveyans",
+        "Halk Sağlığı Minimal İnvaziv ve Girişimsel Yaklaşımlar",
+        "Halk Sağlığı Pediatrik ve Geriyatrik Özel Popülasyonlar",
+        "Halk Sağlığı Biyomarker ve Laboratuvar Tanı Yöntemleri",
+        "Halk Sağlığı Komplikasyon Yönetimi ve Hasta Güvenliği",
+        "Halk Sağlığı Rejeneratif ve Moleküler Tıp Uygulamaları",
+        "Halk Sağlığı Multidisipliner Konsey ve Bakım Yönetimi",
+        "Halk Sağlığı Koruyucu Tıp ve Risk Faktörleri Değerlendirmesi",
+        "Halk Sağlığı Dijital Sağlık ve Tıbbi Teknolojiler",
+        "Halk Sağlığı Rehabitasyon ve Yaşam Kalitesi İyileştirme",
+        "Halk Sağlığı Klinik Araştırmalar ve Kanıta Dayalı Uygulamalar"
+      ],
+      "search_keywords": [
+        "halk sagligi",
+        "public health",
+        "clinical research",
+        "evidence synthesis",
+        "pubmed"
+      ]
+    },
+    {
+      "id": "epidemiyoloji",
+      "specialty_name": "Epidemiyoloji",
+      "specialty_name_en": "Epidemiology",
+      "category": "Halk Sağlığı ve Önleyici Tıp",
+      "description": "Hastalıkların toplumdaki dağılımı, nedenleri ve salgın kontrol yöntemlerini inceler.",
+      "sub_focus_areas": [
+        "Epidemiyoloji Temel Tanı Yöntemleri ve Değerlendirme",
+        "Epidemiyoloji İleri Tedavi Protokolleri ve İlaç Yönetimi",
+        "Epidemiyoloji Akut ve Acil Klinik Durumlar",
+        "Epidemiyoloji Kronik Hastalık Takibi ve Sürveyans",
+        "Epidemiyoloji Minimal İnvaziv ve Girişimsel Yaklaşımlar",
+        "Epidemiyoloji Pediatrik ve Geriyatrik Özel Popülasyonlar",
+        "Epidemiyoloji Biyomarker ve Laboratuvar Tanı Yöntemleri",
+        "Epidemiyoloji Komplikasyon Yönetimi ve Hasta Güvenliği",
+        "Epidemiyoloji Rejeneratif ve Moleküler Tıp Uygulamaları",
+        "Epidemiyoloji Multidisipliner Konsey ve Bakım Yönetimi",
+        "Epidemiyoloji Koruyucu Tıp ve Risk Faktörleri Değerlendirmesi",
+        "Epidemiyoloji Dijital Sağlık ve Tıbbi Teknolojiler",
+        "Epidemiyoloji Rehabitasyon ve Yaşam Kalitesi İyileştirme",
+        "Epidemiyoloji Klinik Araştırmalar ve Kanıta Dayalı Uygulamalar"
+      ],
+      "search_keywords": [
+        "epidemiyoloji",
+        "epidemiology",
+        "clinical research",
+        "evidence synthesis",
+        "pubmed"
+      ]
+    },
+    {
+      "id": "cevre_ve_meslek_sagligi",
+      "specialty_name": "Çevre ve Meslek Sağlığı",
+      "specialty_name_en": "Environmental and Occupational Health",
+      "category": "Halk Sağlığı ve Önleyici Tıp",
+      "description": "İşyeri ortamı riskleri, meslek hastalıkları ve çevresel faktörlerin sağlığa etkilerini inceler.",
+      "sub_focus_areas": [
+        "Çevre ve Meslek Sağlığı Temel Tanı Yöntemleri ve Değerlendirme",
+        "Çevre ve Meslek Sağlığı İleri Tedavi Protokolleri ve İlaç Yönetimi",
+        "Çevre ve Meslek Sağlığı Akut ve Acil Klinik Durumlar",
+        "Çevre ve Meslek Sağlığı Kronik Hastalık Takibi ve Sürveyans",
+        "Çevre ve Meslek Sağlığı Minimal İnvaziv ve Girişimsel Yaklaşımlar",
+        "Çevre ve Meslek Sağlığı Pediatrik ve Geriyatrik Özel Popülasyonlar",
+        "Çevre ve Meslek Sağlığı Biyomarker ve Laboratuvar Tanı Yöntemleri",
+        "Çevre ve Meslek Sağlığı Komplikasyon Yönetimi ve Hasta Güvenliği",
+        "Çevre ve Meslek Sağlığı Rejeneratif ve Moleküler Tıp Uygulamaları",
+        "Çevre ve Meslek Sağlığı Multidisipliner Konsey ve Bakım Yönetimi",
+        "Çevre ve Meslek Sağlığı Koruyucu Tıp ve Risk Faktörleri Değerlendirmesi",
+        "Çevre ve Meslek Sağlığı Dijital Sağlık ve Tıbbi Teknolojiler",
+        "Çevre ve Meslek Sağlığı Rehabitasyon ve Yaşam Kalitesi İyileştirme",
+        "Çevre ve Meslek Sağlığı Klinik Araştırmalar ve Kanıta Dayalı Uygulamalar"
+      ],
+      "search_keywords": [
+        "cevre ve meslek sagligi",
+        "environmental and occupational health",
+        "clinical research",
+        "evidence synthesis",
+        "pubmed"
+      ]
+    },
+    {
+      "id": "tibbi_ekoloji",
+      "specialty_name": "Tıbbi Ekoloji ve Hidroklimatoloji",
+      "specialty_name_en": "Medical Ecology and Hydroclimatology",
+      "category": "Halk Sağlığı ve Önleyici Tıp",
+      "description": "Termal sular, kaplıcalar ve iklimsel faktörlerin sağlık üzerindeki tedavi edici etkilerini inceler.",
+      "sub_focus_areas": [
+        "Tıbbi Ekoloji ve Hidroklimatoloji Temel Tanı Yöntemleri ve Değerlendirme",
+        "Tıbbi Ekoloji ve Hidroklimatoloji İleri Tedavi Protokolleri ve İlaç Yönetimi",
+        "Tıbbi Ekoloji ve Hidroklimatoloji Akut ve Acil Klinik Durumlar",
+        "Tıbbi Ekoloji ve Hidroklimatoloji Kronik Hastalık Takibi ve Sürveyans",
+        "Tıbbi Ekoloji ve Hidroklimatoloji Minimal İnvaziv ve Girişimsel Yaklaşımlar",
+        "Tıbbi Ekoloji ve Hidroklimatoloji Pediatrik ve Geriyatrik Özel Popülasyonlar",
+        "Tıbbi Ekoloji ve Hidroklimatoloji Biyomarker ve Laboratuvar Tanı Yöntemleri",
+        "Tıbbi Ekoloji ve Hidroklimatoloji Komplikasyon Yönetimi ve Hasta Güvenliği",
+        "Tıbbi Ekoloji ve Hidroklimatoloji Rejeneratif ve Moleküler Tıp Uygulamaları",
+        "Tıbbi Ekoloji ve Hidroklimatoloji Multidisipliner Konsey ve Bakım Yönetimi",
+        "Tıbbi Ekoloji ve Hidroklimatoloji Koruyucu Tıp ve Risk Faktörleri Değerlendirmesi",
+        "Tıbbi Ekoloji ve Hidroklimatoloji Dijital Sağlık ve Tıbbi Teknolojiler",
+        "Tıbbi Ekoloji ve Hidroklimatoloji Rehabitasyon ve Yaşam Kalitesi İyileştirme",
+        "Tıbbi Ekoloji ve Hidroklimatoloji Klinik Araştırmalar ve Kanıta Dayalı Uygulamalar"
+      ],
+      "search_keywords": [
+        "tibbi ekoloji",
+        "medical ecology and hydroclimatology",
+        "clinical research",
+        "evidence synthesis",
+        "pubmed"
+      ]
+    },
+    {
+      "id": "spor_hekimligi",
+      "specialty_name": "Spor Hekimliği",
+      "specialty_name_en": "Sports Medicine",
+      "category": "Halk Sağlığı ve Önleyici Tıp",
+      "description": "Egzersiz fizyolojisi, spor yaralanmaları ve sporcu sağlığının korunmasını üstlenir.",
+      "sub_focus_areas": [
+        "Spor Hekimliği Temel Tanı Yöntemleri ve Değerlendirme",
+        "Spor Hekimliği İleri Tedavi Protokolleri ve İlaç Yönetimi",
+        "Spor Hekimliği Akut ve Acil Klinik Durumlar",
+        "Spor Hekimliği Kronik Hastalık Takibi ve Sürveyans",
+        "Spor Hekimliği Minimal İnvaziv ve Girişimsel Yaklaşımlar",
+        "Spor Hekimliği Pediatrik ve Geriyatrik Özel Popülasyonlar",
+        "Spor Hekimliği Biyomarker ve Laboratuvar Tanı Yöntemleri",
+        "Spor Hekimliği Komplikasyon Yönetimi ve Hasta Güvenliği",
+        "Spor Hekimliği Rejeneratif ve Moleküler Tıp Uygulamaları",
+        "Spor Hekimliği Multidisipliner Konsey ve Bakım Yönetimi",
+        "Spor Hekimliği Koruyucu Tıp ve Risk Faktörleri Değerlendirmesi",
+        "Spor Hekimliği Dijital Sağlık ve Tıbbi Teknolojiler",
+        "Spor Hekimliği Rehabitasyon ve Yaşam Kalitesi İyileştirme",
+        "Spor Hekimliği Klinik Araştırmalar ve Kanıta Dayalı Uygulamalar"
+      ],
+      "search_keywords": [
+        "spor hekimligi",
+        "sports medicine",
+        "clinical research",
+        "evidence synthesis",
+        "pubmed"
+      ]
+    },
+    {
+      "id": "adli_tip",
+      "specialty_name": "Adli Tıp",
+      "specialty_name_en": "Forensic Medicine",
+      "category": "Halk Sağlığı ve Önleyici Tıp",
+      "description": "Tıbbi olayların hukuki boyutlarını, otopsi ve adli bilirkişilik süreçlerini yönetir.",
+      "sub_focus_areas": [
+        "Adli Tıp Temel Tanı Yöntemleri ve Değerlendirme",
+        "Adli Tıp İleri Tedavi Protokolleri ve İlaç Yönetimi",
+        "Adli Tıp Akut ve Acil Klinik Durumlar",
+        "Adli Tıp Kronik Hastalık Takibi ve Sürveyans",
+        "Adli Tıp Minimal İnvaziv ve Girişimsel Yaklaşımlar",
+        "Adli Tıp Pediatrik ve Geriyatrik Özel Popülasyonlar",
+        "Adli Tıp Biyomarker ve Laboratuvar Tanı Yöntemleri",
+        "Adli Tıp Komplikasyon Yönetimi ve Hasta Güvenliği",
+        "Adli Tıp Rejeneratif ve Moleküler Tıp Uygulamaları",
+        "Adli Tıp Multidisipliner Konsey ve Bakım Yönetimi",
+        "Adli Tıp Koruyucu Tıp ve Risk Faktörleri Değerlendirmesi",
+        "Adli Tıp Dijital Sağlık ve Tıbbi Teknolojiler",
+        "Adli Tıp Rehabitasyon ve Yaşam Kalitesi İyileştirme",
+        "Adli Tıp Klinik Araştırmalar ve Kanıta Dayalı Uygulamalar"
+      ],
+      "search_keywords": [
+        "adli tip",
+        "forensic medicine",
+        "clinical research",
+        "evidence synthesis",
+        "pubmed"
+      ]
+    },
+    {
+      "id": "agiz_dis_cene_radyolojisi",
+      "specialty_name": "Ağız, Diş ve Çene Radyolojisi",
+      "specialty_name_en": "Oral and Maxillofacial Radiology",
+      "category": "Diş Hekimliği Uzmanlıkları",
+      "description": "Maksillofasiyal bölgenin konik ışınlı bilgisayarlı tomografi ve radyolojik tanısını yapar.",
+      "sub_focus_areas": [
+        "Ağız, Diş ve Çene Radyolojisi Temel Tanı Yöntemleri ve Değerlendirme",
+        "Ağız, Diş ve Çene Radyolojisi İleri Tedavi Protokolleri ve İlaç Yönetimi",
+        "Ağız, Diş ve Çene Radyolojisi Akut ve Acil Klinik Durumlar",
+        "Ağız, Diş ve Çene Radyolojisi Kronik Hastalık Takibi ve Sürveyans",
+        "Ağız, Diş ve Çene Radyolojisi Minimal İnvaziv ve Girişimsel Yaklaşımlar",
+        "Ağız, Diş ve Çene Radyolojisi Pediatrik ve Geriyatrik Özel Popülasyonlar",
+        "Ağız, Diş ve Çene Radyolojisi Biyomarker ve Laboratuvar Tanı Yöntemleri",
+        "Ağız, Diş ve Çene Radyolojisi Komplikasyon Yönetimi ve Hasta Güvenliği",
+        "Ağız, Diş ve Çene Radyolojisi Rejeneratif ve Moleküler Tıp Uygulamaları",
+        "Ağız, Diş ve Çene Radyolojisi Multidisipliner Konsey ve Bakım Yönetimi",
+        "Ağız, Diş ve Çene Radyolojisi Koruyucu Tıp ve Risk Faktörleri Değerlendirmesi",
+        "Ağız, Diş ve Çene Radyolojisi Dijital Sağlık ve Tıbbi Teknolojiler",
+        "Ağız, Diş ve Çene Radyolojisi Rehabitasyon ve Yaşam Kalitesi İyileştirme",
+        "Ağız, Diş ve Çene Radyolojisi Klinik Araştırmalar ve Kanıta Dayalı Uygulamalar"
+      ],
+      "search_keywords": [
+        "agiz dis cene radyolojisi",
+        "oral and maxillofacial radiology",
+        "clinical research",
+        "evidence synthesis",
+        "pubmed"
+      ]
+    },
+    {
+      "id": "periodontoloji",
+      "specialty_name": "Periodontoloji",
+      "specialty_name_en": "Periodontology",
+      "category": "Diş Hekimliği Uzmanlıkları",
+      "description": "Diş eti hastalıkları ve dişi çevreleyen dokuların tedavisi ile implantolojiyi yürütür.",
+      "sub_focus_areas": [
+        "Periodontoloji Temel Tanı Yöntemleri ve Değerlendirme",
+        "Periodontoloji İleri Tedavi Protokolleri ve İlaç Yönetimi",
+        "Periodontoloji Akut ve Acil Klinik Durumlar",
+        "Periodontoloji Kronik Hastalık Takibi ve Sürveyans",
+        "Periodontoloji Minimal İnvaziv ve Girişimsel Yaklaşımlar",
+        "Periodontoloji Pediatrik ve Geriyatrik Özel Popülasyonlar",
+        "Periodontoloji Biyomarker ve Laboratuvar Tanı Yöntemleri",
+        "Periodontoloji Komplikasyon Yönetimi ve Hasta Güvenliği",
+        "Periodontoloji Rejeneratif ve Moleküler Tıp Uygulamaları",
+        "Periodontoloji Multidisipliner Konsey ve Bakım Yönetimi",
+        "Periodontoloji Koruyucu Tıp ve Risk Faktörleri Değerlendirmesi",
+        "Periodontoloji Dijital Sağlık ve Tıbbi Teknolojiler",
+        "Periodontoloji Rehabitasyon ve Yaşam Kalitesi İyileştirme",
+        "Periodontoloji Klinik Araştırmalar ve Kanıta Dayalı Uygulamalar"
+      ],
+      "search_keywords": [
+        "periodontoloji",
+        "periodontology",
+        "clinical research",
+        "evidence synthesis",
+        "pubmed"
+      ]
+    },
+    {
+      "id": "endodonti",
+      "specialty_name": "Endodonti",
+      "specialty_name_en": "Endodontics",
+      "category": "Diş Hekimliği Uzmanlıkları",
+      "description": "Diş pulpası ve kök kanalı tedavilerini gerçekleştiren uzmanlık alanı.",
+      "sub_focus_areas": [
+        "Endodonti Temel Tanı Yöntemleri ve Değerlendirme",
+        "Endodonti İleri Tedavi Protokolleri ve İlaç Yönetimi",
+        "Endodonti Akut ve Acil Klinik Durumlar",
+        "Endodonti Kronik Hastalık Takibi ve Sürveyans",
+        "Endodonti Minimal İnvaziv ve Girişimsel Yaklaşımlar",
+        "Endodonti Pediatrik ve Geriyatrik Özel Popülasyonlar",
+        "Endodonti Biyomarker ve Laboratuvar Tanı Yöntemleri",
+        "Endodonti Komplikasyon Yönetimi ve Hasta Güvenliği",
+        "Endodonti Rejeneratif ve Moleküler Tıp Uygulamaları",
+        "Endodonti Multidisipliner Konsey ve Bakım Yönetimi",
+        "Endodonti Koruyucu Tıp ve Risk Faktörleri Değerlendirmesi",
+        "Endodonti Dijital Sağlık ve Tıbbi Teknolojiler",
+        "Endodonti Rehabitasyon ve Yaşam Kalitesi İyileştirme",
+        "Endodonti Klinik Araştırmalar ve Kanıta Dayalı Uygulamalar"
+      ],
+      "search_keywords": [
+        "endodonti",
+        "endodontics",
+        "clinical research",
+        "evidence synthesis",
+        "pubmed"
+      ]
+    },
+    {
+      "id": "restoratif_dis_tedavisi",
+      "specialty_name": "Restoratif Diş Tedavisi",
+      "specialty_name_en": "Restorative Dentistry",
+      "category": "Diş Hekimliği Uzmanlıkları",
+      "description": "Diş çürüklerinin tedavisi, estetik dolgular ve diş dokusu restorasyonunu yapar.",
+      "sub_focus_areas": [
+        "Restoratif Diş Tedavisi Temel Tanı Yöntemleri ve Değerlendirme",
+        "Restoratif Diş Tedavisi İleri Tedavi Protokolleri ve İlaç Yönetimi",
+        "Restoratif Diş Tedavisi Akut ve Acil Klinik Durumlar",
+        "Restoratif Diş Tedavisi Kronik Hastalık Takibi ve Sürveyans",
+        "Restoratif Diş Tedavisi Minimal İnvaziv ve Girişimsel Yaklaşımlar",
+        "Restoratif Diş Tedavisi Pediatrik ve Geriyatrik Özel Popülasyonlar",
+        "Restoratif Diş Tedavisi Biyomarker ve Laboratuvar Tanı Yöntemleri",
+        "Restoratif Diş Tedavisi Komplikasyon Yönetimi ve Hasta Güvenliği",
+        "Restoratif Diş Tedavisi Rejeneratif ve Moleküler Tıp Uygulamaları",
+        "Restoratif Diş Tedavisi Multidisipliner Konsey ve Bakım Yönetimi",
+        "Restoratif Diş Tedavisi Koruyucu Tıp ve Risk Faktörleri Değerlendirmesi",
+        "Restoratif Diş Tedavisi Dijital Sağlık ve Tıbbi Teknolojiler",
+        "Restoratif Diş Tedavisi Rehabitasyon ve Yaşam Kalitesi İyileştirme",
+        "Restoratif Diş Tedavisi Klinik Araştırmalar ve Kanıta Dayalı Uygulamalar"
+      ],
+      "search_keywords": [
+        "restoratif dis tedavisi",
+        "restorative dentistry",
+        "clinical research",
+        "evidence synthesis",
+        "pubmed"
+      ]
+    },
+    {
+      "id": "pedodonti",
+      "specialty_name": "Pedodonti (Çocuk Diş Hekimliği)",
+      "specialty_name_en": "Pediatric Dentistry",
+      "category": "Diş Hekimliği Uzmanlıkları",
+      "description": "Bebek ve çocukların ağız ve diş sağlığı koruyucu ve tedavi edici uygulamalarını üstlenir.",
+      "sub_focus_areas": [
+        "Pedodonti (Çocuk Diş Hekimliği) Temel Tanı Yöntemleri ve Değerlendirme",
+        "Pedodonti (Çocuk Diş Hekimliği) İleri Tedavi Protokolleri ve İlaç Yönetimi",
+        "Pedodonti (Çocuk Diş Hekimliği) Akut ve Acil Klinik Durumlar",
+        "Pedodonti (Çocuk Diş Hekimliği) Kronik Hastalık Takibi ve Sürveyans",
+        "Pedodonti (Çocuk Diş Hekimliği) Minimal İnvaziv ve Girişimsel Yaklaşımlar",
+        "Pedodonti (Çocuk Diş Hekimliği) Pediatrik ve Geriyatrik Özel Popülasyonlar",
+        "Pedodonti (Çocuk Diş Hekimliği) Biyomarker ve Laboratuvar Tanı Yöntemleri",
+        "Pedodonti (Çocuk Diş Hekimliği) Komplikasyon Yönetimi ve Hasta Güvenliği",
+        "Pedodonti (Çocuk Diş Hekimliği) Rejeneratif ve Moleküler Tıp Uygulamaları",
+        "Pedodonti (Çocuk Diş Hekimliği) Multidisipliner Konsey ve Bakım Yönetimi",
+        "Pedodonti (Çocuk Diş Hekimliği) Koruyucu Tıp ve Risk Faktörleri Değerlendirmesi",
+        "Pedodonti (Çocuk Diş Hekimliği) Dijital Sağlık ve Tıbbi Teknolojiler",
+        "Pedodonti (Çocuk Diş Hekimliği) Rehabitasyon ve Yaşam Kalitesi İyileştirme",
+        "Pedodonti (Çocuk Diş Hekimliği) Klinik Araştırmalar ve Kanıta Dayalı Uygulamalar"
+      ],
+      "search_keywords": [
+        "pedodonti",
+        "pediatric dentistry",
+        "clinical research",
+        "evidence synthesis",
+        "pubmed"
+      ]
+    },
+    {
+      "id": "ortodonti",
+      "specialty_name": "Ortodonti",
+      "specialty_name_en": "Orthodontics",
+      "category": "Diş Hekimliği Uzmanlıkları",
+      "description": "Diş ve çene çapraşıklıklarının şeffaf plak ve tellerle düzeltilmesini sağlar.",
+      "sub_focus_areas": [
+        "Ortodonti Temel Tanı Yöntemleri ve Değerlendirme",
+        "Ortodonti İleri Tedavi Protokolleri ve İlaç Yönetimi",
+        "Ortodonti Akut ve Acil Klinik Durumlar",
+        "Ortodonti Kronik Hastalık Takibi ve Sürveyans",
+        "Ortodonti Minimal İnvaziv ve Girişimsel Yaklaşımlar",
+        "Ortodonti Pediatrik ve Geriyatrik Özel Popülasyonlar",
+        "Ortodonti Biyomarker ve Laboratuvar Tanı Yöntemleri",
+        "Ortodonti Komplikasyon Yönetimi ve Hasta Güvenliği",
+        "Ortodonti Rejeneratif ve Moleküler Tıp Uygulamaları",
+        "Ortodonti Multidisipliner Konsey ve Bakım Yönetimi",
+        "Ortodonti Koruyucu Tıp ve Risk Faktörleri Değerlendirmesi",
+        "Ortodonti Dijital Sağlık ve Tıbbi Teknolojiler",
+        "Ortodonti Rehabitasyon ve Yaşam Kalitesi İyileştirme",
+        "Ortodonti Klinik Araştırmalar ve Kanıta Dayalı Uygulamalar"
+      ],
+      "search_keywords": [
+        "ortodonti",
+        "orthodontics",
+        "clinical research",
+        "evidence synthesis",
+        "pubmed"
+      ]
+    },
+    {
+      "id": "protetik_dis_tedavisi",
+      "specialty_name": "Protetik Diş Tedavisi",
+      "specialty_name_en": "Prosthodontics",
+      "category": "Diş Hekimliği Uzmanlıkları",
+      "description": "Eksik dişlerin sabit ve hareketli protezlerle estetik ve fonksiyonel restorasyonunu yapar.",
+      "sub_focus_areas": [
+        "Protetik Diş Tedavisi Temel Tanı Yöntemleri ve Değerlendirme",
+        "Protetik Diş Tedavisi İleri Tedavi Protokolleri ve İlaç Yönetimi",
+        "Protetik Diş Tedavisi Akut ve Acil Klinik Durumlar",
+        "Protetik Diş Tedavisi Kronik Hastalık Takibi ve Sürveyans",
+        "Protetik Diş Tedavisi Minimal İnvaziv ve Girişimsel Yaklaşımlar",
+        "Protetik Diş Tedavisi Pediatrik ve Geriyatrik Özel Popülasyonlar",
+        "Protetik Diş Tedavisi Biyomarker ve Laboratuvar Tanı Yöntemleri",
+        "Protetik Diş Tedavisi Komplikasyon Yönetimi ve Hasta Güvenliği",
+        "Protetik Diş Tedavisi Rejeneratif ve Moleküler Tıp Uygulamaları",
+        "Protetik Diş Tedavisi Multidisipliner Konsey ve Bakım Yönetimi",
+        "Protetik Diş Tedavisi Koruyucu Tıp ve Risk Faktörleri Değerlendirmesi",
+        "Protetik Diş Tedavisi Dijital Sağlık ve Tıbbi Teknolojiler",
+        "Protetik Diş Tedavisi Rehabitasyon ve Yaşam Kalitesi İyileştirme",
+        "Protetik Diş Tedavisi Klinik Araştırmalar ve Kanıta Dayalı Uygulamalar"
+      ],
+      "search_keywords": [
+        "protetik dis tedavisi",
+        "prosthodontics",
+        "clinical research",
+        "evidence synthesis",
+        "pubmed"
+      ]
+    },
+    {
+      "id": "klinik_eczacilik",
+      "specialty_name": "Klinik Eczacılık",
+      "specialty_name_en": "Clinical Pharmacy",
+      "category": "Eczacılık ve Farmasötik Bilimler",
+      "description": "Hastaya özgü ilaç tedavisi optimizasyonu, akılcı ilaç kullanımı ve ilaç etkileşim takibini yürütür.",
+      "sub_focus_areas": [
+        "Klinik Eczacılık Temel Tanı Yöntemleri ve Değerlendirme",
+        "Klinik Eczacılık İleri Tedavi Protokolleri ve İlaç Yönetimi",
+        "Klinik Eczacılık Akut ve Acil Klinik Durumlar",
+        "Klinik Eczacılık Kronik Hastalık Takibi ve Sürveyans",
+        "Klinik Eczacılık Minimal İnvaziv ve Girişimsel Yaklaşımlar",
+        "Klinik Eczacılık Pediatrik ve Geriyatrik Özel Popülasyonlar",
+        "Klinik Eczacılık Biyomarker ve Laboratuvar Tanı Yöntemleri",
+        "Klinik Eczacılık Komplikasyon Yönetimi ve Hasta Güvenliği",
+        "Klinik Eczacılık Rejeneratif ve Moleküler Tıp Uygulamaları",
+        "Klinik Eczacılık Multidisipliner Konsey ve Bakım Yönetimi",
+        "Klinik Eczacılık Koruyucu Tıp ve Risk Faktörleri Değerlendirmesi",
+        "Klinik Eczacılık Dijital Sağlık ve Tıbbi Teknolojiler",
+        "Klinik Eczacılık Rehabitasyon ve Yaşam Kalitesi İyileştirme",
+        "Klinik Eczacılık Klinik Araştırmalar ve Kanıta Dayalı Uygulamalar"
+      ],
+      "search_keywords": [
+        "klinik eczacilik",
+        "clinical pharmacy",
+        "clinical research",
+        "evidence synthesis",
+        "pubmed"
+      ]
+    },
+    {
+      "id": "farmasotik_toksikoloji",
+      "specialty_name": "Farmasötik Toksikoloji",
+      "specialty_name_en": "Pharmaceutical Toxicology",
+      "category": "Eczacılık ve Farmasötik Bilimler",
+      "description": "Kimyasal maddelerin ve ilaçların zehirli etkilerini, doz-yanıt ilişkisini araştırır.",
+      "sub_focus_areas": [
+        "Farmasötik Toksikoloji Temel Tanı Yöntemleri ve Değerlendirme",
+        "Farmasötik Toksikoloji İleri Tedavi Protokolleri ve İlaç Yönetimi",
+        "Farmasötik Toksikoloji Akut ve Acil Klinik Durumlar",
+        "Farmasötik Toksikoloji Kronik Hastalık Takibi ve Sürveyans",
+        "Farmasötik Toksikoloji Minimal İnvaziv ve Girişimsel Yaklaşımlar",
+        "Farmasötik Toksikoloji Pediatrik ve Geriyatrik Özel Popülasyonlar",
+        "Farmasötik Toksikoloji Biyomarker ve Laboratuvar Tanı Yöntemleri",
+        "Farmasötik Toksikoloji Komplikasyon Yönetimi ve Hasta Güvenliği",
+        "Farmasötik Toksikoloji Rejeneratif ve Moleküler Tıp Uygulamaları",
+        "Farmasötik Toksikoloji Multidisipliner Konsey ve Bakım Yönetimi",
+        "Farmasötik Toksikoloji Koruyucu Tıp ve Risk Faktörleri Değerlendirmesi",
+        "Farmasötik Toksikoloji Dijital Sağlık ve Tıbbi Teknolojiler",
+        "Farmasötik Toksikoloji Rehabitasyon ve Yaşam Kalitesi İyileştirme",
+        "Farmasötik Toksikoloji Klinik Araştırmalar ve Kanıta Dayalı Uygulamalar"
+      ],
+      "search_keywords": [
+        "farmasotik toksikoloji",
+        "pharmaceutical toxicology",
+        "clinical research",
+        "evidence synthesis",
+        "pubmed"
+      ]
+    },
+    {
+      "id": "farmasotik_kimya",
+      "specialty_name": "Farmasötik Kimya",
+      "specialty_name_en": "Pharmaceutical Chemistry",
+      "category": "Eczacılık ve Farmasötik Bilimler",
+      "description": "İlaç etken maddelerinin tasarımı, sentezi ve kimyasal yapı-aktivite ilişkilerini inceler.",
+      "sub_focus_areas": [
+        "Farmasötik Kimya Temel Tanı Yöntemleri ve Değerlendirme",
+        "Farmasötik Kimya İleri Tedavi Protokolleri ve İlaç Yönetimi",
+        "Farmasötik Kimya Akut ve Acil Klinik Durumlar",
+        "Farmasötik Kimya Kronik Hastalık Takibi ve Sürveyans",
+        "Farmasötik Kimya Minimal İnvaziv ve Girişimsel Yaklaşımlar",
+        "Farmasötik Kimya Pediatrik ve Geriyatrik Özel Popülasyonlar",
+        "Farmasötik Kimya Biyomarker ve Laboratuvar Tanı Yöntemleri",
+        "Farmasötik Kimya Komplikasyon Yönetimi ve Hasta Güvenliği",
+        "Farmasötik Kimya Rejeneratif ve Moleküler Tıp Uygulamaları",
+        "Farmasötik Kimya Multidisipliner Konsey ve Bakım Yönetimi",
+        "Farmasötik Kimya Koruyucu Tıp ve Risk Faktörleri Değerlendirmesi",
+        "Farmasötik Kimya Dijital Sağlık ve Tıbbi Teknolojiler",
+        "Farmasötik Kimya Rehabitasyon ve Yaşam Kalitesi İyileştirme",
+        "Farmasötik Kimya Klinik Araştırmalar ve Kanıta Dayalı Uygulamalar"
+      ],
+      "search_keywords": [
+        "farmasotik kimya",
+        "pharmaceutical chemistry",
+        "clinical research",
+        "evidence synthesis",
+        "pubmed"
+      ]
+    },
+    {
+      "id": "farmakognozi",
+      "specialty_name": "Farmakognozi",
+      "specialty_name_en": "Pharmacognosy",
+      "category": "Eczacılık ve Farmasötik Bilimler",
+      "description": "Doğal kaynaklı (bitkisel, hayvansal) ilaç hammaddelerinin izolasyonu ve standardize edilmesini araştırır.",
+      "sub_focus_areas": [
+        "Farmakognozi Temel Tanı Yöntemleri ve Değerlendirme",
+        "Farmakognozi İleri Tedavi Protokolleri ve İlaç Yönetimi",
+        "Farmakognozi Akut ve Acil Klinik Durumlar",
+        "Farmakognozi Kronik Hastalık Takibi ve Sürveyans",
+        "Farmakognozi Minimal İnvaziv ve Girişimsel Yaklaşımlar",
+        "Farmakognozi Pediatrik ve Geriyatrik Özel Popülasyonlar",
+        "Farmakognozi Biyomarker ve Laboratuvar Tanı Yöntemleri",
+        "Farmakognozi Komplikasyon Yönetimi ve Hasta Güvenliği",
+        "Farmakognozi Rejeneratif ve Moleküler Tıp Uygulamaları",
+        "Farmakognozi Multidisipliner Konsey ve Bakım Yönetimi",
+        "Farmakognozi Koruyucu Tıp ve Risk Faktörleri Değerlendirmesi",
+        "Farmakognozi Dijital Sağlık ve Tıbbi Teknolojiler",
+        "Farmakognozi Rehabitasyon ve Yaşam Kalitesi İyileştirme",
+        "Farmakognozi Klinik Araştırmalar ve Kanıta Dayalı Uygulamalar"
+      ],
+      "search_keywords": [
+        "farmakognozi",
+        "pharmacognosy",
+        "clinical research",
+        "evidence synthesis",
+        "pubmed"
+      ]
+    },
+    {
+      "id": "tibbi_biyoteknoloji",
+      "specialty_name": "Tıbbi Biyoteknoloji ve Gen Tedavisi",
+      "specialty_name_en": "Medical Biotechnology and Gene Therapy",
+      "category": "Multidisipliner Araştırma Alanları",
+      "description": "CRISPR, gen terapisi, rekombinant proteinler ve biyoteknolojik ilaç araştırmalarını kapsar.",
+      "sub_focus_areas": [
+        "Tıbbi Biyoteknoloji ve Gen Tedavisi Temel Tanı Yöntemleri ve Değerlendirme",
+        "Tıbbi Biyoteknoloji ve Gen Tedavisi İleri Tedavi Protokolleri ve İlaç Yönetimi",
+        "Tıbbi Biyoteknoloji ve Gen Tedavisi Akut ve Acil Klinik Durumlar",
+        "Tıbbi Biyoteknoloji ve Gen Tedavisi Kronik Hastalık Takibi ve Sürveyans",
+        "Tıbbi Biyoteknoloji ve Gen Tedavisi Minimal İnvaziv ve Girişimsel Yaklaşımlar",
+        "Tıbbi Biyoteknoloji ve Gen Tedavisi Pediatrik ve Geriyatrik Özel Popülasyonlar",
+        "Tıbbi Biyoteknoloji ve Gen Tedavisi Biyomarker ve Laboratuvar Tanı Yöntemleri",
+        "Tıbbi Biyoteknoloji ve Gen Tedavisi Komplikasyon Yönetimi ve Hasta Güvenliği",
+        "Tıbbi Biyoteknoloji ve Gen Tedavisi Rejeneratif ve Moleküler Tıp Uygulamaları",
+        "Tıbbi Biyoteknoloji ve Gen Tedavisi Multidisipliner Konsey ve Bakım Yönetimi",
+        "Tıbbi Biyoteknoloji ve Gen Tedavisi Koruyucu Tıp ve Risk Faktörleri Değerlendirmesi",
+        "Tıbbi Biyoteknoloji ve Gen Tedavisi Dijital Sağlık ve Tıbbi Teknolojiler",
+        "Tıbbi Biyoteknoloji ve Gen Tedavisi Rehabitasyon ve Yaşam Kalitesi İyileştirme",
+        "Tıbbi Biyoteknoloji ve Gen Tedavisi Klinik Araştırmalar ve Kanıta Dayalı Uygulamalar"
+      ],
+      "search_keywords": [
+        "tibbi biyoteknoloji",
+        "medical biotechnology and gene therapy",
+        "clinical research",
+        "evidence synthesis",
+        "pubmed"
+      ]
+    },
+    {
+      "id": "norobilim_rejeneratif",
+      "specialty_name": "Nörobilim ve Rejeneratif Tıp",
+      "specialty_name_en": "Neuroscience and Regenerative Medicine",
+      "category": "Multidisipliner Araştırma Alanları",
+      "description": "Kök hücre tedavileri, doku mühendisliği ve nöronal rejenerasyon çalışmalarını yürütür.",
+      "sub_focus_areas": [
+        "Nörobilim ve Rejeneratif Tıp Temel Tanı Yöntemleri ve Değerlendirme",
+        "Nörobilim ve Rejeneratif Tıp İleri Tedavi Protokolleri ve İlaç Yönetimi",
+        "Nörobilim ve Rejeneratif Tıp Akut ve Acil Klinik Durumlar",
+        "Nörobilim ve Rejeneratif Tıp Kronik Hastalık Takibi ve Sürveyans",
+        "Nörobilim ve Rejeneratif Tıp Minimal İnvaziv ve Girişimsel Yaklaşımlar",
+        "Nörobilim ve Rejeneratif Tıp Pediatrik ve Geriyatrik Özel Popülasyonlar",
+        "Nörobilim ve Rejeneratif Tıp Biyomarker ve Laboratuvar Tanı Yöntemleri",
+        "Nörobilim ve Rejeneratif Tıp Komplikasyon Yönetimi ve Hasta Güvenliği",
+        "Nörobilim ve Rejeneratif Tıp Rejeneratif ve Moleküler Tıp Uygulamaları",
+        "Nörobilim ve Rejeneratif Tıp Multidisipliner Konsey ve Bakım Yönetimi",
+        "Nörobilim ve Rejeneratif Tıp Koruyucu Tıp ve Risk Faktörleri Değerlendirmesi",
+        "Nörobilim ve Rejeneratif Tıp Dijital Sağlık ve Tıbbi Teknolojiler",
+        "Nörobilim ve Rejeneratif Tıp Rehabitasyon ve Yaşam Kalitesi İyileştirme",
+        "Nörobilim ve Rejeneratif Tıp Klinik Araştırmalar ve Kanıta Dayalı Uygulamalar"
+      ],
+      "search_keywords": [
+        "norobilim rejeneratif",
+        "neuroscience and regenerative medicine",
+        "clinical research",
+        "evidence synthesis",
+        "pubmed"
+      ]
+    },
+    {
+      "id": "biyomedikal_muhendisligi",
+      "specialty_name": "Biyomedikal Mühendisliği ve Tıbbi Cihazlar",
+      "specialty_name_en": "Biomedical Engineering and Medical Devices",
+      "category": "Multidisipliner Araştırma Alanları",
+      "description": "Tıbbi cihazlar, biyosensörler, protezler ve yapay organ teknolojilerini geliştirir.",
+      "sub_focus_areas": [
+        "Biyomedikal Mühendisliği ve Tıbbi Cihazlar Temel Tanı Yöntemleri ve Değerlendirme",
+        "Biyomedikal Mühendisliği ve Tıbbi Cihazlar İleri Tedavi Protokolleri ve İlaç Yönetimi",
+        "Biyomedikal Mühendisliği ve Tıbbi Cihazlar Akut ve Acil Klinik Durumlar",
+        "Biyomedikal Mühendisliği ve Tıbbi Cihazlar Kronik Hastalık Takibi ve Sürveyans",
+        "Biyomedikal Mühendisliği ve Tıbbi Cihazlar Minimal İnvaziv ve Girişimsel Yaklaşımlar",
+        "Biyomedikal Mühendisliği ve Tıbbi Cihazlar Pediatrik ve Geriyatrik Özel Popülasyonlar",
+        "Biyomedikal Mühendisliği ve Tıbbi Cihazlar Biyomarker ve Laboratuvar Tanı Yöntemleri",
+        "Biyomedikal Mühendisliği ve Tıbbi Cihazlar Komplikasyon Yönetimi ve Hasta Güvenliği",
+        "Biyomedikal Mühendisliği ve Tıbbi Cihazlar Rejeneratif ve Moleküler Tıp Uygulamaları",
+        "Biyomedikal Mühendisliği ve Tıbbi Cihazlar Multidisipliner Konsey ve Bakım Yönetimi",
+        "Biyomedikal Mühendisliği ve Tıbbi Cihazlar Koruyucu Tıp ve Risk Faktörleri Değerlendirmesi",
+        "Biyomedikal Mühendisliği ve Tıbbi Cihazlar Dijital Sağlık ve Tıbbi Teknolojiler",
+        "Biyomedikal Mühendisliği ve Tıbbi Cihazlar Rehabitasyon ve Yaşam Kalitesi İyileştirme",
+        "Biyomedikal Mühendisliği ve Tıbbi Cihazlar Klinik Araştırmalar ve Kanıta Dayalı Uygulamalar"
+      ],
+      "search_keywords": [
+        "biyomedikal muhendisligi",
+        "biomedical engineering and medical devices",
+        "clinical research",
+        "evidence synthesis",
+        "pubmed"
+      ]
+    }
+  ]
+}
