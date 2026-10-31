@@ -280,6 +280,14 @@ _STATISTICAL_COMPARE_RE = re.compile(
     re.IGNORECASE,
 )
 _VERSUS_GROUPS_RE = re.compile(r"\bversus\b|\bvs\.?\b", re.IGNORECASE)
+_CLINICAL_COMPARATIVE_RE = re.compile(
+    r"\b(?:"
+    r"this\s+study\s+compared|we\s+compared|"
+    r"compared\s+the\s+(?:manifestations|characteristics|features|outcomes|efficacy|safety)\s+of|"
+    r"manifestations\s+of\s+.*?\s+were\s+compared"
+    r")\b",
+    re.IGNORECASE,
+)
 _LITERATURE_REVIEW_RE = re.compile(
     r"\breview(?:ed)?\s+the\s+literature\b|\bliterature\s+review\b|\bof\s+the\s+literature\b",
     re.IGNORECASE,
@@ -691,6 +699,10 @@ def _text_design_key(title: str, abstract: str) -> Optional[str]:
         retro = _retrospective_design_key(title, abstract)
         if retro == "retrospective_case_series" or (retro == "retrospective_comparative" and key is None):
             return retro
+    if key is None:
+        blob = f"{title or ''}\n{abstract or ''}"
+        if _own_design_match(blob, _CLINICAL_COMPARATIVE_RE):
+            return "comparative"
     return key
 
 
@@ -1616,8 +1628,22 @@ def extract_study_metrics(abstract: str) -> Dict[str, Any]:
         n_match = re.search(r"\b(?:of the|among the|a total of)\s+(\d[\d,]*)\s+(?:patients|subjects|participants|adults|children|individuals|cases)\b", abstract_clean, re.IGNORECASE)
     if not n_match:
         n_match = re.search(r"\b(\d[\d,]*)\s+(?:patients|subjects|participants|adults|children|individuals|cases)\s+(?:were\s+)?(?:enrolled|randomized|randomised|included|studied|evaluated|assigned|followed)\b", abstract_clean, re.IGNORECASE)
+    if not n_match:
+        n_word_match = re.search(
+            r"\b([A-Za-z]+(?:-[A-Za-z]+)?)\s+(?:[A-Za-z\-]+\s+){0,3}?"
+            r"(?:patients|subjects|participants|adults|children|individuals|cases)\b"
+            r"(?:\s+(?:with|having|diagnosed with)\s+[^\.\,\;]+)?"
+            r"\s+(?:were|was)\s+(?:characterized|characterised|enrolled|randomized|randomised|included|studied|evaluated|assigned|followed)\b",
+            abstract_clean,
+            re.IGNORECASE,
+        )
+        if n_word_match:
+            parsed_word_n = _parse_count_token(n_word_match.group(1))
+            if parsed_word_n:
+                n_val = parsed_word_n
+                n_sentence = _sentence_around(abstract_clean, n_word_match.start(), n_word_match.end())
 
-    if n_match:
+    if n_match and not n_val:
         n_val = n_match.group(1).replace(",", "")
         n_sentence = _sentence_around(abstract_clean, n_match.start(), n_match.end())
 
@@ -1747,14 +1773,23 @@ def extract_article_clinical_details(article: Dict[str, Any], query: str = "") -
     # Stop at a finite verb and do not end inside a number or a bracket.
     patient_group = "Belirtilmedi"
     pop_sentence = ""
-    pop_match = re.search(
+    pop_pattern = re.compile(
+        r"(?:(?:\b(?:[A-Za-z]+(?:-[A-Za-z]+)?|\d[\d,]*)\s+)?(?:[A-Za-z\-]+\s+){0,3})?"
         r"\b(?:patients|subjects|adults|children|individuals|participants|hastalar)\s+"
         r"(?:with|having|diagnosed with|suffering from)\s+",
-        abstract,
         re.IGNORECASE,
     )
+    pop_match = pop_pattern.search(abstract)
     if pop_match:
-        raw_population = _trim_before_finite_verb(_read_balanced_clause(abstract, pop_match.end()))
+        lead = pop_match.group(0)
+        lead_adj = re.sub(r"^(?:METHOD|BACKGROUND|OBJECTIVE|RESULTS|CONCLUSIONS?)\s*:\s*", "", lead, flags=re.IGNORECASE).strip()
+        lead_adj = re.sub(r"^(?:[A-Za-z]+(?:-[A-Za-z]+)?|\d[\d,]*)\s+", "", lead_adj).strip()
+        lead_prefix = re.sub(r"\s+(?:patients|subjects|adults|children|individuals|participants|hastalar)\s+(?:with|having|diagnosed with|suffering from)\s*$", "", lead_adj, flags=re.IGNORECASE).strip()
+        raw_clause = _trim_before_finite_verb(_read_balanced_clause(abstract, pop_match.end()))
+        if lead_prefix and lead_prefix.lower() not in raw_clause.lower():
+            raw_population = f"{lead_prefix} {raw_clause}"
+        else:
+            raw_population = raw_clause
         if raw_population:
             patient_group = _raise_initial(raw_population)
             pop_sentence = _sentence_around(abstract, pop_match.start(), pop_match.end())
@@ -2357,6 +2392,7 @@ _DRUG_TR = (
     (r"prednisone", "prednizon"),
     (r"methotrexate", "metotreksat"),
     (r"azathioprine", "azatioprin"),
+    (r"antimetabolites?", "antimetabolit"),
     (r"tacrolimus", "takrolimus"),
     (r"mycophenolate", "mikofenolat"),
     (r"rituximab", "rituksimab"),
@@ -2390,7 +2426,7 @@ _TREATMENT_CUE_RE = re.compile(
 _RESULT_CUE_RE = re.compile(
     r"\b(?:she|he|both patients|were included|was included|treatment included|"
     r"ranged from|were confirmed|diagnoses were|we included|our patients|"
-    r"symptom resolution)\b",
+    r"symptom resolution|patients were|were older|were similar|was treated|were treated)\b",
     re.IGNORECASE,
 )
 # Administration, not the bare noun "therapy" inside "statin therapy".
@@ -3003,9 +3039,15 @@ def _profile_from_sentence(sentence: str) -> List[Dict[str, str]]:
         })
     antibodies = []
     if re.search(r"antibod|titer|positive", sentence, re.IGNORECASE):
+        if re.search(r"anti[-\s]?hmgcr|3-hydroxy-3-methylglutaryl|hmgcr", sentence, re.IGNORECASE):
+            antibodies.append("anti-HMGCR")
+        if re.search(r"\bANA\b", sentence):
+            antibodies.append("ANA")
         for match in re.finditer(r"anti[-\s]?[A-Za-z0-9]+", sentence, re.IGNORECASE):
             token = match.group(0).replace(" ", "")
             if re.fullmatch(r"anti(?:body|bodies)", token, re.IGNORECASE):
+                continue
+            if "anti-3" in token.lower() or "hmgcr" in token.lower():
                 continue
             if token.lower() not in {item.lower() for item in antibodies}:
                 antibodies.append(token)
@@ -3030,6 +3072,9 @@ def _profile_from_sentence(sentence: str) -> List[Dict[str, str]]:
             ck_bits.append(
                 f"CK düzeyi: {ranged.group(1)} ile {upper}{unit}" + (" üstü" if over else "")
             )
+        ck_bracket = re.search(r"(?:creatine kinase|CK)[^;\[]*\[\s*CK\s*;\s*([^\]]+)\]", sentence, re.IGNORECASE)
+        if ck_bracket:
+            ck_bits.append(f"CK düzeyi: {ck_bracket.group(1).strip()}")
         if re.search(r"normali[sz]ation of CK|CK levels?\s+(?:normali[sz]|fell|decreas)", sentence, re.IGNORECASE):
             ck_bits.append("CK değişimi: normalleşme bildirildi")
         elif re.search(r"fluctuat|downward", sentence, re.IGNORECASE):
@@ -3038,7 +3083,9 @@ def _profile_from_sentence(sentence: str) -> List[Dict[str, str]]:
                 ck_bits.append(f"CK değişimi: tedaviden sonra {days.group(1)} günde dalgalanma ve azalma eğilimi")
             else:
                 ck_bits.append("CK değişimi bildirildi")
-        elif re.search(r"elevated creatine kinase|\belevated CK\b", sentence, re.IGNORECASE):
+        elif re.search(r"persistently elevated CK", sentence, re.IGNORECASE):
+            ck_bits.append("Kalıcı CK yüksekliği bildirildi")
+        elif re.search(r"elevated creatine kinase|\belevated CK\b|marked CK elevation", sentence, re.IGNORECASE):
             ck_bits.append("CK yüksekliği bildirildi")
         if ck_bits:
             items.append({
@@ -3972,7 +4019,9 @@ def _format_cross_study_comparison(articles: List[Dict[str, Any]], pico: Optiona
         )
     lines.append(
         "Çelişki yalnızca aynı sonlanım için farklı yön bildiren PMID çiftlerinde kurulur. "
-        "Aşağıdaki tutarlılık ve çelişki maddeleri bu kurala uyar."
+        "Aşağıdaki tutarlılık ve çelişki maddeleri bu kurala uyar. "
+        "Kontrol grubu bulunmayan tek kollu veya gözlemsel olgu serilerinden nedensel tedavi üstünlüğü (superiority) "
+        "çıkarılamaz; bu çalışmalardaki bulgular yalnızca tanımlayıcı klinik gözlem olarak değerlendirilir."
     )
     lines.append("")
     return "\n".join(lines)
