@@ -56,7 +56,7 @@ class TestStatinMyopathyRegression(unittest.TestCase):
         self.assertEqual(details["sample_size"], "n = 120")
         self.assertIn("Rastgele Kontrollü", details["study_design"])
         self.assertEqual(details["evidence_level"], "Değerlendirilemedi")
-        self.assertIn("Placebo", details["comparison"])
+        self.assertIn("Plasebo", details["comparison"])
 
         om = details["outcome_metrics"]
         self.assertTrue(len(om) > 0)
