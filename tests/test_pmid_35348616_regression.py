@@ -83,6 +83,8 @@ class TestPmid35348616Regression(unittest.TestCase):
         cross = _format_cross_study_comparison([self.article], pico)
         self.assertIn("35348616", cross)
         self.assertIn("Karşılaştırmalı Klinik Çalışma", cross)
+        self.assertIn("21 hasta yerli Amerikalı", cross)
+        self.assertNotIn("özette bildirilmedi", cross)
         self.assertIn("üstünlüğü (superiority) çıkarılamaz", cross)
 
 
