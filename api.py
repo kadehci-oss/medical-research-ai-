@@ -22,12 +22,71 @@ app = FastAPI(
 )
 
 
+class ArticleCitation(BaseModel):
+    pmid: str = Field(..., min_length=1, max_length=20, description="PubMed PMID")
+    title: Optional[str] = Field(None, max_length=1000, description="Optional title checked against PubMed")
+    doi: Optional[str] = Field(None, max_length=256, description="Optional DOI checked against PubMed")
+
+
 class ReportRequest(BaseModel):
-    query: str = Field(..., description="The clinical search query or medical topic")
-    articles: List[Dict[str, Any]] = Field(..., description="List of verified article dicts from pubmed search/verification")
-    api_key: Optional[str] = Field(None, description="Optional OpenAI API key for LLM report synthesis")
-    use_llm: bool = Field(False, description="Whether to use OpenAI LLM synthesis or rule-based engine")
-    model: str = Field("gpt-4o-mini", description="OpenAI model to use if use_llm is True")
+    query: str = Field(..., min_length=1, max_length=500, description="The clinical search query or medical topic")
+    articles: List[ArticleCitation] = Field(
+        ..., min_length=1, max_length=50,
+        description="PMID references only; each is re-fetched from PubMed and only canonical PubMed metadata is used",
+    )
+    api_key: Optional[str] = Field(None, max_length=512, description="Optional OpenAI key; do not send patient-identifying data")
+    use_llm: bool = Field(
+        False,
+        description="If true, the query and PubMed article metadata/abstracts are sent to OpenAI for synthesis.",
+    )
+    model: str = Field("gpt-4o-mini", max_length=64, description="OpenAI model to use if use_llm is True")
+    search_date: Optional[str] = Field(None, max_length=10, description="Date the source search was run, YYYY-MM-DD")
+
+
+def _load_verified_articles(citations: List[ArticleCitation]):
+    """Fetch canonical PubMed metadata and reject mismatched or unverifiable citations."""
+    articles: List[Dict[str, Any]] = []
+    verification_results: List[Dict[str, Any]] = []
+    seen_pmids = set()
+
+    for citation in citations:
+        payload = citation.model_dump(exclude_none=True)
+        pmid = str(payload.get("pmid", "")).strip().lower().removeprefix("pmid:").strip()
+        if not pmid.isdigit() or len(pmid) > 10:
+            raise HTTPException(
+                status_code=422,
+                detail={"pmid": pmid, "reason": "invalid_pmid", "message": "PMID must contain only digits."},
+            )
+        if pmid in seen_pmids:
+            raise HTTPException(
+                status_code=422,
+                detail={"pmid": pmid, "reason": "duplicate_pmid", "message": "Duplicate PMIDs are not accepted."},
+            )
+
+        result = verify_citation(payload)
+        status = result.get("status")
+        if status != "verified":
+            raise HTTPException(
+                status_code=502 if status == "unverified" else 422,
+                detail={
+                    "pmid": pmid,
+                    "reason": result.get("reason", "verification_failed"),
+                    "message": result.get("error", "Citation could not be verified against PubMed."),
+                },
+            )
+
+        fetched = result.get("fetched_article") or {}
+        if not fetched.get("valid") or str(fetched.get("pmid", "")) != pmid:
+            raise HTTPException(
+                status_code=502,
+                detail={"pmid": pmid, "reason": "missing_canonical_record", "message": "PubMed did not return canonical article metadata."},
+            )
+
+        seen_pmids.add(pmid)
+        verification_results.append(result)
+        articles.append({key: value for key, value in fetched.items() if key != "valid"})
+
+    return articles, verification_results
 
 
 @app.get("/health")
@@ -84,24 +143,26 @@ def api_verify_citation(citation: Dict[str, Any] = Body(...)):
 
 @app.post("/api/report")
 def api_generate_report(req: ReportRequest):
+    articles, verification_results = _load_verified_articles(req.articles)
+    audit = perform_red_team_audit(req.query, articles, verification_results=verification_results)
     search_meta = {
-        "search_date": getattr(req, "search_date", None),
+        "search_date": req.search_date,
         "query": req.query
     }
     report_md = generate_turkish_evidence_report(
         query=req.query,
-        articles=req.articles,
+        articles=articles,
         api_key=req.api_key,
         use_llm=req.use_llm,
         model=req.model,
-        search_metadata=search_meta
+        search_metadata=search_meta,
+        audit=audit,
     )
-    audit = perform_red_team_audit(req.query, req.articles)
     quality_qc = validate_clinical_report_quality(report_md)
-    html_report = generate_html_report(req.query, req.articles, report_md)
+    html_report = generate_html_report(req.query, articles, report_md, audit=audit)
     pico = extract_pico(req.query)
-    risk_of_bias_list = [assess_risk_of_bias(art) for art in req.articles]
-    article_clinical_details = [extract_article_clinical_details(art, req.query) for art in req.articles]
+    risk_of_bias_list = [assess_risk_of_bias(art) for art in articles]
+    article_clinical_details = [extract_article_clinical_details(art, req.query) for art in articles]
 
     return {
         "query": req.query,
@@ -121,10 +182,13 @@ def api_universal_engine_synthesize(req: ReportRequest):
     Universal Evidence Engine endpoint for disease-agnostic Turkish clinical report synthesis,
     cross-study comparative analysis, and structured parameter extraction.
     """
+    articles, verification_results = _load_verified_articles(req.articles)
     return generate_universal_evidence_synthesis(
         query=req.query,
-        articles=req.articles,
+        articles=articles,
         api_key=req.api_key,
         use_llm=req.use_llm,
-        model=req.model
+        model=req.model,
+        search_metadata={"search_date": req.search_date, "query": req.query},
+        verification_results=verification_results,
     )

@@ -179,6 +179,18 @@ class TestReportGenerator(unittest.TestCase):
         self.assertIn("Empagliflozin in Heart Failure", table_html)
         self.assertIn("PMID: 34449189", table_html)
 
+    def test_evidence_table_html_blocks_unsafe_url_schemes(self):
+        article = dict(SAMPLE_ARTICLES[0])
+        article["pubmed_url"] = "javascript:alert(1)"
+        article["doi_url"] = "data:text/html,<script>alert(2)</script>"
+
+        table_html = generate_evidence_table_html([article])
+
+        self.assertNotIn('href="javascript:', table_html)
+        self.assertNotIn('href="data:', table_html)
+        self.assertIn('href="#"', table_html)
+        self.assertIn('rel="noopener noreferrer"', table_html)
+
     @patch("report_generator.verify_citation")
     def test_perform_red_team_audit(self, mock_verify_citation) -> None:
         mock_verify_citation.side_effect = [
@@ -293,6 +305,26 @@ class TestReportGenerator(unittest.TestCase):
         self.assertNotIn("100 / 100", html_rep)
         self.assertNotIn("0% (Sıfır)", html_rep)
         self.assertNotIn("SIFIR HALÜSİNASYON", html_rep)
+
+    def test_generate_html_report_escapes_untrusted_content_and_blocks_unsafe_links(self):
+        audit = {
+            "status": "DENETLEME TAMAMLANDI",
+            "grade_rating_policy": {"grade_status": "GRADE Değerlendirilmedi"},
+        }
+        malicious_query = 'test\"><script>alert("query")</script>'
+        markdown = (
+            '<script>alert("body")</script>\n\n'
+            '[bad](javascript:alert(1))\n\n'
+            '[good](https://example.org/path?a=1&b=2)'
+        )
+
+        html_rep = generate_html_report(malicious_query, [], markdown, audit=audit)
+
+        self.assertNotIn("<script>", html_rep)
+        self.assertIn("&lt;script&gt;", html_rep)
+        self.assertNotIn('href="javascript:', html_rep)
+        self.assertIn('href="https://example.org/path?a=1&amp;b=2"', html_rep)
+        self.assertIn('rel="noopener noreferrer"', html_rep)
 
     def test_regression_extract_pico_single_arg(self):
         pico = extract_pico("Statin-associated muscle symptoms AND anti-HMGCR")

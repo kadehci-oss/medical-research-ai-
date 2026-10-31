@@ -117,7 +117,7 @@ st.markdown("""
 
 def main():
     st.markdown('<div class="main-header">🩺 Medical Research AI - Evrensel Klinik Kanıt Motoru</div>', unsafe_allow_html=True)
-    st.markdown('<div class="sub-header">Bütün Tıp Branşları için Gerçek Literatür Taraması, PMID/DOI Doğrulama, Yapılandırılmış Kanıt Tablosu ve Türkçe Klinik Sentez Raporu Engine</div>', unsafe_allow_html=True)
+    st.markdown('<div class="sub-header">PubMed tabanlı ön tarama, kaynak eşleşme kontrolü, yapılandırılmış kanıt tablosu ve Türkçe araştırma sentezi</div>', unsafe_allow_html=True)
 
     # Sidebar Configuration
     st.sidebar.title("⚙️ Ayarlar & Yapılandırma")
@@ -133,7 +133,7 @@ def main():
     use_llm_synth = st.sidebar.checkbox(
         "OpenAI Sentez Motorunu Kullan",
         value=bool(openai_api_key),
-        help="İşaretlenirse, bulunan PubMed özetleri OpenAI GPT modeli ile sentezlenerek raporlanır."
+        help="İşaretlenirse sorgunuz, makale başlıkları ve PubMed özetleri seçtiğiniz OpenAI modeline gönderilir. Tanımlanabilir hasta bilgisi girmeyin."
     )
 
     llm_model = st.sidebar.selectbox(
@@ -144,10 +144,13 @@ def main():
 
     st.sidebar.markdown("---")
     st.sidebar.info(
-        "**🔍 Doğrulanmış Kaynak & Atıf Dürüstlüğü Politikası:**\n"
-        "Bu evrensel sistem canlı NCBI PubMed ve CrossRef E-utilities API verilerini kullanır. "
-        "Metin sentezi özet (abstract) verilerine dayanır; klinik doğrulama veya otomatik GRADE derecelendirmesi iddiasında bulunulmaz."
+        "**🔍 PubMed kaynak kapsamı:**\n"
+        "Arama PubMed sonuçlarına dayalı bir ön taramadır; sistematik derleme veya kapsamlı tarama değildir. "
+        "Kaynak kontrolü PMID ile mevcut başlık/DOI alanlarını PubMed'de yeniden eşleştirir; eksik alanları doğrulanmış saymaz. "
+        "Özet sentezi klinik doğrulama veya resmi GRADE değerlendirmesi değildir."
     )
+    if use_llm_synth:
+        st.sidebar.warning("LLM veri aktarımı: sorgu ve PubMed makale bilgileri/özetleri OpenAI'ye gönderilir. Hasta kimliği veya özel sağlık verisi eklemeyin.")
 
     # Canlı Streamlit Sürüm ve Commit Doğrulama Bilgisi
     import subprocess
@@ -337,7 +340,7 @@ def main():
     # Tab 3: Turkish Evidence Report Generator & Structured Evidence Module
     with tab3:
         st.subheader("Türkçe Klinik Kanıt Raporu ve Yapılandırılmış Kanıt Tablosu Engine")
-        st.write("Doğrulanmış makalelerinizden çalışma tasarımları, kanıt seviyeleri, Red Team güvenlik denetimi ve indirilebilir raporlar üretin.")
+        st.write("PubMed arama sonuçlarından çalışma tasarımları, ön kanıt notları, güvenlik denetimi ve indirilebilir araştırma raporları üretin.")
 
         if "search_results" in st.session_state and st.session_state["search_results"].get("articles"):
             articles = st.session_state["search_results"]["articles"]
@@ -355,13 +358,14 @@ def main():
             with col_a1:
                 st.metric("Toplam Kaynak", len(articles))
             with col_a2:
-                st.metric("Doğrulanmış Atıf", audit_res["citation_integrity"]["verified_citations"])
+                st.metric("PubMed ile eşleşen kaynak", audit_res["citation_integrity"]["verified_citations"])
             with col_a3:
                 st.metric("Veri Kapsamı", "Yalnızca Özet (Abstract)")
             with col_a4:
                 st.metric("GRADE Statüsü", "Değerlendirilmedi")
             with col_a5:
                 st.metric("Uzman Hekim Değerlendirmesi", audit_res.get("expert_physician_review", "Yapılmadı"))
+            st.caption("Eşleşme; PMID'nin yeniden alınmasını ve yalnızca sağlanmış başlık/DOI alanlarının kontrolünü ifade eder.")
 
             st.markdown(
                 f"""<div class="grade-notice-card">
@@ -370,6 +374,7 @@ def main():
                 </div>""",
                 unsafe_allow_html=True
             )
+            st.caption("Bağımsız uzman hekim değerlendirmesi yapılmadı; depodaki değerlendirme formu boş protokoldür.")
 
             if st.button("📑 Türkçe Kanıt Raporunu ve Tabloları Oluştur", type="primary", use_container_width=True):
                 st.session_state.pop("generated_report", None)
@@ -388,7 +393,8 @@ def main():
                     synth_res = engine.generate_synthesis_report(
                         query=query,
                         articles=articles,
-                        search_metadata=search_meta
+                        search_metadata=search_meta,
+                        verification_results=audit_res.get("verification_results", []),
                     )
                     report_md = synth_res.get("report_markdown", "")
                     html_report = synth_res.get("report_html", "")
@@ -427,7 +433,7 @@ def main():
 
                 with report_subtab2:
                     st.subheader("🔄 Çapraz Çalışma Karşılaştırma Matrisi (Cross-Study Evidence Matrix)")
-                    st.write("Elde edilen yayınların PMID kaynakları, klinik sonlanımları, etki ölçütleri, tutarlı/çelişkili bulguları ve karşılaştırılamama gerekçeleri aşağıda sunulmaktadır.")
+                    st.write("Bu bölüm, özetlerden metin tabanlı sezgisel eşleştirme yapar. Sonuçlar klinik eşdeğerlik veya tedavi karşılaştırılabilirliği kanıtı değildir; uzman incelemesi gerekir.")
 
                     # 1. Bireysel Çalışma Sentezi ve Etki Ölçütleri
                     st.markdown("#### 🔬 1. Çalışma Bazlı Klinik Sonlanımlar & Etki Ölçütleri")
@@ -490,7 +496,7 @@ def main():
                         for nc_item in non_comp_list:
                             st.markdown(f"- **Kaynak Atıfları:** {nc_item.get('source_citations')}\n  - **Karşılaştırılamama Gerekçesi:** {nc_item.get('reason')}")
                     else:
-                        st.info("💡 İncelenen tüm primer çalışmalar birbiriyle karşılaştırılabilir PICO yapısına sahiptir.")
+                        st.info("💡 Sezgisel eşleştirme kurallarına göre karşılaştırılamama işareti bulunmadı; bu, çalışmaların klinik olarak eşdeğer olduğunu göstermez.")
 
                     st.markdown("---")
 

@@ -323,6 +323,9 @@ class UniversalEvidenceEngine:
             art_enhanced = dict(art)
             art_enhanced["verification_status"] = v_status
             art_enhanced["verification_reason"] = v_reason
+            art_enhanced["verification_scope"] = (
+                "PMID PubMed EFetch arama kaydında bulundu; bu alan tek başına başlık/DOI eşleşmesi veya klinik doğruluk iddiası değildir."
+            )
             art_enhanced["clinical_details"] = details
             art_enhanced["risk_of_bias"] = rob
             art_enhanced["study_design_info"] = design
@@ -691,7 +694,8 @@ class UniversalEvidenceEngine:
         self,
         query: str,
         articles: List[Dict[str, Any]],
-        search_metadata: Optional[Dict[str, Any]] = None
+        search_metadata: Optional[Dict[str, Any]] = None,
+        verification_results: Optional[List[Dict[str, Any]]] = None,
     ) -> Dict[str, Any]:
         """
         Synthesizes a specialist-physician-level Turkish evidence report using either rule-based engine
@@ -715,7 +719,9 @@ class UniversalEvidenceEngine:
             }
 
         try:
-            audit_res = report_generator.perform_red_team_audit(query, articles)
+            audit_res = report_generator.perform_red_team_audit(
+                query, articles, verification_results=verification_results
+            )
 
             report_md = report_generator.generate_turkish_evidence_report(
                 query=query,
@@ -723,10 +729,11 @@ class UniversalEvidenceEngine:
                 api_key=self.api_key if self.use_llm else None,
                 use_llm=self.use_llm,
                 model=self.model,
-                search_metadata=search_metadata
+                search_metadata=search_metadata,
+                audit=audit_res,
             )
 
-            html_report = report_generator.generate_html_report(query, articles, report_md)
+            html_report = report_generator.generate_html_report(query, articles, report_md, audit=audit_res)
             pico = report_generator.extract_pico(query)
             cross_comp = self.compare_cross_article_findings(articles, query)
             quality_qc = report_generator.validate_clinical_report_quality(report_md)
@@ -764,7 +771,10 @@ def generate_universal_evidence_synthesis(
     api_key: Optional[str] = None,
     use_llm: bool = False,
     model: str = "gpt-4o-mini",
-    search_metadata: Optional[Dict[str, Any]] = None
+    search_metadata: Optional[Dict[str, Any]] = None,
+    verification_results: Optional[List[Dict[str, Any]]] = None,
 ) -> Dict[str, Any]:
     engine = UniversalEvidenceEngine(api_key=api_key, use_llm=use_llm, model=model)
-    return engine.generate_synthesis_report(query, articles, search_metadata=search_metadata)
+    return engine.generate_synthesis_report(
+        query, articles, search_metadata=search_metadata, verification_results=verification_results
+    )
