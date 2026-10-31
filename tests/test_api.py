@@ -41,6 +41,16 @@ class TestFastAPIApp(unittest.TestCase):
         self.assertEqual(len(data["articles"]), 1)
         self.assertEqual(data["articles"][0]["pmid"], "12345")
 
+    @patch("api.search_pubmed")
+    def test_api_search_rejects_invalid_sort_and_year_range(self, mock_search):
+        bad_sort = client.get("/api/search?query=diabetes&sort=arbitrary")
+        reversed_years = client.get("/api/search?query=diabetes&start_year=2024&end_year=2020")
+        too_long_query = client.get(f"/api/search?query={'x' * 2001}")
+        self.assertEqual(bad_sort.status_code, 422)
+        self.assertEqual(reversed_years.status_code, 422)
+        self.assertEqual(too_long_query.status_code, 422)
+        mock_search.assert_not_called()
+
     @patch("api.verify_pmid")
     def test_api_verify_pmid_success(self, mock_verify):
         mock_verify.return_value = {
@@ -66,6 +76,17 @@ class TestFastAPIApp(unittest.TestCase):
 
         response = client.get("/api/verify/pmid/999999999")
         self.assertEqual(response.status_code, 404)
+
+    @patch("api.verify_pmid")
+    def test_api_verify_pmid_upstream_error_is_502(self, mock_verify):
+        mock_verify.return_value = {
+            "valid": False,
+            "pmid": "35771962",
+            "reason": "upstream_error",
+            "error": "PubMed kaydı doğrulanırken geçici bir hata oluştu.",
+        }
+        response = client.get("/api/verify/pmid/35771962")
+        self.assertEqual(response.status_code, 502)
 
     @patch("api.verify_doi")
     def test_api_verify_doi_success(self, mock_verify):
@@ -167,6 +188,22 @@ class TestFastAPIApp(unittest.TestCase):
             json={"query": "diabetes", "articles": [{"pmid": str(10000 + index)} for index in range(51)]},
         )
         self.assertEqual(response.status_code, 422)
+
+    @patch("api.verify_citation")
+    def test_llm_endpoints_require_explicit_data_transfer_confirmation(self, mock_verify_citation):
+        payload = {
+            "query": "diabetes",
+            "articles": [{"pmid": "12345"}],
+            "api_key": "test-key",
+            "use_llm": True,
+        }
+        report_response = client.post("/api/report", json=payload)
+        synthesis_response = client.post("/api/universal_engine/synthesize", json=payload)
+
+        self.assertEqual(report_response.status_code, 422)
+        self.assertEqual(synthesis_response.status_code, 422)
+        self.assertIn("açıkça onaylayın", report_response.json()["detail"])
+        mock_verify_citation.assert_not_called()
 
     @patch("api.verify_citation")
     def test_api_report_rejects_invalid_or_duplicate_pmids(self, mock_verify_citation):

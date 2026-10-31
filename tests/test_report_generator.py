@@ -291,6 +291,57 @@ class TestReportGenerator(unittest.TestCase):
         self.assertIn("Türkçe Klinik Araştırma Raporu", report)
         self.assertIn("34449189", report)
 
+    def test_llm_is_not_called_without_explicit_data_transfer_consent(self):
+        with patch(
+            "report_generator.verify_citation",
+            return_value={"status": "verified", "verified": True, "reason": "match"},
+        ), patch("report_generator.OpenAI") as mock_openai:
+            report = generate_turkish_evidence_report(
+                "SGLT2 inhibitors", SAMPLE_ARTICLES, api_key="test-key", use_llm=True
+            )
+
+        mock_openai.assert_not_called()
+        self.assertIn("açık onay verilmedi", report)
+        self.assertIn("Türkçe Klinik Araştırma Raporu", report)
+
+    def test_llm_exception_uses_safe_fallback_without_exposing_error(self):
+        with patch(
+            "report_generator.verify_citation",
+            return_value={"status": "verified", "verified": True, "reason": "match"},
+        ), patch("report_generator.OpenAI") as mock_openai:
+            mock_openai.return_value.chat.completions.create.side_effect = Exception(
+                "Authorization failed for api_key=sk-test-secret"
+            )
+            report = generate_turkish_evidence_report(
+                "SGLT2 inhibitors",
+                SAMPLE_ARTICLES,
+                api_key="sk-test-secret",
+                use_llm=True,
+                allow_external_data_transfer=True,
+            )
+
+        self.assertIn("OpenAI sentezi üretilemedi", report)
+        self.assertNotIn("sk-test-secret", report)
+        self.assertNotIn("Authorization failed", report)
+        self.assertIn("aktarılıp aktarılmadığı", report)
+
+    def test_openai_client_initialization_error_uses_safe_fallback(self):
+        with patch(
+            "report_generator.verify_citation",
+            return_value={"status": "verified", "verified": True, "reason": "match"},
+        ), patch("report_generator.OpenAI", side_effect=Exception("api_key=test-secret")):
+            report = generate_turkish_evidence_report(
+                "SGLT2 inhibitors",
+                SAMPLE_ARTICLES,
+                api_key="test-secret",
+                use_llm=True,
+                allow_external_data_transfer=True,
+            )
+
+        self.assertIn("OpenAI sentezi üretilemedi", report)
+        self.assertNotIn("test-secret", report)
+        self.assertNotIn("api_key", report)
+
     def test_generate_html_report(self):
         markdown_rep = generate_rule_based_turkish_report("SGLT2 inhibitors", SAMPLE_ARTICLES)
         html_rep = generate_html_report("SGLT2 inhibitors", SAMPLE_ARTICLES, markdown_rep)

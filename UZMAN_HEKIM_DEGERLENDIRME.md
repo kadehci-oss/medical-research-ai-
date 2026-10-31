@@ -5,6 +5,7 @@
 ## Şartlar
 - En az iki bağımsız, ilgili branştan uzman hekim; geliştirici ve test verilerini hazırlayan kişilerden bağımsız.
 - Önceden belirlenmiş 30 klinik soru: anti-HMGCR/statin miyopatisi (10), kalp yetersizliği (10), enfeksiyon hastalıkları/antibiyotik stewardship (10). Gerçek hasta kimliği içermeyen, sentetik veya anonim klinik sorular.
+- Bu 30 soruluk örneklem yalnızca üç klinik alan için pilot değerlendirmedir; tüm branşları, soru türlerini veya tüm kullanıcı gruplarını doğruladığı ileri sürülemez. Projenin tüm branş hedefi için daha geniş, önceden belirlenmiş bir örneklem ve ilgili uzmanlık alanlarından değerlendiriciler gerekir.
 - Her soru için önceden dondurulmuş referans cevap: makale PMID/DOI, tam metin veya özet kaynağı, kılavuz tarihi, PICO, temel bulgular, uygulanabilirlik, sakıncalar.
 - Uzmanlara araç adı/modeli gizlenerek, rastgele sırayla rapor çıktıları sunulmalı; başlangıçta bağımsız değerlendirme, ardından uyuşmazlıklarda üçüncü uzman.
 

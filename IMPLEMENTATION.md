@@ -18,7 +18,7 @@ Bu doküman, **Medical Research AI** platformunun uçtan uca mimarisini, PubMed/
 
 ## 1. Genel Mimari ve Bileşen Yapısı
 
-**Medical Research AI**, tıbbi araştırmacılar ve uzman hekimler için tasarlanmış, halüsinasyonsuz (*zero-hallucination*), canlı NCBI PubMed verileriyle desteklenen evrensel bir klinik kanıt sentez platformudur.
+**Medical Research AI**, canlı NCBI PubMed kayıtları ve mevcut özetler üzerinde çalışan bir klinik araştırma prototipidir. Arama ve rapor üretimi sezgiseldir; sistematik tarama, uzman hekim doğrulaması veya halüsinasyonsuzluk garantisi sağlamaz. PMID/DOI eşleşmesi kaynak kaydının kimliğini doğrular, rapordaki her klinik iddianın kaynakça tarafından desteklendiğini kanıtlamaz.
 
 ### 🏗 Sistem Mimarisi Şeması
 
@@ -69,7 +69,8 @@ Bu doküman, **Medical Research AI** platformunun uçtan uca mimarisini, PubMed/
    - Kural tabanlı deterministik sentezleyici ve OpenAI LLM sentezleyicisi ile 13 zorunlu bölümden oluşan Türkçe klinik rapor üretir.
 
 5. **`universal_evidence_engine.py` (Evrensel Klinik Kanıt Motoru)**:
-   - Tüm tıbbi uzmanlık alanlarında (Kardiyoloji, Nöroloji, Tıbbi Onkoloji, Ruh Sağlığı ve Psikiyatri, Fizik Tedavi ve Rehabilitasyon vb.) hastalığa bağımsız (*disease-agnostic*) kanıt tarama, çapraz çalışma karşılaştırması ve doğrulama süreçlerini orchestrate eder.
+   - 88 yapılandırılmış uzmanlık etiketi için anahtar sözcük tabanlı eşleşme ve bazı güvenli kısaltmalar için sınırlı sorgu genişletmesi uygular; bu, her branş veya klinik sorunun kapsandığı anlamına gelmez.
+   - PubMed kayıtları ve özetleri üzerinde ön araştırma/sentez yapar. Tam metin taraması, sistematik derleme protokolü veya uzman hekim doğrulaması sağlamaz.
 
 ---
 
@@ -80,19 +81,19 @@ Bu doküman, **Medical Research AI** platformunun uçtan uca mimarisini, PubMed/
 NCBI PubMed E-utilities API entegrasyonu iki aşamalı olarak gerçekleştirilir:
 
 1. **Arama Aşaması (`esearch.fcgi`)**:
-   - Kullanıcı sorgusu Medikal Konu Başlıkları (MeSH) ve serbest metin terimleriyle optimize edilir.
+   - Kullanıcının sorgusu PubMed'e gönderilir. Sadece algılanan uzmanlık ve belirli kısaltmalarda sınırlı eş anlamlı genişletmesi yapılır; kapsamlı MeSH/PICO arama stratejisi oluşturulmaz.
    - Yayın Tipi Filtreleme: *Randomized Controlled Trial*, *Systematic Review*, *Meta-Analysis*, *Clinical Trial*, *Review*.
    - Tarih Aralığı Filtreleme: `start_year` ve `end_year` parametreleri ile spesifik zaman pencereleri tanımlanır.
    - Sıralama: Alaka düzeyi (*relevance*) veya yayın tarihine (*pub_date*) göre sıralama yapılır.
 
 2. **Detay Veri Çekme Aşaması (`efetch.fcgi`)**:
-   - `esearch` sonucu elde edilen PMID listesi için XML formatında tam makale künyesi ve özet metni çekilir.
-   - Çekilen veriler: PMID, DOI, Makale Başlığı, Yazar Listesi, Dergi Adı, Yayın Yılı, Yayın Tipleri, MESH Terimleri ve Tam Özet (Abstract).
+   - `esearch` sonucu elde edilen PMID listesi için XML formatında makale künyesi ve mevcutsa özet metni çekilir; makalenin tam metni alınmaz.
+   - Çekilen veriler: PMID, DOI, makale başlığı, yazar listesi, dergi adı, yayın yılı, yayın tipleri ve mevcut özet.
 
-### 🛡 Hız Sınırlama ve İstisna Yönetimi
+### 🛡 Yeniden Deneme ve İstisna Yönetimi
 
-- NCBI API kullanım kurallarına uyum sağlamak amacıyla tüm isteklerde `tool=MedicalResearchAI` ve `email` meta verileri iletilir.
-- Geçici ağ hataları ve HTTP 429 (*Too Many Requests*) durumlarında üstel geri çekilme (*exponential backoff*) ile otomatik yeniden deneme (*retry*) mekanizması uygulanır.
+- İsteklerde `tool` ve `email` meta verileri, yapılandırılmışsa `api_key` iletilir.
+- Geçici ağ hataları ve HTTP 429 (*Too Many Requests*) durumlarında sınırlı bekleme/yeniden deneme uygulanır. Süreçler arası ortak hız sınırlayıcı yoktur; API'de kimlik doğrulama ve rate limit de yoktur.
 
 ---
 
@@ -197,59 +198,59 @@ Sağlık bilişimi ve yapay zeka uygulamalarında veri güvenliği, hasta gizlil
 ┌────────────────────────────────────────────────────────────────────────┐
 │                   VERİ DOĞRULAMA VE GÜVENLİK KATMANI                    │
 ├────────────────────────────────────────────────────────────────────────┤
-│ 1. PMID/DOI Doğrulama ve Kaynak-İddia Eşleştirme                      │
-│ 2. Uydurma Veriyi Engelleme (Zero Metric Fabrication)                  │
-│ 3. KVKK ve Hasta Verilerinin Korunması (PHI Elimination)               │
-│ 4. API Anahtarı Güvenliği ve Oturum Maskeleme                          │
-│ 5. Prompt Injection ve Sistem İzolasyonu                               │
+│ 1. PMID/DOI Kayıt Kimliği Kontrolü                                     │
+│ 2. Kaynak Metriklerinin Sezgisel Çıkarımı                              │
+│ 3. LLM Veri Aktarımı İçin Açık Kullanıcı Onayı                         │
+│ 4. API Anahtarı İşleme ve Hata Mesajı Maskeleme                        │
+│ 5. Prompt Injection Riskini Azaltmaya Yönelik Talimatlar               │
 │ 6. XSS (Cross-Site Scripting) Engelleme                                │
 │ 7. SSRF (Server-Side Request Forgery) Koruması                         │
-│ 8. Otomatik Güvenlik Testleri ve Red Team Denetimi                     │
+│ 8. Otomatik Testler ve Sezgisel Çıktı Denetimi                         │
 └────────────────────────────────────────────────────────────────────────┘
 ```
 
 ### 6.1. PMID/DOI Doğrulama ve Kaynak–İddia Eşleştirme
-- **Doğrusal Bağlantılama**: Rapor içerisindeki her klinik bulgu ve metrik, doğrudan kaynağın doğrulanmış NCBI PubMed sayfasına benzersiz bağlantı ile eklenir (`https://pubmed.ncbi.nlm.nih.gov/<PMID>/`).
-- **Başlık ve Metin Normalizasyonu**: `normalize_title` ve `normalize_doi` fonksiyonları ile küçük/büyük harf, noktalama ve Unicode karakter farklılıkları temizlenerek tam eşleşme doğrulaması yapılır.
+- **Kayıt Kimliği Kontrolü**: Verilen PMID PubMed'den yeniden alınır; sağlanmış başlık ve DOI alanları normalize edilerek karşılaştırılır. Bu, kaynak kaydının kimliğini kontrol eder; rapordaki her klinik iddianın o kaynak tarafından desteklendiğini kanıtlamaz.
+- **Kaynak Bağlantıları**: Raporlar kaynak kayıtlarına PubMed bağlantısı verebilir; klinik iddia-kaynak eşleştirmesi sezgisel olup uzman tarafından denetlenmelidir.
+- **Başlık ve Metin Normalizasyonu**: `normalize_title` ve `normalize_doi` fonksiyonları küçük/büyük harf, noktalama ve DOI öneklerindeki bazı farklılıkları karşılaştırma öncesinde normalleştirir; bu yöntem bağımsız bilimsel doğrulama değildir.
 
-### 6.2. Uydurma Veriyi Engelleme (Anti-Hallucination & Zero Metric Fabrication)
-- **Sıkı Grounding Politikası**: LLM veya deterministik sentezleyici, makale özetinde bulunmayan hiçbir $n$, HR, OR, RR veya p değerini tahmin edemez, türetemez veya uyduramaz.
-- **Eksik Veri Beyanı**: Özet metninde yer almayan parametreler raporda açıkça `"Belirtilmedi"` veya `"Özette bildirilmedi"` şeklinde ifade edilir.
-- **Yapay %100 Doğrulama ve Yanıltıcı İddia Yasağı**: Raporda asla "%100 doğrulandı", "%0 halüsinasyon garantisi" veya "klinik olarak onaylandı" gibi abartılı beyanlara izin verilmez.
+### 6.2. Kaynağa Dayalı Raporlama Hedefi ve Sınırları
+- **Kısıtlayıcı İstem ve Kural Tabanlı Çıkarım**: LLM istemi ile metrik çıkarıcılar, kaynakta olmayan sayıların eklenmesini azaltmayı hedefler; halüsinasyonsuzluk veya her metriğin doğru ayrıştırıldığı garanti edilmez.
+- **Eksik Veri Beyanı**: Çıkarıcıların bulamadığı parametreler çoğu yerde `"Belirtilmedi"` veya `"Özette bildirilmedi"` olarak sunulur; otomatik çıkarım hatalı veya eksik olabilir.
+- **Uzman İncelemesi**: Rapordaki klinik çıkarımlar, güvenlik değerlendirmeleri ve kaynak desteği hekim tarafından gözden geçirilmeden klinik karar için kullanılmamalıdır.
 
-### 6.3. KVKK ve Hasta Verilerinin Korunması
-- **Kişisel Sağlık Verisi (PHI) İşlememe İlkesi**: Platform yalnızca anonim, yayınlanmış akademik literatür verilerini işler.
-- **Sorgu Anonimleştirme**: Arama sorgularındaki hasta adı, T.C. Kimlik No veya kişisel tanımlayıcılar sistem tarafından taranmaz, saklanmaz veya veritabanına kaydedilmez.
-- **Kalıcı Hasta Veri Deposu Yoktur**: Sistemde hasta kayıtları veya kişisel veri depolayan hiçbir veri tabanı bağlantısı bulunmamaktadır.
+### 6.3. Kişisel Sağlık Verisi: Kullanım Sınırları
+- **Amaçlanan Kullanım**: Sistem yayınlanmış araştırma literatürünü sorgulamak içindir; hasta kayıtlarını veya tanımlanabilir sağlık verilerini girmeyin.
+- **Otomatik PHI Tespiti Yoktur**: Sorgular hasta adı, T.C. Kimlik No veya başka kişisel tanımlayıcılar için taranmaz ya da anonimleştirilmez. Kalıcı hasta veritabanı bulunmaması, girilen verinin başka hizmetlere aktarılmayacağı anlamına gelmez.
+- **LLM Veri Aktarımı**: OpenAI sentezi varsayılan olarak kapalıdır. Kullanıcı açık onay verdiğinde sorgu, PubMed makale üstverisi ve özetleri OpenAI'ye gönderilir; onay, verinin gerçekten kimliksiz olduğunun teknik doğrulaması değildir.
 
-### 6.4. API Anahtarı Güvenliği
-- **Çevre Değişkenleri ve Secrets Yönetimi**: OpenAI ve dış API anahtarları yalnızca çevre değişkenleri (`OPENAI_API_KEY`) veya Streamlit Secrets üzerinden okunur.
-- **Maskeleme ve Log Güvenliği**: Kullanıcı arayüzünde girilen API anahtarları istemci tarafında maskelenir. Sistem loglarında veya hata mesajlarında API anahtarlarının açık metin olarak yer alması kesinlikle engellenmiştir.
+### 6.4. API Anahtarı İşleme
+- **Anahtar Kaynakları**: Streamlit `OPENAI_API_KEY` çevre değişkenini kullanabilir; FastAPI rapor isteği ayrıca API anahtarını gövdesinde kabul eder. API servisi kimlik doğrulaması ve hız sınırlaması sağlamaz; herkese açık ağa doğrudan açılmamalıdır.
+- **Hata Mesajları**: PubMed ve OpenAI rapor hataları kullanıcıya genel mesajlarla döndürülür; canlı NCBI artifact'ine ham istisna metni yazılmaz. Bu korumalar, uygulamayı her çalışma ortamında gizli bilgi sızıntısına karşı garanti etmez.
 
-### 6.5. Prompt Injection Koruması
-- **Sistem Promptu İzolasyonu**: LLM çağrılarında kullanıcı girdileri ve makale özetleri özel sınırlandırıcı ifadelerle (`### SORGULAR ###`, `### MAKALE ÖZETLERİ ###`) kapsüllenir.
-- **Karakter Temizleme**: Kullanıcı sorgularındaki komut enjeksiyonu potansiyeli taşıyan sistem yönlendirme ifadeleri filtrelenir.
-- **Red Team Denetimi**: `perform_red_team_audit` fonksiyonu, sentez çıktısını yayınlamadan önce komut enjeksiyonu ve halüsinasyon risklerine karşı denetler.
+### 6.5. Prompt Injection Riskini Azaltma
+- **İstem Uyarıları**: LLM sistem istemi kullanıcı sorgusu ve makale başlık/özetlerini güvenilmeyen veri olarak tanımlamaya çalışır; bu, prompt injection'ı kesin biçimde engellemez.
+- **Otomatik Denetim**: `perform_red_team_audit` rapora yönelik kural tabanlı kontroller sağlar. Bağımsız red-team testi değildir ve klinik doğruluk ya da halüsinasyonsuzluk garantisi vermez.
 
 ### 6.6. XSS (Cross-Site Scripting) Engelleme
 - **HTML Kaçış (Escaping)**: Streamlit ve FastAPI arayüzlerinde kullanıcıdan veya dış API'den gelen veriler HTML kaçış süzgecinden geçirilir.
-- **Güvenli Markdown ve HTML İşleme**: Rapor çıktılarındaki `iframe`, `script` ve yetkisiz inline stil blokları temizlenerek XSS zafiyetleri önlenir.
+- **Güvenli Markdown ve HTML İşleme**: Rapor oluşturucusu Markdown içeriğini HTML olarak kaçırır ve yalnızca izin verilen bağlantıları üretmeye çalışır; bu, bütün olası XSS yollarının bağımsız güvenlik testiyle doğrulandığı anlamına gelmez.
 
-### 6.7. SSRF (Server-Side Request Forgery) Koruması
-- **Sadece İzin Verilen Alan Adları (Whitelisting)**: Dış HTTP istekleri yalnızca önceden tanımlanmış güvenli API uç noktalarına yönlendirilir:
+### 6.7. SSRF Saldırı Yüzeyini Sınırlama
+- **Sabit Kaynak Uç Noktaları**: PubMed ve CrossRef istemcileri kodda tanımlı uç noktalara istek gönderir; kullanıcıdan serbest URL alınmaz. OpenAI istemcisi ayrıca ortam yapılandırmasını kullanabilir; uygulama seviyesinde genel bir ağ çıkış allowlist'i yoktur:
   - NCBI PubMed E-utilities: `eutils.ncbi.nlm.nih.gov`
   - CrossRef REST API: `api.crossref.org`
-- **İç Ağ İzolasyonu**: Kullanıcı girdilerinden alınan URL veya IP adreslerine dahili sunucu ağından istek atılması engellenmiştir.
+- **Kapsam Sınırı**: Kullanıcı girdilerinden doğrudan URL/IP fetch edilmez; bu, dağıtım katmanındaki ağ yalıtımı veya tüm SSRF risklerinin bağımsız denetimi yerine geçmez.
 
-### 6.8. Otomatik Güvenlik Testleri
-- **Birincil Test Süreci**: `tests/` dizinindeki 70 otomatize test senaryosu her kod değişikliğinde çalıştırılır.
-- **Canlı NCBI Validation**: `live_ncbi_validation.py` betiği ve GitHub Actions iş akışı (`.github/workflows/live-ncbi-validation.yml`) aracılığıyla canlı NCBI sunucuları üzerinde düzenli güvenlik ve doğrulama denetimi sağlanır. İş akışı Python 3.12 kullanır ve bağımlılıkları `requirements.lock` dosyasından kurar. `NCBI_EMAIL` deposu sırrı **Settings > Secrets and variables > Actions** altında tanımlanmalıdır; sır yoksa iş `::warning::` yazar.
+### 6.8. Otomatik Testler ve Canlı NCBI Kontrolü
+- **Otomatik Testler**: `tests/` içindeki pytest paketi `.github/workflows/ci.yml` ile `main`/`master` push ve pull request'lerinde Python 3.12 üzerinde çalıştırılır. Bu testler tek başına klinik doğrulama değildir.
+- **Canlı NCBI Kontrolü**: `live_ncbi_validation.py`, sınırlı ESearch/EFetch ve kayıt kimliği smoke testidir; güvenlik denetimi veya klinik doğrulama değildir. GitHub Actions iş akışı haftalık ve elle çalıştırılır, sonuç JSON'unu run artifact'i olarak yükler; depodaki JSON otomatik güncellenmez. İş akışı Python 3.12 kullanır ve bağımlılıkları `requirements.lock` dosyasından kurar. `NCBI_EMAIL` depo sırrı **Settings > Secrets and variables > Actions** altında tanımlanabilir; sır yoksa iş `::warning::` yazar.
 
 ---
 
 ## 7. Tıbbi Branş ve Uzmanlık Matrisi
 
-Depo kök dizininde yer alan `all_specialty_matrix.json` dosyası, platformun evrensel tıp kapsayıcılığını sağlayan 88 tıbbi uzmanlık alanını içerir.
+Depo kök dizinindeki `all_specialty_matrix.json`, 88 uzmanlık etiketi ve anahtar sözcük içerir. Bu yapılandırılmış liste tıbbın tamamını veya her klinik soruyu kapsamaz; uzmanlık eşleştirmesi sezgiseldir ve kapsam/klinik doğruluk garantisi vermez.
 
 ### 📋 Matris Özellikleri
 - **Toplam Branş Sayısı**: Exactly 88 araştırma ve uzmanlık alanı.

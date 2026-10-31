@@ -19,6 +19,10 @@ It searches live PubMed, checks citation identifiers and available title/DOI fie
 
 Search is a PubMed-based preliminary search, not a systematic review or a claim of comprehensive coverage. The report does not screen every retrieved record against a registered inclusion/exclusion protocol. Cross-study matching is heuristic and abstract-only; it is not evidence that studies are clinically equivalent.
 
+## Product goal and current gap
+
+The intended goal is a Turkish, expert-level report for clinical research questions across medical specialties, grounded in verified real publications. **This version does not yet meet that goal.** It searches PubMed only, retrieves bibliographic records and available abstracts rather than full text, and uses keyword-based matching across 88 configured specialty labels. Search, outcome extraction, cross-study comparison, and GRADE-style notes are not an exhaustive or independently validated clinical review. PMID/title/DOI matching verifies record identity; it does not prove that every report claim is supported by that source. Independent specialist review has not been performed.
+
 ---
 
 ## Project structure
@@ -29,10 +33,10 @@ Search is a PubMed-based preliminary search, not a systematic review or a claim 
 ├── app.py                         # Streamlit dashboard
 ├── pubmed_client.py               # NCBI E-utilities and CrossRef client
 ├── report_generator.py            # Turkish evidence-report synthesis
-├── universal_evidence_engine.py   # Disease-agnostic evidence search and synthesis
+├── universal_evidence_engine.py   # PubMed/abstract-based preliminary search and synthesis
 ├── all_specialty_matrix.json      # Specialty matrix used by the evidence engine
 ├── live_ncbi_validation.py        # Live esearch/efetch smoke script (no mocks)
-├── ncbi_live_results.json         # Last recorded live-validation output
+├── ncbi_live_results.json         # Saved local smoke-test output; may be stale
 ├── requirements.txt               # Pinned direct dependencies
 ├── UZMAN_HEKIM_DEGERLENDIRME.md   # Expert-review protocol (not yet performed)
 ├── IMPLEMENTATION.md              # Architecture notes
@@ -61,7 +65,7 @@ Search is a PubMed-based preliminary search, not a systematic review or a claim 
 
 ### Prerequisites
 
-- Python 3.11 or newer (3.12 is what CI, the weekly NCBI workflow, and the pinned dependency set were checked with). Streamlit 1.66 and pandas 3.1 require 3.11+.
+- Python 3.12 is what CI, the weekly NCBI workflow, and the pinned dependency set are checked with. Python 3.11+ is the declared dependency baseline, but 3.11 is not currently verified by CI. Streamlit 1.66 and pandas 3.1 require 3.11+.
 - Network access to NCBI E-utilities and the CrossRef API.
 
 ### Install
@@ -82,7 +86,7 @@ pip install -r requirements.lock
 
 Regenerate the lock file from a clean virtual environment whenever `requirements.txt` changes. Do not edit `requirements.lock` by hand.
 
-CI (`.github/workflows/ci.yml`) and the live NCBI workflow install from `requirements.lock` on Python 3.12. If that install fails, they fall back to `requirements.txt`.
+CI (`.github/workflows/ci.yml`) and the live NCBI workflow install from `requirements.lock` on Python 3.12 and run `pip check`. If the locked install fails, the job stops rather than silently testing with the looser `requirements.txt`; regenerate and review the lock file when dependencies change.
 
 ---
 
@@ -133,6 +137,8 @@ uvicorn api:app --host 127.0.0.1 --port 8000
 
 The report endpoints accept citation identifiers (PMID, with optional title/DOI for matching), fetch the authoritative article record from PubMed, and synthesize from that fetched record rather than trusting client-supplied abstracts or authors. At most 50 citations are accepted per report request.
 
+LLM synthesis is off by default. For API requests, setting `use_llm: true` with an OpenAI key also requires `llm_data_transfer_confirmed: true`; this confirms that the query and PubMed metadata/abstracts may be sent to OpenAI and contain no patient-identifying or confidential health data. Without that confirmation, the API rejects the request before fetching citations. In Streamlit, OpenAI also starts disabled and the user must explicitly confirm the data transfer; otherwise the report stays local and rule-based.
+
 The API does not provide user authentication or request-rate limiting. The documented Uvicorn command binds to `127.0.0.1`; do not expose the service directly to the public internet. A public deployment must add authentication, rate/body limits, TLS, and appropriate proxy configuration.
 
 ---
@@ -144,7 +150,7 @@ pytest
 python live_ncbi_validation.py
 ```
 
-`pytest` mocks network calls. `live_ncbi_validation.py` calls production E-utilities with no mocks and writes `ncbi_live_results.json`. The same script runs from `.github/workflows/live-ncbi-validation.yml` on Python 3.12, every Monday at 08:17 UTC and on manual dispatch. That job installs from `requirements.lock` and passes `NCBI_EMAIL` from the Actions secret described above. A passing smoke test is not a clinical validation.
+`pytest` mocks network calls. `live_ncbi_validation.py` calls production E-utilities with no mocks and overwrites `ncbi_live_results.json` in the current working directory. The copy committed in this repository is only a saved local run and may be stale; the latest scheduled or manual GitHub Actions result is available as that run's uploaded artifact and does not update the repository file. The script runs from `.github/workflows/live-ncbi-validation.yml` on Python 3.12, every Monday at 08:17 UTC and on manual dispatch. That job installs from `requirements.lock` and passes `NCBI_EMAIL` from the Actions secret described above. A passing smoke test is not a clinical or security validation.
 
 ---
 
@@ -165,3 +171,5 @@ python generate_review_packet.py --output review_packet --limit 8 --max-results 
 ```
 
 The command calls live PubMed, writes one Markdown file and one HTML file per question, and writes `puanlama.csv` with empty score columns that match the protocol (PICO, source identity, claim-source match, study design, safety, uncertainty, critical error, reviewer decision and signature). Pause between questions so NCBI is not called back-to-back. Filling the CSV and signing it is a human physician's job. The script does not fill scores and does not record an approval.
+
+The current protocol's 30 questions cover only statin myopathy, heart failure, and infectious diseases; it is a limited pilot sample and cannot validate performance across all 88 configured specialty labels or all clinical question types.

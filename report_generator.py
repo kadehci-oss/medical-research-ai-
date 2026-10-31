@@ -1,3 +1,4 @@
+import logging
 import os
 import re
 from typing import List, Dict, Any, Optional
@@ -14,6 +15,8 @@ from display_turkish import (
     localize_clinical_display,
 )
 from pubmed_client import verify_citation
+
+logger = logging.getLogger(__name__)
 
 # Reports must never read as if a physician has signed off.
 EXPERT_PHYSICIAN_REVIEW_STATUS = "Yapılmadı"
@@ -4378,12 +4381,14 @@ def generate_llm_turkish_report(
     model: str = "gpt-4o-mini",
     search_metadata: Optional[Dict[str, Any]] = None,
     audit: Optional[Dict[str, Any]] = None,
+    allow_external_data_transfer: bool = False,
 ) -> str:
     """Generates a Turkish evidence report using LLM with 13 required sections and strict anti-hallucination constraints."""
+    if not allow_external_data_transfer:
+        rule_report = generate_rule_based_turkish_report(query, articles, search_metadata=search_metadata, audit=audit)
+        return "*(OpenAI'ye veri aktarımı için açık onay verilmedi; bu rapor yerel kural tabanlı yöntemle üretildi.)*\n\n" + rule_report
     if not OpenAI:
         return generate_rule_based_turkish_report(query, articles, search_metadata=search_metadata, audit=audit)
-
-    client = OpenAI(api_key=api_key)
 
     context_blocks = []
     for idx, art in enumerate(articles, 1):
@@ -4403,8 +4408,8 @@ def generate_llm_turkish_report(
     evidence_table_md = generate_evidence_table_markdown(articles)
 
     system_prompt = (
-        "Sen uzman bir tıbbi araştırmacı ve klinik kanıt analistisin. Görevin, sağlanan PubMed makale özetlerini "
-        "kullanarak tıp hekimleri için Türkçe Klinik Araştırma Raporu hazırlamaktır.\n\n"
+        "Sen, sağlanan PubMed makale kayıt ve özetlerini Türkçe olarak düzenleyen bir araştırma asistanısın; "
+        "hekim veya klinik uzman değilsin. Rapor klinik karar için değil, kaynakları incelemeye yardımcı olmak içindir.\n\n"
         "KESİN KURALLAR VE KLİNİK RAPORLAMA KISITLARI:\n"
         "1. KESİNLİKLE uydurma atıf, uydurma PMID, uydurma makale veya kaynak gösterme! Yalnızca verilen makalelerdeki gerçek verileri kullan.\n"
         "2. KESİNLİKLE '100/100 doğrulandı', '0% halüsinasyon riski', 'uzman hekim değerlendirmesi tamamlandı' veya 'klinik olarak doğrulanmıştır' gibi asılsız iddialarda BULUNMA!\n"
@@ -4437,6 +4442,9 @@ def generate_llm_turkish_report(
         "   - Çalışmaların hasta sayılarını (n), etki ölçütlerini (HR, OR, RR, IRR, SMD, MD, %95 GA, p) ve belirsizlikleri/sınırlılıkları [PMID: xxx] kaynaklarıyla göster.\n"
         "   - PICO eşleştirmeleri sezgisel ön taramadır; klinik eşdeğerlik veya sistematik derleme iddiası kurma.\n"
         "10. Rapor sonunda sorgu, makale üstverisi ve PubMed özetlerinin bu LLM sentezi için OpenAI'ye gönderildiğini açıkça bildir.\n"
+        "11. Sağlanan kayıt ve özetlerde bulunmayan tıbbi bilgi, doz, kılavuz önerisi veya klinik sonuç ekleme; modelin genel bilgisini kaynak gibi kullanma.\n"
+        "12. 4. bölümde klinik arka planı ve 8. bölümde kılavuzları yalnızca sağlanan kaynaklar açıkça destekliyorsa anlat; aksi halde mevcut kaynakların bunu değerlendirmeye yetmediğini belirt.\n"
+        "13. Kanıt desteklemiyorsa tedavi önerisi, klinik eşdeğerlik veya kesin neden-sonuç çıkarımı verme.\n"
     )
 
     user_prompt = (
@@ -4446,6 +4454,7 @@ def generate_llm_turkish_report(
     )
 
     try:
+        client = OpenAI(api_key=api_key)
         response = client.chat.completions.create(
             model=model,
             messages=[
@@ -4482,9 +4491,14 @@ def generate_llm_turkish_report(
             "OpenAI'ye gönderildi. Bu akışa hasta kimliği veya özel sağlık verisi eklenmemelidir."
         )
         return llm_report + data_note
-    except Exception as e:
+    except Exception as exc:
+        logger.warning("LLM report generation failed (%s)", type(exc).__name__)
         rule_report = generate_rule_based_turkish_report(query, articles, search_metadata=search_metadata, audit=audit)
-        return f"*(LLM Üretiminde Hata: {str(e)} - Otomatik Kural Tabanlı Rapor Oluşturuldu)*\n\n" + rule_report
+        transmission_note = (
+            "\n\n---\n\n**LLM veri aktarımı:** OpenAI sentezi etkinleştirildi. İstek başarısız olduğundan, "
+            "sorgu ve makale bilgilerinin OpenAI'ye aktarılıp aktarılmadığı bu rapordan doğrulanamaz."
+        )
+        return "*(OpenAI sentezi üretilemedi; kural tabanlı rapor kullanıldı.)*\n\n" + rule_report + transmission_note
 
 
 def generate_turkish_evidence_report(
@@ -4495,11 +4509,18 @@ def generate_turkish_evidence_report(
     model: str = "gpt-4o-mini",
     search_metadata: Optional[Dict[str, Any]] = None,
     audit: Optional[Dict[str, Any]] = None,
+    allow_external_data_transfer: bool = False,
 ) -> str:
     """Main entry point to generate Turkish evidence reports."""
     if use_llm and api_key and api_key.strip():
         return generate_llm_turkish_report(
-            query, articles, api_key.strip(), model=model, search_metadata=search_metadata, audit=audit
+            query,
+            articles,
+            api_key.strip(),
+            model=model,
+            search_metadata=search_metadata,
+            audit=audit,
+            allow_external_data_transfer=allow_external_data_transfer,
         )
     else:
         return generate_rule_based_turkish_report(query, articles, search_metadata=search_metadata, audit=audit)

@@ -1,11 +1,11 @@
 """
-Universal Evidence Engine (Evrensel Klinik Kanıt Motoru)
-Disease-Agnostic Medical Research Engine for Turkish Clinical Evidence Synthesis.
+PubMed-based preliminary evidence search and Turkish synthesis prototype.
 
-Supports all medical specialties (Cardiology, Neurology, Oncology, ENT/KBB, Infectious Diseases, etc.).
-Extracts structured parameters (n, HR/RR/OR/MD, 95% CI, p-values, PICO, RoB) from PubMed articles
-without fabricating unstated metrics. 
-Provides source-claim matching, comparative cross-article synthesis, and safe error handling.
+The specialty matrix contains 88 keyword-matched labels and only selected synonym
+expansions; it is not exhaustive. Retrieval is limited to PubMed records and
+available abstracts, not full text or a systematic-review search protocol.
+Extracted metrics and source matching are heuristic and require expert review;
+this module does not provide specialist validation or establish clinical truth.
 """
 
 import logging
@@ -138,15 +138,24 @@ def _maybe_prefer_high_level_evidence(
 
 class UniversalEvidenceEngine:
     """
-    Universal Medical Research Engine that works across all medical specialties.
-    Provides disease-agnostic PubMed retrieval, citation verification, structured metric extraction,
-    cross-study comparative analysis, and specialist-level Turkish clinical report synthesis.
+    Preliminary PubMed research assistant using configured specialty keywords.
+
+    Provides PubMed retrieval, citation identity checks, heuristic metric
+    extraction, and Turkish evidence summaries; outputs are not clinically
+    validated and are not a substitute for a systematic review or specialist.
     """
 
-    def __init__(self, api_key: Optional[str] = None, use_llm: bool = False, model: str = "gpt-4o-mini"):
+    def __init__(
+        self,
+        api_key: Optional[str] = None,
+        use_llm: bool = False,
+        model: str = "gpt-4o-mini",
+        allow_external_data_transfer: bool = False,
+    ):
         self.api_key = api_key
         self.use_llm = use_llm
         self.model = model
+        self.allow_external_data_transfer = allow_external_data_transfer
 
     def search_and_verify(
         self,
@@ -355,7 +364,7 @@ class UniversalEvidenceEngine:
         - Comparison
         - Clinical outcomes and bound statistical metrics (n, HR/RR/OR/MD, 95% CI, p-values)
         - Methodological & causality limitations
-        Guarantees zero metric fabrication (unstated parameters remain None or 'Belirtilmedi').
+        Uses heuristic extraction; missing fields are left unset when not found, but extraction may be incomplete or incorrect and requires source review.
         """
         processed = []
         for art in articles:
@@ -698,16 +707,10 @@ class UniversalEvidenceEngine:
         verification_results: Optional[List[Dict[str, Any]]] = None,
     ) -> Dict[str, Any]:
         """
-        Synthesizes a specialist-physician-level Turkish evidence report using either rule-based engine
-        or OpenAI LLM engine based on configuration.
+        Creates a preliminary Turkish synthesis from PubMed records and available abstracts.
 
-        Ensures full compliance with:
-        - 13 required sections
-        - Abstract-only limitations
-        - GRADE Not Assessed status
-        - Uncompleted Expert Physician Review disclosure
-        - Citation-claim matching
-        - Zero metric fabrication
+        The report generator aims to include required limitations and verified record identifiers,
+        but heuristic extraction and LLM output are not clinically validated and may be incomplete.
         """
         if not query or not query.strip():
             return {
@@ -728,6 +731,7 @@ class UniversalEvidenceEngine:
                 articles=articles,
                 api_key=self.api_key if self.use_llm else None,
                 use_llm=self.use_llm,
+                allow_external_data_transfer=self.allow_external_data_transfer,
                 model=self.model,
                 search_metadata=search_metadata,
                 audit=audit_res,
@@ -773,8 +777,14 @@ def generate_universal_evidence_synthesis(
     model: str = "gpt-4o-mini",
     search_metadata: Optional[Dict[str, Any]] = None,
     verification_results: Optional[List[Dict[str, Any]]] = None,
+    allow_external_data_transfer: bool = False,
 ) -> Dict[str, Any]:
-    engine = UniversalEvidenceEngine(api_key=api_key, use_llm=use_llm, model=model)
+    engine = UniversalEvidenceEngine(
+        api_key=api_key,
+        use_llm=use_llm,
+        model=model,
+        allow_external_data_transfer=allow_external_data_transfer,
+    )
     return engine.generate_synthesis_report(
         query, articles, search_metadata=search_metadata, verification_results=verification_results
     )

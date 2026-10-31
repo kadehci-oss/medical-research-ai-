@@ -84,7 +84,7 @@ def _get_with_retry(
     timeout: float = 10,
 ) -> requests.Response:
     """
-    GET with a short bounded backoff on HTTP 429 and transient 5xx.
+    GET with a short bounded backoff on transient network errors, HTTP 429, and 5xx.
 
     Headers come from ``ncbi_request_headers`` (tool name and contact email).
     E-utilities callers attach ``tool``, ``email``, and an optional ``api_key``
@@ -95,7 +95,22 @@ def _get_with_retry(
     response: Optional[requests.Response] = None
     attempts = len(_RETRY_DELAYS_SECONDS) + 1
     for attempt in range(attempts):
-        response = requests.get(url, params=params, headers=ncbi_request_headers(), timeout=timeout)
+        try:
+            response = requests.get(url, params=params, headers=ncbi_request_headers(), timeout=timeout)
+        except (requests.exceptions.ConnectionError, requests.exceptions.Timeout) as exc:
+            if attempt >= len(_RETRY_DELAYS_SECONDS):
+                raise
+            delay = _RETRY_DELAYS_SECONDS[attempt]
+            logger.warning(
+                "Transient %s from %s; retrying in %.1fs (attempt %s/%s)",
+                type(exc).__name__,
+                url,
+                delay,
+                attempt + 1,
+                attempts,
+            )
+            time.sleep(delay)
+            continue
         status = response.status_code if isinstance(getattr(response, "status_code", None), int) else None
         if status in _RETRYABLE_STATUS and attempt < len(_RETRY_DELAYS_SECONDS):
             delay = _retry_delay_seconds(response, _RETRY_DELAYS_SECONDS[attempt])
@@ -381,13 +396,14 @@ def search_pubmed(
         }
 
     except Exception as e:
+        logger.warning("PubMed search failed (%s)", type(e).__name__)
         return {
             "articles": [],
             "total_count": 0,
             "query": query,
             "search_date": search_date_str,
             "search_params": search_params_summary,
-            "error": str(e)
+            "error": "PubMed'e erişim sırasında geçici bir hata oluştu."
         }
 
 
@@ -427,10 +443,12 @@ def verify_pmid(pmid: str) -> Dict[str, Any]:
                 "error": f"PMID {clean_pmid} PubMed veritabanında bulunamadı."
             }
     except Exception as e:
+        logger.warning("PubMed PMID verification failed (%s)", type(e).__name__)
         return {
             "valid": False,
             "pmid": clean_pmid,
-            "error": f"Doğrulama sırasında hata oluştu: {str(e)}"
+            "reason": "upstream_error",
+            "error": "PubMed kaydı doğrulanırken geçici bir hata oluştu."
         }
 
 

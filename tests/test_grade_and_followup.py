@@ -65,6 +65,57 @@ class TestPreliminaryGrade(unittest.TestCase):
         self.assertEqual(note["domains"]["inconsistency"]["status"], "ciddi düşürme")
         self.assertIn("75", note["domains"]["inconsistency"]["reason"])
 
+    def test_negated_bias_phrases_do_not_trigger_downgrade(self):
+        article = {
+            "pmid": "223",
+            "title": "Randomized trial",
+            "publication_types": ["Randomized Controlled Trial"],
+            "abstract": "There was no high risk of bias. The trial was not open-label.",
+        }
+        note = assess_preliminary_grade(article, "treatment efficacy")
+        self.assertEqual(note["domains"]["risk_of_bias"]["status"], "değerlendirilemedi")
+
+    def test_no_substantial_heterogeneity_does_not_trigger_downgrade(self):
+        article = {
+            "pmid": "224",
+            "title": "Meta-analysis of randomized trials",
+            "publication_types": ["Meta-Analysis"],
+            "abstract": "Randomized trials were pooled. No substantial heterogeneity was observed.",
+        }
+        note = assess_preliminary_grade(article, "treatment efficacy")
+        self.assertEqual(note["domains"]["inconsistency"]["status"], "düşürme yok")
+
+    def test_negated_low_heterogeneity_is_not_misclassified_as_reassuring(self):
+        article = {
+            "pmid": "227",
+            "title": "Meta-analysis of randomized trials",
+            "publication_types": ["Meta-Analysis"],
+            "abstract": "Randomized trials were pooled. No low heterogeneity was observed.",
+        }
+        note = assess_preliminary_grade(article, "treatment efficacy")
+        self.assertEqual(note["domains"]["inconsistency"]["status"], "değerlendirilemedi")
+
+    def test_out_of_range_i2_is_left_unassessed(self):
+        article = {
+            "pmid": "225",
+            "title": "Meta-analysis of randomized trials",
+            "publication_types": ["Meta-Analysis"],
+            "abstract": "Randomized trials were pooled. I2 = 120%.",
+        }
+        note = assess_preliminary_grade(article, "treatment efficacy")
+        self.assertEqual(note["domains"]["inconsistency"]["status"], "değerlendirilemedi")
+
+    def test_negated_publication_bias_and_imprecision_do_not_trigger_downgrade(self):
+        article = {
+            "pmid": "226",
+            "title": "Meta-analysis of randomized trials",
+            "publication_types": ["Meta-Analysis"],
+            "abstract": "No evidence of publication bias was found. There was no lack of precision.",
+        }
+        note = assess_preliminary_grade(article, "treatment efficacy")
+        self.assertEqual(note["domains"]["publication_bias"]["status"], "düşürme yok")
+        self.assertEqual(note["domains"]["imprecision"]["status"], "değerlendirilemedi")
+
     def test_empty_abstract_marks_domains_unassessed(self):
         article = {"pmid": "333", "title": "Untitled note", "publication_types": [], "abstract": ""}
         note = assess_preliminary_grade(article, "")

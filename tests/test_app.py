@@ -94,6 +94,43 @@ class TestAppRegression(unittest.TestCase):
         has_version_caption = any("Sürüm:" in cap and "Commit:" in cap for cap in sidebar_captions)
         self.assertTrue(has_version_caption, f"Expected version/commit caption in sidebar, got: {sidebar_captions}")
 
+    def test_openai_data_transfer_is_disabled_by_default(self):
+        with patch.dict(os.environ, {"OPENAI_API_KEY": "test-key"}):
+            at = AppTest.from_file(os.path.abspath("app.py"), default_timeout=10)
+            at.run()
+
+        llm_toggle = next(item for item in at.sidebar.checkbox if item.label == "OpenAI Sentez Motorunu Kullan")
+        self.assertFalse(llm_toggle.value)
+
+    @patch("app.UniversalEvidenceEngine.search_and_verify")
+    def test_article_identifiers_are_rendered_as_plain_text(self, mock_search):
+        malicious_doi = '<img src=x onerror="alert(1)">'
+        mock_search.return_value = {
+            "query": "test query",
+            "total_count": 1,
+            "articles": [{
+                "pmid": "12345",
+                "title": "Test article",
+                "authors": [],
+                "journal": "Test journal",
+                "pub_year": "2024",
+                "publication_types": ["Journal Article"],
+                "abstract": "Test abstract",
+                "doi": malicious_doi,
+                "pubmed_url": "",
+                "doi_url": "",
+            }],
+        }
+        at = AppTest.from_file(os.path.abspath("app.py"), default_timeout=10)
+        at.run()
+        at.text_input[0].input("test query")
+        [button for button in at.button if "Ara" in button.label][0].click().run()
+
+        displayed_text = [element.value for element in at.text]
+        rendered_markdown = [element.value for element in at.markdown]
+        self.assertIn(f"PMID: 12345 | DOI: {malicious_doi}", displayed_text)
+        self.assertFalse(any(malicious_doi in value for value in rendered_markdown))
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -1,5 +1,6 @@
 import os
 import unittest
+import requests
 from unittest.mock import patch, MagicMock
 from pubmed_client import (
     parse_pubmed_xml,
@@ -145,12 +146,40 @@ class TestPubMedClient(unittest.TestCase):
 
     @patch("requests.get")
     def test_search_pubmed_network_exception(self, mock_get):
-        mock_get.side_effect = Exception("Connection timeout")
+        mock_get.side_effect = Exception(
+            "Connection timeout for https://eutils.ncbi.nlm.nih.gov/?api_key=test-secret"
+        )
 
-        res = search_pubmed("diabetes")
+        with patch.dict(os.environ, {"NCBI_API_KEY": "test-secret"}, clear=False):
+            res = search_pubmed("diabetes")
         self.assertIn("error", res)
-        self.assertEqual(res["error"], "Connection timeout")
+        self.assertEqual(res["error"], "PubMed'e erişim sırasında geçici bir hata oluştu.")
+        self.assertNotIn("test-secret", res["error"])
         self.assertEqual(mock_get.call_count, 1)
+
+    @patch("requests.get", side_effect=Exception("request failed"))
+    def test_verify_pmid_network_exception_is_generic(self, _mock_get):
+        result = verify_pmid("34449189")
+        self.assertFalse(result["valid"])
+        self.assertEqual(result["reason"], "upstream_error")
+        self.assertEqual(result["error"], "PubMed kaydı doğrulanırken geçici bir hata oluştu.")
+
+    @patch("pubmed_client.time.sleep")
+    @patch("requests.get")
+    def test_search_pubmed_retries_transient_timeout(self, mock_get, mock_sleep):
+        ok = MagicMock()
+        ok.status_code = 200
+        ok.headers = {}
+        ok.raise_for_status.return_value = None
+        ok.json.return_value = {"esearchresult": {"count": "0", "idlist": []}}
+        mock_get.side_effect = [requests.exceptions.Timeout("transient timeout"), ok]
+
+        result = search_pubmed("heart failure")
+
+        self.assertEqual(result["total_count"], 0)
+        self.assertNotIn("error", result)
+        self.assertEqual(mock_get.call_count, 2)
+        mock_sleep.assert_called_once_with(1.0)
 
     @patch("pubmed_client.time.sleep")
     @patch("requests.get")
