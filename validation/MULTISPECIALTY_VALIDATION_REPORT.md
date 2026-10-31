@@ -15,7 +15,7 @@ sonra düzeltildi; bu yüzden ayrılmış kümenin güncel sonucu artık bağım
 |---|---|---|---|
 | Eksiksiz çıkarım oranı | %100.0 (153/153) | **%77.9 (53/68)** | %100.0 (68/68) |
 | Yanlış çıkarım oranı | %0.0 (0/153) | **%8.6 (5/58)** | %0.0 (0/68) |
-| Kaynak eşleşme doğruluğu (cümle) | %100.0 (179/179) | **%100.0 (62/62)** | %100.0 (84/84) |
+| Kaynak eşleşme doğruluğu (cümle) | %100.0 (179/179) | **%100.0 (62/62)** | %100.0 (82/82) |
 | Kaynak eşleşme doğruluğu (sayısal değer) | %100.0 (129/129) | **%100.0 (52/52)** | %100.0 (57/57) |
 | Yanlış nedensellik iddiası | 0 | **0** | 0 |
 | Soru çerçevesi seçimi | 18/18 | **9/10** | 10/10 |
@@ -107,14 +107,14 @@ sonra düzeltildi; bu yüzden ayrılmış kümenin güncel sonucu artık bağım
 
 | Branş | Durum | Alıntı kontrolü | Kümede olmayan PMID | RoB/GRADE derece iddiası |
 |---|---|---|---|---|
-| Kardiyoloji | Doğrulandı | 83/83 | 0 | 0 |
-| Onkoloji | Doğrulandı | 78/78 | 0 | 0 |
-| Nöroloji | Doğrulandı | 74/74 | 0 | 0 |
+| Kardiyoloji | Doğrulandı | 67/67 | 0 | 0 |
+| Onkoloji | Doğrulandı | 66/66 | 0 | 0 |
+| Nöroloji | Doğrulandı | 58/58 | 0 | 0 |
 | Enfeksiyon | Doğrulandı | 35/35 | 0 | 0 |
-| Endokrinoloji | Doğrulandı | 59/59 | 0 | 0 |
-| Pediatri | Doğrulandı | 63/63 | 0 | 0 |
-| Cerrahi | Doğrulandı | 43/43 | 0 | 0 |
-| Radyoloji | Doğrulandı | 59/59 | 0 | 0 |
+| Endokrinoloji | Doğrulandı | 51/51 | 0 | 0 |
+| Pediatri | Doğrulandı | 41/41 | 0 | 0 |
+| Cerrahi | Doğrulandı | 39/39 | 0 | 0 |
+| Radyoloji | Doğrulandı | 33/33 | 0 | 0 |
 
 ### Soru çerçevesi seçimi
 
@@ -171,7 +171,7 @@ sonra düzeltildi; bu yüzden ayrılmış kümenin güncel sonucu artık bağım
 |---|---|
 | Eksiksiz çıkarım oranı | %100.0 (68/68) |
 | Yanlış çıkarım oranı | %0.0 (0/68) |
-| Kaynak eşleşme doğruluğu (cümle) | %100.0 (84/84) |
+| Kaynak eşleşme doğruluğu (cümle) | %100.0 (82/82) |
 | Kaynak eşleşme doğruluğu (sayısal değer) | %100.0 (57/57) |
 | Yanlış nedensellik iddiası | 0 |
 | Örneklem yerine olay/kol sayısı | 0 |
@@ -213,14 +213,14 @@ sonra düzeltildi; bu yüzden ayrılmış kümenin güncel sonucu artık bağım
 
 | Branş | Durum | Alıntı kontrolü | Kümede olmayan PMID | RoB/GRADE derece iddiası |
 |---|---|---|---|---|
-| Kardiyoloji | Doğrulandı | 37/37 | 0 | 0 |
-| Onkoloji | Doğrulandı | 40/40 | 0 | 0 |
-| Nöroloji | Doğrulandı | 46/46 | 0 | 0 |
-| Enfeksiyon | Doğrulandı | 50/50 | 0 | 0 |
-| Endokrinoloji | Doğrulandı | 13/13 | 0 | 0 |
+| Kardiyoloji | Doğrulandı | 25/25 | 0 | 0 |
+| Onkoloji | Doğrulandı | 28/28 | 0 | 0 |
+| Nöroloji | Doğrulandı | 34/34 | 0 | 0 |
+| Enfeksiyon | Doğrulandı | 38/38 | 0 | 0 |
+| Endokrinoloji | Doğrulandı | 9/9 | 0 | 0 |
 | Pediatri | Doğrulandı | 6/6 | 0 | 0 |
-| Cerrahi | Doğrulandı | 36/36 | 0 | 0 |
-| Radyoloji | Doğrulandı | 17/17 | 0 | 0 |
+| Cerrahi | Doğrulandı | 30/30 | 0 | 0 |
+| Radyoloji | Doğrulandı | 15/15 | 0 | 0 |
 
 ### Soru çerçevesi seçimi
 

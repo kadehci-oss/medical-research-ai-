@@ -446,6 +446,13 @@ def extract_arms(article: Dict[str, Any], randomized: bool = True) -> List[Study
     if not randomized:
         return arms
     for sentence in sentences_of(article.get("abstract") or ""):
+        given = re.search(r"\b(?:provided\s+with|received|given|to\s+receive)\b[^.;]{0,60}?\b(?P<a1>[A-Za-z][\w-]{3,})\s+or\s+"
+                          r"(?P<a2>placebo|sham(?:\s+\w+)?|usual\s+care|standard\s+care)\b", sentence, re.IGNORECASE)
+        if given and not _ARM_NO_COUNT_RE.search(sentence):
+            src = _source(article, sentence)
+            return [StudyArm(label=given.group("a1"), n=None, role="intervention", source=src),
+                    StudyArm(label=given.group("a2"), n=None, role="comparator", source=src)]
+    for sentence in sentences_of(article.get("abstract") or ""):
         match = _ARM_NO_COUNT_RE.search(sentence)
         if not match:
             continue
@@ -1298,7 +1305,8 @@ _NAME_FUNCTION_WORDS = {
 def _plausible_name(value: Optional[str]) -> str:
     """Reject clipped fragments ("ve", "(1:1)", "hastalar tedavi") from the legacy extractor."""
     text = re.sub(r"\s+", " ", (value or "")).strip(" ,;")
-    if not text or text in ("Belirtilmedi", "değerlendirilemedi"):
+    if not text or text in ("Belirtilmedi", "değerlendirilemedi") or re.search(
+            r"bildirilmedi|belirtilmedi|belirtilmemiş|değerlendirilemedi", text, re.IGNORECASE):
         return ""
     tokens = re.findall(r"[A-Za-zÇĞİÖŞÜçğıöşü0-9+/-]+", text)
     while tokens and tokens[-1].lower() in _NAME_FUNCTION_WORDS:
@@ -1880,12 +1888,13 @@ def render_study_card_lines(study: Study) -> List[str]:
     if study.other_numeric_findings:
         bits = []
         for item in study.other_numeric_findings:
-            bits.append(f"{item['outcome'] or 'sonlanım adı yok'}: {', '.join(item['metrics'])}")
+            bits.append(f"{item['outcome'] or 'sonlanım adı yok'} ({', '.join(item['metrics'])})")
         lines.append("**Özetteki diğer sayısal bulgular (etki ölçütü olarak yapılandırılmadı):** " + "; ".join(bits) +
                      f" (PMID: {pmid})")
     if rejected:
         lines.append(f"**Reddedilen eşleştirmeler:** {len(rejected)} (tutarsız güven aralığı veya geçersiz aralık; sentezde kullanılmadı)")
-    lines.append(f"**Yanlılık riski:** {study.risk_of_bias.tool or 'araç seçilemedi'} — {NOT_ASSESSED_TR} (derece verilmedi)")
+    tool = rg.display_bias_tool(study.risk_of_bias.tool) if study.risk_of_bias.tool else "araç seçilemedi"
+    lines.append(f"**Yanlılık riski:** {tool} — {NOT_ASSESSED_TR} (derece verilmedi)")
     lines.append(f"**GRADE:** {NOT_ASSESSED_TR}")
     if study.relations:
         rel = "; ".join(

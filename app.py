@@ -1,4 +1,5 @@
 import os
+import re
 import streamlit as st
 import pandas as pd
 from pubmed_client import verify_pmid, verify_doi, verify_citation
@@ -16,6 +17,8 @@ from report_generator import (
     extract_pico,
     extract_article_clinical_details,
     assess_risk_of_bias,
+    display_bias_rating,
+    display_bias_tool,
     validate_clinical_report_quality,
 )
 
@@ -267,7 +270,10 @@ def main():
                         st.markdown(f"**Çalışma Tasarımı:** `{study.design_label}`")
                         st.markdown(f"**Kanıt düzeyi:** `{study.evidence_level}`")
                         st.caption(study.evidence_level_note or "")
-                        st.markdown(f"**Yanlılık aracı ({study.risk_of_bias.tool}):** `{rob['overall_rating']}`")
+                        st.markdown(
+                            f"**Yanlılık aracı ({display_bias_tool(study.risk_of_bias.tool)}):** "
+                            f"`{display_bias_rating(rob['overall_rating'])}`"
+                        )
                         st.caption(rob.get("rating_policy") or "Değerlendirme yapılmadan risk derecesi verilmez.")
                         for line in evidence_model.render_study_card_lines(study)[2:]:
                             st.markdown(line)
@@ -478,18 +484,16 @@ def main():
                                 st.markdown(f"**Çalışma tasarımı:** `{s_item.get('study_design')}`")
                                 st.markdown(f"**Kanıt düzeyi:** `{s_item.get('evidence_level')}`")
                                 st.caption(s_item.get("evidence_level_note") or "Kanıt düzeyi çalışma tasarımından üretilmez.")
-                                st.markdown(f"**Popülasyon:** {s_item.get('patient_population')} | **Örneklem (n):** {s_item.get('sample_size_n') or 'Özette bildirilmedi'}")
+                                st.markdown(f"**Popülasyon:** {s_item.get('patient_population')} | **Örneklem (n):** {s_item.get('sample_size_n') or 'özette bildirilmedi'}")
                                 st.markdown(f"**Müdahale:** {s_item.get('intervention')} | **Karşılaştırma:** {s_item.get('comparison')}")
                                 st.markdown(f"**Yanlılık durumu:** `{s_item.get('risk_of_bias')}`")
                                 st.caption("Araç seçilmiş olsa da değerlendirme yapılmadan risk derecesi verilmez.")
 
                                 st.markdown("**Klinik Sonlanımlar ve Etki Ölçütleri:**")
-                                o_metrics = s_item.get("outcome_metrics", [])
-                                if o_metrics:
-                                    for om in o_metrics:
-                                        m_str = ", ".join(om.get("metrics", [])) if om.get("metrics") else "Özette nicel etki ölçütü yok"
-                                        st.markdown(f"- 📌 **{om.get('outcome')}:** `{m_str}`")
-                                        st.caption(f"Cümle bağlamı: {om.get('sentence')}")
+                                outcome_lines = s_item.get("outcome_lines") or []
+                                if outcome_lines:
+                                    for line in outcome_lines:
+                                        st.markdown(f"- 📌 {line}")
                                 else:
                                     st.write("Özette doğrudan bağlı nicel sonlanım ölçütü tespit edilmemiştir.")
 

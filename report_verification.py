@@ -57,7 +57,9 @@ def verify_report(report_md: str, studies: List[em.Study]) -> Dict[str, Any]:
         if study is None:
             continue
         quotes_checked += 1
-        _loc, status = em.verify_sentence_in_source(sentence, study.legacy.get("abstract", ""), study.title)
+        # A quote clipped with an ellipsis is checked on the part that is shown.
+        shown = re.sub(r"\s*(?:…|\.\.\.)\s*$", "", sentence)
+        _loc, status = em.verify_sentence_in_source(shown, study.legacy.get("abstract", ""), study.title)
         if status != em.SOURCE_VERIFIED:
             quotes_failed.append(f"PMID {pmid}: \"{sentence[:80]}…\"")
     if quotes_failed:

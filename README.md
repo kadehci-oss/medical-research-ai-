@@ -155,6 +155,37 @@ pytest
 python live_ncbi_validation.py
 ```
 
+---
+
+## Rapor Kalite Denetçisi (Report Quality Audit)
+
+Üretilen Türkçe kanıt sentezi Markdown raporlarını otomatik olarak denetlemek için `tools/report_quality_audit.py` aracı kullanılır. Bu araç canlı raporları manuel kontrol etmek yerine sayımlar ve kritik ihlal kontrolleri yapar:
+
+- Kaynak cümle / alıntı / kaynakça dışındaki ham İngilizce cümleler
+- Ardışık yinelenen sözcükler (ör. "oranı oranı")
+- Aynı blok içinde birebir yinelenen satırlar veya sonlanım maddeleri
+- Etiketsiz sayı listeleri (ör. "15 hasta; 15 hasta; 5 hasta")
+- Anlamlılık çelişkileri (aynı cümlede "anlamlı bir fark saptanmamıştır" veya "değerlendirilemedi" ile p < 0.05 çelişkisi — **kritik**)
+- GA alanında ham İngilizce metin ("confidence interval", "CI")
+- Uzman hekim değerlendirmesi için yapıldı iddiası (**kritik**)
+
+### Kullanım:
+
+```bash
+# Markdown dosyasını denetle (özet çıktı)
+python tools/report_quality_audit.py statin_myopathy_report.md
+
+# JSON formatında çıktı al
+python tools/report_quality_audit.py statin_myopathy_report.md --json
+
+# Standart girdiden (stdin) boru hattıyla çalıştır
+cat statin_myopathy_report.md | python tools/report_quality_audit.py
+
+# Python modülü olarak çağır
+from tools.report_quality_audit import audit_report_quality
+result = audit_report_quality(report_markdown)
+```
+
 `pytest` mocks network calls. `live_ncbi_validation.py` calls production E-utilities with no mocks and overwrites `ncbi_live_results.json` in the current working directory. The copy committed in this repository is only a saved local run and may be stale; the latest scheduled or manual GitHub Actions result is available as that run's uploaded artifact and does not update the repository file. The script runs from `.github/workflows/live-ncbi-validation.yml` on Python 3.12, every Monday at 08:17 UTC and on manual dispatch. That job installs from `requirements.lock` and passes `NCBI_EMAIL` from the Actions secret described above. A passing smoke test is not a clinical or security validation.
 
 ---

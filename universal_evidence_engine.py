@@ -15,6 +15,9 @@ from typing import List, Dict, Any, Optional
 import pubmed_client
 import report_generator
 import specialty_matrix
+import evidence_guards  # [mrai-fixes]
+import pico_compat  # [mrai-fixes]
+import stat_direction  # [mrai-fixes]
 from effect_size_extractor import extract_effect_sizes, summarize_effects
 from rob2_assessor import assess_rob2
 # [EVIDENCE_LAYER] auto-import
@@ -344,6 +347,7 @@ class UniversalEvidenceEngine:
             art_enhanced["clinical_details"] = details
             art_enhanced["risk_of_bias"] = rob
             art_enhanced["study_design_info"] = design
+            art_enhanced["retraction_status"] = evidence_guards.retraction_status(art)  # [mrai-fixes B9]
             art_enhanced = enrich_record(art_enhanced)
 
             verified_articles.append(art_enhanced)
@@ -397,7 +401,7 @@ class UniversalEvidenceEngine:
                 "publication_types": pub_types,
                 "study_design": design,
                 "patient_population": details.get("patient_group", "Belirtilmedi"),
-                "sample_size": details.get("sample_size", "Özette bildirilmedi"),
+                "sample_size": details.get("sample_size", "özette bildirilmedi"),
                 "sample_size_n": metrics.get("n"),
                 "intervention": details.get("intervention", "Belirtilmedi"),
                 "comparison": details.get("comparison", "Belirtilmedi"),
@@ -405,6 +409,7 @@ class UniversalEvidenceEngine:
                 "confidence_intervals": metrics.get("confidence_intervals", []),
                 "p_values": metrics.get("p_values", []),
                 "outcome_metrics": outcome_metrics,
+                "outcome_lines": report_generator.study_effect_lines(abstract),
                 "concomitant_treatments": metrics.get("concomitant_treatments", []),
                 "causality_limitations": metrics.get("causality_limitations", []),
                 "risk_of_bias": rob,
@@ -441,126 +446,21 @@ class UniversalEvidenceEngine:
         Disease-agnostic evaluation of Population, Intervention, Comparator, Outcome,
         and Study Design compatibility between two processed article records.
         """
-        pop1_tokens = self._tokenize_clinical(p1.get("patient_population", ""))
-        pop2_tokens = self._tokenize_clinical(p2.get("patient_population", ""))
-
-        int1_tokens = self._tokenize_clinical(p1.get("intervention", ""))
-        int2_tokens = self._tokenize_clinical(p2.get("intervention", ""))
-
-        comp1_tokens = self._tokenize_clinical(p1.get("comparison", ""))
-        comp2_tokens = self._tokenize_clinical(p2.get("comparison", ""))
-
-        des1 = p1.get("study_design", {}).get("design", "")
-        des2 = p2.get("study_design", {}).get("design", "")
-
-        # 1. Population Match Check
-        if pop1_tokens and pop2_tokens:
-            pop_match = (len(pop1_tokens.intersection(pop2_tokens)) > 0)
-        else:
-            title_pop1 = self._tokenize_clinical(p1.get("title", "") + " " + p1.get("patient_population", ""))
-            title_pop2 = self._tokenize_clinical(p2.get("title", "") + " " + p2.get("patient_population", ""))
-            pop_match = (len(title_pop1.intersection(title_pop2)) > 0)
-
-        # 2. Intervention Match Check
-        if int1_tokens and int2_tokens:
-            int_match = (len(int1_tokens.intersection(int2_tokens)) > 0)
-        else:
-            title_int1 = self._tokenize_clinical(p1.get("title", "") + " " + p1.get("intervention", ""))
-            title_int2 = self._tokenize_clinical(p2.get("title", "") + " " + p2.get("intervention", ""))
-            int_match = (len(title_int1.intersection(title_int2)) > 0)
-
-        # 3. Comparator Match Check
-        if comp1_tokens and comp2_tokens:
-            comp_match = (len(comp1_tokens.intersection(comp2_tokens)) > 0)
-        else:
-            comp_match = True
-
-        # 4. Study Design Compatibility Check
-        is_rev1 = any(k in des1 for k in ["Derleme", "Meta-Analiz", "Kılavuz", "Uzman Görüşü", "Editör", "Review", "Editorial", "Guideline"])
-        is_rev2 = any(k in des2 for k in ["Derleme", "Meta-Analiz", "Kılavuz", "Uzman Görüşü", "Editör", "Review", "Editorial", "Guideline"])
-        design_compatible = (is_rev1 == is_rev2)
-
-        # 5. Outcome Match Check
-        def _fold_outcome(text: str) -> str:
-            # Turkish İ lowercases to i + combining dot; fold that before compare.
-            return (text or "").casefold().replace("i\u0307", "i").replace("ı", "i").strip()
-
-        outcomes1 = [_fold_outcome(om.get("outcome", "")) for om in p1.get("outcome_metrics", [])]
-        outcomes2 = [_fold_outcome(om.get("outcome", "")) for om in p2.get("outcome_metrics", [])]
-
-        generic_outcomes = {
-            _fold_outcome(label)
-            for label in (
-                "genel sonlanım / özet istatistiği",
-                "Primer Klinik Sonlanım / Özet İstatistiği",
-                "Primer Klinik Sonlanım Ölçütü",
-                "Sonlanım adı güvenle çevrilemedi",
-                "özette adlandırılmadı",
-                "değerlendirilemedi",
-            )
-        }
-        matching_outcomes = []
-        for o1 in outcomes1:
-            for o2 in outcomes2:
-                if not o1 or not o2 or o1 in generic_outcomes or o2 in generic_outcomes:
-                    continue
-                if o1 == o2:
-                    matching_outcomes.append(o1)
-                    continue
-                shorter, longer = (o1, o2) if len(o1) <= len(o2) else (o2, o1)
-                if len(shorter) >= 12 and re.search(r"\b" + re.escape(shorter) + r"\b", longer):
-                    matching_outcomes.append(longer)
-
-        compatible = pop_match and int_match and comp_match and design_compatible and len(matching_outcomes) > 0
-
-        unmatched_reasons = []
-        if not pop_match:
-            unmatched_reasons.append(f"Popülasyon uyuşmazlığı ('{p1.get('patient_population')}' vs '{p2.get('patient_population')}')")
-        if not int_match:
-            unmatched_reasons.append(f"Müdahale uyuşmazlığı ('{p1.get('intervention')}' vs '{p2.get('intervention')}')")
-        if not comp_match:
-            unmatched_reasons.append(f"Karşılaştırıcı uyuşmazlığı ('{p1.get('comparison')}' vs '{p2.get('comparison')}')")
-        if not design_compatible:
-            unmatched_reasons.append(f"Çalışma tasarımı uyuşmazlığı ('{des1}' vs '{des2}')")
-        if len(matching_outcomes) == 0:
-            unmatched_reasons.append("Ortak doğrulanmış sonlanım ölçütü (Outcome) saptanamadı")
-
-        return {
-            "compatible": compatible,
-            "pop_match": pop_match,
-            "int_match": int_match,
-            "comp_match": comp_match,
-            "design_compatible": design_compatible,
-            "matching_outcomes": list(set(matching_outcomes)),
-            "unmatched_reasons": unmatched_reasons
-        }
+        # [mrai-fixes B2] strict matching; unknown is not compatible (see pico_compat.py).
+        # The query's own PICO terms are a fallback for fields the extractor missed.
+        return pico_compat.evaluate_pico_compatibility(
+            p1, p2, getattr(self, "_mrai_query_pico", None),
+            quote=getattr(report_generator, "safe_pico_quote", None),
+        )
 
     def _determine_statistical_direction(self, outcome_entry: Dict[str, Any]) -> str:
         """
         Determines the statistical direction ('positive', 'negative', 'neutral')
         for a bound outcome metric without fabricating unstated claims.
         """
-        metrics = outcome_entry.get("metrics", [])
-        sentence = outcome_entry.get("sentence", "").lower()
-
-        p_vals = [m for m in metrics if m.lower().startswith("p")]
-        is_significant = False
-        for p in p_vals:
-            if "< 0.0" in p or "= 0.0" in p or "=0.0" in p or "<0.0" in p:
-                is_significant = True
-                break
-
-        if any(term in sentence for term in ["no significant", "not significant", "did not reduce", "did not improve", "no difference"]):
-            return "neutral"
-
-        if is_significant:
-            if any(term in sentence for term in ["reduced", "prolonged", "improved", "increase", "higher", "lower", "decreased", "effective", "benefit"]):
-                return "positive"
-            if any(term in sentence for term in ["increased risk", "adverse", "mortality", "harmful", "worsened"]):
-                return "negative"
-            return "positive"
-
-        return "neutral"
+        # [mrai-fixes B1] numeric p-values, effect direction and outcome polarity.
+        # Returns 'benefit', 'harm', 'neutral' or 'uncertain' (see stat_direction.py).
+        return stat_direction.determine_direction(outcome_entry)
 
     def compare_cross_article_findings(self, articles: List[Dict[str, Any]], query: str = "") -> Dict[str, Any]:
         """
@@ -570,7 +470,8 @@ class UniversalEvidenceEngine:
           Follow-up time (if present), and Study Design match.
         - Highlights conflicting findings for matching PICO & study designs.
         - Reports explicit non-comparability reasons in Turkish whenever parameters do not match or quantitative data is missing.
-        - Guarantees zero metric or conclusion fabrication across all 88 medical research specialties.
+        - Rule-based and heuristic: matching or direction that cannot be read from the abstract is reported
+          as not comparable instead of guessed. Accuracy has not been measured against a clinician-labelled set. [mrai-fixes B10]
         """
         if not articles:
             return {
@@ -586,6 +487,10 @@ class UniversalEvidenceEngine:
             }
 
         processed = self.process_and_extract_parameters(articles, query)
+        try:  # [mrai-fixes B2] query PICO as a fallback for fields the extractor missed
+            self._mrai_query_pico = report_generator.extract_pico(query) if query else None
+        except Exception:
+            self._mrai_query_pico = None
 
         _nonprimary = ("Derleme", "Meta-Analiz", "Kılavuz", "Uzman Görüşü", "Editör", "Review", "Editorial", "Guideline")
         primary_studies = [p for p in processed if not any(k in p["study_design"]["design"] for k in _nonprimary)]
@@ -618,6 +523,7 @@ class UniversalEvidenceEngine:
                 "intervention": p.get("intervention"),
                 "comparison": p.get("comparison"),
                 "outcome_metrics": p.get("outcome_metrics"),
+                "outcome_lines": p.get("outcome_lines") or [],
                 "risk_of_bias": p.get("risk_of_bias", {}).get("overall_rating"),
                 "source_citations": f"{pmid_link} / {doi_link}",
                 "real_findings": p.get("real_findings")
@@ -685,45 +591,62 @@ class UniversalEvidenceEngine:
 
                 if eval_res["compatible"]:
                     # Compare bound outcomes
-                    def _fold_outcome(text: str) -> str:
-                        return (text or "").casefold().replace("i\u0307", "i").replace("ı", "i").strip()
-
-                    outcomes1_map = {_fold_outcome(om["outcome"]): om for om in p1.get("outcome_metrics", [])}
-                    outcomes2_map = {_fold_outcome(om["outcome"]): om for om in p2.get("outcome_metrics", [])}
-
-                    for matched_outcome_name in eval_res["matching_outcomes"]:
-                        om1 = outcomes1_map.get(matched_outcome_name) or (p1.get("outcome_metrics")[0] if p1.get("outcome_metrics") else None)
-                        om2 = outcomes2_map.get(matched_outcome_name) or (p2.get("outcome_metrics")[0] if p2.get("outcome_metrics") else None)
-
-                        if om1 and om2:
-                            dir1 = self._determine_statistical_direction(om1)
-                            dir2 = self._determine_statistical_direction(om2)
-
-                            m1_str = ", ".join(om1.get("metrics", [])) or "Özette nicel etki ölçütü yok"
-                            m2_str = ", ".join(om2.get("metrics", [])) or "Özette nicel etki ölçütü yok"
-
-                            if dir1 == dir2:
-                                consistent.append({
-                                    "outcome": om1["outcome"],
-                                    "articles": [p1.get("pmid"), p2.get("pmid")],
-                                    "source_citations": f"{pmid1_link} ve {pmid2_link}",
-                                    "details": (
-                                        f"**{p1['authors_short']} ({p1['pub_year']})** {pmid1_link} ({m1_str}) ve "
-                                        f"**{p2['authors_short']} ({p2['pub_year']})** {pmid2_link} ({m2_str}) "
-                                        f"çalışmaları **{om1['outcome']}** sonlanımında tutarlı istatistiksel bulgular göstermektedir."
-                                    )
-                                })
-                            else:
-                                conflicting.append({
-                                    "outcome": om1["outcome"],
-                                    "articles": [p1.get("pmid"), p2.get("pmid")],
-                                    "source_citations": f"{pmid1_link} ve {pmid2_link}",
-                                    "details": (
-                                        f"**{p1['authors_short']} ({p1['pub_year']})** {pmid1_link} ({m1_str}) ile "
-                                        f"**{p2['authors_short']} ({p2['pub_year']})** {pmid2_link} ({m2_str}) "
-                                        f"çalışmaları **{om1['outcome']}** sonlanımında çelişkili veya farklı istatistiksel sonuçlar bildirmektedir."
-                                    )
-                                })
+                    # [mrai-fixes B1/B2] compare only named, matched outcome pairs and never
+                    # classify a pair whose direction could not be read from the abstract.
+                    _direction_tr = {
+                        "benefit": "yarar yönünde",
+                        "harm": "zarar yönünde",
+                        "neutral": "anlamlı fark bildirilmedi",
+                        "significant_unclear": "anlamlı fark; yönü özetten belirlenemedi",
+                    }
+                    for om1, om2 in eval_res["outcome_pairs"]:
+                        if om1.get("implausible") or om2.get("implausible"):
+                            continue  # source-inconsistent values are not compared (upstream rule, kept)
+                        dir1 = self._determine_statistical_direction(om1)
+                        dir2 = self._determine_statistical_direction(om2)
+                        m1_str = ", ".join(om1.get("metrics", [])) or "Özette nicel etki ölçütü yok"
+                        m2_str = ", ".join(om2.get("metrics", [])) or "Özette nicel etki ölçütü yok"
+                        # A significant result of unknown direction can only be set against a
+                        # non-significant one (the difference is then in significance alone).
+                        _unreadable = (
+                            "uncertain" in (dir1, dir2)
+                            or (dir1 == "significant_unclear" and dir2 != "neutral")
+                            or (dir2 == "significant_unclear" and dir1 != "neutral")
+                        )
+                        if _unreadable:
+                            non_comparable.append({
+                                "articles": [p1.get("pmid"), p2.get("pmid")],
+                                "source_citations": f"{pmid1_link} ve {pmid2_link}",
+                                "reason": (
+                                    f"**{p1['authors_short']} ({p1['pub_year']})** {pmid1_link} ({m1_str}) ile "
+                                    f"**{p2['authors_short']} ({p2['pub_year']})** {pmid2_link} ({m2_str}) "
+                                    f"çalışmalarında **{om1['outcome']}** sonlanımının etki yönü özetten güvenle "
+                                    f"belirlenemedi; bu nedenle tutarlı veya çelişkili olarak sınıflandırılmadı."
+                                )
+                            })
+                        elif dir1 == dir2:
+                            consistent.append({
+                                "outcome": om1["outcome"],
+                                "articles": [p1.get("pmid"), p2.get("pmid")],
+                                "source_citations": f"{pmid1_link} ve {pmid2_link}",
+                                "details": (
+                                    f"**{p1['authors_short']} ({p1['pub_year']})** {pmid1_link} ({m1_str}) ve "
+                                    f"**{p2['authors_short']} ({p2['pub_year']})** {pmid2_link} ({m2_str}) "
+                                    f"çalışmaları **{om1['outcome']}** sonlanımında tutarlı istatistiksel bulgular "
+                                    f"({_direction_tr[dir1]}) göstermektedir."
+                                )
+                            })
+                        else:
+                            conflicting.append({
+                                "outcome": om1["outcome"],
+                                "articles": [p1.get("pmid"), p2.get("pmid")],
+                                "source_citations": f"{pmid1_link} ve {pmid2_link}",
+                                "details": (
+                                    f"**{p1['authors_short']} ({p1['pub_year']})** {pmid1_link} ({m1_str}; {_direction_tr[dir1]}) ile "
+                                    f"**{p2['authors_short']} ({p2['pub_year']})** {pmid2_link} ({m2_str}; {_direction_tr[dir2]}) "
+                                    f"çalışmaları **{om1['outcome']}** sonlanımında çelişkili veya farklı istatistiksel sonuçlar bildirmektedir."
+                                )
+                            })
                 else:
                     reasons_str = "; ".join(eval_res["unmatched_reasons"])
                     non_comparable.append({
