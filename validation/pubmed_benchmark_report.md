@@ -7,15 +7,15 @@ Bu rapor, sekiz önceden belirlenmiş PubMed kaydında abstract düzeyindeki ç�
 - PubMed kimliği doğrulanan kayıt: **8/8**.
 - Önceden belirlenmiş referans alanı eşleşmesi: **46/82** (56.1%).
 - Eksiksiz makale çıkarımı: **1/8** (12.5%).
-- Kaynak cümlesi eşleşmesi: **55/55** (100.0%); bu yalnızca cümlenin kaynak abstract'ta yer aldığını ölçer, anlamsal doğruluğu tek başına kanıtlamaz.
-- Yanlış/unsupported çıkarım bayrakları: **0/69** (0.0%); kaynak cümlesi, sayısal değer ve metrik türü kontrollerinde başarısız alanlar sayılır.
+- Kaynak cümlesi eşleşmesi: **53/53** (100.0%); bu yalnızca cümlenin kaynak abstract'ta yer aldığını ölçer, anlamsal doğruluğu tek başına kanıtlamaz.
+- Yanlış/unsupported çıkarım bayrakları: **0/67** (0.0%); kaynak cümlesi, sayısal değer ve metrik türü kontrollerinde başarısız alanlar sayılır.
 - Yanlış nedensellik koruma bayrağı: **0**.
 
 ## Üç ayrı doğrulama kategorisi
 
-1. **Yazılım birim/entegrasyon testleri:** `python -m pytest -q` — PASS; 267 passed, 5 skipped, 8 subtests passed in 134.88s (0:02:14).
+1. **Yazılım birim/entegrasyon testleri:** `python -m pytest -q` — PASS; 389 passed, 5 skipped, 17 subtests passed in 146.70s (0:02:26).
 2. **Gerçek PubMed kaynak doğrulaması:** 8/8 kayıt PMID ve sağlanan DOI/başlıkla yeniden alındı/eşleşti; **klinik iddialar bağımsız doğrulanmış sayılmaz**.
-3. **Bağımsız klinik veri doğrulaması:** **NOT_PERFORMED** — Bağımsız hekim değerlendirmeli veri kümesi veya tam metin çıkarımı sağlanmadı; PubMed kayıt kimliği ve özet cümlesi eşleşmesi klinik doğrulama değildir..
+3. **Bağımsız klinik veri doğrulaması:** **NOT_PERFORMED** — Bağımsız hekim değerlendirmeli veri kümesi veya tam metin çıkarımı sağlanmadı; PubMed kayıt kimliği ve özet cümlesi eşleşmesi klinik doğrulama değildir.
 
 ## Branş ve tasarım bazında sonuçlar
 

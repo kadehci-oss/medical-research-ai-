@@ -764,7 +764,7 @@ def build_study_model(
 ) -> Dict[str, Any]:
     """Build the canonical study object from a PubMed article and existing extractors."""
     article = dict(article or {})
-    from report_generator import _allocation_arms, assess_risk_of_bias, classify_study_design, extract_article_clinical_details, extract_clinical_profile, extract_grounded_clinical_findings, extract_methodological_limitations
+    from report_generator import _allocation_arms, _canonical_patient_group, _sourced_population_characteristics, assess_risk_of_bias, classify_study_design, extract_article_clinical_details, extract_clinical_profile, extract_grounded_clinical_findings, extract_methodological_limitations, extract_study_metrics
 
     details = clinical_details or article.get("clinical_details") or extract_article_clinical_details(article, query)
     design = study_design or article.get("study_design_info") or classify_study_design(
@@ -777,42 +777,27 @@ def build_study_model(
     title = str(article.get("title") or "")
     source = _source(article, title, "pubmed_metadata")
 
-    pop_info = provenance.get("population") or {}
-    sample_info = provenance.get("sample_size") or {}
-    pop_value = _clean_text(pop_info.get("value"))
-    pop_sentence = str(pop_info.get("source_sentence") or "")
-    has_enrollment_context = bool(re.search(
-        r"\b(?:patients|participants|subjects|children|adults|individuals|people)\b",
-        pop_sentence,
-        re.IGNORECASE,
-    ) and re.search(
-        r"\b(?:enrolled|included|recruited|randomi[sz]ed|assigned|followed|studied|self-identif\w*|admitted|diagnosed|underwent|presented)\b",
-        pop_sentence,
-        re.IGNORECASE,
-    ))
-    if pop_value and pop_sentence:
-        value_numbers = {
-            token.replace(",", "").replace("−", "-").rstrip("%")
-            for token in re.findall(r"(?<![A-Za-z])[-−]?\d[\d,]*(?:\.\d+)?%?", pop_value)
-        }
-        sentence_numbers = {
-            token.replace(",", "").replace("−", "-").rstrip("%")
-            for token in re.findall(r"(?<![A-Za-z])[-−]?\d[\d,]*(?:\.\d+)?%?", pop_sentence)
-        }
-        if value_numbers - sentence_numbers:
-            pop_value = ""
-    if not has_enrollment_context:
-        pop_value = ""
+    abstract = str(article.get("abstract") or "")
     sample_value, sample_sentence = _extract_total_participants(
-        str(article.get("abstract") or ""), str(design.get("design_key") or "")
+        abstract, str(design.get("design_key") or "")
     )
-    profile_items = extract_clinical_profile(str(article.get("abstract") or ""))
+    profile_items = extract_clinical_profile(abstract)
+    pop_value, pop_sentence = _canonical_patient_group(
+        abstract,
+        profile_items,
+        extract_study_metrics(abstract),
+    )
+    if str(pop_value or "").strip().casefold() in {"özette bildirilmedi", "not reported", "unknown"}:
+        pop_value, pop_sentence = "", ""
+    population_characteristics = _sourced_population_characteristics(
+        abstract, title, profile_items, pop_value, pop_sentence
+    )
     population = Population(
-        description=_fact(article, pop_value, pop_info.get("source_sentence", "")),
+        description=_fact(article, pop_value, pop_sentence, "canonical_patient_group"),
         total_participants=_fact(article, sample_value, sample_sentence),
         characteristics=[
-            _fact(article, item.get("line"), item.get("sentence", ""), "clinical_profile_sample")
-            for item in profile_items if item.get("category") == "sample" and item.get("line") and item.get("sentence")
+            _fact(article, item["value"], item["source_sentence"], item["source_field"])
+            for item in population_characteristics
         ],
     )
 
@@ -820,7 +805,6 @@ def build_study_model(
     comparator_info = provenance.get("comparison") or {}
     intervention_value = _clean_text(intervention_info.get("value") or details.get("intervention"))
     comparator_value = _clean_text(comparator_info.get("value") or details.get("comparison"))
-    abstract = str(article.get("abstract") or "")
     explicit_group_labels, group_source_sentence = _extract_explicit_group_labels(abstract)
     allocated_intervention, allocated_comparator = _allocation_arms(abstract)
     allocation_source_sentence = _allocation_source_sentence(abstract, [allocated_intervention, allocated_comparator]) if allocated_intervention and allocated_comparator else ""
@@ -1134,7 +1118,20 @@ def legacy_details_from_study(study: Dict[str, Any]) -> Dict[str, Any]:
     comparator_fact = source_at(comparator_name or {}) if comparator_name else {"value": "değerlendirilemedi", "source_sentence": "", "pmid": "", "source": "missing"}
     exposure_fact = source_at(exposure) if exposure else {"value": "değerlendirilemedi", "source_sentence": "", "pmid": "", "source": "missing"}
     sample_n = value_at(total)
-    sample_size = f"n = {sample_n}" if sample_n is not None else "Özette bildirilmedi"
+    sample_size = f"n = {sample_n}" if sample_n is not None else "özette bildirilmedi"
+    population_parts = []
+    base_population = value_at(description)
+    if base_population and not _is_not_reported(base_population):
+        population_parts.append(str(base_population))
+    population_characteristics = [
+        source_at(item) for item in population.get("characteristics") or []
+        if value_at(item) and (item.get("source") or {}).get("source_sentence")
+    ]
+    for item in population_characteristics:
+        value = str(item["value"])
+        if value.casefold() not in {part.casefold() for part in population_parts}:
+            population_parts.append(value)
+    patient_group = "; ".join(population_parts) if population_parts else "Belirtilmedi"
     finding_lines = [str(x.get("value")) for x in study.get("clinical_findings") or [] if x.get("value")]
     synthesis_rows = [o for o in outcomes if o.get("synthesis_metrics")]
     synthesis_outcomes = "; ".join(f"{o['outcome']}: {', '.join(o['synthesis_metrics'])}" for o in synthesis_rows)
@@ -1143,7 +1140,7 @@ def legacy_details_from_study(study: Dict[str, Any]) -> Dict[str, Any]:
     if excluded_inconsistent_effects:
         synthesis_outcomes += f" (Kaynakla matematiksel olarak tutarsız {excluded_inconsistent_effects} etki ölçütü sentez dışında bırakıldı.)"
     canonical_details = {
-        "patient_group": value_at(description) or "Belirtilmedi",
+        "patient_group": patient_group,
         "sample_size": sample_size,
         "study_design": design_label,
         "evidence_level": evidence_level,
@@ -1159,6 +1156,7 @@ def legacy_details_from_study(study: Dict[str, Any]) -> Dict[str, Any]:
         "provenance": {
             "pmid": study.get("pmid", ""),
             "population": source_at(description),
+            "population_characteristics": population_characteristics,
             "sample_size": source_at(total),
             "intervention": intervention_fact,
             "comparison": comparator_fact,

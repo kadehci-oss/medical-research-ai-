@@ -138,8 +138,44 @@ class TestCanonicalEvidenceModel(unittest.TestCase):
             "outcome_metrics": [],
         }
         model = build_study_model(record, clinical_details=details)
-        self.assertIsNone(model["population"]["description"]["value"])
+        description = model["population"]["description"]
+        self.assertEqual(description["value"], "400 hasta")
+        self.assertEqual(description["source"]["source_sentence"], record["abstract"])
+        self.assertNotIn("22", description["value"])
+        self.assertNotIn("8.6", description["value"])
         self.assertEqual(model["population"]["total_participants"]["value"], 400)
+
+    def test_subgroup_denominator_from_later_sentence_is_not_population_total(self):
+        record = article(
+            pmid="87650005",
+            abstract=(
+                "We followed 302 individuals with adult-onset epilepsy for 9 years. "
+                "In the nondrug-resistant subgroup, infectious etiology occurred in 25.9% (n=66)."
+            ),
+            publication_types=["Cohort Study"],
+        )
+        model = build_study_model(record, query="epilepsy prognosis")
+        description = model["population"]["description"]
+        self.assertIn("302", description["value"])
+        self.assertNotIn("66", description["value"])
+        self.assertIn("302", description["source"]["source_sentence"])
+        self.assertNotIn("66", description["source"]["source_sentence"])
+        self.assertEqual(model["population"]["total_participants"]["value"], 302)
+
+    def test_demographic_subgroup_count_keeps_its_own_source_sentence(self):
+        import json
+        from pathlib import Path
+        records = json.loads((Path(__file__).parent / "fixtures" / "recorded_target_pmids.json").read_text(encoding="utf-8"))
+        record = next(item for item in records if item["pmid"] == "40446701")
+        model = build_study_model(record)
+        characteristic = next(
+            item for item in model["population"]["characteristics"]
+            if "62" in item["value"] and "Hispanik" in item["value"]
+        )
+        self.assertEqual(characteristic["value"], "62 hasta Hispanik")
+        self.assertIn("Sixty-two", characteristic["source"]["source_sentence"])
+        from validation.run_pubmed_benchmark import number_tokens
+        self.assertIn("62", number_tokens(characteristic["source"]["source_sentence"]))
 
     def test_implausible_ratio_interval_is_flagged_without_losing_source(self):
         record = article(abstract=(

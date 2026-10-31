@@ -2680,6 +2680,17 @@ def extract_article_clinical_details(article: Dict[str, Any], query: str = "") -
     if patient_group not in ("özette bildirilmedi",) and _pico_value_rejected(patient_group):
         patient_group = "özette bildirilmedi"
         pop_sentence = ""
+    population_base = patient_group
+    population_characteristics = []
+    if population_base not in ("özette bildirilmedi", "Belirtilmedi", ""):
+        population_characteristics = _sourced_population_characteristics(
+            abstract, str(title or ""), profile, population_base, pop_sentence
+        )
+        display_parts = [population_base]
+        for item in population_characteristics:
+            if item["value"].casefold() not in {part.casefold() for part in display_parts}:
+                display_parts.append(item["value"])
+        patient_group = "; ".join(display_parts)
     if _pico_value_rejected(intervention):
         intervention = PICO_UNSTATED_TR
         intervention_sentence = ""
@@ -2754,7 +2765,11 @@ def extract_article_clinical_details(article: Dict[str, Any], query: str = "") -
 
     provenance = {
         "pmid": pmid,
-        "population": _claim(patient_group, pop_sentence, "abstract"),
+        "population": _claim(population_base, pop_sentence, "abstract"),
+        "population_characteristics": [
+            _claim(item["value"], item["source_sentence"], item["source_field"])
+            for item in population_characteristics
+        ],
         "sample_size": _claim(sample_size_str, sample_sentence, "abstract"),
         "intervention": _claim(intervention, intervention_sentence, intervention_source),
         "comparison": _claim(comparison, comparison_sentence, comparison_source),
@@ -5798,12 +5813,14 @@ def _canonical_patient_group(
 
     parts = []
     seen_numbers = set()
-    source_sentence = ""
+    source_sentence = total[2] if total else (labeled[0][1] if labeled else "")
     if total:
         number, noun, source_sentence = total
         parts.append(f"{number} {noun}")
         seen_numbers.add(number)
     for part, sentence in labeled:
+        if source_sentence and sentence and sentence.strip() != source_sentence.strip():
+            continue
         key_match = re.match(r"^(?:n = )?(\d+)\b", part, re.IGNORECASE)
         number = int(key_match.group(1)) if key_match else None
         if number is not None and number in seen_numbers and (
@@ -5815,14 +5832,12 @@ def _canonical_patient_group(
         parts.append(part)
         if number is not None:
             seen_numbers.add(number)
-        if not source_sentence:
-            source_sentence = sentence
 
     # The disease phrase is added only beside a real sample, and only when it
     # does not make the cell half-English.
     if parts:
         blob = " ".join(parts).casefold()
-        for label in _population_labels(abstract or ""):
+        for label in _population_labels(source_sentence or ""):
             if label.casefold() in blob:
                 continue
             trial = "; ".join(parts + [label])
@@ -5857,6 +5872,94 @@ def _canonical_patient_group(
     if _pico_value_rejected(text):
         return "özette bildirilmedi", ""
     return text, source_sentence
+
+
+def _sourced_population_characteristics(
+    abstract: str,
+    title: str,
+    profile: List[Dict[str, str]],
+    base_group: str,
+    base_sentence: str,
+) -> List[Dict[str, str]]:
+    """Return independently sourced demographic and controlled disease facts."""
+    if str(base_group or "").strip().casefold() in {"", "belirtilmedi", "özette bildirilmedi", "not reported", "unknown"}:
+        return []
+    characteristics = []
+    seen = {part.strip().casefold() for part in str(base_group or "").split(";") if part.strip()}
+    demographic = re.compile(
+        r"\b(?:hispanic|non[- ]?hispanic|caucasian|white|black|asian|male|female|men|women|"
+        r"boys|girls|children|child|adults?|aged?|age|sex|gender|ethnicity|race)\b|"
+        r"hispanik|hispanik olmayan|kafkasyalı|beyaz|siyah|asya(?:lı)?|erkek|kadın|"
+        r"oğlan|kız|çocuk|erişkin|yaş|cinsiyet|etnik|ırk",
+        re.IGNORECASE,
+    )
+
+    def add(value: str, sentence: str, source_field: str) -> None:
+        value = str(value or "").strip().rstrip(".")
+        sentence = str(sentence or "").strip()
+        key = value.casefold()
+        if not value or not sentence or key in seen or _pico_value_rejected(value):
+            return
+        value_numbers = {
+            token.replace(",", "").replace("−", "-").rstrip("%")
+            for token in re.findall(r"(?<![A-Za-z])[-−]?\d[\d,]*(?:\.\d+)?%?", value)
+        }
+        sentence_numbers = {
+            token.replace(",", "").replace("−", "-").rstrip("%")
+            for token in re.findall(r"(?<![A-Za-z])[-−]?\d[\d,]*(?:\.\d+)?%?", sentence)
+        }
+        tens = {20: "twenty", 30: "thirty", 40: "forty", 50: "fifty", 60: "sixty", 70: "seventy", 80: "eighty", 90: "ninety"}
+        units = {1: "one", 2: "two", 3: "three", 4: "four", 5: "five", 6: "six", 7: "seven", 8: "eight", 9: "nine"}
+        unsupported = set()
+        for token in value_numbers - sentence_numbers:
+            try:
+                number = int(token)
+            except ValueError:
+                unsupported.add(token)
+                continue
+            tens_word = tens.get((number // 10) * 10)
+            unit_word = units.get(number % 10)
+            written = (
+                bool(tens_word and unit_word and re.search(rf"\b{tens_word}[-\s]+{unit_word}\b", sentence, re.IGNORECASE))
+                or bool(tens_word and number % 10 == 0 and re.search(rf"\b{tens_word}\b", sentence, re.IGNORECASE))
+            )
+            if not written:
+                unsupported.add(token)
+        if unsupported:
+            return
+        characteristics.append({"value": value, "source_sentence": sentence, "source_field": source_field})
+        seen.add(key)
+
+    for item in profile or []:
+        if item.get("category") != "sample":
+            continue
+        sentence = str(item.get("sentence") or "").strip()
+        if not sentence or sentence == str(base_sentence or "").strip() or not demographic.search(sentence):
+            continue
+        body = re.sub(r"^Örneklem ve hasta özellikleri:\s*", "", item.get("line") or "", flags=re.IGNORECASE)
+        body = _expand_clinical_abbreviations(body, abstract or "").strip().rstrip(".")
+        for part in [piece.strip() for piece in body.split(";") if piece.strip()]:
+            if demographic.search(part):
+                add(part, sentence, "abstract")
+
+    for english, turkish in sorted(_POPULATION_PHRASES, key=lambda item: len(item[0]), reverse=True):
+        if not turkish or turkish.casefold() in seen:
+            continue
+        source_sentence = ""
+        source_field = ""
+        if english.casefold() in str(title or "").casefold():
+            source_sentence = str(title or "")
+            source_field = "title"
+        else:
+            for sentence in _finding_sentences(abstract or ""):
+                if _background_sentence(sentence) or not _patients_have_phrase(sentence, english):
+                    continue
+                source_sentence = sentence
+                source_field = "abstract"
+                break
+        if source_sentence:
+            add(turkish, source_sentence, source_field)
+    return characteristics
 
 
 def _sample_comparison_cell(profile: List[Dict[str, str]]) -> str:
@@ -5989,10 +6092,12 @@ def _format_cross_study_comparison(
         pmid = str(study.get("pmid") or "").strip() or "yok"
         population_record = study.get("population") or {}
         population_parts = []
-        description = str(((population_record.get("description") or {}).get("value") or "")).strip()
+        description_fact = population_record.get("description") or {}
+        description = str(description_fact.get("value") or "").strip()
+        description_source = (description_fact.get("source") or {}).get("source_field")
         if description.casefold() not in {"belirtilmedi", "not reported", "unknown", "özette bildirilmedi"}:
-            shown = localize_clinical_display(description, drop_unknown=True)
-            if shown and not has_mixed_clinical_language(shown):
+            shown = description if description_source == "canonical_patient_group" else localize_clinical_display(description, drop_unknown=True)
+            if shown and (description_source == "canonical_patient_group" or not has_mixed_clinical_language(shown)):
                 population_parts.append(shown)
         for item in population_record.get("characteristics") or []:
             value = str(item.get("value") or "").strip()

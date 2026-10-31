@@ -33,7 +33,16 @@ def norm(text: Any) -> str:
 
 
 def number_tokens(value: Any) -> List[str]:
-    return [x.replace(",", "") for x in re.findall(r"(?<![A-Za-z])[-−]?\d[\d,]*(?:\.\d+)?%?", str(value or ""))]
+    text = str(value or "")
+    tokens = [x.replace(",", "") for x in re.findall(r"(?<![A-Za-z])[-−]?\d[\d,]*(?:\.\d+)?%?", text)]
+    tens = {"twenty": 20, "thirty": 30, "forty": 40, "fifty": 50, "sixty": 60, "seventy": 70, "eighty": 80, "ninety": 90}
+    units = {"one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6, "seven": 7, "eight": 8, "nine": 9}
+    number_words = r"\b(" + "|".join(tens) + r")(?:[-\s]+(" + "|".join(units) + r"))?\b"
+    for match in re.finditer(number_words, text, re.IGNORECASE):
+        base = tens[match.group(1).casefold()]
+        unit = units.get((match.group(2) or "").casefold(), 0)
+        tokens.append(str(base + unit))
+    return tokens
 
 
 def numbers_equal(left: Any, right: Any) -> bool:
@@ -267,7 +276,7 @@ def render_markdown(report: Dict[str, Any]) -> str:
         "",
         f"1. **Yazılım birim/entegrasyon testleri:** `{software['command']}` — {software['status']}; {software.get('summary') or 'özet alınamadı'}.",
         f"2. **Gerçek PubMed kaynak doğrulaması:** {pubmed['verified_records']}/{pubmed['records_checked']} kayıt PMID ve sağlanan DOI/başlıkla yeniden alındı/eşleşti; **klinik iddialar bağımsız doğrulanmış sayılmaz**.",
-        f"3. **Bağımsız klinik veri doğrulaması:** **{clinical['status']}** — {clinical['reason']}.",
+        f"3. **Bağımsız klinik veri doğrulaması:** **{clinical['status']}** — {str(clinical['reason']).rstrip('.')}.",
         "",
         "## Branş ve tasarım bazında sonuçlar",
         "",
