@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import re
 from typing import Any, Dict, List, Optional
+import grade_rules  # [mrai-fixes]
 
 _LEVEL_BY_SCORE = {4: "Yüksek", 3: "Orta", 2: "Düşük", 1: "Çok düşük"}
 _NOT_ASSESSABLE = "değerlendirilemedi"
@@ -17,7 +18,8 @@ DISCLAIMER = (
     "Bu çıktı GRADE değerlendirmesi veya kanıt kesinliği derecelendirmesi değildir; yalnızca özette görünen sınırlı metin sinyallerini kural tabanlı biçimde listeler. "
     "Kanıt bütünü ve her önemli sonlanım için tam değerlendirme uzman incelemesi ve uzman hekim onayı gerektirir. "
     "Özette verisi olmayan alanlar 'değerlendirilemedi' bırakılmıştır; "
-    "bu alanlar kesinlik düzeyini yükseltmek veya düşürmek için kullanılmamıştır."
+    "yanlılık riski veya kesinlik eksikliği özetten değerlendirilemediğinde kesinlik düzeyi atanmaz; "
+    "diğer alanlar düzeyi yükseltmek için kullanılmamıştır."  # [mrai-fixes B3]
 )
 
 _ROB_DOWNGRADE_RE = re.compile(
@@ -142,12 +144,18 @@ def _design_start(design_name: str, abstract: str) -> Dict[str, Any]:
 
 
 def _risk_of_bias(abstract: str) -> Dict[str, str]:
+    # [mrai-fixes B3] "double-blind" alone is not reassurance; negation handling kept.
     text = abstract or ""
     match = _first_unnegated_match(_ROB_DOWNGRADE_RE, text)
     if match:
         return _domain("ciddi düşürme", f"Özette yanlılık ifadesi var: '{match.group(0)}'.")
-    if _first_unnegated_match(_ROB_OK_RE, text):
-        return _domain("düşürme yok", "Özet düşük yanlılık riski veya çift-kör tasarım belirtiyor. Tam metin RoB 2 uygulanmadı.")
+    if _first_unnegated_match(grade_rules.ROB_LOW_RE, text):
+        return _domain("düşürme yok", "Özet açıkça düşük yanlılık riski belirtiyor. Tam metin RoB 2 uygulanmadı.")
+    if _first_unnegated_match(grade_rules.BLINDING_RE, text):
+        return _domain(
+            _NOT_ASSESSABLE,
+            "Özet çift-kör tasarım belirtiyor; bu tek başına düşük yanlılık riski anlamına gelmez. RoB 2 uygulanmadı.",
+        )
     return _domain(_NOT_ASSESSABLE, "Özet, RoB 2 veya ROBINS-I için yeterli yöntem ayrıntısı vermiyor.")
 
 
@@ -219,6 +227,12 @@ def _imprecision(abstract: str, metrics: Dict[str, Any]) -> Dict[str, str]:
     if match:
         return _domain("ciddi düşürme", f"Özet imprecision belirtiyor: '{match.group(0)}'.")
     usable, excluded = _usable_ratio_bounds(abstract)
+    for _low, _high in usable:  # [mrai-fixes B3] a ratio CI that crosses 1 is imprecise
+        if _low <= 1.0 <= _high:
+            return _domain(
+                "ciddi düşürme",
+                f"Özetteki oran aralığı {_low:g}-{_high:g} etkisizlik değerini (1) kesiyor.",
+            )
     if not usable:
         if excluded:
             return _domain(
@@ -278,19 +292,8 @@ def _publication_bias(design_name: str, abstract: str) -> Dict[str, str]:
 
 
 def _apply_ceiling(start_score: Optional[int], domains: Dict[str, Dict[str, str]]) -> Dict[str, Any]:
-    if start_score is None:
-        return {
-            "preliminary_level": _NOT_ASSESSABLE,
-            "applied_downgrades": 0,
-            "reason": "Başlangıç düzeyi değerlendirilemediği için sayısal tavan üretilmedi.",
-        }
-    downgrades = sum(1 for item in domains.values() if item.get("status") == "ciddi düşürme")
-    score = max(1, start_score - downgrades)
-    return {
-        "preliminary_level": _LEVEL_BY_SCORE[score],
-        "applied_downgrades": downgrades,
-        "reason": "Yalnızca özette desteklenen ciddi düşürmeler başlangıçtan çıkarıldı.",
-    }
+    # [mrai-fixes B3] no level when a critical domain is unassessed (see grade_rules.py).
+    return grade_rules.apply_ceiling(start_score, domains)
 
 
 _GENERIC_OUTCOME = "primer klinik sonlanım / özet istatistiği"
@@ -342,7 +345,7 @@ def _grade_one_outcome(
         item for item in metric_strings if re.search(r"\bCI\b|95%", item, re.IGNORECASE)
     ] or sentence_metrics.get("confidence_intervals") or []
     domains = {
-        "risk_of_bias": _risk_of_bias(sentence),
+        "risk_of_bias": _risk_of_bias(abstract),  # [mrai-fixes B3] study-level domain
         "inconsistency": _inconsistency(design_name, sentence or abstract),
         "indirectness": _indirectness(query, abstract, title),
         "imprecision": _imprecision(sentence, sentence_metrics),
