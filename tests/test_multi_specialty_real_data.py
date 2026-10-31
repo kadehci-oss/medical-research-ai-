@@ -93,7 +93,10 @@ class TestMultiSpecialtyFixtures(unittest.TestCase):
 
         details = extract_article_clinical_details(art_onc, query)
         self.assertEqual(details["sample_size"], "n = 616")
-        self.assertTrue("HR 0.49" in details["outcomes_summary"] or "Overall Survival" in details["outcomes_summary"])
+        self.assertTrue(
+            "tehlike oranı (HR) 0.49" in details["outcomes_summary"]
+            or "genel sağkalım" in details["outcomes_summary"]
+        )
 
     def test_ent_guideline_is_not_pooled_with_rct(self):
         query = "Dupilumab in patients with chronic rhinosinusitis with nasal polyps"

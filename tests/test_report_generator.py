@@ -142,8 +142,10 @@ class TestReportGenerator(unittest.TestCase):
         metrics = extract_study_metrics(abstract)
         self.assertEqual(metrics["n"], "150")
         self.assertIn("HR 0.45", metrics["effect_sizes"])
-        self.assertIn("Corticosteroids", metrics["concomitant_treatments"])
-        self.assertIn("Immunosuppressive", metrics["concomitant_treatments"])
+        self.assertIn("kortikosteroid", metrics["concomitant_treatments"])
+        self.assertIn("immünosupresif", metrics["concomitant_treatments"])
+        self.assertNotIn("Corticosteroids", metrics["concomitant_treatments"])
+        self.assertNotIn("Immunosuppressive", metrics["concomitant_treatments"])
         self.assertTrue(any("causality" in lim.lower() for lim in metrics["causality_limitations"]))
 
     def test_extract_pico_multi_part_query(self):
@@ -494,7 +496,8 @@ class TestReportGenerator(unittest.TestCase):
         }
         res_rheum = _synthesize_article_conclusion_tr(rheum_article, "Rheumatoid Arthritis")
         self.assertIn("[PMID: 45678901]", res_rheum)
-        self.assertIn("istatistiksel olarak anlamlı bir fark saptanmamıştır", res_rheum)
+        self.assertIn("Anlamlılık değerlendirilemedi", res_rheum)
+        self.assertNotIn("istatistiksel olarak anlamlı bir fark saptanmamıştır", res_rheum)
 
     def test_synthesize_article_conclusion_tr_insufficient_data(self):
         # 1. Missing / Empty abstract

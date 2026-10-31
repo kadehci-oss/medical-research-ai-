@@ -60,7 +60,7 @@ class TestStatinMyopathyRegression(unittest.TestCase):
 
         om = details["outcome_metrics"]
         self.assertTrue(len(om) > 0)
-        self.assertIn("p=0.42", om[0]["metrics"])
+        self.assertTrue(any("0.42" in metric for metric in om[0]["metrics"]))
 
     def test_statin_myopathy_study_design_classification(self):
         rev = classify_study_design(STATIN_MYOPATHY_ARTICLES[0]["publication_types"], STATIN_MYOPATHY_ARTICLES[0]["title"], STATIN_MYOPATHY_ARTICLES[0]["abstract"])

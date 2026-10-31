@@ -103,7 +103,7 @@ class TestSection5StreamlitReport(unittest.TestCase):
         self.assertNotIn("Niteliksel Derleme", section)
 
         self.assertIn("PMID: 90000022", section)
-        self.assertIn("Etki ölçütü: HR 0.79", section)
+        self.assertIn("Etki ölçütü: tehlike oranı (HR) 0.79", section)
         self.assertIn("Güven aralığı: 0.69 ile 0.90", section)
         self.assertIn(_SOURCE_SENTENCE, section)
         self.assertIn("Sonlanım:", section)
