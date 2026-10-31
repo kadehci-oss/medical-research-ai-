@@ -130,7 +130,7 @@ _PHRASE_PAIRS = (
     ("lymphocytic leukemia", "lenfositik lösemi"),
     ("adverse events", "advers olaylar"),
     ("response rate", "yanıt oranı"),
-    ("incidence rate ratio", "insidans oranı oranı (IRR)"),
+    ("incidence rate ratio", "insidans hızı oranı (IRR)"),
     ("inflammatory myopathy", "inflamatuar miyopati"),
     ("inflammatory myositis", "inflamatuar miyozit"),
     ("necrotizing myopathy", "nekrotizan miyopati"),
@@ -868,6 +868,7 @@ def localize_clinical_display(text: str, drop_unknown: bool = True) -> str:
     for pattern, replacement in _POSSESSIVE_REPAIRS:
         working = pattern.sub(replacement, working)
     working = re.sub(r"\b(başına)(?:\s+\1)+\b", r"\1", working, flags=re.IGNORECASE)
+    working = re.sub(r"insidans oranı oranı", "insidans hızı oranı", working, flags=re.IGNORECASE)
     working = re.sub(r"\({2,}", "(", working)
     working = re.sub(r"\){2,}", ")", working)
     return working
