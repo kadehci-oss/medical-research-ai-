@@ -25,8 +25,11 @@ STATUS_OK = "Doğrulandı"
 STATUS_WARN = "Uyarılarla doğrulandı"
 STATUS_FAIL = "Doğrulama başarısız"
 
-_PMID_RE = re.compile(r"PMID[:\s]*\[?(\d{5,9})\]?")
-_QUOTE_WITH_PMID_RE = re.compile(r"\"([^\"]{25,})\"[^\"\n]{0,40}?\(PMID:\s*(\d{5,9})\)")
+_PMID_RE = re.compile(r"\bPMID[:\s]*\[?(\d{1,9})(?!\d)", re.IGNORECASE)
+_QUOTE_WITH_PMID_RE = re.compile(
+    r'["“]([^"”\n]{25,})["”][^"“”\n]{0,80}?\bPMID[:\s]+(\d{1,9})(?!\d)',
+    re.IGNORECASE,
+)
 _ROB_RATING_RE = re.compile(
     r"(?:yanlılık riski|risk of bias|risk derecesi|rob 2|robins-i)[^\n]{0,40}?\b(?:düşük|yüksek|orta|low|high|some concerns|moderate|serious|critical)\b",
     re.IGNORECASE,
@@ -63,8 +66,11 @@ def verify_report(report_md: str, studies: List[em.Study]) -> Dict[str, Any]:
     if quotes_failed:
         problems.append(f"Kaynakta birebir bulunamayan alıntı: {len(quotes_failed)}")
 
-    rob_claims = [m.group(0) for m in _ROB_RATING_RE.finditer(text) if not _NEGATION_RE.search(m.group(0))]
-    grade_claims = [m.group(0) for m in _GRADE_RATING_RE.finditer(text) if not _NEGATION_RE.search(m.group(0))]
+    # Formatting can appear on either side of a label's colon, as in
+    # "**GRADE:** **Yüksek**". Audit the visible text, not Markdown delimiters.
+    visible_text = re.sub(r"\*\*|__", "", text)
+    rob_claims = [m.group(0) for m in _ROB_RATING_RE.finditer(visible_text) if not _NEGATION_RE.search(m.group(0))]
+    grade_claims = [m.group(0) for m in _GRADE_RATING_RE.finditer(visible_text) if not _NEGATION_RE.search(m.group(0))]
     if rob_claims:
         problems.append("Değerlendirme yapılmadan yanlılık riski derecesi: " + "; ".join(rob_claims[:3]))
     if grade_claims:

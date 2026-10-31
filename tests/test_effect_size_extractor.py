@@ -1,4 +1,5 @@
 from effect_size_extractor import extract_effect_sizes, summarize_effects
+import pytest
 
 SAMPLE = ("In this randomized trial of 452 patients, the hazard ratio for "
           "progression was 0.62 (95% CI 0.48-0.80; p=0.001). "
@@ -39,3 +40,21 @@ def test_n_equals_pattern():
     effects = extract_effect_sizes(sample_n)
     hr = next(e for e in effects if e.type == "HR")
     assert hr.n == 90
+
+
+@pytest.mark.parametrize("count_text, expected", [
+    ("n = 100:1", None),
+    ("2:90 patients", None),
+    ("2 : 90 patients", None),
+    ("n = 1234567", 1234567),
+    ("total of 1,200 patients", 1200),
+    ("n = 90.5", None),
+    ("n = 0", None),
+    ("enrolled 90, with treatment", 90),
+    ("enrolled 90.", 90),
+    ("assigned 2 : 90 patients, enrolled 120", 120),
+])
+def test_sample_size_requires_whole_participant_count(count_text, expected):
+    effects = extract_effect_sizes(f"{count_text}; HR 0.7 (95% CI 0.5-0.9).")
+    hr = next(effect for effect in effects if effect.type == "HR")
+    assert hr.n == expected

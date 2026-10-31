@@ -6581,38 +6581,26 @@ def generate_html_report(
 
 # [EVIDENCE_LAYER] auto-function
 def build_evidence_table(records):
-    """GRADE ve RoB 2 sütunlu kanıt tablosu."""
+    """Render appraisal status from the same validated Study model as the report."""
+    from evidence_model import format_estimate_tr
+
     header = (
-        "| PMID | Tasarım | Birincil Etki (95% CI) | n | GRADE | RoB 2 |\n"
-        "|------|---------|------------------------|---|-------|-------|\n"
+        "| PMID | Tasarım | Kaynağa bağlı etki ve GA | n | GRADE | Yanlılık riski |\n"
+        "|------|---------|--------------------------|---|-------|---------------|\n"
     )
     rows = []
-    for raw_r in records:
-        r = dict(raw_r)
-        if "grade" not in r or "rob2" not in r or not r.get("grade") or not r.get("rob2"):
-            try:
-                from universal_evidence_engine import enrich_record
-                r = enrich_record(r)
-            except Exception:
-                pass
-
-        es = (r.get("effect_summary") or {}).get("primary") or {}
-        if es.get("ci_low") is not None and es.get("ci_high") is not None:
-            ci = "(%s-%s)" % (round(es["ci_low"], 2), round(es["ci_high"], 2))
-        else:
-            ci = "-"
-        grade = (r.get("grade") or {}).get("final") or "-"
-        rob = (r.get("rob2") or {}).get("overall") or "N/A"
-        des = r.get("study_design", "-")
-        if isinstance(des, dict):
-            des = des.get("design", "-")
-        rows.append(
-            "| %s | %s | %s %s %s | %s | %s | %s |" % (
-                r.get("pmid", "-"), des,
-                es.get("type", "-"), es.get("value", "-"), ci,
-                es.get("n", "-"), grade, rob
-            )
+    for article in records:
+        study = _study_for(article)
+        effects = "; ".join(format_estimate_tr(est) for est in study.estimates if est.usable)
+        cells = (
+            study.pmid or "-",
+            study.design_label,
+            effects or "Özette kullanılabilir etki tahmini yok",
+            str(study.population.n_total) if study.population.n_total is not None else "Bildirilmedi",
+            "Değerlendirilemedi (tam değerlendirme yapılmadı)",
+            display_bias_rating(study.legacy["rob"]["overall_rating"]),
         )
+        rows.append("| " + " | ".join(_cell(value, limit=1600) for value in cells) + " |")
     return header + "\n".join(rows)
 
 
