@@ -263,7 +263,7 @@ class TestUniversalEvidenceEngine(unittest.TestCase):
             "authors": ["Negative Author"],
             "pub_year": "2023",
             "publication_types": ["Randomized Controlled Trial"],
-            "abstract": "In 320 patients with major depression (n=320), Drug X failed to show significant difference compared to placebo (OR 1.02, 95% CI 0.80-1.30, p=0.85)."
+            "abstract": "In 320 patients with major depression (n=320), Drug X did not significantly reduce depression symptoms compared to placebo (OR 1.02, 95% CI 0.80-1.30, p=0.85)."
         }
 
         comp = self.engine.compare_cross_article_findings([trial_positive, trial_negative], "Drug X in major depression")
@@ -300,6 +300,25 @@ class TestUniversalEvidenceEngine(unittest.TestCase):
         self.assertIn("tutarlı istatistiksel bulgular", comp["consistent_findings"][0]["details"])
         self.assertIn("[PMID: 50001]", comp["consistent_findings"][0]["details"])
         self.assertIn("[PMID: 50002]", comp["consistent_findings"][0]["details"])
+
+    def test_primary_and_extended_followup_from_same_trial_are_not_counted_twice(self):
+        main_report = {
+            "pmid": "70001",
+            "title": "Primary Results of the ABC-HEART Trial",
+            "publication_types": ["Randomized Controlled Trial"],
+            "abstract": "In the ABC-HEART trial, 500 patients with heart failure (n=500) received treatment or placebo (HR 0.75, 95% CI 0.65-0.87).",
+        }
+        followup = {
+            "pmid": "70002",
+            "title": "Five-Year Follow-up of the ABC-HEART Trial",
+            "publication_types": ["Randomized Controlled Trial"],
+            "abstract": "The ABC-HEART trial follow-up assessed long-term outcomes in the same randomized cohort of 500 patients (HR 0.79, 95% CI 0.69-0.90).",
+        }
+        comparison = self.engine.compare_cross_article_findings([main_report, followup], "heart failure treatment")
+        self.assertEqual(comparison["total_articles"], 2)
+        self.assertEqual(comparison["primary_study_count"], 1)
+        self.assertEqual(len(comparison["individual_article_summaries"]), 2)
+        self.assertTrue(any("aynı kanıt ailesine" in item["reason"] for item in comparison["non_comparable_studies"]))
 
     # --- 11. Multi-Specialty 88-Domain Compatibility Test ---
     def test_multi_specialty_88_domain_compatibility(self):
