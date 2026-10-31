@@ -408,6 +408,13 @@ def assess_preliminary_grade(article: Dict[str, Any], query: str = "") -> Dict[s
     }
 
 
+_AUTHOR_CLAIM_RE = re.compile(
+    r"\b(?:outperform\w*|superior|inferior|protective|beneficial|effective|reduced|improved|prevent\w*|caused?|causes|"
+    r"led\s+to|pooled|yielded|showed)\b",
+    re.IGNORECASE,
+)
+
+
 def format_preliminary_grade_markdown(query: str, articles: List[Dict[str, Any]]) -> str:
     """Show abstract-level text signals without presenting a single-study GRADE rating."""
     lines = [
@@ -440,7 +447,13 @@ def format_preliminary_grade_markdown(query: str, articles: List[Dict[str, Any]]
             sentence = outcome.get("source_sentence") or ""
             sentence_bit = f" Kaynak cümle: \"{sentence}\"." if sentence else " Kaynak cümle: değerlendirilemedi."
             from report_generator import _display_outcome_name
-            outcome_label = _display_outcome_name(outcome.get("outcome") or "")
+            raw_label = outcome.get("outcome") or ""
+            # A clause that carries the authors' interpretation ("X outperformed Y",
+            # "protective effect") is not an endpoint name and is not repeated as one.
+            if _AUTHOR_CLAIM_RE.search(raw_label):
+                outcome_label = "sonlanım adı güvenle ayrıştırılamadı (cümlede yazar yorumu var)"
+            else:
+                outcome_label = _display_outcome_name(raw_label)
             lines.append(
                 f"  - Sonlanım: {outcome_label}; otomatik metin sinyalleri (GRADE değildir): "
                 + "; ".join(bits)
