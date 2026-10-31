@@ -1,4 +1,5 @@
 import os
+import re
 import streamlit as st
 import pandas as pd
 from pubmed_client import verify_pmid, verify_doi, verify_citation
@@ -12,6 +13,8 @@ from report_generator import (
     extract_pico,
     extract_article_clinical_details,
     assess_risk_of_bias,
+    display_bias_rating,
+    display_bias_tool,
     validate_clinical_report_quality,
 )
 
@@ -249,7 +252,10 @@ def main():
                         st.markdown(f"**Çalışma Tasarımı:** `{cd['design']}`")
                         st.markdown(f"**Kanıt düzeyi:** `{cd['level']}`")
                         st.caption(cd.get("evidence_level_note") or "")
-                        st.markdown(f"**Yanlılık aracı ({rob['tool']}):** `{rob['overall_rating']}`")
+                        st.markdown(
+                            f"**Yanlılık aracı ({display_bias_tool(rob['tool'])}):** "
+                            f"`{display_bias_rating(rob['overall_rating'])}`"
+                        )
                         st.caption(rob.get("rating_policy") or "Değerlendirme yapılmadan risk derecesi verilmez.")
 
                         st.markdown(f"**Hasta Grubu:** {art_details['patient_group']} | **Örneklem (n):** {art_details['sample_size']}")
@@ -258,6 +264,7 @@ def main():
                         provenance = art_details.get("provenance") or {}
                         if provenance:
                             st.markdown("**Kaynak cümleleri ve PMID**")
+                            seen_quotes = set()
                             for label, key in (
                                 ("Hasta grubu", "population"),
                                 ("Örneklem", "sample_size"),
@@ -265,8 +272,20 @@ def main():
                                 ("Karşılaştırıcı", "comparison"),
                             ):
                                 item = provenance.get(key) or {}
-                                sentence = item.get("source_sentence") or "değerlendirilemedi"
-                                st.caption(f"{label}: {item.get('value') or 'değerlendirilemedi'} — {sentence} (PMID: {provenance.get('pmid') or art.get('pmid') or 'yok'})")
+                                sentence = re.sub(r"\s+", " ", item.get("source_sentence") or "").strip()
+                                if item.get("source") == "title":
+                                    note = "Kaynak: makale başlığı"
+                                elif sentence and sentence.casefold() in seen_quotes:
+                                    note = "Kaynak cümle: yukarıdaki ile aynı"
+                                elif sentence:
+                                    seen_quotes.add(sentence.casefold())
+                                    note = f'Kaynak cümle: "{sentence}"'
+                                else:
+                                    note = "Kaynak cümle yok"
+                                st.caption(
+                                    f"{label}: {item.get('value') or 'değerlendirilemedi'} — {note} "
+                                    f"(PMID: {provenance.get('pmid') or art.get('pmid') or 'yok'})"
+                                )
                             for om in provenance.get("outcomes") or []:
                                 st.caption(
                                     f"Sonlanım {om.get('outcome')}: {', '.join(om.get('metrics') or []) or 'değerlendirilemedi'} — "
@@ -454,7 +473,7 @@ def main():
                                 st.markdown(f"**Çalışma tasarımı:** `{s_item.get('study_design')}`")
                                 st.markdown(f"**Kanıt düzeyi:** `{s_item.get('evidence_level')}`")
                                 st.caption(s_item.get("evidence_level_note") or "Kanıt düzeyi çalışma tasarımından üretilmez.")
-                                st.markdown(f"**Popülasyon:** {s_item.get('patient_population')} | **Örneklem (n):** {s_item.get('sample_size_n') or 'Özette bildirilmedi'}")
+                                st.markdown(f"**Popülasyon:** {s_item.get('patient_population')} | **Örneklem (n):** {s_item.get('sample_size_n') or 'özette bildirilmedi'}")
                                 st.markdown(f"**Müdahale:** {s_item.get('intervention')} | **Karşılaştırma:** {s_item.get('comparison')}")
                                 st.markdown(f"**Yanlılık durumu:** `{s_item.get('risk_of_bias')}`")
                                 st.caption("Araç seçilmiş olsa da değerlendirme yapılmadan risk derecesi verilmez.")

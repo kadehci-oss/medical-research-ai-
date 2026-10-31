@@ -397,7 +397,7 @@ class UniversalEvidenceEngine:
                 "publication_types": pub_types,
                 "study_design": design,
                 "patient_population": details.get("patient_group", "Belirtilmedi"),
-                "sample_size": details.get("sample_size", "Özette bildirilmedi"),
+                "sample_size": details.get("sample_size", "özette bildirilmedi"),
                 "sample_size_n": metrics.get("n"),
                 "intervention": details.get("intervention", "Belirtilmedi"),
                 "comparison": details.get("comparison", "Belirtilmedi"),

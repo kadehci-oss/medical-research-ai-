@@ -157,7 +157,7 @@ class TestRealPubMedRegression(unittest.TestCase):
         details = extract_article_clinical_details(sparse_article, query="AI ethics")
 
         self.assertIsNone(metrics["n"])
-        self.assertEqual(details["sample_size"], "Özette bildirilmedi")
+        self.assertEqual(details["sample_size"], "özette bildirilmedi")
         self.assertEqual(len(metrics["effect_sizes"]), 0)
         self.assertEqual(len(metrics["confidence_intervals"]), 0)
 

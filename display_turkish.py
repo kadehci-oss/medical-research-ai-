@@ -128,6 +128,8 @@ _PHRASE_PAIRS = (
     ("body weight", "vücut ağırlığı"),
     ("lymphocytic leukaemia", "lenfositik lösemi"),
     ("lymphocytic leukemia", "lenfositik lösemi"),
+    ("better outcome", "daha iyi sonuç"),
+    ("good outcome", "iyi sonuç"),
     ("adverse events", "advers olaylar"),
     ("response rate", "yanıt oranı"),
     ("incidence rate ratio", "insidans hızı oranı (IRR)"),

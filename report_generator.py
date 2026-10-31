@@ -1432,6 +1432,25 @@ def assess_risk_of_bias(article: Dict[str, Any]) -> Dict[str, Any]:
     )
 
 
+def display_bias_tool(tool: str) -> str:
+    """Section 5/6 label: the English tool name stays an acronym only."""
+    text = tool or ""
+    text = re.sub(
+        r"\s*\((?:Risk of Bias in [^)]+|Cochrane Risk of Bias[^)]*)\)",
+        "",
+        text,
+    )
+    text = re.sub(r"\s*\(Not Applicable\)", "", text, flags=re.IGNORECASE)
+    return text.strip() or "Değerlendirilemedi"
+
+
+def display_bias_rating(rating: str) -> str:
+    """Drop the English '(Not Assessed)' gloss. The Turkish word stands alone."""
+    text = re.sub(r"\s*\([^)]*Not Assessed[^)]*\)", "", rating or "", flags=re.IGNORECASE)
+    text = re.sub(r"\s*\(Not Applicable\)", "", text, flags=re.IGNORECASE)
+    return text.strip() or "Değerlendirilmedi"
+
+
 # Longer phrases precede shorter ones so "standardized mean difference" is not read as "mean difference".
 _EFFECT_MEASURE_ALTERNATION = (
     "HR|OR|RR|WMD|IRR|SMD|MD|"
@@ -1970,6 +1989,8 @@ def _exact_outcome_span(text: str) -> str:
 def _display_outcome_name(outcome: str) -> str:
     """Turkish outcome label. Partial word-by-word translation is not used."""
     text = (outcome or "").strip()
+    if text.startswith("öngördürücü:"):
+        return text
     if text in (
         "değerlendirilemedi",
         "Primer Klinik Sonlanım / Özet İstatistiği",
@@ -2015,7 +2036,7 @@ _POPULATION_PHRASES = (
     ("heart failure with preserved ejection fraction", "korunmuş ejeksiyon fraksiyonlu kalp yetersizliği"),
     ("heart failure", "kalp yetersizliği"),
     ("rheumatoid arthritis", "romatoid artrit"),
-    ("ovarian teratoma", "over teratomu"),
+    ("ovarian teratoma", "ovaryan teratom"),
     ("community-acquired pneumonia", "toplum kökenli pnömoni"),
     ("type 2 diabetes mellitus", "tip 2 diyabet"),
     ("type 2 diabetes", "tip 2 diyabet"),
@@ -2128,12 +2149,26 @@ _LIMITATION_PHRASES = (
 )
 
 
+def _phrase_present(source: str, lowered: str) -> bool:
+    """True when the phrase appears, allowing one short parenthetical between words.
+
+    "anti-NMDA receptor (NMDAR) encephalitis" still matches
+    "anti-nmda receptor encephalitis".
+    """
+    parts = [part for part in (source or "").split() if part]
+    if not parts:
+        return False
+    gap = r"(?:\s+\([^)]{1,40}\))?"
+    pattern = r"\b" + (r"\b" + gap + r"\s+").join(re.escape(part) for part in parts) + r"\b"
+    return bool(re.search(pattern, lowered or ""))
+
+
 def _population_labels(text: str) -> List[str]:
     """Controlled population phrases present in the text. No word-by-word fill."""
     lowered = (text or "").lower()
     found = []
     for source, turkish in _POPULATION_PHRASES:
-        if source in lowered and turkish not in found:
+        if _phrase_present(source, lowered) and turkish not in found:
             found.append(turkish)
     kept = []
     for label in found:
@@ -2308,21 +2343,8 @@ def _recognized_study_interventions(abstract: str, title: str) -> List[str]:
 
 def _structured_population(abstract: str, metrics: Dict[str, Any], profile: List[Dict[str, str]]) -> str:
     """Sample size plus a controlled population phrase. No partial translation."""
-    sample = _expand_clinical_abbreviations(_sample_comparison_cell(profile), abstract)
-    labels = _population_labels(abstract)
-    parts = []
-    if sample and sample not in ("özette bildirilmedi", "Belirtilmedi"):
-        parts.append(sample.rstrip("."))
-    n_val = (metrics or {}).get("n")
-    if n_val and not any(str(n_val) in part for part in parts):
-        parts.insert(0, f"n = {n_val}")
-    blob = " ".join(parts).casefold()
-    for label in labels:
-        if label.casefold() not in blob:
-            parts.append(label)
-    if not parts:
-        return PICO_UNSTATED_TR
-    return "; ".join(parts)
+    text, _sentence = _canonical_patient_group(abstract, profile, metrics)
+    return text
 
 
 def _pico_value_rejected(text: str) -> bool:
@@ -2453,33 +2475,67 @@ def _deduped_lines(lines: List[str]) -> List[str]:
     return kept
 
 
-def _significance_from_findings(findings: List[Dict[str, Any]]) -> str:
-    """Derive one significance clause from p-values and intervals.
+def _finding_significance_flags(item: Dict[str, Any]) -> tuple:
+    """Return (p_flag, ci_flag). Each is 'sig', 'nonsig', or ''."""
+    p_flag = _parse_p_significance(item.get("p") or "") or _parse_p_significance(item.get("effect") or "")
+    ci_flag = ""
+    if item.get("ci_low") and item.get("ci_high"):
+        ci_flag = _interval_significance(
+            item.get("measure") or "",
+            item.get("ci_low") or "",
+            item.get("ci_high") or "",
+        )
+    return p_flag, ci_flag
 
-    A default 'fark saptanmamıştır' is not used when the numbers are missing
-    or point in more than one direction.
+
+def _significance_subject(item: Dict[str, Any]) -> str:
+    """Short Turkish name used in 'X için anlamlı'."""
+    shown = _display_outcome_name((item or {}).get("outcome") or "")
+    if shown.startswith("öngördürücü:"):
+        return shown.split(":", 1)[1].strip().strip('"') or "bu sonlanım"
+    if shown and shown != _UNNAMED_OUTCOME_TR:
+        return shown
+    effect = format_effect_measure((item or {}).get("effect") or "")
+    return effect or "bu sonlanım"
+
+
+def _significance_from_findings(findings: List[Dict[str, Any]]) -> str:
+    """Significance from reported p-values and ratio intervals, per outcome.
+
+    When every assessed outcome points the same way, one sentence is enough.
+    Mixed directions are stated outcome by outcome. 'Değerlendirilemedi' is
+    used only when no outcome has a p-value or a usable interval.
     """
     flags = []
+    parts = []
     for item in findings or []:
         if item.get("implausible"):
             continue
-        p_flag = _parse_p_significance(item.get("p") or "") or _parse_p_significance(item.get("effect") or "")
-        ci_flag = ""
-        if item.get("ci_low") and item.get("ci_high"):
-            ci_flag = _interval_significance(item.get("measure") or "", item.get("ci_low") or "", item.get("ci_high") or "")
+        p_flag, ci_flag = _finding_significance_flags(item)
         if p_flag and ci_flag and p_flag != ci_flag:
-            flags.append("mixed")
+            flag = "conflict"
         elif p_flag:
-            flags.append(p_flag)
+            flag = p_flag
         elif ci_flag:
-            flags.append(ci_flag)
-    if not flags or "mixed" in flags or ("sig" in flags and "nonsig" in flags):
+            flag = ci_flag
+        else:
+            continue
+        flags.append(flag)
+        label = _significance_subject(item)
+        if flag == "sig":
+            parts.append(f"{label} için anlamlı")
+        elif flag == "nonsig":
+            parts.append(f"{label} için anlamlı değil")
+        else:
+            parts.append(f"{label} için p değeri ile güven aralığı farklı yön gösteriyor")
+    if not flags:
         return "anlamlılık değerlendirilemedi"
-    if "sig" in flags:
+    if all(flag == "sig" for flag in flags):
         return "istatistiksel olarak anlamlı bir fark saptanmıştır"
-    if "nonsig" in flags:
+    if all(flag == "nonsig" for flag in flags):
         return "istatistiksel olarak anlamlı bir fark saptanmamıştır"
-    return "anlamlılık değerlendirilemedi"
+    # Same outcome named twice with the same clause is not repeated.
+    return "; ".join(_deduped_lines(parts))
 
 
 def _author_limitation_label(sentence: str) -> str:
@@ -2529,18 +2585,23 @@ def extract_article_clinical_details(article: Dict[str, Any], query: str = "") -
         sample_size_str = f"n = {metrics['n']}"
         sample_sentence = metrics.get("n_source_sentence") or ""
     else:
-        sample_size_str = "Özette bildirilmedi"
+        sample_size_str = "özette bildirilmedi"
         sample_sentence = ""
 
     # 2–3. Population, intervention, and comparator come from the structured
     # extractor shared with sections 5 and 6. Word-by-word translation is not used.
     profile = extract_clinical_profile(abstract)
-    patient_group = safe_pico_quote(_structured_population(abstract, metrics, profile))
-    if patient_group == PICO_UNSTATED_TR:
-        patient_group = PICO_UNSTATED_TR
+    patient_group, pop_sentence = _canonical_patient_group(abstract, profile, metrics)
+    if patient_group in ("özette bildirilmedi", "Belirtilmedi", ""):
+        patient_group = "özette bildirilmedi"
         pop_sentence = ""
     else:
-        pop_sentence = sample_sentence or ""
+        guarded = safe_pico_quote(patient_group)
+        if guarded == PICO_UNSTATED_TR:
+            patient_group = "özette bildirilmedi"
+            pop_sentence = ""
+        else:
+            patient_group = guarded
 
     intervention_names = _recognized_study_interventions(abstract, title)
     profile_drugs = []
@@ -2555,17 +2616,10 @@ def extract_article_clinical_details(article: Dict[str, Any], query: str = "") -
     intervention_bits = intervention_names + [
         drug for drug in profile_drugs if not _label_already_listed(drug, intervention_names)
     ]
-    intervention = ", ".join(intervention_bits) if intervention_bits else PICO_UNSTATED_TR
-    intervention_sentence = ""
-    intervention_source = "missing"
-    if intervention_bits:
-        cue = _ALLOCATION_CUE_RE.search(abstract) or _INTERVENTION_CUE_RE.search(abstract)
-        if cue:
-            intervention_sentence = _sentence_around(abstract, cue.start(), cue.end())
-            intervention_source = "abstract"
-        elif title and _drug_labels_in(title):
-            intervention_sentence = title.strip()
-            intervention_source = "title"
+    kept_bits, intervention_sentence, intervention_source = _ground_intervention(
+        intervention_bits, abstract, title
+    )
+    intervention = ", ".join(kept_bits) if kept_bits else PICO_UNSTATED_TR
 
     comparison = _explicit_comparator(abstract, pub_types) or COMPARATOR_UNSTATED_TR
     comparison_sentence = ""
@@ -2582,8 +2636,8 @@ def extract_article_clinical_details(article: Dict[str, Any], query: str = "") -
             comparison_sentence = _sentence_around(abstract, comp_at.start(), comp_at.end())
             comparison_source = "abstract"
 
-    if _pico_value_rejected(patient_group):
-        patient_group = PICO_UNSTATED_TR
+    if patient_group not in ("özette bildirilmedi",) and _pico_value_rejected(patient_group):
+        patient_group = "özette bildirilmedi"
         pop_sentence = ""
     if _pico_value_rejected(intervention):
         intervention = PICO_UNSTATED_TR
@@ -2692,6 +2746,29 @@ def extract_article_clinical_details(article: Dict[str, Any], query: str = "") -
     }
 
 
+def _outcome_lead(outcome: str) -> str:
+    """'Sonlanım: …' or 'Sonlanım/öngördürücü: …' when the sentence names a predictor."""
+    shown = _display_outcome_name(outcome or "")
+    if shown.startswith("öngördürücü:"):
+        return "Sonlanım/" + shown
+    return f"Sonlanım: {shown}"
+
+
+def _claim_source_phrase(item: Dict[str, Any], pmid: str, seen_quotes: set) -> str:
+    """Quote the extraction sentence once. A title source is labeled, not quoted."""
+    source = (item or {}).get("source") or ""
+    sentence = re.sub(r"\s+", " ", (item or {}).get("source_sentence") or "").strip()
+    if source == "title":
+        return f"Kaynak: makale başlığı (PMID: {pmid})"
+    if sentence:
+        key = sentence.casefold()
+        if key in seen_quotes:
+            return f"Kaynak cümle: yukarıdaki ile aynı (PMID: {pmid})"
+        seen_quotes.add(key)
+        return f'Kaynak cümle: "{sentence}" (PMID: {pmid})'
+    return f"Kaynak cümle yok (PMID: {pmid})"
+
+
 def _format_bound_claims(details: Dict[str, Any], include_implausible: bool = True) -> str:
     """Turkish lines that keep each extracted item next to its sentence and PMID."""
     prov = details.get("provenance") or {}
@@ -2703,19 +2780,17 @@ def _format_bound_claims(details: Dict[str, Any], include_implausible: bool = Tr
         ("Müdahale", "intervention"),
         ("Karşılaştırıcı", "comparison"),
     )
+    seen_quotes = set()
     for label, key in labels:
         item = prov.get(key) or {}
         value = item.get("value") or "değerlendirilemedi"
-        sentence = item.get("source_sentence") or ""
-        if sentence:
-            lines.append(f"{label}: {value}. Kaynak cümle: \"{sentence}\" (PMID: {pmid})")
-        else:
-            shown = value if value and value != "değerlendirilemedi" else "değerlendirilemedi"
-            lines.append(f"{label}: {shown}. Kaynak cümle yok (PMID: {pmid})")
+        source_phrase = _claim_source_phrase(item, pmid, seen_quotes)
+        lines.append(f"{label}: {value}. {source_phrase}")
     outcomes = [
         om for om in (prov.get("outcomes") or [])
         if include_implausible or not om.get("implausible")
     ]
+    seen_outcome = set()
     if not outcomes:
         lines.append(f"Sonlanım ve istatistik: değerlendirilemedi (PMID: {pmid})")
     for om in outcomes:
@@ -2727,13 +2802,20 @@ def _format_bound_claims(details: Dict[str, Any], include_implausible: bool = Tr
         metric_text = _sanitize_display_line(metric_text)
         flag = f" {INCONSISTENT_SOURCE_FLAG}" if om.get("implausible") else ""
         sentence = om.get("source_sentence") or om.get("sentence") or ""
+        lead = _outcome_lead(om.get("outcome") or "")
+        value_key = re.sub(r"\s+", " ", f"{lead}|{metric_text}|{sentence}").strip().lower()
+        if value_key in seen_outcome:
+            continue
+        seen_outcome.add(value_key)
         if sentence:
-            lines.append(
-                f"Sonlanım: {om.get('outcome')}. İstatistik: {metric_text}.{flag} "
-                f"Kaynak cümle: \"{sentence}\" (PMID: {pmid})"
+            source_phrase = _claim_source_phrase(
+                {"source_sentence": sentence, "source": "abstract"},
+                pmid,
+                seen_quotes,
             )
+            lines.append(f"{lead}. İstatistik: {metric_text}.{flag} {source_phrase}")
         else:
-            lines.append(f"Sonlanım: değerlendirilemedi. İstatistik: {metric_text}{flag} (PMID: {pmid})")
+            lines.append(f"{lead}. İstatistik: {metric_text}{flag} (PMID: {pmid})")
     return " ".join(lines)
 
 
@@ -3176,7 +3258,6 @@ def _resolve_finding_outcome(
         exact_expanded = _exact_outcome_span(expanded)
         if exact_expanded:
             return exact_expanded
-        return _UNNAMED_OUTCOME_TR
     if name_end is not None and value_start is not None:
         gap = _clean_outcome_clause(_outcome_from_gap(sentence, name_end, value_start, anchor))
         exact_gap = _exact_outcome_span(gap)
@@ -3186,6 +3267,10 @@ def _resolve_finding_outcome(
     exact_keyword = _exact_outcome_span(keyword)
     if exact_keyword:
         return exact_keyword
+    earlier = nearest_controlled_outcome(sentence[:anchor])
+    exact_earlier = _exact_outcome_span(earlier)
+    if exact_earlier:
+        return exact_earlier
     return _UNNAMED_OUTCOME_TR
 
 
@@ -3424,6 +3509,130 @@ def _numeric_contrast_findings(sentence: str, definitions: Dict[str, str]) -> Li
     return found
 
 
+# Predictor names are translated only as a whole controlled phrase.
+# Anything else stays inside a labeled source quote. No word-by-word fill.
+_PREDICTOR_PHRASES = (
+    ("no admission to an intensive care unit", "yoğun bakım yatışı yok"),
+    ("admission to an intensive care unit", "yoğun bakım yatışı"),
+    ("intensive care unit", "yoğun bakım"),
+    ("early treatment", "erken tedavi"),
+    ("platelet count", "trombosit sayısı"),
+    ("ggt serum levels", "GGT düzeyi"),
+    ("second-line immunotherapy", "ikinci basamak immünoterapi"),
+    ("first-line immunotherapy", "birinci basamak immünoterapi"),
+    ("first-line treatment", "birinci basamak tedavi"),
+    ("better outcome", "daha iyi sonuç"),
+    ("good outcome", "iyi sonuç"),
+)
+_PAREN_PREDICTOR_RE = re.compile(
+    r"(?P<name>[A-Za-z][^()]{1,140}?)\s*"
+    r"\(\s*(?P<est>\d+(?:\.\d+)?)\s*,\s*"
+    r"(?P<low>\d+(?:\.\d+)?)\s*[-–—−]\s*(?P<high>\d+(?:\.\d+)?)\s*;\s*"
+    r"p\s*(?P<op>[<=>])\s*(?P<p>\d+(?:\.\d+)?)\s*\)",
+    re.IGNORECASE,
+)
+
+
+def _trim_predictor_name(raw: str) -> str:
+    """The noun phrase immediately before a parenthetical estimate."""
+    text = re.sub(r"\s+", " ", raw or "").strip(" ,;:.")
+    parts = re.split(r"\b(?:were|was)\b", text, flags=re.IGNORECASE)
+    text = parts[-1].strip(" ,;:")
+    text = re.sub(r"^(?:and|or|the|a|an|of|for|to)\s+", "", text, flags=re.IGNORECASE)
+    return text.strip(" ,;:")
+
+
+def _predictor_display(name: str) -> str:
+    """Turkish predictor label, or the source phrase in quotes when unmapped."""
+    cleaned = _trim_predictor_name(name)
+    if not cleaned or not re.search(r"[A-Za-z]", cleaned):
+        return ""
+    lowered = cleaned.lower()
+    for source, turkish in sorted(_PREDICTOR_PHRASES, key=lambda item: len(item[0]), reverse=True):
+        if re.search(r"\b" + re.escape(source) + r"\b", lowered):
+            return f"öngördürücü: {turkish}"
+    span = _exact_outcome_span(cleaned)
+    shown = translate_controlled_outcome(span) if span else ""
+    if shown and not outcome_label_rejected(shown):
+        return f"öngördürücü: {shown}"
+    if len(cleaned.split()) > 12:
+        return ""
+    return f'öngördürücü: "{cleaned}"'
+
+
+def _parenthetical_predictor_findings(sentence: str) -> List[Dict[str, Any]]:
+    """Split 'name (estimate, low-high; p<value)' into one finding per name.
+
+    Only sentences that call these predictors are split this way. A result
+    such as 'the endpoint was reduced (0.62, 0.43-0.90; p=0.013)' keeps the
+    ordinary outcome resolver. The number is not labeled as an odds ratio
+    unless the sentence says so.
+    """
+    if not re.search(r"\bpredictors?\b", sentence or "", re.IGNORECASE):
+        return []
+    found = []
+    for match in _PAREN_PREDICTOR_RE.finditer(sentence or ""):
+        label = _predictor_display(match.group("name"))
+        if not label:
+            continue
+        found.append(_make_finding(
+            label,
+            f"kaynak değer: {match.group('est')}",
+            f"{match.group('low')} ile {match.group('high')}",
+            f"p {match.group('op')} {match.group('p')}",
+            sentence,
+            match.group("low"),
+            match.group("high"),
+        ))
+    return found
+
+
+def _factor_names_for_effects(sentence: str, effects: List[Dict[str, Any]]) -> List[str]:
+    """Zip 'A and B were risk factors (OR … and OR …)' when the counts match."""
+    if len(effects) < 2:
+        return []
+    prefix = sentence[:effects[0]["name_start"]]
+    paren = prefix.rfind("(")
+    if paren >= 0 and effects[0]["name_start"] - paren < 12:
+        prefix = prefix[:paren]
+    showed = re.search(r"\bshowed that\s+(.+)$", prefix, flags=re.IGNORECASE)
+    body = showed.group(1) if showed else prefix
+    body = re.sub(r"\b(?:were|was)\b.*$", "", body, flags=re.IGNORECASE).strip(" ,;:")
+    parts = [
+        part.strip(" ,;:")
+        for part in re.split(r"\s+and\s+|,\s+(?=[A-Za-z])", body)
+    ]
+    parts = [part for part in parts if re.search(r"[A-Za-z]{3,}", part)]
+    if len(parts) > len(effects):
+        parts = parts[-len(effects):]
+    if len(parts) != len(effects):
+        return []
+    return parts
+
+
+def _dedupe_findings(findings: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Drop a later row with the same displayed value and the same quote."""
+    seen = set()
+    kept = []
+    for item in findings:
+        value = " ".join((
+            item.get("outcome") or "",
+            item.get("effect") or "",
+            item.get("ci") or "",
+            item.get("p") or "",
+        ))
+        quote = item.get("sentence") or ""
+        key = (
+            re.sub(r"\s+", " ", value).strip().lower(),
+            re.sub(r"\s+", " ", quote).strip().lower(),
+        )
+        if not key[0] or key in seen:
+            continue
+        seen.add(key)
+        kept.append(item)
+    return kept
+
+
 def extract_grounded_clinical_findings(abstract: str) -> List[Dict[str, Any]]:
     """Findings taken only from effect measures, CIs, and numeric contrasts.
 
@@ -3434,10 +3643,14 @@ def extract_grounded_clinical_findings(abstract: str) -> List[Dict[str, Any]]:
     findings = []
     definitions = _parenthetical_definitions(abstract)
     for sentence in _finding_sentences(abstract):
+        predictors = _parenthetical_predictor_findings(sentence)
+        if predictors:
+            findings.extend(predictors)
         effects = _collect_named_effects(sentence)
         intervals = _collect_confidence_intervals(sentence)
         contrasts = _numeric_contrast_findings(sentence, definitions)
         if effects:
+            factor_names = _factor_names_for_effects(sentence, effects)
             pairs, ambiguous = _pair_effects_with_intervals(effects, intervals, sentence)
             ambiguous_text = "; ".join(note for note in ambiguous if note)
             for index, (effect, interval) in enumerate(pairs):
@@ -3448,6 +3661,15 @@ def extract_grounded_clinical_findings(abstract: str) -> List[Dict[str, Any]]:
                     effect["value_start"],
                     definitions,
                 )
+                predictor_sentence = bool(re.search(
+                    r"\b(?:predictors?|risk factors?)\b",
+                    sentence,
+                    re.IGNORECASE,
+                ))
+                if factor_names and (outcome == _UNNAMED_OUTCOME_TR or predictor_sentence):
+                    named = _predictor_display(factor_names[index])
+                    if named:
+                        outcome = named
                 if interval is not None:
                     ci_text = interval["text"]
                     low, high = interval["low"], interval["high"]
@@ -3469,6 +3691,8 @@ def extract_grounded_clinical_findings(abstract: str) -> List[Dict[str, Any]]:
                     high,
                 ))
             findings.extend(contrasts)
+            continue
+        if predictors:
             continue
         if contrasts:
             findings.extend(contrasts)
@@ -3506,7 +3730,7 @@ def extract_grounded_clinical_findings(abstract: str) -> List[Dict[str, Any]]:
                 interval["low"],
                 interval["high"],
             ))
-    return findings
+    return _dedupe_findings(findings)
 
 
 def format_finding_brief(item: Dict[str, Any]) -> str:
@@ -3588,7 +3812,7 @@ _RESULT_CUE_RE = re.compile(
 _ADMINISTERED_RE = re.compile(
     r"\b(?:treated|received|administered|treatment included|therapy included|"
     r"treatment with|therapy with|treated with|were given|was given|"
-    r"course of|taper|commonly used|were used|was used)\b",
+    r"course of|taper|commonly used|were used|was used|underwent)\b",
     re.IGNORECASE,
 )
 _CASE_VOICE_RE = re.compile(
@@ -4132,7 +4356,10 @@ def _profile_from_sentence(sentence: str) -> List[Dict[str, str]]:
             gloss = " Hispanik olmayan"
         elif has_hispanic and not has_non:
             gloss = " Hispanik"
-        percent = re.search(r"\((\d+(?:\.\d+)?)\s*%\)", window)
+        # A percent belongs to this count only when it opens immediately.
+        # "221 patients ... 125 (57%)" must not label 221 with 57%.
+        immediate = sentence[match.end():match.end() + 16]
+        percent = re.match(r"^\s*\((\d+(?:\.\d+)?)\s*%\)", immediate)
         if percent:
             gloss += f" (%{percent.group(1)})"
         if re.search(r"history of statin", window, re.IGNORECASE):
@@ -4405,7 +4632,15 @@ def format_klinik_bulgular_cell(article: Dict[str, Any]) -> str:
             order.append(sentence)
         buckets[sentence][kind].append(text)
 
+    canonical, canonical_sentence = _canonical_patient_group(abstract, profile)
+    sample_added = False
     for item in profile:
+        if item.get("category") == "sample":
+            if sample_added or not canonical or canonical == "özette bildirilmedi":
+                continue
+            _add(canonical_sentence or item.get("sentence") or "", "profile", canonical)
+            sample_added = True
+            continue
         _add(item["sentence"], "profile", item["line"])
     for item in findings:
         if not _finding_is_displayable(item):
@@ -4416,6 +4651,7 @@ def format_klinik_bulgular_cell(article: Dict[str, Any]) -> str:
         p_bit = f" p değeri: {item['p']}." if item.get("p") else ""
         outcome_label = _display_outcome_name(item.get("outcome") or "")
         effect_label = format_effect_measure(item.get("effect") or "")
+        outcome_head = _outcome_lead(item.get("outcome") or "")
         if outcome_label == _UNNAMED_OUTCOME_TR and _unlabeled_number_effect(effect_label):
             if item.get("sentence") and item["sentence"] not in buckets:
                 buckets[item["sentence"]] = {"profile": [], "effects": []}
@@ -4425,7 +4661,7 @@ def format_klinik_bulgular_cell(article: Dict[str, Any]) -> str:
         _add(
             item["sentence"],
             "effects",
-            f"Sonlanım: {outcome_label}. Etki ölçütü: {effect_label}. "
+            f"{outcome_head}. Etki ölçütü: {effect_label}. "
             f"Güven aralığı: {item['ci']}.{p_bit}{flag}",
         )
 
@@ -4465,7 +4701,7 @@ def generate_evidence_table_markdown(articles: List[Dict[str, Any]]) -> str:
         design_str = f"**{classification['design']}** — *Kanıt düzeyi: {classification['level']}*"
 
         rob = assess_risk_of_bias(art)
-        rob_str = f"**{rob['overall_rating']}** — *{rob['tool']}*"
+        rob_str = f"**{display_bias_rating(rob['overall_rating'])}** — *{display_bias_tool(rob['tool'])}*"
 
         pmid_link = f"[PMID: {pmid}]({art.get('pubmed_url', '#')})" if pmid else "-"
         if doi:
@@ -4524,8 +4760,8 @@ def generate_evidence_table_html(articles: List[Dict[str, Any]]) -> str:
 
         level_escaped = html.escape(classification['level'])
         design_escaped = html.escape(classification['design'])
-        rating_escaped = html.escape(rob['overall_rating'])
-        tool_escaped = html.escape(rob['tool'])
+        rating_escaped = html.escape(display_bias_rating(rob['overall_rating']))
+        tool_escaped = html.escape(display_bias_tool(rob['tool']))
 
         html_rows.append(f"""
         <tr style="border-bottom: 1px solid #E5E7EB;">
@@ -4782,6 +5018,13 @@ def _translate_clinical_conclusion_to_turkish(
                 "*(Not: Bu bulgular derleme yazarının bağımsız ampirik araştırması olmayıp, "
                 "referans gösterilen klinik çalışmalardan aktarılmıştır.)*"
             )
+        if stat_bits and significance != "anlamlılık değerlendirilemedi":
+            return (
+                f"{citation} niteliğindeki bu yayında literatürdeki klinik veriler derlenmiştir: "
+                f"{'; '.join(stat_bits)}. Anlamlılık sonlanım bazında: {significance}. "
+                "*(Not: Bu bulgular derleme yazarının bağımsız ampirik araştırması olmayıp, "
+                "referans gösterilen klinik çalışmalardan aktarılmıştır.)*"
+            )
         if stat_bits:
             return (
                 f"{citation} niteliğindeki bu yayında literatürdeki klinik veriler derlenmiştir: "
@@ -4808,6 +5051,11 @@ def _translate_clinical_conclusion_to_turkish(
         return (
             f"{citation} bulgularına göre gruplar veya parametreler arasında "
             f"{significance}{stat_str}."
+        )
+    if stat_bits and significance != "anlamlılık değerlendirilemedi":
+        return (
+            f"{citation} kapsamında elde edilen istatistiksel ve nicel bulgular: "
+            f"{'; '.join(stat_bits)}. Anlamlılık sonlanım bazında: {significance}."
         )
     if stat_bits:
         return (
@@ -4837,7 +5085,7 @@ def _synthesize_article_conclusion_tr(art: Dict[str, Any], query: str) -> str:
     if not abstract or abstract in ["Özet bulunamadı.", "Özet bilgisi bulunamadı."] or len(abstract) < 40:
         return (
             f"- **{authors_short} ({year})** ({pmid_link}): Makale özetinde klinik kanıt veya sonuç verisi yetersizdir / bildirilmemiştir.\n"
-            f"  - *Hasta Sayısı:* Özette bildirilmedi | *Etki Ölçütleri:* Bildirilmedi | *Belirsizlikler:* Özet metni yetersizdir\n"
+            f"  - *Hasta Sayısı:* özette bildirilmedi | *Etki Ölçütleri:* Bildirilmedi | *Belirsizlikler:* Özet metni yetersizdir\n"
             f"  - *PICO Matrisi:* {pico_str}"
         )
 
@@ -4856,7 +5104,7 @@ def _synthesize_article_conclusion_tr(art: Dict[str, Any], query: str) -> str:
     if is_review_type:
         review_note = " *(Derleme/Kılavuz/Uzman Görüşü niteliğindeki yayınlardan kesin tedavi etkinliği çıkarılamaz; bu yayınlar ampirik primer veri sunmamaktadır.)*"
 
-    n_val_str = f"n = {metrics['n']}" if metrics.get("n") else "Özette bildirilmedi"
+    n_val_str = f"n = {metrics['n']}" if metrics.get("n") else "özette bildirilmedi"
 
     eff_parts = []
     if metrics.get("effect_sizes"):
@@ -5294,6 +5542,212 @@ def format_methodological_limitation(article: Dict[str, Any]) -> str:
     return " ".join(parts)
 
 
+_UNLABELED_SAMPLE_RE = re.compile(
+    r"^(?:n = )?(?P<n>\d+)\s+(?P<noun>hasta|katılımcı)(?:\s*\(%[\d.]+\))?$",
+    re.IGNORECASE,
+)
+
+
+def _patients_have_phrase(sentence: str, phrase: str) -> bool:
+    """True when people in the sentence are said to have this condition.
+
+    'patients with atopic dermatitis' counts. A definition ('X is a subtype')
+    does not, and neither does a disease named before the words 'in patients'.
+    """
+    lowered = (sentence or "").lower()
+    if not phrase:
+        return False
+    for match in re.finditer(r"\b" + re.escape(phrase) + r"\b", lowered):
+        window = lowered[max(0, match.start() - 90):match.start()]
+        if re.search(
+            r"\b(?:patients|children|subjects|participants|adults|cohort)\b"
+            r"(?:\s+[a-z]+){0,6}\s+(?:diagnosed\s+with|with|having)\s+$",
+            window,
+        ):
+            return True
+    return False
+
+
+def _enrollment_sentence(sentence: str) -> bool:
+    """True when the sentence states who was enrolled, included, or the total."""
+    return bool(re.search(
+        r"\b(?:enrolled|included|randomi[sz]ed|recruited|a total of|were screened|was screened)\b",
+        sentence or "",
+        re.IGNORECASE,
+    ))
+
+
+def _label_in_text(label: str, text: str) -> bool:
+    """True when the Turkish drug label's source form is in the text."""
+    if not label or not text:
+        return False
+    if label.casefold() in text.casefold():
+        return True
+    for pattern, mapped in _DRUG_LABEL_RES:
+        if not pattern.search(text):
+            continue
+        if mapped.casefold() == label.casefold() or _label_already_listed(label, [mapped]):
+            return True
+    for found in _drug_labels_in(text):
+        if _label_already_listed(label, [found]) or _label_already_listed(found, [label]):
+            return True
+    return False
+
+
+def _bit_supported(bit: str, text: str) -> bool:
+    """The displayed intervention token, including a dose, is in this text."""
+    if not bit or not text:
+        return False
+    labels = _drug_labels_in(bit) or [bit]
+    if not any(_label_in_text(label, text) for label in labels):
+        return False
+    dose = _DOSE_RE.search(bit)
+    if dose and dose.group(1) not in text:
+        return False
+    return True
+
+
+def _ground_intervention(bits: List[str], abstract: str, title: str):
+    """Keep only drugs whose source sentence contains them.
+
+    Returns (labels, sentence, source). A title-only drug is not quoted as a
+    sentence; the caller labels it 'Kaynak: makale başlığı'.
+    """
+    bits = [bit for bit in (bits or []) if bit]
+    if not bits:
+        return [], "", "missing"
+    best = ""
+    best_n = 0
+    best_treated = False
+    for sentence in _finding_sentences(abstract or ""):
+        if _background_sentence(sentence):
+            continue
+        supported = [bit for bit in bits if _bit_supported(bit, sentence)]
+        treated = bool(_treatment_is_reported(sentence) or _ALLOCATION_CUE_RE.search(sentence))
+        if len(supported) > best_n or (
+            len(supported) == best_n and supported and treated and not best_treated
+        ):
+            best_n = len(supported)
+            best = sentence
+            best_treated = treated
+    if best_n:
+        return [bit for bit in bits if _bit_supported(bit, best)], best, "abstract"
+    title_bits = [bit for bit in bits if _bit_supported(bit, title or "")]
+    if title_bits:
+        return title_bits, "", "title"
+    return [], "", "missing"
+
+
+def _canonical_patient_group(
+    abstract: str,
+    profile: List[Dict[str, str]],
+    metrics: Optional[Dict[str, Any]] = None,
+):
+    """Total enrolled n, labeled subgroups, and a controlled population phrase.
+
+    Unlabeled counts other than the study total are omitted. The same string
+    is used in sections 5 and 6 and in the matrix. The source sentence is the
+    one that states the total.
+    """
+    rows = []
+    for item in profile or []:
+        if item.get("category") != "sample":
+            continue
+        body = re.sub(r"^Örneklem ve hasta özellikleri:\s*", "", item.get("line") or "")
+        body = _expand_clinical_abbreviations(body, abstract or "").strip().rstrip(".")
+        sentence = item.get("sentence") or ""
+        for part in [piece.strip() for piece in body.split(";") if piece.strip()]:
+            rows.append((part, sentence))
+
+    unlabeled = []
+    labeled = []
+    for part, sentence in rows:
+        match = _UNLABELED_SAMPLE_RE.match(part)
+        if match:
+            unlabeled.append((int(match.group("n")), match.group("noun"), sentence))
+        else:
+            labeled.append((part, sentence))
+
+    enrolled = [row for row in unlabeled if _enrollment_sentence(row[2])]
+    pool = enrolled or unlabeled
+    total = max(pool, key=lambda row: row[0]) if pool else None
+    # An explicit n= from the metrics wins when it is the enrolled count and
+    # no larger enrolled count was already taken.
+    metric_n = (metrics or {}).get("n")
+    try:
+        metric_n_int = int(str(metric_n)) if metric_n else None
+    except ValueError:
+        metric_n_int = None
+    if (
+        total is None
+        and metric_n_int
+        and (metrics or {}).get("n_source_sentence")
+    ):
+        total = (metric_n_int, "hasta", (metrics or {}).get("n_source_sentence") or "")
+
+    parts = []
+    seen_numbers = set()
+    source_sentence = ""
+    if total:
+        number, noun, source_sentence = total
+        parts.append(f"{number} {noun}")
+        seen_numbers.add(number)
+    for part, sentence in labeled:
+        key_match = re.match(r"^(?:n = )?(\d+)\b", part, re.IGNORECASE)
+        number = int(key_match.group(1)) if key_match else None
+        if number is not None and number in seen_numbers and (
+            _UNLABELED_SAMPLE_RE.match(part) or re.match(r"^n = \d+$", part, re.IGNORECASE)
+        ):
+            continue
+        if part.casefold() in {item.casefold() for item in parts}:
+            continue
+        parts.append(part)
+        if number is not None:
+            seen_numbers.add(number)
+        if not source_sentence:
+            source_sentence = sentence
+
+    # The disease phrase is added only beside a real sample, and only when it
+    # does not make the cell half-English.
+    if parts:
+        blob = " ".join(parts).casefold()
+        for label in _population_labels(abstract or ""):
+            if label.casefold() in blob:
+                continue
+            trial = "; ".join(parts + [label])
+            if _pico_value_rejected(trial):
+                continue
+            parts.append(label)
+
+    if not parts:
+        # No counted sample. Keep a disease name only when the abstract says
+        # the patients have that condition, and quote that sentence.
+        kept = []
+        source = ""
+        phrases = sorted(_POPULATION_PHRASES, key=lambda item: len(item[0]), reverse=True)
+        for english, turkish in phrases:
+            if turkish in kept or _pico_value_rejected(turkish):
+                continue
+            for sentence in _finding_sentences(abstract or ""):
+                if _background_sentence(sentence):
+                    continue
+                if not _patients_have_phrase(sentence, english):
+                    continue
+                kept.append(turkish)
+                source = source or sentence
+                break
+        if not kept:
+            return "özette bildirilmedi", ""
+        text = "; ".join(kept)
+        if _pico_value_rejected(text):
+            return "özette bildirilmedi", ""
+        return text, source
+    text = "; ".join(parts)
+    if _pico_value_rejected(text):
+        return "özette bildirilmedi", ""
+    return text, source_sentence
+
+
 def _sample_comparison_cell(profile: List[Dict[str, str]]) -> str:
     """Turkish sample lines from section 5. No raw English abstract fragment."""
     bits = []
@@ -5449,12 +5903,8 @@ def _format_cross_study_comparison(articles: List[Dict[str, Any]], pico: Optiona
         if not finding_bits:
             finding_bits.append(INSUFFICIENT_CLINICAL_DATA_TR)
         details = extract_article_clinical_details(art, "")
-        # Hasta grubu comes only from a counted sample or a real case age.
-        # A disease fragment, a modal tail, or a half-translated mix stays unstated.
-        sample_cell = _expand_clinical_abbreviations(
-            _sample_comparison_cell(profile),
-            art.get("abstract") or "",
-        )
+        # Hasta grubu is the same string as the matrix and section 5.
+        sample_cell = details.get("patient_group") or "özette bildirilmedi"
 
         lines.append(
             "| {pmid} | {patient} | {design} | {intervention} | {findings} | {limit} |".format(
@@ -5639,7 +6089,7 @@ Lütfen arama terimlerini veya filtreleri genişleterek tekrar deneyiniz.
         comp_lines.append(
             f"- **{first_author} ({year})** ({pmid_link}):\n"
             f"  - **Yöntem ve tasarım:** {cd['design']} | **Kanıt düzeyi:** {cd['level']}\n"
-            f"  - **Yanlılık aracı:** {rob['tool']} | **Risk derecesi:** {rob['overall_rating']}\n"
+            f"  - **Yanlılık aracı:** {display_bias_tool(rob['tool'])} | **Risk derecesi:** {display_bias_rating(rob['overall_rating'])}\n"
             f"  - **Hasta / Örneklem Sayısı:** {n_str}\n"
             f"  - **Klinik Sonlanımlar ve Etki Ölçütleri:** {o_str}\n"
             f"  - **Kaynağa bağlı PICO ve istatistik:** {bound}\n"
@@ -5679,7 +6129,10 @@ Lütfen arama terimlerini veya filtreleri genişleterek tekrar deneyiniz.
         report.append(f"#### {idx}. {first_author} ({year}) — *{title}*")
         report.append(f"- **Çalışma tasarımı:** {cd['design']}")
         report.append(f"- **Kanıt düzeyi:** {cd['level']}. {cd.get('evidence_level_note', EVIDENCE_LEVEL_NOTE)}")
-        report.append(f"- **Yanlılık aracı:** {rob['tool']} | **Risk derecesi:** {rob['overall_rating']}")
+        report.append(
+            f"- **Yanlılık aracı:** {display_bias_tool(rob['tool'])} | "
+            f"**Risk derecesi:** {display_bias_rating(rob['overall_rating'])}"
+        )
         report.append(f"- **Dergi:** *{art.get('journal', 'Bilinmiyor')}*")
 
         metrics = extract_study_metrics(art.get("abstract", ""))
