@@ -1527,6 +1527,11 @@ def extract_outcome_metrics(abstract: str) -> List[Dict[str, Any]]:
     outcome_keywords = [
         "cardiovascular death", "cv death", "all-cause mortality", "mortality", "death",
         "hospitalization", "heart failure hospitalization", "readmission", "events",
+        "major adverse cardiac events", "major adverse cardiovascular events", "mace",
+        "major bleeding", "minor bleeding", "bleeding", "hemorrhage",
+        "device-related thrombus", "device-related thrombosis", "device related thrombus", "drt",
+        "thromboembolism", "systemic embolism", "ischemic stroke", "hemorrhagic stroke",
+        "thrombus", "thrombosis",
         "remission", "relapse", "progression-free survival", "overall survival",
         "myopathy", "muscle pain", "muscle symptoms", "ck elevation", "anti-hmgcr",
         "adverse events", "side effects", "infection rate", "cure rate", "response rate",
@@ -1576,6 +1581,23 @@ def extract_outcome_metrics(abstract: str) -> List[Dict[str, Any]]:
                         "p", "ci", "hr", "or", "rr", "md", "irr", "smd", "wmd",
                     )):
                         outcome_name = cand_name
+
+        # Filter out standalone conjunctions, prepositions, or incomplete adjectives
+        _STOP_OUTCOMES = {
+            "ve", "ancak", "majör", "major", "and", "or", "but", "however", "veya",
+            "ile", "fakat", "ise", "the", "a", "an", "in", "of", "with", "for", "to", "by", "at"
+        }
+        cand_lower = (outcome_name or "").strip().lower()
+        if cand_lower in _STOP_OUTCOMES or all(w in _STOP_OUTCOMES for w in cand_lower.split()):
+            outcome_name = ""
+        elif outcome_name:
+            # Strip leading stop words from outcome name
+            c_words = outcome_name.split()
+            while c_words and c_words[0].lower() in _STOP_OUTCOMES:
+                c_words.pop(0)
+            while c_words and c_words[-1].lower() in _STOP_OUTCOMES:
+                c_words.pop()
+            outcome_name = " ".join(c_words)
 
         if not outcome_name:
             outcome_name = "Primer Klinik Sonlanım / Özet İstatistiği"
@@ -1717,8 +1739,18 @@ def _display_outcome_name(outcome: str) -> str:
         "özette adlandırılmadı",
     ):
         return text
+
+    _DISALLOWED_OUTCOME_LABELS = {
+        "ve", "ancak", "majör", "major", "and", "or", "but", "however", "veya",
+        "ile", "fakat", "ise", "the", "a", "an", "in", "of", "with", "for", "to"
+    }
+    if text.lower() in _DISALLOWED_OUTCOME_LABELS:
+        return UNTRANSLATED_OUTCOME_LABEL
+
     shown = localize_clinical_display(text)
-    return shown or UNTRANSLATED_OUTCOME_LABEL
+    if not shown or shown.lower() in _DISALLOWED_OUTCOME_LABELS:
+        return UNTRANSLATED_OUTCOME_LABEL
+    return shown
 
 
 def _display_metric_text(metric: str) -> str:
@@ -4158,6 +4190,8 @@ Lütfen arama terimlerini veya filtreleri genişleterek tekrar deneyiniz.
         "güven aralığı, sonlanım veya hasta özelliği üretilmez.\n"
     )
     report.append(generate_evidence_table_markdown(articles))
+    report.append("\n\n### 🔬 GRADE ve RoB 2 Kanıt Düzeyleri Tablosu")
+    report.append(build_evidence_table(articles))
     report.append("\n")
 
     # Cross-article comparison calculation via engine
@@ -4200,10 +4234,27 @@ Lütfen arama terimlerini veya filtreleri genişleterek tekrar deneyiniz.
             o_str = "Özette bağlı nicel sonlanım ölçütü bildirilmedi"
 
         bound = _format_bound_claims(extract_article_clinical_details(art, query))
+
+        # Retrieve or compute GRADE and RoB 2
+        art_grade = art.get("grade")
+        art_rob2 = art.get("rob2")
+        if not art_grade or not art_rob2:
+            try:
+                from universal_evidence_engine import enrich_record
+                _enr = enrich_record(dict(art))
+                art_grade = art_grade or _enr.get("grade")
+                art_rob2 = art_rob2 or _enr.get("rob2")
+            except Exception:
+                pass
+        grade_final = (art_grade or {}).get("final") if isinstance(art_grade, dict) else None
+        rob2_overall = (art_rob2 or {}).get("overall") if isinstance(art_rob2, dict) else None
+        grade_display = grade_final if (grade_final and grade_final != "Değerlendirilemedi") else "Değerlendirilemedi"
+        rob_display = rob2_overall if (rob2_overall and rob2_overall not in ("Değerlendirilemedi", "N/A")) else rob["overall_rating"]
+
         comp_lines.append(
             f"- **{first_author} ({year})** ({pmid_link}):\n"
-            f"  - **Yöntem ve tasarım:** {cd['design']} | **Kanıt düzeyi:** {cd['level']}\n"
-            f"  - **Yanlılık aracı:** {rob['tool']} | **Risk derecesi:** {rob['overall_rating']}\n"
+            f"  - **Yöntem ve tasarım:** {cd['design']} | **Kanıt düzeyi:** {cd['level']} | **GRADE:** {grade_display}\n"
+            f"  - **Yanlılık aracı:** {rob['tool']} | **RoB 2 / Risk derecesi:** {rob_display}\n"
             f"  - **Hasta / Örneklem Sayısı:** {n_str}\n"
             f"  - **Klinik Sonlanımlar ve Etki Ölçütleri:** {o_str}\n"
             f"  - **Kaynağa bağlı PICO ve istatistik:** {bound}\n"
@@ -4243,7 +4294,23 @@ Lütfen arama terimlerini veya filtreleri genişleterek tekrar deneyiniz.
         report.append(f"#### {idx}. {first_author} ({year}) — *{title}*")
         report.append(f"- **Çalışma tasarımı:** {cd['design']}")
         report.append(f"- **Kanıt düzeyi:** {cd['level']}. {cd.get('evidence_level_note', EVIDENCE_LEVEL_NOTE)}")
-        report.append(f"- **Yanlılık aracı:** {rob['tool']} | **Risk derecesi:** {rob['overall_rating']}")
+        art_grade = art.get("grade")
+        art_rob2 = art.get("rob2")
+        if not art_grade or not art_rob2:
+            try:
+                from universal_evidence_engine import enrich_record
+                _enr = enrich_record(dict(art))
+                art_grade = art_grade or _enr.get("grade")
+                art_rob2 = art_rob2 or _enr.get("rob2")
+            except Exception:
+                pass
+        grade_final = (art_grade or {}).get("final") if isinstance(art_grade, dict) else None
+        rob2_overall = (art_rob2 or {}).get("overall") if isinstance(art_rob2, dict) else None
+        grade_display = grade_final if (grade_final and grade_final != "Değerlendirilemedi") else "Değerlendirilemedi"
+        rob_display = rob2_overall if (rob2_overall and rob2_overall not in ("Değerlendirilemedi", "N/A")) else rob["overall_rating"]
+
+        report.append(f"- **GRADE Kesinlik Düzeyi:** {grade_display}")
+        report.append(f"- **Yanlılık aracı / RoB 2:** {rob['tool']} (Risk derecesi: {rob_display})")
         report.append(f"- **Dergi:** *{art.get('journal', 'Bilinmiyor')}*")
 
         metrics = extract_study_metrics(art.get("abstract", ""))
@@ -4395,9 +4462,24 @@ def generate_llm_turkish_report(
     context_blocks = []
     for idx, art in enumerate(articles, 1):
         cd = classify_study_design(art.get("publication_types", []), art.get("title", ""), art.get("abstract", ""))
+        art_grade = art.get("grade")
+        art_rob2 = art.get("rob2")
+        if not art_grade or not art_rob2:
+            try:
+                from universal_evidence_engine import enrich_record
+                _enr = enrich_record(dict(art))
+                art_grade = art_grade or _enr.get("grade")
+                art_rob2 = art_rob2 or _enr.get("rob2")
+            except Exception:
+                pass
+        grade_final = (art_grade or {}).get("final") or "Belirtilmedi"
+        rob2_overall = (art_rob2 or {}).get("overall") or "N/A"
+
         context_blocks.append(
             f"--- MAKALE [{idx}] ---\n"
             f"PMID: {art.get('pmid')}\n"
+            f"GRADE Kesinlik (grade.final): {grade_final}\n"
+            f"RoB 2 Yanlılık Riski (rob2.overall): {rob2_overall}\n"
             f"DOI: {art.get('doi', 'Yok')}\n"
             f"Başlık: {art.get('title')}\n"
             f"Yazarlar: {', '.join(art.get('authors', []))}\n"
@@ -4407,7 +4489,7 @@ def generate_llm_turkish_report(
         )
 
     context_str = "\n".join(context_blocks)
-    evidence_table_md = generate_evidence_table_markdown(articles)
+    evidence_table_md = generate_evidence_table_markdown(articles) + "\n\n### 🔬 GRADE ve RoB 2 Kanıt Düzeyleri Tablosu\n" + build_evidence_table(articles)
 
     system_prompt = (
         "Sen uzman bir tıbbi araştırmacı ve klinik kanıt analistisin. Görevin, sağlanan PubMed makale özetlerini "
@@ -4444,6 +4526,7 @@ def generate_llm_turkish_report(
         "   - Çalışmaların hasta sayılarını (n), etki ölçütlerini (HR, OR, RR, IRR, SMD, MD, %95 GA, p) ve belirsizlikleri/sınırlılıkları [PMID: xxx] kaynaklarıyla göster.\n"
         "   - PICO eşleştirmeleri sezgisel ön taramadır; klinik eşdeğerlik veya sistematik derleme iddiası kurma.\n"
         "10. Rapor sonunda sorgu, makale üstverisi ve PubMed özetlerinin bu LLM sentezi için OpenAI'ye gönderildiğini açıkça bildir.\n"
+        "11. Makalelerin sağlanan GRADE (grade.final) ve RoB 2 (rob2.overall) değerlerini rapor içerisindeki tablolarda ve çalışma detaylarında zorunlu olarak belirt; veri mevcut olduğunda asla 'Değerlendirilemedi' yazma.\n"
     )
 
     user_prompt = (
@@ -4630,14 +4713,22 @@ def build_evidence_table(records):
         "|------|---------|------------------------|---|-------|-------|\n"
     )
     rows = []
-    for r in records:
+    for raw_r in records:
+        r = dict(raw_r)
+        if "grade" not in r or "rob2" not in r or not r.get("grade") or not r.get("rob2"):
+            try:
+                from universal_evidence_engine import enrich_record
+                r = enrich_record(r)
+            except Exception:
+                pass
+
         es = (r.get("effect_summary") or {}).get("primary") or {}
         if es.get("ci_low") is not None and es.get("ci_high") is not None:
             ci = "(%s-%s)" % (round(es["ci_low"], 2), round(es["ci_high"], 2))
         else:
             ci = "-"
-        grade = (r.get("grade") or {}).get("final", "-")
-        rob = (r.get("rob2") or {}).get("overall", "N/A")
+        grade = (r.get("grade") or {}).get("final") or "-"
+        rob = (r.get("rob2") or {}).get("overall") or "N/A"
         des = r.get("study_design", "-")
         if isinstance(des, dict):
             des = des.get("design", "-")

@@ -29,7 +29,11 @@ EFFECT_PATTERNS = {
 }
 CI_PATTERN = r"(?:CI|confidence\s*interval)[^\d\-]{0,10}[\[\(]?\s*(-?\d+\.?\d*)\s*[-–,to]+\s*(-?\d+\.?\d*)"
 P_PATTERN = r"p\s*[=<>]\s*(0?\.\d+|\d+\.?\d*e?-?\d*)"
-N_PATTERN = r"(?:n\s*=\s*|total of\s+|included\s+)(\d{2,6})"
+N_PATTERN = (
+    r"(?<!\d:)(?:(?:n\s*=\s*|total of\s+|included\s+|sample of\s+|enrolled\s+)(?=\d)|"
+    r"(?=\d+\s+(?:patients|subjects|participants|cases|individuals|adults|children)))"
+    r"(\d{1,6})(?!\s*:\s*\d)"
+)
 
 @dataclass
 class EffectSize:

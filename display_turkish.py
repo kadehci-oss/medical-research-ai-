@@ -63,12 +63,58 @@ _PHRASE_PAIRS = (
     ("hyperlipidaemia", "hiperlipidemi"),
     ("hyperlipidemia", "hiperlipidemi"),
     ("older age", "ileri yaş"),
+    ("major bleeding", "majör kanama"),
+    ("minor bleeding", "minör kanama"),
+    ("device-related thrombus", "aygıt ilişkili trombüs (DRT)"),
+    ("device related thrombus", "aygıt ilişkili trombüs (DRT)"),
+    ("device-related thrombosis", "aygıt ilişkili tromboz"),
+    ("left atrial appendage occlusion", "sol atriyal apendiks oklüzyonu (LAAO)"),
+    ("left atrial appendage closure", "sol atriyal apendiks kapatılması"),
+    ("left atrial appendage", "sol atriyal apendiks"),
+    ("atrial fibrillation", "atriyal fibrilasyon"),
+    ("direct oral anticoagulant", "direkt oral antikoagülan (DOAC)"),
+    ("direct oral anticoagulants", "direkt oral antikoagülanlar (DOAC'lar)"),
+    ("patients in the doac group had a lower rate of drt", "DOAC grubundaki hastalarda daha düşük aygıt ilişkili trombüs (DRT) oranı"),
+    ("patients in doac group had lower rate of drt", "DOAC grubundaki hastalarda daha düşük aygıt ilişkili trombüs (DRT) oranı"),
+    ("patients doac group lower rate drt", "DOAC grubundaki hastalarda daha düşük aygıt ilişkili trombüs (DRT) oranı"),
+    ("doac group", "DOAC grubu"),
+    ("warfarin group", "varfarin grubu"),
+    ("control group", "kontrol grubu"),
+    ("major adverse cardiac events", "majör advers kardiyak olaylar (MACE)"),
+    ("major adverse cardiovascular events", "majör advers kardiyovasküler olaylar (MACE)"),
+    ("adverse events", "advers olaylar"),
+    ("adverse event", "advers olay"),
+    ("side effects", "yan etkiler"),
+    ("side effect", "yan etki"),
+    ("ischemic stroke", "iskemik inme"),
+    ("hemorrhagic stroke", "hemorajik inme"),
+    ("systemic embolism", "sistemik emboli"),
+    ("lower rate of drt", "daha düşük DRT oranı"),
+    ("higher rate of drt", "daha yüksek DRT oranı"),
+    ("lower rate of", "daha düşük"),
+    ("higher rate of", "daha yüksek"),
+    ("rate of drt", "DRT oranı"),
 )
 
 _PHRASES = tuple(sorted(_PHRASE_PAIRS, key=lambda item: len(item[0]), reverse=True))
 
 # Empty string means the English token is a function word and is not shown.
 _WORDS = {
+    "drt": "aygıt ilişkili trombüs (DRT)",
+    "doac": "DOAC",
+    "doacs": "DOAC'lar",
+    "noac": "NOAC",
+    "noacs": "NOAC'lar",
+    "bleeding": "kanama",
+    "thrombus": "trombüs",
+    "thrombi": "trombüsler",
+    "thrombosis": "tromboz",
+    "thromboembolism": "tromboembolizm",
+    "occlusion": "oklüzyon",
+    "closure": "kapatma",
+    "anticoagulation": "antikoagülasyon",
+    "anticoagulant": "antikoagülan",
+    "anticoagulants": "antikoagülanlar",
     "patients": "hastalar",
     "patient": "hasta",
     "subjects": "katılımcılar",
@@ -491,6 +537,11 @@ def localize_clinical_display(text: str, drop_unknown: bool = True) -> str:
     working = re.sub(r"\(\s*\)", "", working)
     working = re.sub(r"\[\s*\]", "", working)
     working = re.sub(r"\s{2,}", " ", working).strip(" ,;:")
+
+    # Clean up fragmented/awkward Turkish translation patterns
+    working = re.sub(r"(?i)\bhastalar\s+DOAC\s+grup\s+daha\s+düşük\s+oran\s+DRT\b", "DOAC grubundaki hastalarda daha düşük aygıt ilişkili trombüs (DRT) oranı", working)
+    working = re.sub(r"(?i)\bhastalar\s+([A-Za-z0-9\-]+)\s+grup\b", r"\1 grubundaki hastalar", working)
+
     if not working or not re.search(r"[0-9A-Za-zÇĞİÖŞÜçğıöşüıİ]", working):
         return ""
     if _brackets_unbalanced(working):

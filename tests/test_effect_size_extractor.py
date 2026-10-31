@@ -22,3 +22,20 @@ def test_summary_primary():
 def test_empty_input():
     assert extract_effect_sizes("") == []
     assert summarize_effects([])["primary"] is None
+
+def test_randomization_ratio_not_captured_as_n():
+    sample_ratio = (
+        "In this phase 3 trial, patients were randomly assigned 1:1 to receive drug or placebo. "
+        "A total of 90 patients were evaluated, and the hazard ratio was 0.70 (95% CI 0.50-0.95; p=0.02)."
+    )
+    effects = extract_effect_sizes(sample_ratio)
+    assert len(effects) >= 1
+    hr = next(e for e in effects if e.type == "HR")
+    assert hr.n == 90
+    assert hr.n != 1
+
+def test_n_equals_pattern():
+    sample_n = "The hazard ratio was 0.55 (95% CI 0.35-0.85; p=0.005, n = 90)."
+    effects = extract_effect_sizes(sample_n)
+    hr = next(e for e in effects if e.type == "HR")
+    assert hr.n == 90

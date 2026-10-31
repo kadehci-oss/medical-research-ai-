@@ -50,6 +50,21 @@ _HIGH_LEVEL_FILTER = (
     "(randomized controlled trial[pt] OR systematic review[pt] OR meta-analysis[pt])"
 )
 
+_LAAO_EXCLUSION_TERMS = 'NOT ("LAAO" OR "Left Atrial Appendage Occlusion" OR "Left Atrial Appendage Closure")'
+
+
+def _apply_laao_exclusion(search_query: str, original_query: str) -> str:
+    """Exclude LAAO / Left Atrial Appendage Occlusion surgical subgroups from general AF queries unless explicitly requested."""
+    import re
+    orig_lower = (original_query or "").lower()
+    if any(k in orig_lower for k in ("laao", "left atrial appendage", "sol atriyal apendiks")):
+        return search_query
+    if re.search(r"\b(?:af|atrial fibrillation|atriyal fibrilasyon)\b", orig_lower) or \
+       re.search(r"\b(?:af|atrial fibrillation|atriyal fibrilasyon)\b", (search_query or "").lower()):
+        if 'NOT ("LAAO"' not in search_query:
+            return f"({search_query}) {_LAAO_EXCLUSION_TERMS}"
+    return search_query
+
 
 def is_efficacy_question(query: str) -> bool:
     """True when the question asks about treatment effect rather than background description."""
@@ -227,6 +242,8 @@ class UniversalEvidenceEngine:
             enhancement["added_terms"] = []
             enhancement["strategy"] = "rejected_term_loss"
 
+        search_query = _apply_laao_exclusion(search_query, query)
+
         def _run_search(term: str) -> Dict[str, Any]:
             return pubmed_client.search_pubmed(
                 query=term,
@@ -253,27 +270,28 @@ class UniversalEvidenceEngine:
             }
 
         fallback_error = str(search_res.get("error") or "")
+        fallback_query = _apply_laao_exclusion(query.strip(), query)
         if (
-            search_query != query.strip()
+            search_query != fallback_query
             and not search_res.get("articles")
             and not _is_transport_error(fallback_error)
         ):
             logger.info("Specialty-enhanced query returned no articles; retrying the original query")
             try:
-                search_res = _run_search(query.strip())
+                search_res = _run_search(fallback_query)
             except Exception as e:
                 logger.error(f"PubMed API search failed: {str(e)}")
                 return {
                     "status": "error",
                     "error": f"PubMed API araması sırasında hata oluştu: {str(e)}",
                     "query": query,
-                    "executed_query": query.strip(),
+                    "executed_query": fallback_query,
                     "query_enhancement": enhancement,
                     "articles": [],
                     "total_count": 0,
                     "verified_articles": []
                 }
-            search_query = query.strip()
+            search_query = fallback_query
             enhancement["fallback_to_original"] = True
             enhancement["applied"] = False
         else:

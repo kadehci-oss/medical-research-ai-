@@ -409,6 +409,20 @@ class TestUniversalEvidenceEngine(unittest.TestCase):
         self.assertEqual(res["executed_query"], "HFpEF SGLT2")
 
     # --- 8. Safe Fallback and Error Handling Tests ---
+    @patch("pubmed_client.search_pubmed")
+    def test_search_and_verify_laao_exclusion_filter_applied(self, mock_search):
+        mock_search.return_value = {"status": "success", "articles": [], "total_count": 0}
+        res = self.engine.search_and_verify("anticoagulation in atrial fibrillation", max_results=5)
+        called_query = mock_search.call_args[1]["query"]
+        self.assertIn('NOT ("LAAO"', called_query)
+
+    @patch("pubmed_client.search_pubmed")
+    def test_search_and_verify_laao_exclusion_omitted_when_explicitly_requested(self, mock_search):
+        mock_search.return_value = {"status": "success", "articles": [], "total_count": 0}
+        res = self.engine.search_and_verify("clinical outcomes of LAAO in patients with AF", max_results=5)
+        called_query = mock_search.call_args[1]["query"]
+        self.assertNotIn('NOT ("LAAO"', called_query)
+
     @patch("universal_evidence_engine.pubmed_client.search_pubmed")
     def test_search_and_verify_api_failure_handling(self, mock_search):
         mock_search.side_effect = Exception("NCBI E-utilities connection timeout")
