@@ -9,6 +9,7 @@ Provides source-claim matching, comparative cross-article synthesis, and safe er
 """
 
 import logging
+import re
 from typing import List, Dict, Any, Optional
 
 import pubmed_client
@@ -16,7 +17,6 @@ import report_generator
 import specialty_matrix
 from effect_size_extractor import extract_effect_sizes, summarize_effects
 from rob2_assessor import assess_rob2
-from grade_assessor import assess_grade
 # [EVIDENCE_LAYER] auto-import
 # [EVIDENCE_LAYER] auto-import
 # [EVIDENCE_LAYER] auto-import
@@ -472,19 +472,35 @@ class UniversalEvidenceEngine:
         design_compatible = (is_rev1 == is_rev2)
 
         # 5. Outcome Match Check
-        outcomes1 = [om.get("outcome", "").lower() for om in p1.get("outcome_metrics", [])]
-        outcomes2 = [om.get("outcome", "").lower() for om in p2.get("outcome_metrics", [])]
+        def _fold_outcome(text: str) -> str:
+            # Turkish İ lowercases to i + combining dot; fold that before compare.
+            return (text or "").casefold().replace("i\u0307", "i").replace("ı", "i").strip()
 
+        outcomes1 = [_fold_outcome(om.get("outcome", "")) for om in p1.get("outcome_metrics", [])]
+        outcomes2 = [_fold_outcome(om.get("outcome", "")) for om in p2.get("outcome_metrics", [])]
+
+        generic_outcomes = {
+            _fold_outcome(label)
+            for label in (
+                "genel sonlanım / özet istatistiği",
+                "Primer Klinik Sonlanım / Özet İstatistiği",
+                "Primer Klinik Sonlanım Ölçütü",
+                "Sonlanım adı güvenle çevrilemedi",
+                "özette adlandırılmadı",
+                "değerlendirilemedi",
+            )
+        }
         matching_outcomes = []
         for o1 in outcomes1:
             for o2 in outcomes2:
-                if o1 and o2:
-                    if o1 in o2 or o2 in o1 or o1 == "genel sonlanım / özet istatistiği" or o2 == "genel sonlanım / özet istatistiği":
-                        matching_outcomes.append(o1 if len(o1) >= len(o2) else o2)
-
-        if len(matching_outcomes) == 0 and pop_match and int_match and comp_match and design_compatible:
-            if len(outcomes1) > 0 and len(outcomes2) > 0:
-                matching_outcomes.append("Primer Klinik Sonlanım Ölçütü")
+                if not o1 or not o2 or o1 in generic_outcomes or o2 in generic_outcomes:
+                    continue
+                if o1 == o2:
+                    matching_outcomes.append(o1)
+                    continue
+                shorter, longer = (o1, o2) if len(o1) <= len(o2) else (o2, o1)
+                if len(shorter) >= 12 and re.search(r"\b" + re.escape(shorter) + r"\b", longer):
+                    matching_outcomes.append(longer)
 
         compatible = pop_match and int_match and comp_match and design_compatible and len(matching_outcomes) > 0
 
@@ -621,8 +637,11 @@ class UniversalEvidenceEngine:
 
                 if eval_res["compatible"]:
                     # Compare bound outcomes
-                    outcomes1_map = {om["outcome"].lower(): om for om in p1.get("outcome_metrics", [])}
-                    outcomes2_map = {om["outcome"].lower(): om for om in p2.get("outcome_metrics", [])}
+                    def _fold_outcome(text: str) -> str:
+                        return (text or "").casefold().replace("i\u0307", "i").replace("ı", "i").strip()
+
+                    outcomes1_map = {_fold_outcome(om["outcome"]): om for om in p1.get("outcome_metrics", [])}
+                    outcomes2_map = {_fold_outcome(om["outcome"]): om for om in p2.get("outcome_metrics", [])}
 
                     for matched_outcome_name in eval_res["matching_outcomes"]:
                         om1 = outcomes1_map.get(matched_outcome_name) or (p1.get("outcome_metrics")[0] if p1.get("outcome_metrics") else None)
@@ -803,24 +822,31 @@ def enrich_record(rec: dict) -> dict:
 
     rec["effect_summary"] = summarize_effects(extract_effect_sizes(abstract))
 
-    if "rct" in design_str.lower() or "randomized" in abstract.lower():
+    design_info = rec.get("study_design_info") if isinstance(rec.get("study_design_info"), dict) else {}
+    pub_types = " ".join(rec.get("publication_types") or []).lower()
+    is_rct = (
+        design_info.get("design_key") == "rct"
+        or "randomized controlled trial" in pub_types
+        or design_str == "rct"
+    )
+    # A background mention of other randomized trials is not this study's design
+    # and is not a completed RoB 2 rating. Non-RCTs are not stamped "Low".
+    if is_rct:
         rob = assess_rob2(abstract)
         rec["rob2"] = rob.to_dict()
-        rob_overall = rob.overall
+        rec["rob2"]["scope"] = (
+            "Özet metninden sinyal taraması. Tam metin RoB 2 değerlendirmesi yapılmadı; "
+            "bu alan bir kanıt düzeyi değildir."
+        )
     else:
         rec["rob2"] = None
-        rob_overall = "Low"
 
-    es = rec["effect_summary"].get("primary") or {}
-    ci_width = None
-    if es.get("ci_low") is not None and es.get("ci_high") is not None:
-        ci_width = es["ci_high"] - es["ci_low"]
-
-    rec["grade"] = assess_grade(
-        study_design=design_str,
-        rob2_overall=rob_overall,
-        heterogeneity_i2=rec.get("i2", 0.0) or 0.0,
-        imprecision=bool(ci_width and ci_width > 2),
-    ).to_dict()
+    rec["grade"] = {
+        "starting": "Değerlendirilemedi",
+        "final": "Değerlendirilemedi",
+        "downgrades": [],
+        "upgrades": [],
+        "note": "Kanıt düzeyi çalışma tasarımından üretilmedi. GRADE sonlanım bazında yazılır.",
+    }
 
     return rec
