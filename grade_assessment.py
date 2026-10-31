@@ -436,8 +436,10 @@ def format_preliminary_grade_markdown(query: str, articles: List[Dict[str, Any]]
                 bits.append(f"{label}: {item['status']}")
             sentence = outcome.get("source_sentence") or ""
             sentence_bit = f" Kaynak cümle: \"{sentence}\"." if sentence else " Kaynak cümle: değerlendirilemedi."
+            from report_generator import _display_outcome_name
+            outcome_label = _display_outcome_name(outcome.get("outcome") or "")
             lines.append(
-                f"  - Sonlanım: {outcome['outcome']}; otomatik metin sinyalleri (GRADE değildir): "
+                f"  - Sonlanım: {outcome_label}; otomatik metin sinyalleri (GRADE değildir): "
                 + "; ".join(bits)
                 + f".{sentence_bit} (PMID: {pmid})"
             )

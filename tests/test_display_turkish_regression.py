@@ -153,14 +153,10 @@ class TestStudyCardExtraction(unittest.TestCase):
         visible = " ".join((details["patient_group"], comparison, details["intervention"], outcomes))
 
         self.assertNotIn("Iim", visible)
-        self.assertIn("61.6", comparison)
-        self.assertIn("9.8", comparison)
-        self.assertIn("39.8", comparison)
-        self.assertEqual(comparison.count("["), comparison.count("]"))
-        self.assertEqual(comparison.count("("), comparison.count(")"))
-        self.assertIn("İİM", comparison)
-        self.assertIn("karşı", comparison)
-        self.assertNotRegex(comparison, r"\[61(?!\.6)")
+        self.assertEqual(comparison, "bildirilmedi")
+        self.assertNotIn("61.6", comparison)
+        self.assertNotIn("were older", comparison.lower())
+        self.assertNotRegex(comparison, r"\bvs\b")
 
         self.assertRegex(outcomes, r"9\.1%\s+karşı\s+55\.6%")
         self.assertNotRegex(outcomes, r"55\.6(?!%)")

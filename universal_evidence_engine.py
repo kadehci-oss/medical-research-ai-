@@ -516,11 +516,23 @@ class UniversalEvidenceEngine:
 
         unmatched_reasons = []
         if not pop_match:
-            unmatched_reasons.append(f"Popülasyon uyuşmazlığı ('{p1.get('patient_population')}' vs '{p2.get('patient_population')}')")
+            unmatched_reasons.append(
+                "Popülasyon uyuşmazlığı ('"
+                f"{report_generator.safe_pico_quote(p1.get('patient_population'))}' vs "
+                f"'{report_generator.safe_pico_quote(p2.get('patient_population'))}')"
+            )
         if not int_match:
-            unmatched_reasons.append(f"Müdahale uyuşmazlığı ('{p1.get('intervention')}' vs '{p2.get('intervention')}')")
+            unmatched_reasons.append(
+                "Müdahale uyuşmazlığı ('"
+                f"{report_generator.safe_pico_quote(p1.get('intervention'))}' vs "
+                f"'{report_generator.safe_pico_quote(p2.get('intervention'))}')"
+            )
         if not comp_match:
-            unmatched_reasons.append(f"Karşılaştırıcı uyuşmazlığı ('{p1.get('comparison')}' vs '{p2.get('comparison')}')")
+            unmatched_reasons.append(
+                "Karşılaştırıcı uyuşmazlığı ('"
+                f"{report_generator.safe_pico_quote(p1.get('comparison'))}' vs "
+                f"'{report_generator.safe_pico_quote(p2.get('comparison'))}')"
+            )
         if not design_compatible:
             unmatched_reasons.append(f"Çalışma tasarımı uyuşmazlığı ('{des1}' vs '{des2}')")
         if len(matching_outcomes) == 0:
@@ -551,15 +563,15 @@ class UniversalEvidenceEngine:
                 is_significant = True
                 break
 
-        if any(term in sentence for term in ["no significant", "not significant", "did not reduce", "did not improve", "no difference"]):
-            return "neutral"
-
         if is_significant:
             if any(term in sentence for term in ["reduced", "prolonged", "improved", "increase", "higher", "lower", "decreased", "effective", "benefit"]):
                 return "positive"
             if any(term in sentence for term in ["increased risk", "adverse", "mortality", "harmful", "worsened"]):
                 return "negative"
             return "positive"
+
+        if any(term in sentence for term in ["no significant", "not significant", "did not reduce", "did not improve", "no difference"]):
+            return "neutral"
 
         return "neutral"
 

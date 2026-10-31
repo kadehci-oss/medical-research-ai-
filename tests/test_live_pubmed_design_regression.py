@@ -284,12 +284,14 @@ class TestLiveStudyCardExtraction(unittest.TestCase):
             details["patient_group"], comparison, details["intervention"], outcomes,
         ))
         self.assertNotIn("Iim", visible)
-        self.assertIn("61.6", comparison)
-        self.assertEqual(comparison.count("["), comparison.count("]"))
-        self.assertEqual(comparison.count("("), comparison.count(")"))
-        self.assertIn("9.8", comparison)
+        # The age contrast is a result, not the study arm.
+        self.assertEqual(comparison, "bildirilmedi")
+        self.assertNotIn("61.6", comparison)
+        self.assertIn("61.6", outcomes)
+        self.assertNotRegex(outcomes, r"\[61(?!\.6)")
         self.assertRegex(outcomes, r"55\.6%")
         self.assertRegex(outcomes, r"9\.1%")
+        self.assertIn("inflamatuar miyopati", details["patient_group"].lower())
         self.assertTrue(
             any(token in visible for token in ("İİM", "karşı", "yıl", "diyabet")),
             visible,
