@@ -4368,7 +4368,14 @@ Lütfen arama terimlerini veya filtreleri genişleterek tekrar deneyiniz.
 
         report.append(ref_line)
 
-    return "\n".join(report)
+    rep_text = "\n".join(report)
+    total_hits = (
+        search_metadata.get("total_count", len(articles))
+        if isinstance(search_metadata, dict)
+        else len(articles)
+    )
+    rep_text = augment_report_with_limitations(rep_text, articles, query, total_hits)
+    return rep_text
 
 
 def generate_llm_turkish_report(
@@ -4498,14 +4505,24 @@ def generate_turkish_evidence_report(
 ) -> str:
     """Main entry point to generate Turkish evidence reports."""
     if use_llm and api_key and api_key.strip():
-        return generate_llm_turkish_report(
+        report = generate_llm_turkish_report(
             query, articles, api_key.strip(), model=model, search_metadata=search_metadata, audit=audit
         )
     else:
-        return generate_rule_based_turkish_report(query, articles, search_metadata=search_metadata, audit=audit)
+        report = generate_rule_based_turkish_report(query, articles, search_metadata=search_metadata, audit=audit)
+
+    total_hits = (
+        search_metadata.get("total_count", len(articles))
+        if isinstance(search_metadata, dict)
+        else len(articles)
+    )
+    report = augment_report_with_limitations(report, articles, query, total_hits)
+    return report
 
 
 import html
+from limitations_generator import generate_limitations
+# [EVIDENCE_LAYER] auto-import
 
 
 def generate_html_report(
@@ -4603,3 +4620,43 @@ def generate_html_report(
 </body>
 </html>
 """
+
+
+# [EVIDENCE_LAYER] auto-function
+def build_evidence_table(records):
+    """GRADE ve RoB 2 sütunlu kanıt tablosu."""
+    header = (
+        "| PMID | Tasarım | Birincil Etki (95% CI) | n | GRADE | RoB 2 |\n"
+        "|------|---------|------------------------|---|-------|-------|\n"
+    )
+    rows = []
+    for r in records:
+        es = (r.get("effect_summary") or {}).get("primary") or {}
+        if es.get("ci_low") is not None and es.get("ci_high") is not None:
+            ci = "(%s-%s)" % (round(es["ci_low"], 2), round(es["ci_high"], 2))
+        else:
+            ci = "-"
+        grade = (r.get("grade") or {}).get("final", "-")
+        rob = (r.get("rob2") or {}).get("overall", "N/A")
+        des = r.get("study_design", "-")
+        if isinstance(des, dict):
+            des = des.get("design", "-")
+        rows.append(
+            "| %s | %s | %s %s %s | %s | %s | %s |" % (
+                r.get("pmid", "-"), des,
+                es.get("type", "-"), es.get("value", "-"), ci,
+                es.get("n", "-"), grade, rob
+            )
+        )
+    return header + "\n".join(rows)
+
+
+# [EVIDENCE_LAYER] auto-function
+def augment_report_with_limitations(report_text: str, records: list,
+                                   search_query: str = "", total_hits: int = 0) -> str:
+    """Mevcut rapor metnine dinamik sınırlılık bölümünü ekler."""
+    if "## Sınırlılıklar" in report_text:
+        return report_text
+    return report_text.rstrip() + "\n\n" + generate_limitations(
+        records, search_query, total_hits
+    )
