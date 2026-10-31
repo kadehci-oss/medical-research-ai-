@@ -2253,6 +2253,9 @@ def _number_after(text: str, start: int, max_gap: int):
             continue
         if re.match(r"\s*(?:year|years|month|months|week|weeks|day|days)\b", tail, re.IGNORECASE):
             continue
+        # "95% CI" / "95% confidence interval" is the interval level, not the estimate.
+        if re.match(r"\s*%\s*(?:CI|CIs|confidence\s+intervals?)\b", tail, re.IGNORECASE):
+            continue
         return match
     return None
 
@@ -3563,8 +3566,18 @@ def format_klinik_bulgular_cell(article: Dict[str, Any]) -> str:
     return " ".join(parts)
 
 
+def _study_for(article: Dict[str, Any]):
+    """Shared structured Study object (evidence_model). Imported lazily to avoid a cycle."""
+    import evidence_model
+    return evidence_model.build_study(article)
+
+
 def generate_evidence_table_markdown(articles: List[Dict[str, Any]]) -> str:
-    """Generates a structured Markdown table of evidence with PICO & Risk of Bias for the report."""
+    """Generates a structured Markdown table of evidence with PICO & Risk of Bias for the report.
+
+    Design, evidence-level and bias-tool cells come from the shared Study object,
+    so section 5, section 6, search cards and exports show the same values.
+    """
     if not articles:
         return "*Tablo için gösterilecek veri bulunamadı.*"
 
@@ -3581,15 +3594,11 @@ def generate_evidence_table_markdown(articles: List[Dict[str, Any]]) -> str:
         pmid = art.get("pmid", "")
         doi = art.get("doi", "")
 
-        classification = classify_study_design(
-            art.get("publication_types", []),
-            title,
-            art.get("abstract", "")
-        )
-        design_str = f"**{classification['design']}** — *Kanıt düzeyi: {classification['level']}*"
+        study = _study_for(art)
+        design_str = f"**{study.design_label}** — *Kanıt düzeyi: {study.evidence_level}*"
 
-        rob = assess_risk_of_bias(art)
-        rob_str = f"**{rob['overall_rating']}** — *{rob['tool']}*"
+        rob = study.legacy["rob"]
+        rob_str = f"**{rob['overall_rating']}** — *{study.risk_of_bias.tool}*"
 
         pmid_link = f"[PMID: {pmid}]({art.get('pubmed_url', '#')})" if pmid else "-"
         if doi:
@@ -3630,13 +3639,11 @@ def generate_evidence_table_html(articles: List[Dict[str, Any]]) -> str:
         pmid = html.escape(str(art.get("pmid", "")))
         doi = html.escape(str(art.get("doi", "")))
 
-        classification = classify_study_design(
-            art.get("publication_types", []),
-            art.get("title", ""),
-            art.get("abstract", "")
-        )
+        study = _study_for(art)
+        classification = dict(study.legacy["classification"])
+        classification["design"] = study.design_label
 
-        rob = assess_risk_of_bias(art)
+        rob = study.legacy["rob"]
 
         finding_cell = html.escape(format_klinik_bulgular_cell(art))
 
@@ -4512,6 +4519,15 @@ Lütfen arama terimlerini veya filtreleri genişleterek tekrar deneyiniz.
     report.append(f"- **I (Müdahale / Intervention):** {pico['intervention']}")
     report.append(f"- **C (Karşılaştırma / Comparison):** {pico['comparison']}")
     report.append(f"- **O (Sonlanım / Outcome):** {pico['outcome']}\n")
+    try:
+        from question_framework import render_framework_markdown, select_question_framework
+        report.append(render_framework_markdown(select_question_framework(query)))
+    except Exception:
+        logger.warning("Question framework selection failed", exc_info=True)
+
+    import evidence_model
+    studies, relation_summary = evidence_model.build_studies(articles, query)
+    study_by_index = dict(enumerate(studies))
 
     # 2. Yönetici Özeti
     report.append("## 2. Yönetici Özeti")
@@ -4582,16 +4598,25 @@ Lütfen arama terimlerini veya filtreleri genişleterek tekrar deneyiniz.
     report.append("### 📊 Karşılaştırmalı Sentez Matrisi")
 
     comp_lines = []
-    for art in articles:
+    for art_index, art in enumerate(articles):
         first_author = _format_authors_short(art.get("authors", []))
         year = art.get("pub_year", "Tarih Yok")
-        cd = classify_study_design(art.get("publication_types", []), art.get("title", ""), art.get("abstract", ""))
-        rob = assess_risk_of_bias(art)
+        study = study_by_index[art_index]
+        cd = {"design": study.design_label, "level": study.evidence_level}
+        rob = dict(study.legacy["rob"])
+        rob["tool"] = study.risk_of_bias.tool
         pmid = art.get("pmid", "")
         pmid_link = f"[PMID: {pmid}]({art.get('pubmed_url', '#')})" if pmid else "-"
         metrics = extract_study_metrics(art.get("abstract", ""))
 
-        n_str = f"n = {metrics['n']}" if metrics.get("n") else "n bildirilmedi"
+        if study.population.n_total:
+            n_str = f"n = {study.population.n_total}"
+            if study.population.n_kind == "pooled":
+                n_str += " (dahil edilen çalışmaların toplamı)"
+            elif study.population.n_kind == "arm_sum":
+                n_str += " (kol sayılarının toplamı)"
+        else:
+            n_str = "n bildirilmedi"
 
         stat_summary = _translate_clinical_conclusion_to_turkish("", art.get("abstract", ""), metrics, cd["design"], art.get("title", ""), pico=pico)
         lim_str = format_methodological_limitation(art)
@@ -4615,10 +4640,12 @@ Lütfen arama terimlerini veya filtreleri genişleterek tekrar deneyiniz.
             f"  - **Klinik Sonlanımlar ve Etki Ölçütleri:** {o_str}\n"
             f"  - **Kaynağa bağlı PICO ve istatistik:** {bound}\n"
             f"  - **Klinik Bulgular:** {stat_summary}\n"
-            f"  - **Kanıt Sınırlılıkları:** {lim_str}"
+            f"  - **Kanıt Sınırlılıkları:** {lim_str}\n"
+            f"  - **Çıkarım türü (tasarıma göre):** {study.claim_type_tr}"
         )
 
     report.append("\n".join(comp_lines) + "\n")
+    report.append(evidence_model.render_structured_evidence_section(studies, relation_summary))
 
     report.append("### ✅ Tutarlı Klinik Bulgular")
     if cross_comp and cross_comp.get("consistent_findings"):

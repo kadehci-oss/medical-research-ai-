@@ -34,6 +34,11 @@ The intended goal is a Turkish, expert-level report for clinical research questi
 ├── pubmed_client.py               # NCBI E-utilities and CrossRef client
 ├── report_generator.py            # Turkish evidence-report synthesis
 ├── universal_evidence_engine.py   # PubMed/abstract-based preliminary search and synthesis
+├── evidence_model.py              # Structured Study model shared by cards, sections 5/6 and exports
+├── question_framework.py          # Question type -> PICO / PIRD / PFO / PECO / CoCoPop / SPICE
+├── report_verification.py         # Report audit: PMIDs, verbatim quotes, RoB/GRADE, causal wording
+├── version.py                     # User-visible software version
+├── validation/                    # Real PubMed records, reference tables, validation runner and report
 ├── all_specialty_matrix.json      # Specialty matrix used by the evidence engine
 ├── live_ncbi_validation.py        # Live esearch/efetch smoke script (no mocks)
 ├── ncbi_live_results.json         # Saved local smoke-test output; may be stale
@@ -151,6 +156,31 @@ python live_ncbi_validation.py
 ```
 
 `pytest` mocks network calls. `live_ncbi_validation.py` calls production E-utilities with no mocks and overwrites `ncbi_live_results.json` in the current working directory. The copy committed in this repository is only a saved local run and may be stale; the latest scheduled or manual GitHub Actions result is available as that run's uploaded artifact and does not update the repository file. The script runs from `.github/workflows/live-ncbi-validation.yml` on Python 3.12, every Monday at 08:17 UTC and on manual dispatch. That job installs from `requirements.lock` and passes `NCBI_EMAIL` from the Actions secret described above. A passing smoke test is not a clinical or security validation.
+
+---
+
+## Structured evidence engine (v1.5.0)
+
+Every PubMed record is turned into one `Study` object (`evidence_model.py`). Search cards in Streamlit, report sections 5 and 6, and the downloadable Markdown/HTML/JSON exports all read that same object, so a value cannot differ between views.
+
+- **Data model:** `Study`, `Population`, `StudyArm`, `Intervention`, `Comparator`, `CoTreatment`, `Outcome`, `EffectEstimate`, `EventCount`, `EvidenceSource`, `RiskOfBiasAssessment`, `CertaintyAssessment`, `StudyRelation`. Each extracted value carries PMID, DOI, the verbatim source sentence and a verification status (`kaynakta_dogrulandi`, `kaynaktan_hesaplandi`, `kaynakta_bulunamadi`).
+- **Counts kept apart:** total participants, arm sizes and event numerators are separate fields. An arm total that the abstract does not state is shown as "kol sayılarının toplamı".
+- **Effect estimates:** HR, OR, RR, IRR, RD, MD, SMD, WMD, DOR, sensitivity, specificity, AUC, PPV, NPV, LR and accuracy are parsed with their own CI (and CI level, e.g. 90%) and bound to the outcome named in the sentence. A missing point estimate stays missing. A CI that does not contain its estimate is rejected and left out of synthesis.
+- **Claim types:** causal wording only for randomized comparisons and pooled randomized evidence; observational results are shown as associations, diagnostic results as accuracy, case series as descriptive.
+- **RoB / GRADE:** the tool is chosen, but the status stays `not_assessed`; no rating is generated.
+- **Study relations:** secondary/post hoc analyses, later interim analyses, extended follow-up and meta-analyses are linked to the parent trial by shared registry number (NCT, ISRCTN, NTR, DRKS, …) or trial acronym. Derived reports and meta-analyses are not counted as independent evidence, so the same participants are not counted twice.
+- **Question framework:** `question_framework.py` picks PICO, PIRD (diagnosis), PFO (prognosis), PEO/PECO (aetiology, harm), CoCoPop (epidemiology), screening-PICO or SPICE (health services). Values come only from the query.
+- **Report verification:** `report_verification.py` checks that every cited PMID is in the article set, every quoted source sentence is verbatim in that PMID's abstract, no RoB/GRADE rating is asserted and no causal wording is attached to a non-randomized study. Streamlit shows the status and version; exports carry it in a footer.
+
+### Validation
+
+Three test categories:
+
+1. **Software unit and integration tests:** `tests/test_evidence_model.py`, `tests/test_question_framework.py` (including report-verification tests), plus the existing suite.
+2. **Real PubMed source verification:** `tests/test_pubmed_source_verification.py`. The recorded PubMed records in `validation/` are checked offline; `RUN_LIVE_PUBMED=1 pytest tests/test_pubmed_source_verification.py` re-fetches every PMID from NCBI and compares title and DOI.
+3. **Independent clinical data validation:** `tests/test_clinical_reference_validation.py` compares engine output with pre-specified reference tables (51 real PubMed publications, 8 specialties: cardiology, oncology, neurology, infectious diseases, endocrinology, paediatrics, surgery, radiology; RCT, cohort, case-control, diagnostic accuracy, case series, systematic review, meta-analysis).
+
+`python validation/run_multispecialty_validation.py` regenerates [`validation/MULTISPECIALTY_VALIDATION_REPORT.md`](validation/MULTISPECIALTY_VALIDATION_REPORT.md). The development set was used while tuning, so its numbers are optimistic. The honest estimate is the **frozen first run on the held-out set** (16 publications, reference written before the engine saw them): complete extraction 77.9%, false extraction 8.6%, source-sentence match 100%, 0 false causal claims. Both reference tables were prepared by an AI assistant from abstracts only; no independent physician has checked them.
 
 ---
 
