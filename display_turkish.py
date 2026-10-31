@@ -10,6 +10,66 @@ import re
 # Longer phrases first. The replacement is the display string, not a guess
 # beyond the words the source actually used.
 _PHRASE_PAIRS = (
+    ("cardiovascular death or first hospitalization for heart failure", "kardiyovasküler ölüm veya kalp yetersizliği nedeniyle ilk hastaneye yatış"),
+    ("cardiovascular death or first hospitalisation for heart failure", "kardiyovasküler ölüm veya kalp yetersizliği nedeniyle ilk hastaneye yatış"),
+    ("cardiovascular death or hospitalization for heart failure", "kardiyovasküler ölüm veya kalp yetersizliği nedeniyle hastaneye yatış"),
+    ("cardiovascular death or hospitalisation for heart failure", "kardiyovasküler ölüm veya kalp yetersizliği nedeniyle hastaneye yatış"),
+    ("cardiovascular death or worsening heart failure", "kardiyovasküler ölüm veya kötüleşen kalp yetersizliği"),
+    ("death from cardiovascular causes", "kardiyovasküler ölüm"),
+    ("hospitalization for heart failure", "kalp yetersizliği nedeniyle hastaneye yatış"),
+    ("hospitalisations for heart failure", "kalp yetersizliği nedeniyle hastaneye yatış"),
+    ("hospitalizations for heart failure", "kalp yetersizliği nedeniyle hastaneye yatış"),
+    ("hospitalisation for heart failure", "kalp yetersizliği nedeniyle hastaneye yatış"),
+    ("heart failure hospitalization", "kalp yetersizliği nedeniyle hastaneye yatış"),
+    ("heart failure hospitalisation", "kalp yetersizliği nedeniyle hastaneye yatış"),
+    ("cardiovascular death or first hospitalization for hf", "kardiyovasküler ölüm veya kalp yetersizliği nedeniyle ilk hastaneye yatış"),
+    ("cardiovascular death or first hospitalisation for hf", "kardiyovasküler ölüm veya kalp yetersizliği nedeniyle ilk hastaneye yatış"),
+    ("first hospitalization for hf", "kalp yetersizliği nedeniyle ilk hastaneye yatış"),
+    ("first hospitalisation for hf", "kalp yetersizliği nedeniyle ilk hastaneye yatış"),
+    ("hospitalization for hf", "kalp yetersizliği nedeniyle hastaneye yatış"),
+    ("hospitalisation for hf", "kalp yetersizliği nedeniyle hastaneye yatış"),
+    ("first hospitalization for heart failure", "kalp yetersizliği nedeniyle ilk hastaneye yatış"),
+    ("first hospitalisation for heart failure", "kalp yetersizliği nedeniyle ilk hastaneye yatış"),
+    ("total hospitalizations for heart failure", "kalp yetersizliği nedeniyle hastaneye yatış"),
+    ("worsening heart failure", "kötüleşen kalp yetersizliği"),
+    ("worsening hf", "kötüleşen kalp yetersizliği"),
+    ("all-cause mortality", "tüm nedenlere bağlı ölüm"),
+    ("all-cause death", "tüm nedenlere bağlı ölüm"),
+    ("death from any cause", "tüm nedenlere bağlı ölüm"),
+    ("non-cardiovascular death", "kardiyovasküler olmayan ölüm"),
+    ("cardiovascular mortality", "kardiyovasküler ölüm"),
+    ("cardiovascular death", "kardiyovasküler ölüm"),
+    ("cardiac death", "kardiyak ölüm"),
+    ("cv death", "kardiyovasküler ölüm"),
+    ("composite renal endpoint", "bileşik böbrek sonlanımı"),
+    ("composite kidney endpoint", "bileşik böbrek sonlanımı"),
+    ("kidney disease progression", "böbrek hastalığı progresyonu"),
+    ("ckd progression", "kronik böbrek hastalığı progresyonu"),
+    ("chronic kidney disease", "kronik böbrek hastalığı"),
+    ("acute kidney injury", "akut böbrek hasarı"),
+    ("end-stage kidney disease", "son dönem böbrek hastalığı"),
+    ("kidney failure", "böbrek yetersizliği"),
+    ("estimated glomerular filtration rate", "eGFR"),
+    ("urinary albumin to creatinine ratio", "idrar albümin/kreatinin oranı"),
+    ("heart failure with reduced ejection fraction", "azalmış ejeksiyon fraksiyonlu kalp yetersizliği"),
+    ("heart failure with preserved ejection fraction", "korunmuş ejeksiyon fraksiyonlu kalp yetersizliği"),
+    ("left ventricular ejection fraction", "sol ventrikül ejeksiyon fraksiyonu"),
+    ("reduced ejection fraction", "azalmış ejeksiyon fraksiyonu"),
+    ("preserved ejection fraction", "korunmuş ejeksiyon fraksiyonu"),
+    ("ejection fraction", "ejeksiyon fraksiyonu"),
+    ("type 2 diabetes mellitus", "tip 2 diyabet"),
+    ("type 2 diabetes", "tip 2 diyabet"),
+    ("diabetic ketoacidosis", "diyabetik ketoasidoz"),
+    ("genital infections", "genital enfeksiyonlar"),
+    ("atrial fibrillation", "atriyal fibrilasyon"),
+    ("macrovascular events", "makrovasküler olaylar"),
+    ("worsening kidney function", "kötüleşen böbrek fonksiyonu"),
+    ("symptomatic hypotension", "semptomatik hipotansiyon"),
+    ("kidney outcomes", "böbrek sonlanımları"),
+    ("renal endpoint", "böbrek sonlanımı"),
+    ("composite endpoint", "bileşik sonlanım"),
+    ("composite outcome", "bileşik sonlanım"),
+    ("egfr decline", "eGFR azalması"),
     ("statin-induced anti-hmgcr antibody imnm", "statin ilişkili anti-HMGCR antikor pozitif İMNM"),
     ("statin-induced anti-hmgcr antibody", "statin ilişkili anti-HMGCR antikoru"),
     ("immune-mediated necrotizing myopathy", "immün aracılı nekrotizan miyopati"),
@@ -56,7 +116,7 @@ _PHRASE_PAIRS = (
     ("hazard ratio", "tehlike oranı"),
     ("relative risk", "göreli risk"),
     ("risk ratio", "risk oranı"),
-    ("win ratio", "win oranı"),
+    ("win ratio", "kazanma oranı (win ratio)"),
     ("statin-induced", "statin ilişkili"),
     ("statin-associated", "statin ilişkili"),
     ("statin exposure", "statin maruziyeti"),
@@ -112,6 +172,31 @@ _WORDS = {
     "recurrence": "nüks",
     "progression": "progresyon",
     "death": "ölüm",
+    "deaths": "ölüm",
+    "cardiac": "kardiyak",
+    "kidney": "böbrek",
+    "renal": "böbrek",
+    "chronic": "kronik",
+    "albuminuria": "albüminüri",
+    "albumin": "albümin",
+    "creatinine": "kreatinin",
+    "glomerular": "glomerüler",
+    "filtration": "filtrasyon",
+    "hba1c": "HbA1c",
+    "egfr": "eGFR",
+    "uacr": "UACR",
+    "ckd": "KBH",
+    "decline": "azalma",
+    "endpoint": "sonlanım",
+    "endpoints": "sonlanımlar",
+    "composite": "bileşik",
+    "baseline": "bazal",
+    "frail": "kırılgan",
+    "frailty": "kırılganlık",
+    "participant": "katılımcı",
+    "participants": "katılımcılar",
+    "individual": "birey",
+    "individuals": "bireyler",
     "survival": "sağkalım",
     "weight": "ağırlık",
     "waist": "bel",
@@ -185,7 +270,9 @@ _WORDS = {
     "outcome": "sonlanım",
     "outcomes": "sonlanımlar",
     "hospitalization": "hastaneye yatış",
+    "hospitalizations": "hastaneye yatış",
     "hospitalisation": "hastaneye yatış",
+    "hospitalisations": "hastaneye yatış",
     "cardiovascular": "kardiyovasküler",
     "heart": "kalp",
     "failure": "yetersizlik",
@@ -201,7 +288,7 @@ _WORDS = {
     "mean": "ortalama",
     "interval": "aralık",
     "confidence": "güven",
-    "win": "win",
+    "win": "kazanma",
     "event": "olay",
     "events": "olaylar",
     "overall": "genel",
@@ -384,8 +471,9 @@ _DRUG_SUFFIX_RE = re.compile(
     r"olol|dipine|flozin|glutide|sartan|taxel|xaban|parin|lukast|setron|"
     r"floxacin|dronate|ciclib|parib|tide|caine)$"
 )
+# A digit may sit inside an abbreviation (HbA1c). A leading digit stays a number.
 _TOKEN_RE = re.compile(
-    r"[A-Za-zÇĞİÖŞÜçğıöşüıİ]+(?:-[A-Za-z0-9ÇĞİÖŞÜçğıöşüıİ]+)*"
+    r"[A-Za-zÇĞİÖŞÜçğıöşüıİ][A-Za-z0-9ÇĞİÖŞÜçğıöşüıİ]*(?:-[A-Za-z0-9ÇĞİÖŞÜçğıöşüıİ]+)*"
 )
 _DIACRITIC_RE = re.compile(r"[çğıöşüÇĞİÖŞÜıİ]")
 _ANTI_RE = re.compile(r"(?i)^anti-([A-Za-z0-9]+)$")
@@ -403,6 +491,15 @@ _POSSESSIVE_REPAIRS = (
 )
 
 UNTRANSLATED_OUTCOME_LABEL = "Sonlanım adı güvenle çevrilemedi"
+
+# English words that are not already in the translation map. A population
+# line that still contains one of these next to a Turkish word is mixed.
+_LEFTOVER_ENGLISH = {
+    "type", "chronic", "kidney", "renal", "should", "would", "could", "might",
+    "must", "guidelines", "guideline", "treat", "treating", "treated",
+    "congestive", "baseline", "irrespective", "regardless", "followed",
+    "varying", "composite", "endpoint", "endpoints", "frail", "frailty",
+}
 
 _PASSTHROUGH_FIELDS = {
     "Belirtilmedi",
@@ -527,6 +624,64 @@ def localize_clinical_display(text: str, drop_unknown: bool = True) -> str:
     for pattern, replacement in _POSSESSIVE_REPAIRS:
         working = pattern.sub(replacement, working)
     return working
+
+
+def _is_display_abbreviation(token: str) -> bool:
+    """Clinical abbreviations stay abbreviations and are not leftover English."""
+    if not token:
+        return False
+    if token.isupper() and 2 <= len(token) <= 12:
+        return True
+    if re.fullmatch(
+        r"(?i)(?:hba1c|egfr|uacr|hfref|hfpef|sglt2i?|arni|mra|acei|arb|ckd|hhf|cv|hf|bb|"
+        r"rr|hr|or|ci|md|smd|irr|wmd|ivig|ana|ck)",
+        token,
+    ):
+        return True
+    uppers = sum(1 for char in token if char.isupper())
+    return bool(
+        uppers >= 2
+        and len(token) <= 12
+        and re.fullmatch(r"[A-Za-z][A-Za-z0-9-]*", token)
+    )
+
+
+def has_untranslated_english(text: str) -> bool:
+    """True when an English content word survived display translation."""
+    for token in _TOKEN_RE.findall(text or ""):
+        if _DIACRITIC_RE.search(token) or _is_display_abbreviation(token):
+            continue
+        lowered = token.lower()
+        if lowered in _LEFTOVER_ENGLISH:
+            return True
+        mapped = _WORDS.get(lowered)
+        if mapped is None:
+            continue
+        if mapped == "" or mapped.lower() != lowered:
+            return True
+    return False
+
+
+def has_mixed_clinical_language(text: str) -> bool:
+    """True when Turkish display text still contains an English content word.
+
+    An all-English fragment is not mixed. A half-translated population such as
+    "type 2 diyabet" or "chronic kidney hastalık" is mixed and must not be shown.
+    """
+    if not has_untranslated_english(text):
+        return False
+    raw = text or ""
+    if _DIACRITIC_RE.search(raw):
+        return True
+    lowered = raw.lower()
+    markers = (
+        "hasta", "katılımcı", "katilimci", "yaş", "yaşında", "yasinda",
+        "kadın", "erkek", "diyabet", "kalp", "böbrek", "bobrek", "ölüm",
+        "sonlanım", "sonlanim", "tedavi", "inhibitör", "yetersiz",
+        "arasında", "arasinda", "neden", "bağlı", "bagli", "oranı", "orani",
+        "hastalık", "hastalik",
+    )
+    return any(marker in lowered for marker in markers)
 
 
 def display_study_field(value: str, fallback: str = "Belirtilmedi", drop_unknown: bool = True) -> str:
