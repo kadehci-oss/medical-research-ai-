@@ -28,6 +28,14 @@ _PHRASE_PAIRS = (
     ("cancer-associated iim", "kanserle ilişkili İİM"),
     ("dermatomyositis-like cutaneous features", "dermatomiyozit benzeri deri bulguları"),
     ("cutaneous dermatomyositis-like features", "dermatomiyozit benzeri deri bulguları"),
+    ("shorter disease duration", "daha kısa hastalık süresi"),
+    ("disease duration", "hastalık süresi"),
+    ("any autoantibody", "herhangi bir otoantikor"),
+    ("any autoantibodies", "herhangi bir otoantikor"),
+    ("cutaneous manifestations", "deri bulguları"),
+    ("cutaneous features", "deri bulguları"),
+    ("skin manifestations", "deri bulguları"),
+    ("skin findings", "deri bulguları"),
     ("proximal muscle weakness", "proksimal kas güçsüzlüğü"),
     ("interstitial lung disease", "interstisyel akciğer hastalığı"),
     ("significant group difference", "anlamlı grup farkı"),
@@ -309,6 +317,9 @@ _WORDS = {
     "history": "öykü",
     "autoantibody": "otoantikor",
     "autoantibodies": "otoantikorlar",
+    "antimetabolite": "antimetabolit",
+    "antimetabolites": "antimetabolitler",
+    "rituximab": "rituksimab",
     "cutaneous": "deri",
     "vascular": "vasküler",
     "few": "az",
@@ -379,6 +390,17 @@ _TOKEN_RE = re.compile(
 _DIACRITIC_RE = re.compile(r"[çğıöşüÇĞİÖŞÜıİ]")
 _ANTI_RE = re.compile(r"(?i)^anti-([A-Za-z0-9]+)$")
 _PLACEHOLDER_RE = re.compile(r"\x00(\d+)\x00")
+# "anti-<long chemical name> (HMGCR)" keeps the short name and the anti- prefix.
+_ANTI_PAREN_RE = re.compile(
+    r"\banti-(?:[A-Za-z0-9]+(?:[-\s]+[A-Za-z0-9]+){1,18}?)\s*"
+    r"\(\s*(?:anti-)?([A-Za-z][A-Za-z0-9]{1,14})\s*\)",
+    re.IGNORECASE,
+)
+_POSSESSIVE_REPAIRS = (
+    (re.compile(r"\bhastalık süre\b", re.IGNORECASE), "hastalık süresi"),
+    (re.compile(r"\bderi bulgular\b(?!ı)", re.IGNORECASE), "deri bulguları"),
+    (re.compile(r"\bkas güçsüzlük\b(?!ü)", re.IGNORECASE), "kas güçsüzlüğü"),
+)
 
 UNTRANSLATED_OUTCOME_LABEL = "Sonlanım adı güvenle çevrilemedi"
 
@@ -477,6 +499,13 @@ def localize_clinical_display(text: str, drop_unknown: bool = True) -> str:
         placeholders.append(turkish)
         return f"\x00{len(placeholders) - 1}\x00"
 
+    def _anti_short(match: re.Match) -> str:
+        body = match.group(1)
+        canon = _ABBREV.get(body.lower(), body.upper())
+        return _protect("anti-" + canon)
+
+    working = _ANTI_PAREN_RE.sub(_anti_short, working)
+
     for source, turkish in _PHRASES:
         pattern = re.compile(r"\b" + re.escape(source) + r"\b", re.IGNORECASE)
         working = pattern.sub(lambda _match, rendered=turkish: _protect(rendered), working)
@@ -495,6 +524,8 @@ def localize_clinical_display(text: str, drop_unknown: bool = True) -> str:
         return ""
     if _brackets_unbalanced(working):
         return ""
+    for pattern, replacement in _POSSESSIVE_REPAIRS:
+        working = pattern.sub(replacement, working)
     return working
 
 

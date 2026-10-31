@@ -156,6 +156,12 @@ _BACKGROUND_AFTER_RE = re.compile(
     r"^\s+(?:was\s+|were\s+)?(?:previously|earlier)\b",
     re.IGNORECASE,
 )
+# "not included in randomized controlled trials" cites other studies.
+_CITED_TRIAL_BEFORE_RE = re.compile(
+    r"(?:not\s+included\s+in|included\s+in|excluded\s+from|ineligible\s+for|"
+    r"outside(?:\s+of)?|unlike|such\s+as|rather\s+than|compared\s+with|from|than)\s*$",
+    re.IGNORECASE,
+)
 _META_RE = re.compile(r"\b(meta-?analysis|meta analysis|metaanalysis|meta-?analiz)\b", re.IGNORECASE)
 _SR_RE = re.compile(r"\b(systematic reviews?|sistematik derleme|sistematik inceleme)\b", re.IGNORECASE)
 _RCT_RE = re.compile(
@@ -166,7 +172,7 @@ _CASE_CONTROL_RE = re.compile(r"\b(case-?control|vaka-?kontrol|olgu-?kontrol)\b"
 _CROSS_RE = re.compile(r"\b(cross[-\s]?sectional|kesitsel)\b", re.IGNORECASE)
 _COHORT_RE = re.compile(r"\b(cohort|kohort)\b", re.IGNORECASE)
 _FOLLOW_RE = re.compile(
-    r"\b(followed(?:\s+up)?(?:\s+for|\s+over)?|were followed|was followed|longitudinal follow)\b",
+    r"\b(followed\s+up(?:\s+for|\s+over)?|followed\s+(?:for|over)|were followed|was followed|longitudinal follow)\b",
     re.IGNORECASE,
 )
 # Counts of two or more. A bare "1" or "a patient" stays a single case report.
@@ -307,14 +313,19 @@ def _design_record(design_key: str) -> Dict[str, Any]:
 
 
 def _normalize_inline_spaces(text: str) -> str:
-    """Replace unicode spaces without changing string length, so match offsets stay valid."""
-    return (
+    """Replace unicode spaces without changing string length, so match offsets stay valid.
+
+    A middle dot between digits (Lancet-style 2·69) is a decimal point. The
+    replacement is one character, so later offsets still line up.
+    """
+    normalized = (
         (text or "")
         .replace("\xa0", " ")
         .replace("\u2009", " ")
         .replace("\u200a", " ")
         .replace("\u202f", " ")
     )
+    return re.sub(r"(?<=\d)[·⋅∙](?=\d)", ".", normalized)
 
 
 _ABBREV_BEFORE_PERIOD_RE = re.compile(
@@ -510,6 +521,31 @@ def _own_design_match(text: str, pattern: re.Pattern) -> bool:
     return False
 
 
+def _own_rct_match(text: str) -> bool:
+    """True when this paper is the randomized trial, not a citation of one.
+
+    Plural "randomized controlled trials" names a class of other studies unless
+    the paper calls itself that trial. "Not included in randomized controlled
+    trials" is background, even when the methods later say retrospective.
+    """
+    if not text:
+        return False
+    for match in _RCT_RE.finditer(text):
+        before = text[max(0, match.start() - 80):match.start()]
+        after = text[match.end():match.end() + 48]
+        if _BACKGROUND_BEFORE_RE.search(before) or _BACKGROUND_AFTER_RE.search(after):
+            continue
+        if _CITED_TRIAL_BEFORE_RE.search(before):
+            continue
+        token = match.group(0).lower()
+        if token.endswith("trials") and not re.search(
+            r"\b(?:this|our|the present)\s+$", before, re.IGNORECASE
+        ):
+            continue
+        return True
+    return False
+
+
 def _title_opens_as_case(title: str) -> bool:
     """True when the title itself is phrased as a case report, not a metaphor."""
     return bool(re.match(r"\s*a case of\b", title or "", re.IGNORECASE))
@@ -577,6 +613,13 @@ def _own_case_series_match(text: str) -> bool:
         if _BACKGROUND_BEFORE_RE.search(before) or _BACKGROUND_AFTER_RE.search(after):
             continue
         if _match_is_cited_case(text, match):
+            continue
+        # "including six cases of X" is a subset of events, not the study design.
+        if re.search(r"\bcases\s+of\b", match.group(0), re.IGNORECASE) and re.search(
+            r"\b(?:including|include|of\s+which|of\s+whom)\s*$",
+            before,
+            re.IGNORECASE,
+        ):
             continue
         return True
     if _own_design_match(text, _BOTH_PATIENTS_RE):
@@ -662,7 +705,7 @@ def _text_design_key(title: str, abstract: str) -> Optional[str]:
             return "systematic_review"
         if _own_design_match(blob, _GUIDELINE_RE):
             return "guideline"
-        if _own_design_match(blob, _RCT_RE):
+        if _own_rct_match(blob):
             return "rct"
         if _own_design_match(blob, _CASE_CONTROL_RE):
             return "case_control"
@@ -1421,13 +1464,28 @@ def _effect_clauses(sentence: str) -> List[str]:
 
 
 def _label_before_bracket(text: str, start: int) -> str:
-    """Noun phrase immediately before a bracketed contrast, copied from the sentence."""
+    """Noun phrase immediately before a bracketed contrast, copied from the sentence.
+
+    An earlier "(85.7% vs 11.1%)" is removed first so its right-hand side is not
+    reused as the next outcome name ("11.1%) and necrotizing IM").
+    """
     previous = (text or "")[:start]
-    chunk = re.split(r"[,;]", previous)[-1]
+
+    def _drop_result_brackets(match: re.Match) -> str:
+        inner = match.group(1)
+        if re.search(r"\b(?:vs\.?|versus)\b|\d", inner, re.IGNORECASE):
+            return " "
+        return match.group(0)
+
+    previous = re.sub(r"\(([^()]*)\)", _drop_result_brackets, previous)
+    previous = re.sub(r"\[([^\[\]]*)\]", _drop_result_brackets, previous)
+    chunk = re.split(r"[,;]|\band\b|\bor\b", previous)[-1]
     versus = re.search(r"(?i).*\b(?:vs\.?|versus)\b\s+(.*)$", chunk)
     if versus and versus.group(1).strip():
         chunk = versus.group(1)
-    chunk = re.sub(r"^(?:and|or|but|with|the|a|an)\s+", "", chunk.strip(), flags=re.IGNORECASE)
+    chunk = re.sub(r"^(?:and|or|but|with|the|a|an|less|more)\s+", "", chunk.strip(), flags=re.IGNORECASE)
+    chunk = re.sub(r"^[\d\s.%]+\)\s*", "", chunk)
+    chunk = re.sub(r"^(?:P\s*[=<]\s*[\d.]+)\)\s*", "", chunk, flags=re.IGNORECASE)
     words = chunk.split()
     return " ".join(words[-8:]).strip(" .:")
 
@@ -1617,14 +1675,23 @@ def extract_study_metrics(abstract: str) -> Dict[str, Any]:
         }
 
     # Clean non-breaking spaces
-    abstract_clean = abstract.replace("\xa0", " ")
+    abstract_clean = _normalize_inline_spaces(abstract)
 
     # 1. Sample Size (n) Extraction Patterns
     n_val = None
     n_sentence = ""
     n_match = re.search(r"\b(?:n|N)\s*=\s*(\d[\d,]*)\b", abstract_clean)
     if not n_match:
-        n_match = re.search(r"\b(?:total of|sample of|enrolled|included|assigned|randomly assigned|randomized|randomised)\s+(\d[\d,]*)\b", abstract_clean, re.IGNORECASE)
+        for candidate in re.finditer(
+            r"\b(?:total of|sample of|enrolled|included|assigned|randomly assigned|randomized|randomised)\s+(\d[\d,]*)\b",
+            abstract_clean,
+            re.IGNORECASE,
+        ):
+            # "randomized 1:1" is an allocation ratio, not the sample size.
+            if re.match(r"\s*:\s*\d", abstract_clean[candidate.end():]):
+                continue
+            n_match = candidate
+            break
     if not n_match:
         n_match = re.search(r"\b(?:of the|among the|a total of)\s+(\d[\d,]*)\s+(?:patients|subjects|participants|adults|children|individuals|cases)\b", abstract_clean, re.IGNORECASE)
     if not n_match:
@@ -1708,6 +1775,22 @@ def _display_effect_text(effect: str) -> str:
     return shown or text
 
 
+_ORPHAN_OUTCOME_TOKENS = {
+    "değil", "ve", "veya", "daha", "ile", "karşı", "karsi", "ancak", "ayrıca",
+    "az", "fazla", "olan", "olanlar",
+}
+
+
+def _orphan_outcome_label(shown: str) -> bool:
+    """True when translation left only a function word such as 'değil'."""
+    tokens = re.findall(r"[A-Za-zÇĞİÖŞÜçğıöşüıİ0-9-]+", shown or "")
+    content = [
+        token for token in tokens
+        if token.casefold() not in _ORPHAN_OUTCOME_TOKENS and not token.isdigit()
+    ]
+    return not content
+
+
 def _display_outcome_name(outcome: str) -> str:
     """Turkish outcome label. An untranslatable English name is not shown raw."""
     text = (outcome or "").strip()
@@ -1718,7 +1801,9 @@ def _display_outcome_name(outcome: str) -> str:
     ):
         return text
     shown = localize_clinical_display(text)
-    return shown or UNTRANSLATED_OUTCOME_LABEL
+    if not shown or _orphan_outcome_label(shown):
+        return UNTRANSLATED_OUTCOME_LABEL
+    return shown
 
 
 def _display_metric_text(metric: str) -> str:
@@ -1815,6 +1900,7 @@ def extract_article_clinical_details(article: Dict[str, Any], query: str = "") -
             continue
         raw_int, raw_comp, comp_at = _split_treatment_arms(abstract, arm_anchor.end())
         if raw_int and raw_comp:
+            raw_int = re.sub(r"^\d+\s*:\s*\d+\s+", "", raw_int)
             intervention = _raise_initial(raw_int)
             comparison = _raise_initial(raw_comp)
             intervention_sentence = _sentence_around(abstract, arm_anchor.start(), comp_at + len(raw_comp))
@@ -1847,7 +1933,15 @@ def extract_article_clinical_details(article: Dict[str, Any], query: str = "") -
         int_title_match = re.search(r"^([A-Za-z0-9\s\-]+?)\s+\b(?:for|in|among|versus|vs\.?)\b", title, re.IGNORECASE)
         if int_title_match and int_title_match.group(1):
             t_cand = int_title_match.group(1).strip()
-            if len(t_cand) > 2 and not any(k in t_cand.lower() for k in ["study", "trial", "analysis", "review"]):
+            if (
+                len(t_cand) > 2
+                and not any(k in t_cand.lower() for k in ["study", "trial", "analysis", "review"])
+                and not re.match(
+                    r"^(?:reduced|increased|improved|lower|higher|efficacy|safety|association|associated|risk|effect|impact|role)\b",
+                    t_cand,
+                    re.IGNORECASE,
+                )
+            ):
                 intervention = _raise_initial(t_cand)
                 intervention_sentence = title.strip()
                 intervention_source = "title"
@@ -1860,7 +1954,7 @@ def extract_article_clinical_details(article: Dict[str, Any], query: str = "") -
         )
         if comp_match:
             raw_comparison = _read_balanced_clause(abstract, comp_match.end())
-            if raw_comparison:
+            if raw_comparison and not re.match(r"^\d", raw_comparison):
                 comparison = _raise_initial(raw_comparison)
                 comparison_sentence = _sentence_around(
                     abstract, comp_match.start(), comp_match.end() + len(raw_comparison)
@@ -2015,6 +2109,12 @@ _CI_RE = re.compile(
     r"|"
     r"(?<=\d)\s*"
     r"\[\s*(?P<low_bracket>[-−]?\d+(?:\.\d+)?)\s*(?:,|to|–|—|-|−)\s*(?P<high_bracket>[-−]?\d+(?:\.\d+)?)\s*\]"
+    r"|"
+    r"(?:95\s*%\s*)?(?<![A-Za-z])CI(?![A-Za-z])"
+    r"\s*[:=]?\s*"
+    r"(?P<low_plain>[-−]?\d+(?:\.\d+)?)"
+    r"\s*(?:to|–|—|-|−)\s*"
+    r"(?P<high_plain>[-−]?\d+(?:\.\d+)?)"
     r")",
     re.IGNORECASE,
 )
@@ -2168,6 +2268,15 @@ def _clean_outcome_clause(clause: str) -> str:
         re.IGNORECASE,
     ):
         return ""
+    words = re.findall(r"[A-Za-z]+", clause)
+    fillers = {
+        "than", "those", "who", "did", "not", "which", "that", "with", "without",
+        "and", "or", "the", "a", "an", "more", "less", "were", "was", "had",
+        "to", "of", "in", "for", "by", "on", "their", "they", "them", "this",
+        "these", "it", "its", "as", "at", "be", "been", "from", "after", "before",
+    }
+    if words and all(word.lower() in fillers for word in words):
+        return ""
     return clause
 
 
@@ -2242,6 +2351,7 @@ def _ci_bounds(match: re.Match) -> tuple:
         ("low", "high"),
         ("low_paren", "high_paren"),
         ("low_bracket", "high_bracket"),
+        ("low_plain", "high_plain"),
     ):
         low = match.group(low_name)
         high = match.group(high_name)
@@ -2942,6 +3052,22 @@ def _profile_from_sentence(sentence: str) -> List[Dict[str, str]]:
     for index, match in enumerate(patient_counts):
         count = _parse_count_token(match.group(1))
         if not count:
+            continue
+        between = re.sub(
+            r"\s+patients$",
+            "",
+            match.group(0)[len(match.group(1)):],
+            flags=re.IGNORECASE,
+        ).strip()
+        # "type 2 biomarkers of patients" is not a sample of 2. Demographic
+        # words between the count and "patients" stay.
+        if between and re.search(
+            r"\b(?:of|type|with|for|from|in|biomarkers?|outcomes?|trials?|studies|risk|efficacy)\b",
+            between,
+            re.IGNORECASE,
+        ):
+            continue
+        if re.search(r"\btype\s+$", sentence[:match.start()], re.IGNORECASE):
             continue
         window_end = patient_counts[index + 1].start() if index + 1 < len(patient_counts) else match.end() + 70
         window = sentence[match.end():window_end]
