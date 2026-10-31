@@ -234,7 +234,9 @@ class TestConfidenceIntervalsOutcomesAndGrouping(unittest.TestCase):
             "statin-induced anti-HMGCR antibody IMNM was increased in Hispanics"
         )
         self.assertEqual(cell.count(sentence), 1)
-        self.assertIn("Sonlanım: diabetes mellitus", cell)
+        self.assertIn("Sonlanım: diyabet", cell)
+        self.assertIn("diabetes mellitus", cell)
+        self.assertNotIn("Sonlanım: diabetes mellitus", cell)
         self.assertIn("Güven aralığı: 1.03 ile 22.6", cell)
         self.assertIn("p değeri: p = 0.045", cell)
         self.assertLess(cell.find("OR 4.81"), cell.find("OR 2.54"))

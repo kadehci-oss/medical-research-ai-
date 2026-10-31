@@ -110,9 +110,11 @@ class TestSection5StreamlitReport(unittest.TestCase):
 
         grouped = section.split("PMID: 90000023", 1)[1].split("|  ", 1)[0]
         self.assertEqual(grouped.count("Anti-HMGCR myopathy was increased"), 1)
-        self.assertIn("Sonlanım: Anti-HMGCR myopathy", grouped)
-        self.assertIn("Sonlanım: diabetes mellitus", grouped)
-        self.assertIn("Sonlanım: Cancer-associated myositis", grouped)
+        self.assertIn("Sonlanım: anti-HMGCR miyopati", grouped)
+        self.assertIn("Sonlanım: diyabet", grouped)
+        self.assertIn("Sonlanım: kanserle ilişkili miyozit", grouped)
+        self.assertIn("diabetes mellitus", grouped)
+        self.assertNotIn("Sonlanım: diabetes mellitus", grouped)
         self.assertIn("Güven aralığı: 1.03 ile 22.6", grouped)
         self.assertIn("Güven aralığı: 0.08 ile 0.7", grouped)
         self.assertNotIn("Güven aralığı: özette bildirilmedi", grouped)

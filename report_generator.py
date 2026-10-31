@@ -11,6 +11,7 @@ except ImportError:
 from display_turkish import (
     UNTRANSLATED_OUTCOME_LABEL,
     display_study_field,
+    has_mixed_clinical_language,
     localize_clinical_display,
 )
 from pubmed_client import verify_citation
@@ -328,6 +329,19 @@ def _normalize_inline_spaces(text: str) -> str:
     return re.sub(r"(?<=\d)[·⋅∙](?=\d)", ".", normalized)
 
 
+# "90 413" and "100,952" are one integer. The space is a thousands separator
+# left in place by unicode-space normalization, which must not change length.
+_COUNT_NUMBER_RE = r"\d{1,3}(?:[ \u00a0\u2007\u2008\u2009\u200a\u202f]\d{3})+|\d[\d,]*"
+
+
+def _normalize_count(token: str) -> str:
+    """Digit string from a plain integer or a thousands-grouped integer."""
+    raw = (token or "").strip()
+    if re.fullmatch(_COUNT_NUMBER_RE, raw):
+        return re.sub(r"[ \u00a0\u2007\u2008\u2009\u200a\u202f,]", "", raw)
+    return ""
+
+
 _ABBREV_BEFORE_PERIOD_RE = re.compile(
     r"(?i)(?:s\.d|e\.g|i\.e|vs|etc|dr|mr|mrs|ms|prof|fig|figs|no|nos|vol|pp|al|approx|eq|cf|jr|sr|st)$"
 )
@@ -446,7 +460,11 @@ def _read_balanced_clause(text: str, start: int) -> str:
 _FINITE_VERB_RE = re.compile(
     r"\b(?:were|was|are|is|had|have|has|underwent|received|presented|included|"
     r"enrolled|randomized|randomised|assigned|allocated|treated|identified|"
-    r"characterized|characterised)\b",
+    r"characterized|characterised|should|would|could|may|might|must|can)\b",
+    re.IGNORECASE,
+)
+_MODAL_FRAGMENT_RE = re.compile(
+    r"\b(?:should|would|could|may|might|must|can)\b",
     re.IGNORECASE,
 )
 _ARM_SPLIT_RE = re.compile(
@@ -1635,7 +1653,12 @@ def extract_outcome_metrics(abstract: str) -> List[Dict[str, Any]]:
                     )):
                         outcome_name = cand_name
 
-        if not outcome_name:
+        if outcome_name and outcome_name != "Primer Klinik Sonlanım / Özet İstatistiği":
+            cleaned_name = _clean_outcome_clause(outcome_name)
+            if not cleaned_name:
+                cleaned_name = _keyword_outcome(clause_clean, len(clause_clean))
+            outcome_name = cleaned_name or "özette adlandırılmadı"
+        elif not outcome_name:
             outcome_name = "Primer Klinik Sonlanım / Özet İstatistiği"
 
         results.append({
@@ -1680,7 +1703,7 @@ def extract_study_metrics(abstract: str) -> Dict[str, Any]:
     # 1. Sample Size (n) Extraction Patterns
     n_val = None
     n_sentence = ""
-    n_match = re.search(r"\b(?:n|N)\s*=\s*(\d[\d,]*)\b", abstract_clean)
+    n_match = re.search(rf"\b(?:n|N)\s*=\s*({_COUNT_NUMBER_RE})\b", abstract_clean)
     if not n_match:
         for candidate in re.finditer(
             r"\b(?:total of|sample of|enrolled|included|assigned|randomly assigned|randomized|randomised)\s+(\d[\d,]*)\b",
@@ -1712,7 +1735,7 @@ def extract_study_metrics(abstract: str) -> Dict[str, Any]:
                 n_sentence = _sentence_around(abstract_clean, n_word_match.start(), n_word_match.end())
 
     if n_match and not n_val:
-        n_val = n_match.group(1).replace(",", "")
+        n_val = _normalize_count(n_match.group(1)) or n_match.group(1).replace(",", "").replace(" ", "")
         n_sentence = _sentence_around(abstract_clean, n_match.start(), n_match.end())
 
     effect_sizes = _EFFECT_MEASURE_RE.findall(abstract_clean)
@@ -1802,6 +1825,9 @@ def _display_outcome_name(outcome: str) -> str:
         return text
     shown = localize_clinical_display(text)
     if not shown or _orphan_outcome_label(shown):
+        return UNTRANSLATED_OUTCOME_LABEL
+    # "BB, MRA, ve" is a clipped treatment list, not an endpoint name.
+    if re.search(r"(?:^|[\s,;])(?:ve|veya)\s*$", shown, re.IGNORECASE):
         return UNTRANSLATED_OUTCOME_LABEL
     return shown
 
@@ -1971,6 +1997,10 @@ def extract_article_clinical_details(article: Dict[str, Any], query: str = "") -
         comparison = "Placebo"
 
     patient_group = display_study_field(patient_group, drop_unknown=False)
+    if _population_display_rejected(patient_group):
+        # A modal fragment or a half-translated mix is not a population.
+        patient_group = "Belirtilmedi"
+        pop_sentence = ""
     intervention = display_study_field(intervention)
     comparison = display_study_field(comparison)
 
@@ -2063,9 +2093,11 @@ def _format_bound_claims(details: Dict[str, Any]) -> str:
     return " ".join(lines)
 
 
-# Section 5 must not paste the English abstract. These labels stay Turkish.
-# Outcome names, effect-measure wording, numbers, and the source sentence stay
-# in the language of the abstract. Nothing is translated or invented.
+# Section 5 must not paste the English abstract. Labels stay Turkish.
+# Outcome names use the same controlled terminology map as section 6.
+# The quoted source sentence stays verbatim. The effect-measure token (HR,
+# risk ratio, mean difference) stays in the source wording so the number
+# remains tied to the measure the abstract named. Nothing is invented.
 NO_NUMERIC_CLINICAL_FINDING_TR = "Özette sayısal klinik bulgu bulunamadı"
 INSUFFICIENT_CLINICAL_DATA_TR = "Özette sayısal veya nitel klinik bulgu yetersiz"
 _UNNAMED_OUTCOME_TR = "özette adlandırılmadı"
@@ -2127,11 +2159,40 @@ _OUTCOME_KEYWORDS = (
     "event-free survival",
     "progression-free survival",
     "overall survival",
+    "cardiovascular death or hospitalization for heart failure",
+    "cardiovascular death or hospitalisation for heart failure",
+    "cardiovascular death or worsening heart failure",
+    "cardiovascular death or worsening hf",
+    "cardiovascular death or first hospitalization for hf",
+    "cardiovascular death or first hospitalisation for hf",
+    "first hospitalization for hf",
+    "first hospitalisation for hf",
+    "hospitalization for hf",
+    "hospitalisation for hf",
+    "hospitalisation for heart failure",
     "hospitalization for heart failure",
+    "heart failure hospitalisation",
     "heart failure hospitalization",
-    "cardiovascular death",
+    "first hospitalisation for heart failure",
+    "first hospitalization for heart failure",
+    "worsening heart failure",
+    "worsening hf",
     "all-cause mortality",
+    "all-cause death",
+    "death from any cause",
+    "death from cardiovascular causes",
+    "cardiovascular death",
     "cardiovascular mortality",
+    "cardiac death",
+    "cv death",
+    "composite renal endpoint",
+    "composite kidney endpoint",
+    "kidney disease progression",
+    "ckd progression",
+    "acute kidney injury",
+    "kidney failure",
+    "egfr decline",
+    "hba1c",
     "lymphocytic leukaemia",
     "lymphocytic leukemia",
     "waist circumference",
@@ -2151,7 +2212,7 @@ _OUTCOME_KEYWORDS = (
     "seizure",
     "weight",
     "stroke",
-    "hba1c",
+    "hospitalisation",
 )
 
 
@@ -2183,22 +2244,58 @@ def _number_after(text: str, start: int, max_gap: int):
             return None
         if _is_calendar_year(match.group(0)):
             continue
+        tail = window[match.end():]
+        # "1-year" and "1-," are time frames, not effect estimates. "0.70-0.92" is.
+        if re.match(r"\s*-\s*(?!\d)", tail):
+            continue
+        if re.match(r"\s*(?:year|years|month|months|week|weeks|day|days)\b", tail, re.IGNORECASE):
+            continue
         return match
     return None
 
 
+def _subgroup_modifier_before(sentence: str, start: int) -> bool:
+    """True when the keyword is the covariate, not the endpoint (baseline eGFR)."""
+    window = sentence[max(0, start - 56):start]
+    return bool(re.search(
+        r"(?:irrespective\s+of|regardless\s+of|independent\s+of|adjusted\s+for|"
+        r"stratified\s+by|according\s+to|baseline)\s+$",
+        window,
+        re.IGNORECASE,
+    ))
+
+
 def _keyword_outcome(sentence: str, anchor: int) -> str:
-    """Outcome word copied from the sentence, nearest to the effect measure."""
+    """Outcome phrase copied from the sentence.
+
+    The nearest preceding endpoint wins. A longer phrase wins over the shorter
+    word inside it. A subgroup covariate (baseline eGFR, baseline albuminuria)
+    is not the endpoint.
+    """
     found = []
     for keyword in _OUTCOME_KEYWORDS:
         for match in re.finditer(rf"\b{re.escape(keyword)}\b", sentence, re.IGNORECASE):
-            found.append((-(match.end() - match.start()), abs(match.start() - anchor), match.start()))
+            if _subgroup_modifier_before(sentence, match.start()):
+                continue
+            found.append(match)
     if not found:
         return ""
-    found.sort()
-    start = found[0][2]
-    keyword = next(item for item in _OUTCOME_KEYWORDS if sentence[start:start + len(item)].lower() == item)
-    return sentence[start:start + len(keyword)]
+
+    def _rank(match: re.Match) -> tuple:
+        if match.end() <= anchor:
+            distance = anchor - match.end()
+        elif match.start() >= anchor:
+            distance = 10000 + (match.start() - anchor)
+        else:
+            distance = 5000
+        return (distance, -(match.end() - match.start()))
+
+    match = min(found, key=_rank)
+    start = match.start()
+    for keyword in _OUTCOME_KEYWORDS:
+        if sentence[start:start + len(keyword)].lower() == keyword:
+            return sentence[start:start + len(keyword)]
+    return sentence[match.start():match.end()]
 
 
 def _outcome_from_gap(sentence: str, name_end: int, value_start: int, anchor: int) -> str:
@@ -2214,7 +2311,7 @@ def _outcome_from_gap(sentence: str, name_end: int, value_start: int, anchor: in
             re.IGNORECASE,
         ):
             return re.sub(r"\s+", " ", gap)
-    return _keyword_outcome(sentence, anchor) or _UNNAMED_OUTCOME_TR
+    return ""
 
 
 _LEADING_FILLER_RE = re.compile(
@@ -2227,7 +2324,27 @@ _LEADING_THERE_RE = re.compile(
     re.IGNORECASE,
 )
 _TRAILING_RELATION_RE = re.compile(
-    r"\s+(?:was|were)\s+(?:increased|decreased|higher|lower|reduced|greater|lesser|less|more|associated)\b.*$",
+    r"\s+(?:was|were)\s+(?:also\s+|significantly\s+|further\s+|not\s+)*"
+    r"(?:increased|decreased|higher|lower|reduced|greater|lesser|less|more|associated)\b.*$",
+    re.IGNORECASE,
+)
+_LEADING_PREPOSITION_RE = re.compile(
+    r"^(?:(?:the|a|an|of|for|in|on|with|by|to|from|and|or)\s+)+",
+    re.IGNORECASE,
+)
+_LEADING_QUANTIFIER_RE = re.compile(
+    r"^(?:(?:the|a|an)\s+)?(?:total\s+)?(?:number|risk|rate|incidence)\s+of\s+(?:the\s+)?",
+    re.IGNORECASE,
+)
+_NOT_AN_OUTCOME_RE = re.compile(
+    r"^(?:irrespective|regardless|independent|baseline|time-varying|time varying|"
+    r"followed by|according to|stratified by|adjusted for)\b",
+    re.IGNORECASE,
+)
+_RESULT_VERB_RE = re.compile(
+    r"\b(?:reduc(?:e|ed|ing)|increas(?:e|ed|ing)|decreas(?:e|ed|ing)|"
+    r"significantly|effective|calculated|reconstructed|compared|"
+    r"was|were|are|is|did|does|had|have|has)\b",
     re.IGNORECASE,
 )
 _TRAILING_COMPARED_RE = re.compile(
@@ -2253,14 +2370,44 @@ def _enclosing_open_paren(sentence: str, index: int):
     return None
 
 
+_DRUG_NAME_RE = re.compile(
+    r"(?i)^(?:arni|bb|mra|sglt2i|sglt2|acei|arb|vericiguat|omecamtiv(?:-mecarbil)?|"
+    r"digoxin|ivabradine|beta-blockers?|placebo|empagliflozin|dapagliflozin|"
+    r"canagliflozin|sotagliflozin|ertugliflozin|sacubitril(?:-valsartan)?|valsartan)$"
+)
+
+
+def _drug_combo_only(clause: str) -> bool:
+    """True when the span is only a treatment list, not an endpoint."""
+    parts = [
+        part.strip(" .")
+        for part in re.split(
+            r"\s*,\s*(?:and\s+|or\s+|plus\s+)?|\s+(?:and|or|plus)\s+",
+            clause or "",
+            flags=re.IGNORECASE,
+        )
+        if part.strip(" .")
+    ]
+    return len(parts) >= 2 and all(_DRUG_NAME_RE.fullmatch(part) for part in parts)
+
+
 def _clean_outcome_clause(clause: str) -> str:
-    clause = _LEADING_FILLER_RE.sub("", clause.strip())
+    clause = _LEADING_FILLER_RE.sub("", (clause or "").strip())
     clause = _LEADING_THERE_RE.sub("", clause.strip())
+    clause = _LEADING_QUANTIFIER_RE.sub("", clause.strip())
+    clause = _LEADING_PREPOSITION_RE.sub("", clause.strip())
     clause = _TRAILING_RELATION_RE.sub("", clause)
     clause = _TRAILING_COMPARED_RE.sub("", clause)
     clause = _TRAILING_GROUP_RE.sub("", clause)
     clause = re.sub(r"\s+", " ", clause).strip(" ,;:")
+    clause = _LEADING_PREPOSITION_RE.sub("", clause).strip(" ,;:")
     if not clause or not re.search(r"[A-Za-z]{3,}", clause) or len(clause) > 90:
+        return ""
+    if _NOT_AN_OUTCOME_RE.search(clause) or _drug_combo_only(clause) or _DRUG_NAME_RE.fullmatch(clause):
+        return ""
+    if re.fullmatch(r"time[-\s]?varying|results?|findings?", clause, re.IGNORECASE):
+        return ""
+    if _RESULT_VERB_RE.search(clause):
         return ""
     if re.fullmatch(
         r"(?:the|a|an|patients?|groups?|hispanics?|non-hispanics?)",
@@ -2274,35 +2421,49 @@ def _clean_outcome_clause(clause: str) -> str:
         "and", "or", "the", "a", "an", "more", "less", "were", "was", "had",
         "to", "of", "in", "for", "by", "on", "their", "they", "them", "this",
         "these", "it", "its", "as", "at", "be", "been", "from", "after", "before",
+        "also", "should", "would", "could", "may", "might", "must", "can",
     }
     if words and all(word.lower() in fillers for word in words):
         return ""
-    return clause
-
-
-def _prefer_local_outcome(local: str, outcome: str) -> bool:
-    """Use the clause next to this effect when a keyword was borrowed or too short."""
-    if not local:
-        return False
     if re.search(
-        r"\d|%|\b(?:respectively|group|treated|patients)\b|\b(?:was|were|had)\b",
-        local,
+        r"\d|%|\b(?:patients?|participants?|subjects?|groups?|respectively|treated)\b",
+        clause,
         re.IGNORECASE,
     ):
-        return False
-    if outcome == _UNNAMED_OUTCOME_TR:
-        return True
-    if outcome.lower() not in local.lower():
-        return True
-    return local.lower().endswith(outcome.lower()) and len(local) > len(outcome) + 1
+        return ""
+    return clause
 
 
 def _local_outcome_phrase(sentence: str, anchor: int) -> str:
     """Noun phrase that governs this effect, copied from the same sentence."""
     paren = _enclosing_open_paren(sentence, anchor)
     prefix = sentence[:paren] if paren is not None else sentence[:anchor]
+    # "(HHF)" before "(RR 0.69" is a gloss, not the end of the noun phrase.
+    prefix = re.sub(r"(?:\s*\([A-Za-z][A-Za-z0-9]{0,11}\))+\s*$", "", prefix)
     cut = max(prefix.rfind(")"), prefix.rfind("."), prefix.rfind(";"))
     return _clean_outcome_clause(prefix[cut + 1:])
+
+
+def _resolve_finding_outcome(
+    sentence: str,
+    anchor: int,
+    name_end: Optional[int] = None,
+    value_start: Optional[int] = None,
+) -> str:
+    """Endpoint name copied from this sentence, or the unnamed label.
+
+    Leading prepositions are stripped. Subgroup, covariate, and treatment-list
+    fragments are not endpoint names; the preceding endpoint in the same
+    sentence is used instead.
+    """
+    local = _local_outcome_phrase(sentence, anchor)
+    if local:
+        return local
+    if name_end is not None and value_start is not None:
+        gap = _clean_outcome_clause(_outcome_from_gap(sentence, name_end, value_start, anchor))
+        if gap:
+            return gap
+    return _keyword_outcome(sentence, anchor) or _UNNAMED_OUTCOME_TR
 
 
 def _p_between(sentence: str, start: int, end: int) -> str:
@@ -2387,8 +2548,26 @@ def _point_before_ci(sentence: str, ci_start: int) -> str:
     return f"{match.group(1)}{percent}"
 
 
-def _pair_effects_with_intervals(effects: List[Dict[str, Any]], intervals: List[Dict[str, Any]]):
-    """Pair each effect with the CI that belongs to it. Do not guess when ambiguous."""
+def _attached_ci_gap(gap: str) -> bool:
+    """True when the text between an estimate and a CI is only CI lead-in."""
+    return bool(re.fullmatch(
+        r"[\s,;:()\[\]%]*(?:95\s*%\s*)?(?:confidence\s+intervals?|CIs?|CI)?[\s,;:()\[\]]*",
+        gap or "",
+        flags=re.IGNORECASE,
+    ))
+
+
+def _pair_effects_with_intervals(
+    effects: List[Dict[str, Any]],
+    intervals: List[Dict[str, Any]],
+    sentence: str = "",
+):
+    """Pair each effect with the CI written next to it.
+
+    A later CI in the same sentence belongs to a later estimate. It is not
+    concatenated onto the first effect, and it is not guessed when words sit
+    between the estimate and the interval.
+    """
     if len(effects) == 1 and len(intervals) == 1:
         return [(effects[0], intervals[0])], []
     used = set()
@@ -2403,11 +2582,17 @@ def _pair_effects_with_intervals(effects: List[Dict[str, Any]], intervals: List[
         if len(candidates) == 1:
             used.add(id(candidates[0]))
             pairs.append((effect, candidates[0]))
-        elif len(candidates) == 0:
+        elif not candidates:
             pairs.append((effect, None))
         else:
-            pairs.append((effect, None))
-            ambiguous_notes.append(", ".join(item["text"] for item in candidates))
+            first = min(candidates, key=lambda item: item["start"])
+            gap = sentence[effect["value_end"]:first["start"]] if sentence else ""
+            if _attached_ci_gap(gap):
+                used.add(id(first))
+                pairs.append((effect, first))
+            else:
+                pairs.append((effect, None))
+                ambiguous_notes.append(", ".join(item["text"] for item in candidates))
     return pairs, ambiguous_notes
 
 
@@ -2433,15 +2618,15 @@ def extract_grounded_clinical_findings(abstract: str) -> List[Dict[str, str]]:
         effects = _collect_named_effects(sentence)
         intervals = _collect_confidence_intervals(sentence)
         if effects:
-            pairs, ambiguous = _pair_effects_with_intervals(effects, intervals)
+            pairs, ambiguous = _pair_effects_with_intervals(effects, intervals, sentence)
             ambiguous_text = "; ".join(note for note in ambiguous if note)
             for index, (effect, interval) in enumerate(pairs):
-                outcome = _outcome_from_gap(
-                    sentence, effect["name_end"], effect["value_start"], effect["name_start"]
+                outcome = _resolve_finding_outcome(
+                    sentence,
+                    effect["name_start"],
+                    effect["name_end"],
+                    effect["value_start"],
                 )
-                local = _local_outcome_phrase(sentence, effect["name_start"])
-                if _prefer_local_outcome(local, outcome):
-                    outcome = local
                 if interval is not None:
                     ci_text = interval["text"]
                 elif ambiguous_text:
@@ -2462,9 +2647,7 @@ def extract_grounded_clinical_findings(abstract: str) -> List[Dict[str, str]]:
             p_matches = list(_P_VALUE_RE.finditer(sentence))
             if p_matches and _sentence_has_clinical_result(sentence):
                 for match in p_matches:
-                    outcome = _local_outcome_phrase(sentence, match.start()) or _keyword_outcome(
-                        sentence, match.start()
-                    ) or _UNNAMED_OUTCOME_TR
+                    outcome = _resolve_finding_outcome(sentence, match.start())
                     findings.append({
                         "outcome": outcome,
                         "effect": f"p {match.group(1)} {match.group(2)}",
@@ -2479,7 +2662,7 @@ def extract_grounded_clinical_findings(abstract: str) -> List[Dict[str, str]]:
                 effect = f"{_UNNAMED_EFFECT_TR}; kaynak değer: {point}"
             else:
                 effect = _UNNAMED_EFFECT_TR
-            outcome = _keyword_outcome(sentence, interval["start"]) or _UNNAMED_OUTCOME_TR
+            outcome = _resolve_finding_outcome(sentence, interval["start"])
             findings.append({
                 "outcome": outcome,
                 "effect": effect,
@@ -3045,20 +3228,29 @@ def _profile_from_sentence(sentence: str) -> List[Dict[str, str]]:
 
     sample_bits = []
     patient_counts = list(re.finditer(
-        r"\b([A-Za-z]+(?:-[A-Za-z]+)?|\d[\d,]*)(?:\s+[A-Za-z\-]+){0,3}?\s+patients\b",
+        rf"\b(?P<count>{_COUNT_NUMBER_RE}|[A-Za-z]+(?:-[A-Za-z]+)?)"
+        r"(?:\s+[A-Za-z\-]+){0,3}?\s+"
+        r"(?P<noun>patients|participants|subjects|individuals)\b",
         sentence,
         re.IGNORECASE,
     ))
     for index, match in enumerate(patient_counts):
-        count = _parse_count_token(match.group(1))
+        count = _normalize_count(match.group("count")) or _parse_count_token(match.group("count"))
         if not count:
             continue
+        noun = match.group("noun")
         between = re.sub(
-            r"\s+patients$",
+            rf"\s+{re.escape(noun)}$",
             "",
-            match.group(0)[len(match.group(1)):],
+            match.group(0)[len(match.group("count")):],
             flags=re.IGNORECASE,
         ).strip()
+        preceded = sentence[max(0, match.start() - 48):match.start()]
+        if re.search(r"\b(?:exclud\w*|at least|≥|>=)\b", preceded, re.IGNORECASE):
+            continue
+        followed = sentence[match.end():match.end() + 40]
+        if re.search(r"\b(?:each|per)\s+group\b", followed, re.IGNORECASE):
+            continue
         # "type 2 biomarkers of patients" is not a sample of 2. Demographic
         # words between the count and "patients" stay.
         if between and re.search(
@@ -3085,16 +3277,17 @@ def _profile_from_sentence(sentence: str) -> List[Dict[str, str]]:
         if re.search(r"history of statin", window, re.IGNORECASE):
             gloss += " statin öykülü"
         # Extract demographic/ethnicity modifier before 'patients' dynamically via localize_clinical_display
-        inner_m = re.match(r"^(\S+)\s+(.*?)\s*patients$", match.group(0).strip(), re.IGNORECASE)
-        if inner_m and inner_m.group(2):
-            pre_words = inner_m.group(2).strip()
-            localized_pre = localize_clinical_display(pre_words, drop_unknown=False)
-            if localized_pre and localized_pre.lower() not in gloss.lower():
+        if between:
+            localized_pre = localize_clinical_display(between, drop_unknown=True)
+            if localized_pre and localized_pre.lower() not in gloss.lower() and not has_mixed_clinical_language(localized_pre):
                 gloss += f" {localized_pre}"
-        sample_bits.append(f"{count} hasta{gloss}")
-    n_eq = re.search(r"\bn\s*=\s*(\d[\d,]*)", sentence, re.IGNORECASE)
+        person = "katılımcı" if noun.lower() in {"participants", "subjects", "individuals"} else "hasta"
+        sample_bits.append(f"{count} {person}{gloss}")
+    n_eq = re.search(rf"\bn\s*=\s*({_COUNT_NUMBER_RE})", sentence, re.IGNORECASE)
     if n_eq and not sample_bits:
-        sample_bits.append(f"n = {n_eq.group(1).replace(',', '')}")
+        n_digits = _normalize_count(n_eq.group(1))
+        if n_digits:
+            sample_bits.append(f"n = {n_digits}")
     women = re.search(r"\b([A-Za-z]+|\d+)\s+women\b", sentence, re.IGNORECASE)
     men = re.search(r"\b([A-Za-z]+|\d+)\s+men\b", sentence, re.IGNORECASE)
     if women and men:
@@ -3111,7 +3304,11 @@ def _profile_from_sentence(sentence: str) -> List[Dict[str, str]]:
         sample_bits.append(f"ortanca yaş {age.group(1)} (aralık {age.group(2)}-{age.group(3)})")
     else:
         year_old = re.search(r"\b(\d{1,3})-year-old\b", sentence, re.IGNORECASE)
-        if year_old and (
+        hypothetical_age = bool(year_old and (
+            re.search(r"\blife[-\s]?years?\b|\bestimated\b|\bhypothetical\b", sentence, re.IGNORECASE)
+            or re.search(r"\bfor\s+an?\s+$", sentence[:year_old.start()], re.IGNORECASE)
+        ))
+        if year_old and not hypothetical_age and (
             _OWN_PATIENT_VOICE_RE.search(sentence)
             or _YEAR_OLD_CASE_RE.search(sentence)
             or re.search(r"\b(?:woman|man|female|male|she|he)\b", sentence, re.IGNORECASE)
@@ -3345,10 +3542,11 @@ def format_klinik_bulgular_cell(article: Dict[str, Any]) -> str:
         _add(item["sentence"], "profile", item["line"])
     for item in findings:
         p_bit = f" p değeri: {item['p']}." if item.get("p") else ""
+        outcome_label = _display_outcome_name(item.get("outcome") or "")
         _add(
             item["sentence"],
             "effects",
-            f"Sonlanım: {item['outcome']}. Etki ölçütü: {item['effect']}. "
+            f"Sonlanım: {outcome_label}. Etki ölçütü: {item['effect']}. "
             f"Güven aralığı: {item['ci']}.{p_bit}",
         )
 
@@ -3891,6 +4089,87 @@ def _cell(text: str, limit: int = 360) -> str:
     return cleaned or "özette bildirilmedi"
 
 
+def _split_depth_zero(text: str, sep: str = ";") -> List[str]:
+    """Split on sep only outside parentheses and brackets."""
+    parts = []
+    buf = []
+    round_depth = 0
+    square_depth = 0
+    for char in text or "":
+        if char == "(":
+            round_depth += 1
+        elif char == ")" and round_depth:
+            round_depth -= 1
+        elif char == "[":
+            square_depth += 1
+        elif char == "]" and square_depth:
+            square_depth -= 1
+        if char == sep and round_depth == 0 and square_depth == 0:
+            piece = "".join(buf).strip()
+            if piece:
+                parts.append(piece)
+            buf = []
+            continue
+        buf.append(char)
+    tail = "".join(buf).strip()
+    if tail:
+        parts.append(tail)
+    return parts
+
+
+def _findings_cell(text: str, limit: int = 1600) -> str:
+    """Comparison findings. Never cut inside a number, CI, or parenthesis.
+
+    When the cell is longer than ``limit``, whole findings are dropped from the
+    end. The ellipsis, if any, follows a complete finding.
+    """
+    cleaned = re.sub(r"\s+", " ", (text or "").replace("|", "/").replace("\n", " ")).strip()
+    if not cleaned:
+        return "özette bildirilmedi"
+    if len(cleaned) <= limit:
+        return cleaned
+    parts = _split_depth_zero(cleaned)
+    kept = []
+    total = 0
+    for part in parts:
+        extra = len(part) + (2 if kept else 0)
+        if kept and total + extra > limit:
+            break
+        kept.append(part)
+        total += extra
+    if not kept:
+        return parts[0]
+    clipped = "; ".join(kept)
+    if len(kept) < len(parts):
+        return clipped + "…"
+    return clipped
+
+
+def _population_display_rejected(text: str) -> bool:
+    """Modal fragments and half-translated mixes are not a patient group."""
+    raw = (text or "").strip()
+    if not raw or raw in ("Belirtilmedi", "Özette bildirilmedi", "özette bildirilmedi", "değerlendirilemedi"):
+        return False
+    if _MODAL_FRAGMENT_RE.search(raw):
+        return True
+    if has_mixed_clinical_language(raw):
+        return True
+    tokens = re.findall(r"[A-Za-zÇĞİÖŞÜçğıöşüıİ0-9-]+", raw)
+
+    def _abbrev_token(token: str) -> bool:
+        if token.isdigit() or re.search(r"[çğıöşüÇĞİÖŞÜıİ]", token):
+            return False
+        if token.isupper() and 2 <= len(token) <= 8:
+            return True
+        uppers = sum(1 for char in token if char.isupper())
+        return uppers >= 2 and len(token) <= 8
+
+    # "HFrEF" alone is not a sample. A Turkish phrase is not an acronym.
+    if tokens and all(_abbrev_token(token) for token in tokens):
+        return True
+    return False
+
+
 def _stated_enrollment(abstract: str):
     """Return (count, source sentence) for the study's own included sample."""
     if not abstract:
@@ -4062,11 +4341,16 @@ def _sample_comparison_cell(profile: List[Dict[str, str]]) -> str:
         if not body or key in seen:
             continue
         seen.add(key)
+        if _population_display_rejected(body):
+            continue
         bits.append(body)
     if not bits:
         return "özette bildirilmedi"
     # The column header already says "Hasta grubu"; the prefix is not repeated.
-    return "; ".join(bits)
+    cell = "; ".join(bits)
+    if _population_display_rejected(cell):
+        return "özette bildirilmedi"
+    return cell
 
 
 def _intervention_comparison_cell(profile: List[Dict[str, str]]) -> str:
@@ -4142,15 +4426,9 @@ def _format_cross_study_comparison(articles: List[Dict[str, Any]], pico: Optiona
         if not finding_bits:
             finding_bits.append(INSUFFICIENT_CLINICAL_DATA_TR)
         details = extract_article_clinical_details(art, "")
+        # Hasta grubu comes only from a counted sample or a real case age.
+        # A disease fragment, a modal tail, or a half-translated mix stays unstated.
         sample_cell = _sample_comparison_cell(profile)
-        if sample_cell == "özette bildirilmedi" and details.get("patient_group") and details["patient_group"] not in ("Belirtilmedi", "değerlendirilemedi"):
-            # If details found a grounded patient group (and n) from an abstract sentence, use it
-            prov = (details.get("provenance") or {}).get("population") or {}
-            if prov.get("source_sentence") and not _background_sentence(prov["source_sentence"]):
-                if details.get("sample_size") and details["sample_size"] not in ("Özette bildirilmedi", "değerlendirilemedi"):
-                    sample_cell = f"{details['sample_size']}, {details['patient_group']}"
-                else:
-                    sample_cell = details["patient_group"]
 
         lines.append(
             "| {pmid} | {patient} | {design} | {intervention} | {findings} | {limit} |".format(
@@ -4158,7 +4436,7 @@ def _format_cross_study_comparison(articles: List[Dict[str, Any]], pico: Optiona
                 patient=_cell(sample_cell, limit=500),
                 design=_cell(details.get("study_design") or design["design"]),
                 intervention=_cell(_intervention_comparison_cell(profile), limit=500),
-                findings=_cell("; ".join(finding_bits)),
+                findings=_findings_cell("; ".join(finding_bits)),
                 limit=_cell(format_methodological_limitation(art), limit=900),
             )
         )
