@@ -116,7 +116,7 @@ st.markdown("""
 
 
 def main():
-    st.markdown('<div class="main-header">🩺 Medical Research AI - Evrensel Klinik Kanıt Motoru</div>', unsafe_allow_html=True)
+    st.markdown('<div class="main-header">🩺 Medical Research AI - PubMed Tabanlı Araştırma Prototipi</div>', unsafe_allow_html=True)
     st.markdown('<div class="sub-header">PubMed tabanlı ön tarama, kaynak eşleşme kontrolü, yapılandırılmış kanıt tablosu ve Türkçe araştırma sentezi</div>', unsafe_allow_html=True)
 
     # Sidebar Configuration
@@ -127,14 +127,23 @@ def main():
         "OpenAI API Key (Opsiyonel)",
         value=openai_api_key_env,
         type="password",
-        help="LLM destekli rapor sentezi için API anahtarı. Girilmezse kural tabanlı deterministik evrensel kanıt motoru çalışır."
+        help="LLM destekli rapor sentezi için API anahtarı. Girilmezse yerel kural tabanlı ön rapor üretilir."
     )
 
     use_llm_synth = st.sidebar.checkbox(
         "OpenAI Sentez Motorunu Kullan",
-        value=bool(openai_api_key),
+        value=False,
         help="İşaretlenirse sorgunuz, makale başlıkları ve PubMed özetleri seçtiğiniz OpenAI modeline gönderilir. Tanımlanabilir hasta bilgisi girmeyin."
     )
+    llm_data_transfer_confirmed = False
+    if use_llm_synth:
+        st.sidebar.warning("LLM veri aktarımı: sorgu ve PubMed makale bilgileri/özetleri OpenAI'ye gönderilir. Hasta kimliği veya gizli sağlık verisi eklemeyin.")
+        llm_data_transfer_confirmed = st.sidebar.checkbox(
+            "Sorgu ve kaynakların hasta kimliği/gizli sağlık verisi içermediğini ve OpenAI'ye gönderilmesini onaylıyorum.",
+            value=False,
+        )
+        if not llm_data_transfer_confirmed:
+            st.sidebar.info("Açık onay verilmezse rapor yalnızca yerel kural tabanlı yöntemle oluşturulur.")
 
     llm_model = st.sidebar.selectbox(
         "Model Seçimi",
@@ -149,9 +158,6 @@ def main():
         "Kaynak kontrolü PMID ile mevcut başlık/DOI alanlarını PubMed'de yeniden eşleştirir; eksik alanları doğrulanmış saymaz. "
         "Özet sentezi klinik doğrulama veya resmi GRADE değerlendirmesi değildir."
     )
-    if use_llm_synth:
-        st.sidebar.warning("LLM veri aktarımı: sorgu ve PubMed makale bilgileri/özetleri OpenAI'ye gönderilir. Hasta kimliği veya özel sağlık verisi eklemeyin.")
-
     # Canlı Streamlit Sürüm ve Commit Doğrulama Bilgisi
     import subprocess
     app_version = "v1.4.1"
@@ -267,12 +273,13 @@ def main():
                                     f"{om.get('source_sentence') or 'değerlendirilemedi'} (PMID: {om.get('pmid') or art.get('pmid') or 'yok'})"
                                 )
 
-                        badges_html = []
+                        badges_text = []
                         if art.get('pmid'):
-                            badges_html.append(f'<span class="badge-pmid">PMID: {art["pmid"]}</span>')
+                            badges_text.append(f'PMID: {art["pmid"]}')
                         if art.get('doi'):
-                            badges_html.append(f'<span class="badge-doi">DOI: {art["doi"]}</span>')
-                        st.markdown(" ".join(badges_html), unsafe_allow_html=True)
+                            badges_text.append(f'DOI: {art["doi"]}')
+                        if badges_text:
+                            st.text(" | ".join(badges_text))
 
                         st.markdown("**Özet (Abstract):**")
                         st.text_area("Makale Özeti (Abstract)", art['abstract'], height=150, key=f"abs_{idx}")
@@ -380,7 +387,7 @@ def main():
                 st.session_state.pop("generated_report", None)
                 st.session_state.pop("generated_html_report", None)
                 st.session_state.pop("generated_cross_comp", None)
-                with st.spinner("Evrensel Kanıt Motoru klinik kanıt raporunu, Red Team denetimini ve tabloları hazırlıyor..."):
+                with st.spinner("PubMed tabanlı ön rapor, kural tabanlı denetim ve tablolar hazırlanıyor..."):
                     search_meta = {
                         "search_date": st.session_state["search_results"].get("search_date"),
                         "query": query
@@ -388,7 +395,8 @@ def main():
                     engine = UniversalEvidenceEngine(
                         api_key=openai_api_key if use_llm_synth else None,
                         use_llm=use_llm_synth,
-                        model=llm_model
+                        model=llm_model,
+                        allow_external_data_transfer=llm_data_transfer_confirmed,
                     )
                     synth_res = engine.generate_synthesis_report(
                         query=query,

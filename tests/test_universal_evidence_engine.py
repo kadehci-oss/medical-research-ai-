@@ -411,12 +411,26 @@ class TestUniversalEvidenceEngine(unittest.TestCase):
     # --- 8. Safe Fallback and Error Handling Tests ---
     @patch("universal_evidence_engine.pubmed_client.search_pubmed")
     def test_search_and_verify_api_failure_handling(self, mock_search):
-        mock_search.side_effect = Exception("NCBI E-utilities connection timeout")
+        mock_search.side_effect = Exception("authorization=sentinel-secret")
 
-        res = run_universal_evidence_search("heart failure")
+        with self.assertLogs("universal_evidence_engine", level="ERROR") as captured:
+            res = run_universal_evidence_search("heart failure")
         self.assertEqual(res["status"], "error")
-        self.assertIn("NCBI E-utilities connection timeout", res["error"])
+        self.assertEqual(res["error"], "PubMed araması sırasında geçici bir hata oluştu.")
+        self.assertNotIn("sentinel-secret", " ".join(captured.output))
+        self.assertNotIn("sentinel-secret", res["error"])
         self.assertEqual(res["articles"], [])
+
+    @patch("universal_evidence_engine.report_generator.perform_red_team_audit")
+    def test_synthesis_masks_exception_details_from_payloads_and_logs(self, mock_audit):
+        mock_audit.side_effect = Exception("api_key=sentinel-secret")
+        with self.assertLogs("universal_evidence_engine", level="ERROR") as captured:
+            res = self.engine.generate_synthesis_report("diabetes", CARDIOLOGY_ARTICLES)
+        self.assertEqual(res["status"], "error")
+        rendered = " ".join((res["error"], res["report_markdown"], res["report_html"]))
+        self.assertNotIn("sentinel-secret", rendered)
+        self.assertNotIn("sentinel-secret", " ".join(captured.output))
+        self.assertIn("beklenmeyen bir hata", res["error"])
 
     @patch("universal_evidence_engine.pubmed_client.search_pubmed")
     def test_efficacy_search_promotes_trials_without_dropping_primary_hits(self, mock_search):

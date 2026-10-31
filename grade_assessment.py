@@ -14,8 +14,8 @@ _LEVEL_BY_SCORE = {4: "Yüksek", 3: "Orta", 2: "Düşük", 1: "Çok düşük"}
 _NOT_ASSESSABLE = "değerlendirilemedi"
 
 DISCLAIMER = (
-    "Bu bir ön, özet-temelli ve kural tabanlı kesinlik tahminidir. "
-    "Resmi GRADE değerlendirmesi değildir ve uzman hekim onayı gerektirir. "
+    "Bu çıktı GRADE değerlendirmesi veya kanıt kesinliği derecelendirmesi değildir; yalnızca özette görünen sınırlı metin sinyallerini kural tabanlı biçimde listeler. "
+    "Kanıt bütünü ve her önemli sonlanım için tam değerlendirme uzman incelemesi ve uzman hekim onayı gerektirir. "
     "Özette verisi olmayan alanlar 'değerlendirilemedi' bırakılmıştır; "
     "bu alanlar kesinlik düzeyini yükseltmek veya düşürmek için kullanılmamıştır."
 )
@@ -41,7 +41,8 @@ _HETEROGENEITY_HIGH_RE = re.compile(
     re.IGNORECASE,
 )
 _HETEROGENEITY_LOW_RE = re.compile(
-    r"\b(low heterogeneity|no significant heterogeneity|homogeneous results|"
+    r"\b(low heterogeneity|no significant heterogeneity|no substantial heterogeneity|"
+    r"no heterogeneity|homogeneous results|"
     r"heterojenite dusuk)\b",
     re.IGNORECASE,
 )
@@ -51,7 +52,8 @@ _PUB_BIAS_DOWN_RE = re.compile(
     re.IGNORECASE,
 )
 _PUB_BIAS_OK_RE = re.compile(
-    r"\b(no publication bias|funnel plot (?:was )?symmetric|symmetric funnel)\b",
+    r"\b(no (?:evidence of )?publication bias|no (?:evidence of )?funnel plot asymmetry|"
+    r"funnel plot (?:was )?symmetric|symmetric funnel)\b",
     re.IGNORECASE,
 )
 _CI_PAIR_RE = re.compile(
@@ -60,6 +62,35 @@ _CI_PAIR_RE = re.compile(
 )
 _CHILD_RE = re.compile(r"\b(child|children|pediatric|paediatric|infant|cocuk|yenidogan)\b", re.IGNORECASE)
 _ADULT_RE = re.compile(r"\b(adult|adults|elderly|eriskin|yetiskin)\b", re.IGNORECASE)
+_NEGATION_PREFIX_RE = re.compile(
+    r"\b(?:no|not|without|neither|absence of|lack of|did not|does not|do not|"
+    r"was not|were not|is not|are not|has not|have not|had not|never)\b"
+    r"(?:\s+[\w'-]+){0,6}\s*$",
+    re.IGNORECASE,
+)
+_NEGATION_SUFFIX_RE = re.compile(
+    r"^\s+(?:(?:was|were|is|are|has been|have been|had been)\s+)?"
+    r"(?:not\s+(?:observed|detected|found|reported|identified|present|associated)|"
+    r"absent|ruled out|excluded)\b",
+    re.IGNORECASE,
+)
+
+
+def _is_negated_match(text: str, match: re.Match) -> bool:
+    """Avoid treating a negated phrase as positive evidence for a domain."""
+    before = text[max(0, match.start() - 100):match.start()]
+    before = re.split(r"[.!?;:]\s*", before)[-1]
+    if _NEGATION_PREFIX_RE.search(before):
+        return True
+    after = text[match.end():match.end() + 60]
+    return bool(_NEGATION_SUFFIX_RE.match(after))
+
+
+def _first_unnegated_match(pattern: re.Pattern, text: str) -> Optional[re.Match]:
+    for match in pattern.finditer(text or ""):
+        if not _is_negated_match(text or "", match):
+            return match
+    return None
 
 
 def _domain(status: str, reason: str) -> Dict[str, str]:
@@ -111,10 +142,11 @@ def _design_start(design_name: str, abstract: str) -> Dict[str, Any]:
 
 
 def _risk_of_bias(abstract: str) -> Dict[str, str]:
-    match = _ROB_DOWNGRADE_RE.search(abstract or "")
+    text = abstract or ""
+    match = _first_unnegated_match(_ROB_DOWNGRADE_RE, text)
     if match:
         return _domain("ciddi düşürme", f"Özette yanlılık ifadesi var: '{match.group(0)}'.")
-    if _ROB_OK_RE.search(abstract or ""):
+    if _first_unnegated_match(_ROB_OK_RE, text):
         return _domain("düşürme yok", "Özet düşük yanlılık riski veya çift-kör tasarım belirtiyor. Tam metin RoB 2 uygulanmadı.")
     return _domain(_NOT_ASSESSABLE, "Özet, RoB 2 veya ROBINS-I için yeterli yöntem ayrıntısı vermiyor.")
 
@@ -126,13 +158,18 @@ def _inconsistency(design_name: str, abstract: str) -> Dict[str, str]:
     i2_match = _I2_RE.search(abstract or "")
     if i2_match:
         i2_value = float(i2_match.group(1))
+        if i2_value > 100:
+            return _domain(_NOT_ASSESSABLE, f"Özette bildirilen I² = {i2_match.group(1)}; 0–100 aralığı dışında olduğu için yorumlanmadı.")
         if i2_value >= 50:
             return _domain("ciddi düşürme", f"Özette bildirilen I² = {i2_match.group(1)} (≥50 kural eşiği).")
         return _domain("düşürme yok", f"Özette bildirilen I² = {i2_match.group(1)} (<50).")
-    if _HETEROGENEITY_HIGH_RE.search(abstract or ""):
+    text = abstract or ""
+    if _first_unnegated_match(_HETEROGENEITY_HIGH_RE, text):
         return _domain("ciddi düşürme", "Özet belirgin heterojenite tarif ediyor.")
-    if _HETEROGENEITY_LOW_RE.search(abstract or ""):
-        return _domain("düşürme yok", "Özet heterojenitenin düşük olduğunu belirtiyor.")
+    if _first_unnegated_match(_HETEROGENEITY_LOW_RE, text):
+        return _domain("düşürme yok", "Özet düşük veya belirgin olmayan heterojeniteyi kural tabanlı biçimde bildiriyor.")
+    if _HETEROGENEITY_HIGH_RE.search(text):
+        return _domain(_NOT_ASSESSABLE, "Heterojenite ifadesi olumsuzlanmış; açık olumlu kanıt olmadan düşürme veya düşük heterojenite çıkarımı yapılmadı.")
     return _domain(_NOT_ASSESSABLE, "Özette I² veya heterojenite ifadesi yok.")
 
 
@@ -150,7 +187,7 @@ def _parsed_ci_bounds(ci_strings: List[str]) -> Optional[tuple]:
 
 
 def _imprecision(abstract: str, metrics: Dict[str, Any]) -> Dict[str, str]:
-    match = _IMPRECISION_RE.search(abstract or "")
+    match = _first_unnegated_match(_IMPRECISION_RE, abstract or "")
     if match:
         return _domain("ciddi düşürme", f"Özet imprecision belirtiyor: '{match.group(0)}'.")
     bounds = _parsed_ci_bounds(metrics.get("confidence_intervals") or [])
@@ -196,9 +233,10 @@ def _publication_bias(design_name: str, abstract: str) -> Dict[str, str]:
     is_synthesis = "Sistematik Derleme" in design_name or "Meta-Analiz" in design_name
     if not is_synthesis:
         return _domain(_NOT_ASSESSABLE, "Tek çalışmada yayın yanlılığı hunisi özette değerlendirilemez.")
-    if _PUB_BIAS_DOWN_RE.search(abstract or "") and not _PUB_BIAS_OK_RE.search(abstract or ""):
+    text = abstract or ""
+    if _first_unnegated_match(_PUB_BIAS_DOWN_RE, text):
         return _domain("ciddi düşürme", "Özet yayın yanlılığı veya asimetrik huni grafiği belirtiyor.")
-    if _PUB_BIAS_OK_RE.search(abstract or ""):
+    if _first_unnegated_match(_PUB_BIAS_OK_RE, text):
         return _domain("düşürme yok", "Özet yayın yanlılığı lehine bir işaret bildirmediğini söylüyor.")
     return _domain(_NOT_ASSESSABLE, "Özette huni grafiği veya yayın yanlılığı ifadesi yok.")
 
@@ -310,20 +348,12 @@ def assess_preliminary_grade(article: Dict[str, Any], query: str = "") -> Dict[s
     if not raw_outcomes:
         raw_outcomes = [{"outcome": "", "metrics": [], "sentence": ""}]
     outcome_notes = [_grade_one_outcome(article, query, design_name, starting, item) for item in raw_outcomes]
-    identified = [item for item in outcome_notes if item["identified"]]
-    levels = {item["preliminary_level"] for item in identified}
-    if not identified:
-        preliminary_level = _NOT_ASSESSABLE
-        applied_downgrades = 0
-        ceiling_reason = "Adlandırılmış sonlanım olmadığı için kesinlik düzeyi üretilmedi."
-    elif len(levels) == 1:
-        preliminary_level = identified[0]["preliminary_level"]
-        applied_downgrades = max(item["applied_downgrades"] for item in identified)
-        ceiling_reason = "Ön kesinlik, adlandırılmış sonlanım cümlelerinden üretildi. Resmi GRADE değildir."
-    else:
-        preliminary_level = _NOT_ASSESSABLE
-        applied_downgrades = 0
-        ceiling_reason = "Sonlanımların ön kesinlik düzeyleri aynı değil; tek düzey üretilmedi."
+    preliminary_level = _NOT_ASSESSABLE
+    applied_downgrades = 0
+    ceiling_reason = (
+        "Tek bir makale özeti kanıt bütünü GRADE değerlendirmesi değildir. "
+        "Sonlanım cümlelerindeki otomatik sinyaller ayrı tutulmuş ve çalışmalar arasında birleştirilmemiştir."
+    )
     return {
         "pmid": article.get("pmid") or "",
         "design": design_name,
@@ -340,11 +370,11 @@ def assess_preliminary_grade(article: Dict[str, Any], query: str = "") -> Dict[s
 
 
 def format_preliminary_grade_markdown(query: str, articles: List[Dict[str, Any]]) -> str:
-    """Turkish markdown block for section 11. Formal GRADE stays Not Assessed."""
+    """Show abstract-level text signals without presenting a single-study GRADE rating."""
     lines = [
-        "### Ön GRADE-tarzı kesinlik tahmini (özet, kural tabanlı)",
+        "### Otomatik özet sinyalleri (GRADE değerlendirmesi değildir)",
         f"- {DISCLAIMER}",
-        "- **Resmi GRADE:** GRADE Değerlendirilmedi (Not Assessed).",
+        "- **Kanıt bütünü için resmi GRADE:** GRADE Değerlendirilmedi (Not Assessed). Tek makale özetiyle outcome düzeyinde toplam kesinlik derecelendirilmez.",
     ]
     if not articles:
         lines.append("- Değerlendirilecek makale yok.")
@@ -361,7 +391,7 @@ def format_preliminary_grade_markdown(query: str, articles: List[Dict[str, Any]]
         }
         lines.append(
             f"- **PMID {pmid}** ({note['design'] or 'tasarım belirsiz'}). "
-            f"Makale için tek kesinlik düzeyi: {note['preliminary_level']}. {note['ceiling_reason']}"
+            f"Bu kayıttan toplam kesinlik düzeyi üretilmedi. {note['ceiling_reason']}"
         )
         for outcome in note.get("outcomes") or []:
             bits = []
@@ -371,7 +401,7 @@ def format_preliminary_grade_markdown(query: str, articles: List[Dict[str, Any]]
             sentence = outcome.get("source_sentence") or ""
             sentence_bit = f" Kaynak cümle: \"{sentence}\"." if sentence else " Kaynak cümle: değerlendirilemedi."
             lines.append(
-                f"  - Sonlanım: {outcome['outcome']}; ön kesinlik: {outcome['preliminary_level']}; "
+                f"  - Sonlanım: {outcome['outcome']}; otomatik metin sinyalleri (GRADE değildir): "
                 + "; ".join(bits)
                 + f".{sentence_bit} (PMID: {pmid})"
             )

@@ -19,6 +19,13 @@ def build_eutils_params(params):
     merged.update(eutils_identity_params())
     return merged
 
+def safe_error_summary(exc):
+    """Keep exception text out of artifacts because request URLs may contain an API key."""
+    return {
+        'error_type': type(exc).__name__,
+        'error': 'Live NCBI validation failed; exception details are withheld to avoid exposing request credentials.',
+    }
+
 def get(session,path,params):
     request_params = build_eutils_params(params)
     headers = ncbi_request_headers()
@@ -59,7 +66,7 @@ def run():
             time.sleep(.4)
         report['outcome']='PASS'
     except Exception as exc:
-        report['checks'].append({'test':'live_ncbi','status':'FAIL','error':type(exc).__name__+': '+str(exc)})
+        report['checks'].append({'test':'live_ncbi','status':'FAIL',**safe_error_summary(exc)})
     Path('ncbi_live_results.json').write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding='utf-8')
     print(json.dumps(report,ensure_ascii=False,indent=2))
     return 0 if report['outcome']=='PASS' else 1
