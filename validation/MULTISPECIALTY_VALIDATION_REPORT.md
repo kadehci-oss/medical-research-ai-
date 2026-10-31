@@ -13,9 +13,9 @@ sonra düzeltildi; bu yüzden ayrılmış kümenin güncel sonucu artık bağım
 
 | Ölçüt | Geliştirme kümesi (ayarlı) | **Ayrılmış küme, ilk çalıştırma (bağımsız)** | Ayrılmış küme, düzeltme sonrası (bağımsız değil) |
 |---|---|---|---|
-| Eksiksiz çıkarım oranı | %100.0 (153/153) | **%77.9 (53/68)** | %100.0 (68/68) |
-| Yanlış çıkarım oranı | %0.0 (0/153) | **%8.6 (5/58)** | %0.0 (0/68) |
-| Kaynak eşleşme doğruluğu (cümle) | %100.0 (179/179) | **%100.0 (62/62)** | %100.0 (84/84) |
+| Eksiksiz çıkarım oranı | %98.7 (151/153) | **%77.9 (53/68)** | %100.0 (68/68) |
+| Yanlış çıkarım oranı | %0.0 (0/151) | **%8.6 (5/58)** | %0.0 (0/68) |
+| Kaynak eşleşme doğruluğu (cümle) | %100.0 (175/175) | **%100.0 (62/62)** | %100.0 (82/82) |
 | Kaynak eşleşme doğruluğu (sayısal değer) | %100.0 (129/129) | **%100.0 (52/52)** | %100.0 (57/57) |
 | Yanlış nedensellik iddiası | 0 | **0** | 0 |
 | Soru çerçevesi seçimi | 18/18 | **9/10** | 10/10 |
@@ -57,9 +57,9 @@ sonra düzeltildi; bu yüzden ayrılmış kümenin güncel sonucu artık bağım
 
 | Ölçüt | Değer |
 |---|---|
-| Eksiksiz çıkarım oranı | %100.0 (153/153) |
-| Yanlış çıkarım oranı | %0.0 (0/153) |
-| Kaynak eşleşme doğruluğu (cümle) | %100.0 (179/179) |
+| Eksiksiz çıkarım oranı | %98.7 (151/153) |
+| Yanlış çıkarım oranı | %0.0 (0/151) |
+| Kaynak eşleşme doğruluğu (cümle) | %100.0 (175/175) |
 | Kaynak eşleşme doğruluğu (sayısal değer) | %100.0 (129/129) |
 | Yanlış nedensellik iddiası | 0 |
 | Örneklem yerine olay/kol sayısı | 0 |
@@ -78,7 +78,7 @@ sonra düzeltildi; bu yüzden ayrılmış kümenin güncel sonucu artık bağım
 | Kardiyoloji | 5 | Meta-analiz, RCT, Sistematik derleme | %100.0 (30/30) | %0.0 (0/30) |
 | Nöroloji | 5 | Kohort, Meta-analiz, Protokol (sonuç yok), RCT | %100.0 (21/21) | %0.0 (0/21) |
 | Onkoloji | 6 | Olgu serisi, RCT, Vaka-kontrol | %100.0 (25/25) | %0.0 (0/25) |
-| Pediatri | 3 | Kohort, RCT | %100.0 (15/15) | %0.0 (0/15) |
+| Pediatri | 3 | Kohort, RCT | %86.7 (13/15) | %0.0 (0/13) |
 | Radyoloji | 3 | Meta-analiz, Tanısal doğruluk | %100.0 (15/15) | %0.0 (0/15) |
 
 ### Araştırma türüne göre
@@ -92,7 +92,7 @@ sonra düzeltildi; bu yüzden ayrılmış kümenin güncel sonucu artık bağım
 | Mektup (özet yok) | 1 | %100.0 (3/3) | %0.0 (0/3) |
 | Meta-analiz | 6 | %100.0 (32/32) | %0.0 (0/32) |
 | Protokol (sonuç yok) | 1 | %100.0 (1/1) | %0.0 (0/1) |
-| RCT | 10 | %100.0 (66/66) | %0.0 (0/66) |
+| RCT | 10 | %97.0 (64/66) | %0.0 (0/64) |
 | Sistematik derleme | 1 | %100.0 (5/5) | %0.0 (0/5) |
 
 ### Çalışma ilişkileri (mükerrer kanıt kontrolü)
@@ -107,14 +107,14 @@ sonra düzeltildi; bu yüzden ayrılmış kümenin güncel sonucu artık bağım
 
 | Branş | Durum | Alıntı kontrolü | Kümede olmayan PMID | RoB/GRADE derece iddiası |
 |---|---|---|---|---|
-| Kardiyoloji | Doğrulandı | 83/83 | 0 | 0 |
-| Onkoloji | Doğrulandı | 78/78 | 0 | 0 |
-| Nöroloji | Doğrulandı | 74/74 | 0 | 0 |
+| Kardiyoloji | Uyarılarla doğrulandı | 68/68 | 0 | 0 |
+| Onkoloji | Doğrulandı | 66/66 | 0 | 0 |
+| Nöroloji | Doğrulandı | 58/58 | 0 | 0 |
 | Enfeksiyon | Doğrulandı | 35/35 | 0 | 0 |
-| Endokrinoloji | Doğrulandı | 59/59 | 0 | 0 |
-| Pediatri | Doğrulandı | 63/63 | 0 | 0 |
-| Cerrahi | Doğrulandı | 43/43 | 0 | 0 |
-| Radyoloji | Doğrulandı | 59/59 | 0 | 0 |
+| Endokrinoloji | Doğrulandı | 50/50 | 0 | 0 |
+| Pediatri | Doğrulandı | 45/45 | 0 | 0 |
+| Cerrahi | Doğrulandı | 41/41 | 0 | 0 |
+| Radyoloji | Doğrulandı | 34/34 | 0 | 0 |
 
 ### Soru çerçevesi seçimi
 
@@ -141,6 +141,7 @@ sonra düzeltildi; bu yüzden ayrılmış kümenin güncel sonucu artık bağım
 
 ### Eksik ve yanlış öğeler (çalışma bazında)
 
+- **PMID 40673584:** EKSİK: 40673584 müdahale '' (beklenen ['ondansetron']); EKSİK: 40673584 karşılaştırıcı '' (beklenen ['placebo'])
 
 ### Test kategorileri
 
@@ -171,7 +172,7 @@ sonra düzeltildi; bu yüzden ayrılmış kümenin güncel sonucu artık bağım
 |---|---|
 | Eksiksiz çıkarım oranı | %100.0 (68/68) |
 | Yanlış çıkarım oranı | %0.0 (0/68) |
-| Kaynak eşleşme doğruluğu (cümle) | %100.0 (84/84) |
+| Kaynak eşleşme doğruluğu (cümle) | %100.0 (82/82) |
 | Kaynak eşleşme doğruluğu (sayısal değer) | %100.0 (57/57) |
 | Yanlış nedensellik iddiası | 0 |
 | Örneklem yerine olay/kol sayısı | 0 |
@@ -213,14 +214,14 @@ sonra düzeltildi; bu yüzden ayrılmış kümenin güncel sonucu artık bağım
 
 | Branş | Durum | Alıntı kontrolü | Kümede olmayan PMID | RoB/GRADE derece iddiası |
 |---|---|---|---|---|
-| Kardiyoloji | Doğrulandı | 37/37 | 0 | 0 |
-| Onkoloji | Doğrulandı | 40/40 | 0 | 0 |
-| Nöroloji | Doğrulandı | 46/46 | 0 | 0 |
-| Enfeksiyon | Doğrulandı | 50/50 | 0 | 0 |
-| Endokrinoloji | Doğrulandı | 13/13 | 0 | 0 |
+| Kardiyoloji | Doğrulandı | 25/25 | 0 | 0 |
+| Onkoloji | Doğrulandı | 29/29 | 0 | 0 |
+| Nöroloji | Doğrulandı | 36/36 | 0 | 0 |
+| Enfeksiyon | Doğrulandı | 38/38 | 0 | 0 |
+| Endokrinoloji | Doğrulandı | 9/9 | 0 | 0 |
 | Pediatri | Doğrulandı | 6/6 | 0 | 0 |
-| Cerrahi | Doğrulandı | 36/36 | 0 | 0 |
-| Radyoloji | Doğrulandı | 17/17 | 0 | 0 |
+| Cerrahi | Doğrulandı | 34/34 | 0 | 0 |
+| Radyoloji | Doğrulandı | 15/15 | 0 | 0 |
 
 ### Soru çerçevesi seçimi
 

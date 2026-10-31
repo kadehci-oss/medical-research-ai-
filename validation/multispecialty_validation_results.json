@@ -7,9 +7,9 @@
   "n_specialties": 8,
   "overall": {
    "reference_items": 153,
-   "complete": 153,
-   "complete_rate": 1.0,
-   "extracted": 153,
+   "complete": 151,
+   "complete_rate": 0.9869,
+   "extracted": 151,
    "false": 0,
    "false_rate": 0.0
   },
@@ -101,9 +101,9 @@
    },
    "Pediatri": {
     "reference_items": 15,
-    "complete": 15,
-    "complete_rate": 1.0,
-    "extracted": 15,
+    "complete": 13,
+    "complete_rate": 0.8667,
+    "extracted": 13,
     "false": 0,
     "false_rate": 0.0,
     "studies": 3,
@@ -192,9 +192,9 @@
    },
    "RCT": {
     "reference_items": 66,
-    "complete": 66,
-    "complete_rate": 1.0,
-    "extracted": 66,
+    "complete": 64,
+    "complete_rate": 0.9697,
+    "extracted": 64,
     "false": 0,
     "false_rate": 0.0,
     "studies": 10
@@ -238,8 +238,8 @@
    ]
   },
   "source_match": {
-   "sources_total": 179,
-   "sources_verified": 179,
+   "sources_total": 175,
+   "sources_verified": 175,
    "source_match_accuracy": 1.0,
    "values_checked": 129,
    "values_in_source": 129,
@@ -251,9 +251,9 @@
   "causal_permission_errors": [],
   "report_verification_by_specialty": {
    "Kardiyoloji": {
-    "status": "Doğrulandı",
+    "status": "Uyarılarla doğrulandı",
     "unknown_pmids": [],
-    "quotes_checked": 83,
+    "quotes_checked": 68,
     "quotes_failed": 0,
     "rob_rating_claims": 0,
     "grade_rating_claims": 0
@@ -261,7 +261,7 @@
    "Onkoloji": {
     "status": "Doğrulandı",
     "unknown_pmids": [],
-    "quotes_checked": 78,
+    "quotes_checked": 66,
     "quotes_failed": 0,
     "rob_rating_claims": 0,
     "grade_rating_claims": 0
@@ -269,7 +269,7 @@
    "Nöroloji": {
     "status": "Doğrulandı",
     "unknown_pmids": [],
-    "quotes_checked": 74,
+    "quotes_checked": 58,
     "quotes_failed": 0,
     "rob_rating_claims": 0,
     "grade_rating_claims": 0
@@ -285,7 +285,7 @@
    "Endokrinoloji": {
     "status": "Doğrulandı",
     "unknown_pmids": [],
-    "quotes_checked": 59,
+    "quotes_checked": 50,
     "quotes_failed": 0,
     "rob_rating_claims": 0,
     "grade_rating_claims": 0
@@ -293,7 +293,7 @@
    "Pediatri": {
     "status": "Doğrulandı",
     "unknown_pmids": [],
-    "quotes_checked": 63,
+    "quotes_checked": 45,
     "quotes_failed": 0,
     "rob_rating_claims": 0,
     "grade_rating_claims": 0
@@ -301,7 +301,7 @@
    "Cerrahi": {
     "status": "Doğrulandı",
     "unknown_pmids": [],
-    "quotes_checked": 43,
+    "quotes_checked": 41,
     "quotes_failed": 0,
     "rob_rating_claims": 0,
     "grade_rating_claims": 0
@@ -309,7 +309,7 @@
    "Radyoloji": {
     "status": "Doğrulandı",
     "unknown_pmids": [],
-    "quotes_checked": 59,
+    "quotes_checked": 34,
     "quotes_failed": 0,
     "rob_rating_claims": 0,
     "grade_rating_claims": 0
@@ -473,7 +473,10 @@
    "41300987": [],
    "41208045": [],
    "41413541": [],
-   "40673584": [],
+   "40673584": [
+    "EKSİK: 40673584 müdahale '' (beklenen ['ondansetron'])",
+    "EKSİK: 40673584 karşılaştırıcı '' (beklenen ['placebo'])"
+   ],
    "39826968": [],
    "31589251": [],
    "33017106": [],
@@ -678,8 +681,8 @@
    "overlap_notes": []
   },
   "source_match": {
-   "sources_total": 84,
-   "sources_verified": 84,
+   "sources_total": 82,
+   "sources_verified": 82,
    "source_match_accuracy": 1.0,
    "values_checked": 57,
    "values_in_source": 57,
@@ -693,7 +696,7 @@
    "Kardiyoloji": {
     "status": "Doğrulandı",
     "unknown_pmids": [],
-    "quotes_checked": 37,
+    "quotes_checked": 25,
     "quotes_failed": 0,
     "rob_rating_claims": 0,
     "grade_rating_claims": 0
@@ -701,7 +704,7 @@
    "Onkoloji": {
     "status": "Doğrulandı",
     "unknown_pmids": [],
-    "quotes_checked": 40,
+    "quotes_checked": 29,
     "quotes_failed": 0,
     "rob_rating_claims": 0,
     "grade_rating_claims": 0
@@ -709,7 +712,7 @@
    "Nöroloji": {
     "status": "Doğrulandı",
     "unknown_pmids": [],
-    "quotes_checked": 46,
+    "quotes_checked": 36,
     "quotes_failed": 0,
     "rob_rating_claims": 0,
     "grade_rating_claims": 0
@@ -717,7 +720,7 @@
    "Enfeksiyon": {
     "status": "Doğrulandı",
     "unknown_pmids": [],
-    "quotes_checked": 50,
+    "quotes_checked": 38,
     "quotes_failed": 0,
     "rob_rating_claims": 0,
     "grade_rating_claims": 0
@@ -725,7 +728,7 @@
    "Endokrinoloji": {
     "status": "Doğrulandı",
     "unknown_pmids": [],
-    "quotes_checked": 13,
+    "quotes_checked": 9,
     "quotes_failed": 0,
     "rob_rating_claims": 0,
     "grade_rating_claims": 0
@@ -741,7 +744,7 @@
    "Cerrahi": {
     "status": "Doğrulandı",
     "unknown_pmids": [],
-    "quotes_checked": 36,
+    "quotes_checked": 34,
     "quotes_failed": 0,
     "rob_rating_claims": 0,
     "grade_rating_claims": 0
@@ -749,7 +752,7 @@
    "Radyoloji": {
     "status": "Doğrulandı",
     "unknown_pmids": [],
-    "quotes_checked": 17,
+    "quotes_checked": 15,
     "quotes_failed": 0,
     "rob_rating_claims": 0,
     "grade_rating_claims": 0
