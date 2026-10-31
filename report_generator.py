@@ -2934,7 +2934,7 @@ def _profile_from_sentence(sentence: str) -> List[Dict[str, str]]:
 
     sample_bits = []
     patient_counts = list(re.finditer(
-        r"\b([A-Za-z]+(?:-[A-Za-z]+)?|\d[\d,]*)\s+patients\b",
+        r"\b([A-Za-z]+(?:-[A-Za-z]+)?|\d[\d,]*)(?:\s+[A-Za-z\-]+){0,3}?\s+patients\b",
         sentence,
         re.IGNORECASE,
     ))
@@ -2957,6 +2957,13 @@ def _profile_from_sentence(sentence: str) -> List[Dict[str, str]]:
             gloss += f" (%{percent.group(1)})"
         if re.search(r"history of statin", window, re.IGNORECASE):
             gloss += " statin öykülü"
+        # Extract demographic/ethnicity modifier before 'patients' dynamically via localize_clinical_display
+        inner_m = re.match(r"^(\S+)\s+(.*?)\s*patients$", match.group(0).strip(), re.IGNORECASE)
+        if inner_m and inner_m.group(2):
+            pre_words = inner_m.group(2).strip()
+            localized_pre = localize_clinical_display(pre_words, drop_unknown=False)
+            if localized_pre and localized_pre.lower() not in gloss.lower():
+                gloss += f" {localized_pre}"
         sample_bits.append(f"{count} hasta{gloss}")
     n_eq = re.search(r"\bn\s*=\s*(\d[\d,]*)", sentence, re.IGNORECASE)
     if n_eq and not sample_bits:
@@ -3990,11 +3997,22 @@ def _format_cross_study_comparison(articles: List[Dict[str, Any]], pico: Optiona
                     _remember(shown)
         if not finding_bits:
             finding_bits.append(INSUFFICIENT_CLINICAL_DATA_TR)
+        details = extract_article_clinical_details(art, "")
+        sample_cell = _sample_comparison_cell(profile)
+        if sample_cell == "özette bildirilmedi" and details.get("patient_group") and details["patient_group"] not in ("Belirtilmedi", "değerlendirilemedi"):
+            # If details found a grounded patient group (and n) from an abstract sentence, use it
+            prov = (details.get("provenance") or {}).get("population") or {}
+            if prov.get("source_sentence") and not _background_sentence(prov["source_sentence"]):
+                if details.get("sample_size") and details["sample_size"] not in ("Özette bildirilmedi", "değerlendirilemedi"):
+                    sample_cell = f"{details['sample_size']}, {details['patient_group']}"
+                else:
+                    sample_cell = details["patient_group"]
+
         lines.append(
             "| {pmid} | {patient} | {design} | {intervention} | {findings} | {limit} |".format(
                 pmid=pmid,
-                patient=_cell(_sample_comparison_cell(profile), limit=500),
-                design=_cell(design["design"]),
+                patient=_cell(sample_cell, limit=500),
+                design=_cell(details.get("study_design") or design["design"]),
                 intervention=_cell(_intervention_comparison_cell(profile), limit=500),
                 findings=_cell("; ".join(finding_bits)),
                 limit=_cell(format_methodological_limitation(art), limit=900),

@@ -149,6 +149,21 @@ def main():
         "Metin sentezi özet (abstract) verilerine dayanır; klinik doğrulama veya otomatik GRADE derecelendirmesi iddiasında bulunulmaz."
     )
 
+    # Canlı Streamlit Sürüm ve Commit Doğrulama Bilgisi
+    import subprocess
+    app_version = "v1.4.1"
+    git_commit_hash = os.environ.get("GIT_COMMIT", "").strip()
+    if not git_commit_hash:
+        try:
+            git_commit_hash = subprocess.check_output(
+                ["git", "rev-parse", "--short", "HEAD"], stderr=subprocess.DEVNULL
+            ).decode("utf-8").strip()
+        except Exception:
+            git_commit_hash = "bilinmiyor"
+
+    st.sidebar.markdown("---")
+    st.sidebar.caption(f"📌 **Sürüm:** `{app_version}` | **Commit:** `{git_commit_hash}`")
+
     # Main Tabs
     tab1, tab2, tab3 = st.tabs([
         "🔎 PubMed Literatür Taraması",

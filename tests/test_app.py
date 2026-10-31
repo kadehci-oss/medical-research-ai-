@@ -86,6 +86,14 @@ class TestAppRegression(unittest.TestCase):
         self.assertNotIn("generated_report", at.session_state)
         self.assertNotIn("generated_html_report", at.session_state)
 
+    def test_streamlit_displays_version_and_commit_info(self):
+        app_path = os.path.abspath("app.py")
+        at = AppTest.from_file(app_path, default_timeout=10)
+        at.run()
+        sidebar_captions = [c.value for c in at.sidebar.caption]
+        has_version_caption = any("Sürüm:" in cap and "Commit:" in cap for cap in sidebar_captions)
+        self.assertTrue(has_version_caption, f"Expected version/commit caption in sidebar, got: {sidebar_captions}")
+
 
 if __name__ == "__main__":
     unittest.main()
