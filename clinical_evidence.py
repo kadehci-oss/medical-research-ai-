@@ -374,12 +374,14 @@ def _extract_explicit_arm_n(abstract: str, label: str) -> tuple[Optional[int], s
     if not label:
         return None, ""
     clean = re.sub(r"\([^)]*\)", " ", str(label)).strip()
+    clean = re.sub(r"\bplasebo\b", "placebo", clean, flags=re.IGNORECASE)
     tokens = re.findall(r"[A-Za-z0-9]+", clean)
     if not tokens:
         return None, ""
     token = re.escape(tokens[0])
     sentences = [s.strip() for s in re.split(r"(?<=[.!?])\s+", abstract or "") if s.strip()]
     patterns = (
+        rf"\b[\d,]+\s+of\s+([\d,]+)\s+(?:patients|participants|subjects)\b(?:(?!\b(?:group|arm)\b)[^;\n]){{0,80}}?\b(?:in\s+)?(?:the\s+)?{token}\s+(?:group|arm)\b",
         rf"\b([\d,]+)\s+(?:patients|participants|subjects)\b[^.;]{{0,180}}\b(?:assigned\s+to|in)\s+(?:the\s+)?{token}\s+(?:group|arm)\b",
         rf"\b([\d,]+)(?:\s*\([^)]*\))?\s*(?:patients|participants)?\s*(?:were\s+)?(?:randomly\s+)?(?:assigned\s+)?to\s+(?:the\s+)?{token}\s+(?:group|arm)\b",
         rf"\b{token}\s+(?:group|arm)\s*\(\s*n\s*=\s*([\d,]+)\s*\)",
@@ -519,13 +521,46 @@ def _find_diagnostic_estimates(sentence: str) -> List[tuple[str, str]]:
     found: List[tuple[str, str]] = []
     patterns = (
         ("sensitivity", r"\b(?:sensitivity|sensitivities|sens\.)\b\s*(?:was|of|=|:)?\s*(\d+(?:\.\d+)?\s*%?)"),
+        ("sensitivity", r"\b(\d+(?:\.\d+)?\s*%)\s+sensitivity\b"),
         ("specificity", r"\b(?:specificity|spec\.)\b\s*(?:was|of|=|:)?\s*(\d+(?:\.\d+)?\s*%?)"),
+        ("specificity", r"\b(\d+(?:\.\d+)?\s*%)\s+specificity\b"),
         ("AUC", r"\b(?:AUC|AUROC|area under (?:the )?curve)\b\s*(?:was|of|=|:)?\s*(\d+(?:\.\d+)?)"),
     )
     for kind, pattern in patterns:
         for match in re.finditer(pattern, sentence or "", re.IGNORECASE):
             found.append((kind, match.group(1).replace(" ", "")))
     return found
+
+
+def _paired_survival_proportions(sentence: str) -> List[Dict[str, Optional[str]]]:
+    """Extract only explicitly paired OS/PFS percentages with their own labeled CIs."""
+    pattern = re.compile(
+        r"\b(?P<os>\d{1,2}-month\s+OS)\s+and\s+(?P<pfs>\d{1,2}-month\s+PFS)\s+at\s+"
+        r"(?P<os_value>\d+(?:\.\d+)?\s*%)\s*\((?P<os_ci>[^()]*)\)\s+and\s+"
+        r"(?P<pfs_value>\d+(?:\.\d+)?\s*%)\s*\((?P<pfs_ci>[^()]*)\)\s+respectively\b",
+        re.IGNORECASE,
+    )
+    match = pattern.search(sentence or "")
+    if not match:
+        return []
+    results: List[Dict[str, Optional[str]]] = []
+    for label_key, value_key, ci_key, full_label in (
+        ("os", "os_value", "os_ci", "overall survival"),
+        ("pfs", "pfs_value", "pfs_ci", "progression-free survival"),
+    ):
+        low, high, confidence = _confidence_interval(match.group(ci_key))
+        if low is None or high is None:
+            continue
+        month_match = re.match(r"(\d{1,2}-month)", match.group(label_key), re.IGNORECASE)
+        month = month_match.group(1) if month_match else ""
+        results.append({
+            "label": f"{month} {full_label}".strip(),
+            "value": re.sub(r"\s+", "", match.group(value_key)),
+            "ci_lower": low,
+            "ci_upper": high,
+            "confidence_level": confidence,
+        })
+    return results
 
 
 def _confidence_interval(text: str) -> tuple[Optional[str], Optional[str], Optional[str]]:
@@ -597,8 +632,8 @@ def _extract_arm_event_counts(article: Dict[str, Any], sentence: str, arm_labels
         # treating a dose as part of an arm label.
         token = re.escape(tokens[0])
         patterns = (
-            rf"\b([\d,]+)\s+of\s+([\d,]+)\s+(?:patients|participants|subjects)\b[^.]{{0,40}}?\b(?:in\s+)?(?:the\s+)?{token}\b",
-            rf"\b([\d,]+)\s+events?\s+(?:occurred\s+)?(?:among|in)\s+([\d,]+)\s+(?:patients|participants|subjects|people)\b[^.]{{0,40}}?\b(?:in\s+)?(?:the\s+)?{token}\b",
+            rf"\b([\d,]+)\s+of\s+([\d,]+)\s+(?:patients|participants|subjects)\b(?:(?!\b(?:group|arm)\b)[^;\n]){{0,60}}?\b(?:in\s+)?(?:the\s+)?{token}\b",
+            rf"\b([\d,]+)\s+events?\s+(?:occurred\s+)?(?:among|in)\s+([\d,]+)\s+(?:patients|participants|subjects|people)\b(?:(?!\b(?:group|arm)\b)[^;\n]){{0,60}}?\b(?:in\s+)?(?:the\s+)?{token}\b",
             rf"\b([\d,]+)\s+(?:with|in)\s+(?:the\s+)?{token}\b",
         )
         match = None
@@ -938,6 +973,29 @@ def build_study_model(
             effect_estimates=_make_effect_estimates(article, outcome_id, list(item.get("metrics") or []), sentence),
             source=_source(article, sentence),
         ))
+
+    # Preserve the clearly labeled OS/PFS percentage pair without assigning one
+    # endpoint's confidence interval to the other. The metric is left explicitly
+    # unnamed because the result sentence uses the endpoint labels, not the word
+    # "proportion" itself.
+    for sentence in re.split(r"(?<=[.!?])\s+", abstract):
+        for estimate in _paired_survival_proportions(sentence):
+            outcome_id = f"{pmid or 'study'}:outcome:{len(outcomes) + 1}"
+            outcomes.append(Outcome(
+                id=outcome_id,
+                name=_fact(article, estimate["label"], sentence),
+                effect_estimates=[EffectEstimate(
+                    outcome_id=outcome_id,
+                    metric_type="not_named_in_source",
+                    value=estimate["value"],
+                    ci_lower=estimate["ci_lower"],
+                    ci_upper=estimate["ci_upper"],
+                    confidence_level=estimate["confidence_level"],
+                    reported_label=estimate["label"],
+                    source=_source(article, sentence),
+                )],
+                source=_source(article, sentence),
+            ))
 
     # Add the existing sentence-bound finding extractor's point estimates to
     # the canonical outcome objects. It supplies per-effect CI/p bindings for

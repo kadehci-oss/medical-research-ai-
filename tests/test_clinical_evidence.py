@@ -290,6 +290,40 @@ class TestCanonicalEvidenceModel(unittest.TestCase):
         self.assertTrue(all(not any(ch.isdigit() for ch in count["arm_label"]["value"]) for count in counts))
         self.assertTrue(all(count["arm_label"]["value"].casefold() in count["arm_label"]["source"]["source_sentence"].casefold() for count in counts))
 
+    def test_explicit_arm_denominators_survive_decimal_percentages(self):
+        record = article(
+            pmid="66667777",
+            publication_types=["Randomized Controlled Trial"],
+            abstract=(
+                "We randomly assigned 5988 patients to receive empagliflozin (10 mg) or placebo. "
+                "A primary outcome event occurred in 415 of 2997 patients (13.8%) in the empagliflozin group "
+                "and in 511 of 2991 patients (17.1%) in the placebo group (hazard ratio, 0.79; "
+                "95% confidence interval, 0.69 to 0.90; P<0.001)."
+            ),
+        )
+        model = build_study_model(record, query="heart failure treatment")
+        self.assertEqual([arm["participants_n"]["value"] for arm in model["arms"]], [2997, 2991])
+        counts = [count for outcome in model["outcomes"] for count in outcome["arm_event_counts"]]
+        self.assertEqual(
+            [(count["event_count"]["value"], count["denominator"]["value"]) for count in counts],
+            [(415, 2997), (511, 2991)],
+        )
+        self.assertTrue(all(count["event_count"]["source"]["source_sentence"] for count in counts))
+
+    def test_diagnostic_metrics_are_extracted_when_percentage_precedes_name(self):
+        record = article(
+            pmid="77778888",
+            publication_types=["Diagnostic Accuracy Study"],
+            abstract="For diagnosing a cervical rib, MRI had 100% sensitivity and 100% specificity.",
+        )
+        model = build_study_model(record, query="diagnostic accuracy")
+        estimates = [effect for outcome in model["outcomes"] for effect in outcome["effect_estimates"]]
+        self.assertEqual(
+            {(effect["metric_type"], effect["value"]) for effect in estimates},
+            {("sensitivity", "100%"), ("specificity", "100%")},
+        )
+        self.assertTrue(all(effect["source"]["source_sentence"] == record["abstract"] for effect in estimates))
+
     def test_legacy_adapter_is_derived_from_same_canonical_model(self):
         model = build_study_model(article(), query="treatment efficacy")
         legacy = legacy_details_from_study(model)

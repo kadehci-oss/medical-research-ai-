@@ -90,13 +90,20 @@ def metric_aliases(metric: str) -> List[str]:
     }.get(metric, [metric.replace("_", " ")])
 
 
-def expected_outcome_match(outcome: Dict[str, Any], model: Dict[str, Any]) -> Dict[str, Any]:
+def matching_outcome_items(outcome: Dict[str, Any], model: Dict[str, Any]) -> List[Dict[str, Any]]:
     expected_sentence = norm(outcome.get("source_sentence"))
+    if not expected_sentence:
+        return []
     candidates = []
     for item in model.get("outcomes") or []:
         actual_sentence = norm((item.get("source") or {}).get("source_sentence"))
-        if expected_sentence and actual_sentence and (expected_sentence in actual_sentence or actual_sentence in expected_sentence):
+        if actual_sentence and (expected_sentence in actual_sentence or actual_sentence in expected_sentence):
             candidates.append(item)
+    return candidates
+
+
+def expected_outcome_match(outcome: Dict[str, Any], model: Dict[str, Any]) -> Dict[str, Any]:
+    candidates = matching_outcome_items(outcome, model)
     effects = [effect for item in candidates for effect in item.get("effect_estimates") or []]
     metric = str(outcome.get("metric") or "")
     estimate = outcome.get("estimate")
@@ -105,27 +112,30 @@ def expected_outcome_match(outcome: Dict[str, Any], model: Dict[str, Any]) -> Di
     metric_ok = False
     matched_effect = None
     for effect in effects:
-        if len(expected_numbers) == 1 and numbers_equal(effect.get("value"), expected_numbers[0]):
-            estimate_ok = True
+        if len(expected_numbers) != 1 or not numbers_equal(effect.get("value"), expected_numbers[0]):
+            continue
+        estimate_ok = True
+        expected_metric = metric_aliases(metric)
+        model_metric = str(effect.get("metric_type") or "")
+        if model_metric in expected_metric or (model_metric == "not_named_in_source" and metric in {"proportion", "prevalence", "qualitative association", "likelihood ratio"}):
+            metric_ok = True
             matched_effect = effect
-            expected_metric = metric_aliases(metric)
-            model_metric = str(effect.get("metric_type") or "")
-            if model_metric in expected_metric or (model_metric == "not_named_in_source" and metric in {"proportion", "prevalence", "qualitative association", "likelihood ratio"}):
-                metric_ok = True
             break
     ci = outcome.get("ci")
     ci_ok = None
     if ci is not None:
         ci_numbers = [number_tokens(x)[0] if number_tokens(x) else "" for x in ci]
-        ci_ok = any(
-            str(effect.get("ci_lower")) == ci_numbers[0].rstrip("%")
-            and str(effect.get("ci_upper")) == ci_numbers[1].rstrip("%")
-            for effect in effects if len(ci_numbers) == 2
+        ci_ok = bool(
+            matched_effect
+            and len(ci_numbers) == 2
+            and str(matched_effect.get("ci_lower")) == ci_numbers[0].rstrip("%")
+            and str(matched_effect.get("ci_upper")) == ci_numbers[1].rstrip("%")
         )
     p_ok = None
     if outcome.get("p") is not None:
         expected_p = re.sub(r"\s+", "", str(outcome["p"])).casefold()
-        p_ok = any(re.sub(r"\s+", "", str(effect.get("p_value") or "")).casefold().removeprefix("p") == expected_p.casefold().removeprefix("p") for effect in effects)
+        actual_p = re.sub(r"\s+", "", str((matched_effect or {}).get("p_value") or "")).casefold()
+        p_ok = bool(matched_effect and actual_p.removeprefix("p") == expected_p.removeprefix("p"))
     return {
         "source_sentence_matched": bool(candidates),
         "estimate_matched": estimate_ok,
@@ -138,42 +148,61 @@ def expected_outcome_match(outcome: Dict[str, Any], model: Dict[str, Any]) -> Di
 
 def compare_case(case: Dict[str, Any], article: Dict[str, Any], model: Dict[str, Any]) -> Dict[str, Any]:
     expected_checks: List[Tuple[str, bool]] = []
+    field_checks: List[Dict[str, Any]] = []
+
+    def add_check(category: str, field: str, matched: bool) -> None:
+        value = bool(matched)
+        expected_checks.append((field, value))
+        field_checks.append({"category": category, "field": field, "matched": value})
+
     expected_n = case.get("total_n")
     actual_n = ((model.get("population") or {}).get("total_participants") or {}).get("value")
     if expected_n is not None:
-        expected_checks.append(("total_n", actual_n == expected_n))
+        add_check("study_total_n", "total_n", actual_n == expected_n)
 
     arm_results = []
     model_arms = model.get("arms") or []
+
+    def normalized_arm_label(value: Any) -> str:
+        return re.sub(r"\bplasebo\b", "placebo", norm(value))
+
     for arm in case.get("arms") or []:
         expected_arm_n = arm.get("participants_n")
         if expected_arm_n is None:
             continue
-        label = norm(arm.get("label"))
-        matches = [x for x in model_arms if label and (label in norm(x.get("label")) or norm(x.get("label")) in label)]
+        label = normalized_arm_label(arm.get("label"))
+        matches = [x for x in model_arms if label and (label in normalized_arm_label(x.get("label")) or normalized_arm_label(x.get("label")) in label)]
         n_match = any(x.get("participants_n", {}).get("value") == expected_arm_n for x in matches)
-        expected_checks.append((f"arm_n:{arm.get('label')}", n_match))
+        add_check("arm_participant_n", f"arm_n:{arm.get('label')}", n_match)
         arm_results.append({"label": arm.get("label"), "expected_n": expected_arm_n, "matched": n_match})
 
     outcomes = []
     for index, expected in enumerate(case.get("outcomes") or [], 1):
         match = expected_outcome_match(expected, model)
-        checks = []
+        checks: List[Tuple[str, bool]] = []
         if expected.get("estimate") is not None:
-            checks.extend([match["source_sentence_matched"], match["estimate_matched"], match["metric_matched"]])
+            checks.extend([
+                ("outcome_source_sentence", match["source_sentence_matched"]),
+                ("outcome_estimate", match["estimate_matched"]),
+                ("outcome_metric", match["metric_matched"]),
+            ])
         if expected.get("ci") is not None:
-            checks.append(bool(match["ci_matched"]))
+            checks.append(("outcome_confidence_interval", bool(match["ci_matched"])))
         if expected.get("p") is not None:
-            checks.append(bool(match["p_matched"]))
+            checks.append(("outcome_p_value", bool(match["p_matched"])))
+        event_matches = []
+        candidate_items = matching_outcome_items(expected, model)
         for event_count in expected.get("event_count") if isinstance(expected.get("event_count"), list) else ([expected["event_count"]] if expected.get("event_count") is not None else []):
             model_counts = []
-            for item in model.get("outcomes") or []:
+            for item in candidate_items:
                 model_counts.extend([x.get("event_count", {}).get("value") for x in item.get("arm_event_counts") or []])
                 if item.get("event_count", {}).get("value") is not None:
                     model_counts.append(item["event_count"]["value"])
             event_ok = event_count in model_counts
-            checks.append(event_ok)
-        expected_checks.extend((f"outcome:{index}:field:{j + 1}", bool(value)) for j, value in enumerate(checks))
+            checks.append(("outcome_event_count", event_ok))
+            event_matches.append(event_ok)
+        for category, value in checks:
+            add_check(category, f"outcome:{index}:{category}", value)
         outcomes.append({
             "outcome": expected.get("outcome"),
             "reference_metric": expected.get("metric"),
@@ -183,6 +212,7 @@ def compare_case(case: Dict[str, Any], article: Dict[str, Any], model: Dict[str,
             "metric_matched": match["metric_matched"],
             "ci_matched": match["ci_matched"],
             "p_matched": match["p_matched"],
+            "event_counts_matched": event_matches,
         })
 
     required_design = case.get("required_design")
@@ -192,7 +222,7 @@ def compare_case(case: Dict[str, Any], article: Dict[str, Any], model: Dict[str,
         "meta_analysis": {"meta_analysis", "systematic_review_and_meta_analysis"},
     }
     design_ok = actual_design == required_design or actual_design in design_alias.get(required_design, set())
-    expected_checks.append(("study_design", design_ok))
+    add_check("study_design", "study_design", design_ok)
 
     all_claims = list(iter_sourced_claims(model))
     sourced = [x for x in all_claims if x[2].get("source_sentence")]
@@ -236,6 +266,7 @@ def compare_case(case: Dict[str, Any], article: Dict[str, Any], model: Dict[str,
         "outcomes": outcomes,
         "reference_fields_matched": sum(1 for _, ok in expected_checks if ok),
         "reference_fields_expected": len(expected_checks),
+        "reference_field_checks": field_checks,
         "complete_reference_extraction": bool(expected_checks) and all(ok for _, ok in expected_checks),
         "source_claim_count": len(all_claims),
         "metric_type_check_count": sum(
@@ -252,6 +283,52 @@ def compare_case(case: Dict[str, Any], article: Dict[str, Any], model: Dict[str,
         "study_relationship": model.get("relationship"),
         "evidence_family_id": model.get("evidence_family_id"),
     }
+
+
+_FIELD_GAP_GUIDANCE = {
+    "outcome_source_sentence": "Sonuç değerlerini kaynak cümlesine daha güvenilir bağla; eşleşmeyi genişletirken kaynak dışı iddia üretme.",
+    "outcome_estimate": "Yalnızca abstract'ta açıkça yazılı sonuç değerleri için dar kapsamlı çıkarım kalıpları ekle.",
+    "outcome_metric": "HR, OR, oran ve tanısal ölçüt türlerini birbirine karıştırmadan ayır.",
+    "outcome_confidence_interval": "GA'yı eşleşen tahmine bağla; etiketsiz parantezlerden güven aralığı çıkarma.",
+    "outcome_p_value": "P değerini yalnızca aynı kaynakta eşleşen tahmine bağla.",
+    "outcome_event_count": "Olay sayısını aynı sonuç cümlesinde ve doğru kola bağlı olarak karşılaştır.",
+    "arm_participant_n": "Açıkça tahsis edilmiş tedavi kollarının N değerini çalışma toplamı ve sonuç paydasından ayır; karşılaştırmalı kol olmayan grupları zorla eşleme.",
+    "study_total_n": "Çalışma düzeyindeki N'yi alt grup ve olay paydalarından ayır.",
+    "study_design": "Tasarım eşanlamlılarını koru; uygun olmayan tasarımı zorla eşleştirme.",
+}
+_FIELD_GAP_PRIORITY = {
+    "outcome_source_sentence": "P1 — kaynak bağlantısı",
+    "outcome_estimate": "P1 — sonuç değeri",
+    "outcome_metric": "P1 — ölçüt türü",
+    "outcome_confidence_interval": "P1 — tahmin belirsizliği",
+    "outcome_p_value": "P1 — istatistiksel bağlam",
+    "outcome_event_count": "P2 — sonuç sayımları",
+    "arm_participant_n": "P2 — kol paydaları",
+    "study_total_n": "P2 — çalışma N'si",
+    "study_design": "P2 — tasarım sınıflandırması",
+}
+
+
+def summarize_field_gaps(cases: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    counts: Dict[str, Dict[str, int]] = {}
+    for case in cases:
+        for check in case.get("reference_field_checks") or []:
+            item = counts.setdefault(check["category"], {"expected": 0, "matched": 0})
+            item["expected"] += 1
+            item["matched"] += int(bool(check["matched"]))
+    gaps = []
+    for category, item in counts.items():
+        unmatched = item["expected"] - item["matched"]
+        if unmatched:
+            gaps.append({
+                "category": category,
+                "expected": item["expected"],
+                "matched": item["matched"],
+                "unmatched": unmatched,
+                "priority": _FIELD_GAP_PRIORITY.get(category, "P2 — diğer alan"),
+                "next_step": _FIELD_GAP_GUIDANCE.get(category, "Örnekleri kaynak metinle ayrı ayrı incele."),
+            })
+    return sorted(gaps, key=lambda item: (0 if item["priority"].startswith("P1") else 1, -item["unmatched"], item["category"]))
 
 
 def render_markdown(report: Dict[str, Any]) -> str:
@@ -272,6 +349,23 @@ def render_markdown(report: Dict[str, Any]) -> str:
         f"- Yanlış/unsupported çıkarım bayrakları: **{report['extraction_safety']['false_extraction_count']}/{report['extraction_safety']['claim_denominator']}** ({report['extraction_safety']['false_extraction_rate']:.1%}); kaynak cümlesi, sayısal değer ve metrik türü kontrollerinde başarısız alanlar sayılır.",
         f"- Yanlış nedensellik koruma bayrağı: **{report['extraction_safety']['false_causal_claims']}**.",
         "",
+        "## En sık kaçan referans alanları ve güvenli sonraki işler",
+        "",
+        "Sıra, kaçan alan sayısı ile kaynak/ölçüt bütünlüğü önceliğini birleştirir; klinik risk sıralaması veya hekim adjudikasyonu değildir.",
+    ]
+    for index, gap in enumerate(report["reference_comparison"].get("field_gap_priorities") or [], 1):
+        lines.append(
+            f"{index}. **{gap['priority']} — {gap['category']}: {gap['matched']}/{gap['expected']} eşleşti; {gap['unmatched']} kaçan.** {gap['next_step']}"
+        )
+    if not report["reference_comparison"].get("field_gap_priorities"):
+        lines.append("- Bu benchmark çalıştırmasında referans alanı eksiği gözlenmedi.")
+    if any(gap["category"] == "arm_participant_n" for gap in report["reference_comparison"].get("field_gap_priorities") or []):
+        lines.extend([
+            "",
+            "Not: Bu referans kümesinde [cerrahi vaka serisindeki 51/56 tedavi edilmiş hasta](https://pubmed.ncbi.nlm.nih.gov/39071203/) ve [MRI teknik grupları (29/19)](https://pubmed.ncbi.nlm.nih.gov/31732398/) karşılaştırmalı tahsis kolları değildir; eksikleri yapay kola dönüştürmek uygun değildir.",
+        ])
+    lines.extend([
+        "",
         "## Üç ayrı doğrulama kategorisi",
         "",
         f"1. **Yazılım birim/entegrasyon testleri:** `{software['command']}` — {software['status']}; {software.get('summary') or 'özet alınamadı'}.",
@@ -282,7 +376,7 @@ def render_markdown(report: Dict[str, Any]) -> str:
         "",
         "| Branş | PMID | Beklenen tasarım | Motor tasarımı | N (referans / motor) | Alan eşleşmesi | Kaynak cümlesi | Nedensellik bayrağı |",
         "|---|---:|---|---|---:|---:|---|---|",
-    ]
+    ])
     for item in report["cases"]:
         n = f"{item.get('expected_total_n')} / {item.get('actual_total_n')}" if item.get("expected_total_n") is not None else "— / belirtilmedi"
         fields = f"{item['reference_fields_matched']}/{item['reference_fields_expected']}"
@@ -324,6 +418,7 @@ def run() -> Dict[str, Any]:
                 "design_match": False, "expected_total_n": reference.get("total_n"),
                 "actual_total_n": None, "total_n_match": False, "arms": [], "outcomes": [],
                 "reference_fields_matched": 0, "reference_fields_expected": 0,
+                "reference_field_checks": [],
                 "complete_reference_extraction": False, "source_claim_count": 0,
                 "metric_type_check_count": 0,
                 "source_sentence_matches": 0, "source_sentence_exact_match_rate": None,
@@ -378,7 +473,7 @@ def run() -> Dict[str, Any]:
             },
             "independent_clinical_data_validation": {
                 "status": "NOT_PERFORMED",
-                "reason": "Bağımsız hekim değerlendirmeli veri kümesi veya tam metin çıkarımı sağlanmadı; PubMed kayıt kimliği ve özet cümlesi eşleşmesi klinik doğrulama değildir.",
+                "reason": "Bu benchmark çalıştırmasında bağımsız klinik adjudikasyon yapılmadı; PMID/DOI/başlık kimliği ve abstract kaynak cümlesi kontrolleri klinik doğruluk doğrulaması değildir.",
             },
         },
         "reference_comparison": {
@@ -388,6 +483,7 @@ def run() -> Dict[str, Any]:
             "matched_fields": matched_fields,
             "field_match_rate": matched_fields / expected_fields if expected_fields else 0.0,
             "complete_article_rate": sum(1 for x in cases if x.get("complete_reference_extraction")) / len(cases) if cases else 0.0,
+            "field_gap_priorities": summarize_field_gaps(cases),
         },
         "source_matching": {
             "claims_with_source_sentence": source_claims,

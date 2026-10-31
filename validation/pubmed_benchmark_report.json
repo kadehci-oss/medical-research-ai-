@@ -1,5 +1,5 @@
 {
-  "generated_at_utc": "2026-10-31T21:37:01.958196+00:00",
+  "generated_at_utc": "2026-10-31T21:59:41.435602+00:00",
   "model_version": "1.0",
   "reference_dataset_version": "1.0",
   "test_categories": {
@@ -7,7 +7,7 @@
       "command": "python -m pytest -q",
       "status": "PASS",
       "exit_code": 0,
-      "summary": "389 passed, 5 skipped, 17 subtests passed in 146.70s (0:02:26)"
+      "summary": "395 passed, 5 skipped, 17 subtests passed in 132.68s (0:02:12)"
     },
     "real_pubmed_source_validation": {
       "records_checked": 8,
@@ -98,26 +98,76 @@
     },
     "independent_clinical_data_validation": {
       "status": "NOT_PERFORMED",
-      "reason": "Bağımsız hekim değerlendirmeli veri kümesi veya tam metin çıkarımı sağlanmadı; PubMed kayıt kimliği ve özet cümlesi eşleşmesi klinik doğrulama değildir."
+      "reason": "Bu benchmark çalıştırmasında bağımsız klinik adjudikasyon yapılmadı; PMID/DOI/başlık kimliği ve abstract kaynak cümlesi kontrolleri klinik doğruluk doğrulaması değildir."
     }
   },
   "reference_comparison": {
     "articles": 8,
-    "complete_articles": 1,
+    "complete_articles": 3,
     "expected_fields": 82,
-    "matched_fields": 46,
-    "field_match_rate": 0.5609756097560976,
-    "complete_article_rate": 0.125
+    "matched_fields": 62,
+    "field_match_rate": 0.7560975609756098,
+    "complete_article_rate": 0.375,
+    "field_gap_priorities": [
+      {
+        "category": "outcome_estimate",
+        "expected": 16,
+        "matched": 11,
+        "unmatched": 5,
+        "priority": "P1 — sonuç değeri",
+        "next_step": "Yalnızca abstract'ta açıkça yazılı sonuç değerleri için dar kapsamlı çıkarım kalıpları ekle."
+      },
+      {
+        "category": "outcome_metric",
+        "expected": 16,
+        "matched": 11,
+        "unmatched": 5,
+        "priority": "P1 — ölçüt türü",
+        "next_step": "HR, OR, oran ve tanısal ölçüt türlerini birbirine karıştırmadan ayır."
+      },
+      {
+        "category": "outcome_source_sentence",
+        "expected": 16,
+        "matched": 11,
+        "unmatched": 5,
+        "priority": "P1 — kaynak bağlantısı",
+        "next_step": "Sonuç değerlerini kaynak cümlesine daha güvenilir bağla; eşleşmeyi genişletirken kaynak dışı iddia üretme."
+      },
+      {
+        "category": "outcome_confidence_interval",
+        "expected": 7,
+        "matched": 6,
+        "unmatched": 1,
+        "priority": "P1 — tahmin belirsizliği",
+        "next_step": "GA'yı eşleşen tahmine bağla; etiketsiz parantezlerden güven aralığı çıkarma."
+      },
+      {
+        "category": "arm_participant_n",
+        "expected": 5,
+        "matched": 2,
+        "unmatched": 3,
+        "priority": "P2 — kol paydaları",
+        "next_step": "Açıkça tahsis edilmiş tedavi kollarının N değerini çalışma toplamı ve sonuç paydasından ayır; karşılaştırmalı kol olmayan grupları zorla eşleme."
+      },
+      {
+        "category": "outcome_event_count",
+        "expected": 5,
+        "matched": 4,
+        "unmatched": 1,
+        "priority": "P2 — sonuç sayımları",
+        "next_step": "Olay sayısını aynı sonuç cümlesinde ve doğru kola bağlı olarak karşılaştır."
+      }
+    ]
   },
   "source_matching": {
-    "claims_with_source_sentence": 53,
-    "matched_claims": 53,
+    "claims_with_source_sentence": 71,
+    "matched_claims": 71,
     "exact_match_rate": 1.0
   },
   "extraction_safety": {
     "unsupported_claims": 0,
     "false_extraction_count": 0,
-    "claim_denominator": 67,
+    "claim_denominator": 91,
     "unsupported_extraction_rate": 0.0,
     "false_extraction_rate": 0.0,
     "false_extraction_definition": "Count of claim-level flags where a source sentence is missing/not present in the fetched PubMed abstract, an extracted numeric value is absent from its attached sentence, or a named metric type is absent from that sentence; denominator is sourced value checks plus named metric-type checks.",
@@ -138,12 +188,12 @@
         {
           "label": "empagliflozin",
           "expected_n": 2997,
-          "matched": false
+          "matched": true
         },
         {
           "label": "placebo",
           "expected_n": 2991,
-          "matched": false
+          "matched": true
         }
       ],
       "outcomes": [
@@ -155,7 +205,11 @@
           "estimate_matched": true,
           "metric_matched": true,
           "ci_matched": true,
-          "p_matched": true
+          "p_matched": true,
+          "event_counts_matched": [
+            true,
+            true
+          ]
         },
         {
           "outcome": "total number of hospitalizations for heart failure",
@@ -165,15 +219,111 @@
           "estimate_matched": true,
           "metric_matched": true,
           "ci_matched": true,
-          "p_matched": true
+          "p_matched": true,
+          "event_counts_matched": [
+            true,
+            true
+          ]
         }
       ],
-      "reference_fields_matched": 14,
+      "reference_fields_matched": 18,
       "reference_fields_expected": 18,
-      "complete_reference_extraction": false,
-      "source_claim_count": 15,
+      "reference_field_checks": [
+        {
+          "category": "study_total_n",
+          "field": "total_n",
+          "matched": true
+        },
+        {
+          "category": "arm_participant_n",
+          "field": "arm_n:empagliflozin",
+          "matched": true
+        },
+        {
+          "category": "arm_participant_n",
+          "field": "arm_n:placebo",
+          "matched": true
+        },
+        {
+          "category": "outcome_source_sentence",
+          "field": "outcome:1:outcome_source_sentence",
+          "matched": true
+        },
+        {
+          "category": "outcome_estimate",
+          "field": "outcome:1:outcome_estimate",
+          "matched": true
+        },
+        {
+          "category": "outcome_metric",
+          "field": "outcome:1:outcome_metric",
+          "matched": true
+        },
+        {
+          "category": "outcome_confidence_interval",
+          "field": "outcome:1:outcome_confidence_interval",
+          "matched": true
+        },
+        {
+          "category": "outcome_p_value",
+          "field": "outcome:1:outcome_p_value",
+          "matched": true
+        },
+        {
+          "category": "outcome_event_count",
+          "field": "outcome:1:outcome_event_count",
+          "matched": true
+        },
+        {
+          "category": "outcome_event_count",
+          "field": "outcome:1:outcome_event_count",
+          "matched": true
+        },
+        {
+          "category": "outcome_source_sentence",
+          "field": "outcome:2:outcome_source_sentence",
+          "matched": true
+        },
+        {
+          "category": "outcome_estimate",
+          "field": "outcome:2:outcome_estimate",
+          "matched": true
+        },
+        {
+          "category": "outcome_metric",
+          "field": "outcome:2:outcome_metric",
+          "matched": true
+        },
+        {
+          "category": "outcome_confidence_interval",
+          "field": "outcome:2:outcome_confidence_interval",
+          "matched": true
+        },
+        {
+          "category": "outcome_p_value",
+          "field": "outcome:2:outcome_p_value",
+          "matched": true
+        },
+        {
+          "category": "outcome_event_count",
+          "field": "outcome:2:outcome_event_count",
+          "matched": true
+        },
+        {
+          "category": "outcome_event_count",
+          "field": "outcome:2:outcome_event_count",
+          "matched": true
+        },
+        {
+          "category": "study_design",
+          "field": "study_design",
+          "matched": true
+        }
+      ],
+      "complete_reference_extraction": true,
+      "source_claim_count": 23,
       "metric_type_check_count": 2,
-      "source_sentence_matches": 15,
+      "source_sentence_matches": 23,
       "source_sentence_exact_match_rate": 1.0,
       "unsupported_value_claims": [],
       "unsupported_metric_type_claims": [],
@@ -224,20 +374,22 @@
           "reference_metric": "proportion",
           "reference_estimate": "71.8%",
           "source_sentence_matched": true,
-          "estimate_matched": false,
-          "metric_matched": false,
-          "ci_matched": false,
-          "p_matched": null
+          "estimate_matched": true,
+          "metric_matched": true,
+          "ci_matched": true,
+          "p_matched": null,
+          "event_counts_matched": []
         },
         {
           "outcome": "12-month progression-free survival for combined anti-PD1 and anti-CTLA4",
           "reference_metric": "proportion",
           "reference_estimate": "35.1%",
           "source_sentence_matched": true,
-          "estimate_matched": false,
-          "metric_matched": false,
-          "ci_matched": false,
-          "p_matched": null
+          "estimate_matched": true,
+          "metric_matched": true,
+          "ci_matched": true,
+          "p_matched": null,
+          "event_counts_matched": []
         },
         {
           "outcome": "overall survival, anti-PD1 plus anti-CTLA4 versus anti-PD1 alone",
@@ -247,15 +399,88 @@
           "estimate_matched": true,
           "metric_matched": true,
           "ci_matched": true,
-          "p_matched": null
+          "p_matched": null,
+          "event_counts_matched": []
         }
       ],
-      "reference_fields_matched": 8,
+      "reference_fields_matched": 14,
       "reference_fields_expected": 14,
-      "complete_reference_extraction": false,
-      "source_claim_count": 12,
-      "metric_type_check_count": 5,
-      "source_sentence_matches": 12,
+      "reference_field_checks": [
+        {
+          "category": "study_total_n",
+          "field": "total_n",
+          "matched": true
+        },
+        {
+          "category": "outcome_source_sentence",
+          "field": "outcome:1:outcome_source_sentence",
+          "matched": true
+        },
+        {
+          "category": "outcome_estimate",
+          "field": "outcome:1:outcome_estimate",
+          "matched": true
+        },
+        {
+          "category": "outcome_metric",
+          "field": "outcome:1:outcome_metric",
+          "matched": true
+        },
+        {
+          "category": "outcome_confidence_interval",
+          "field": "outcome:1:outcome_confidence_interval",
+          "matched": true
+        },
+        {
+          "category": "outcome_source_sentence",
+          "field": "outcome:2:outcome_source_sentence",
+          "matched": true
+        },
+        {
+          "category": "outcome_estimate",
+          "field": "outcome:2:outcome_estimate",
+          "matched": true
+        },
+        {
+          "category": "outcome_metric",
+          "field": "outcome:2:outcome_metric",
+          "matched": true
+        },
+        {
+          "category": "outcome_confidence_interval",
+          "field": "outcome:2:outcome_confidence_interval",
+          "matched": true
+        },
+        {
+          "category": "outcome_source_sentence",
+          "field": "outcome:3:outcome_source_sentence",
+          "matched": true
+        },
+        {
+          "category": "outcome_estimate",
+          "field": "outcome:3:outcome_estimate",
+          "matched": true
+        },
+        {
+          "category": "outcome_metric",
+          "field": "outcome:3:outcome_metric",
+          "matched": true
+        },
+        {
+          "category": "outcome_confidence_interval",
+          "field": "outcome:3:outcome_confidence_interval",
+          "matched": true
+        },
+        {
+          "category": "study_design",
+          "field": "study_design",
+          "matched": true
+        }
+      ],
+      "complete_reference_extraction": true,
+      "source_claim_count": 16,
+      "metric_type_check_count": 7,
+      "source_sentence_matches": 16,
       "source_sentence_exact_match_rate": 1.0,
       "unsupported_value_claims": [],
       "unsupported_metric_type_claims": [],
@@ -309,7 +534,10 @@
           "estimate_matched": false,
           "metric_matched": false,
           "ci_matched": null,
-          "p_matched": null
+          "p_matched": null,
+          "event_counts_matched": [
+            false
+          ]
         },
         {
           "outcome": "seizures in individuals with developmental delay",
@@ -319,11 +547,59 @@
           "estimate_matched": false,
           "metric_matched": false,
           "ci_matched": null,
-          "p_matched": null
+          "p_matched": null,
+          "event_counts_matched": []
         }
       ],
       "reference_fields_matched": 2,
       "reference_fields_expected": 9,
+      "reference_field_checks": [
+        {
+          "category": "study_total_n",
+          "field": "total_n",
+          "matched": true
+        },
+        {
+          "category": "outcome_source_sentence",
+          "field": "outcome:1:outcome_source_sentence",
+          "matched": false
+        },
+        {
+          "category": "outcome_estimate",
+          "field": "outcome:1:outcome_estimate",
+          "matched": false
+        },
+        {
+          "category": "outcome_metric",
+          "field": "outcome:1:outcome_metric",
+          "matched": false
+        },
+        {
+          "category": "outcome_event_count",
+          "field": "outcome:1:outcome_event_count",
+          "matched": false
+        },
+        {
+          "category": "outcome_source_sentence",
+          "field": "outcome:2:outcome_source_sentence",
+          "matched": false
+        },
+        {
+          "category": "outcome_estimate",
+          "field": "outcome:2:outcome_estimate",
+          "matched": false
+        },
+        {
+          "category": "outcome_metric",
+          "field": "outcome:2:outcome_metric",
+          "matched": false
+        },
+        {
+          "category": "study_design",
+          "field": "study_design",
+          "matched": true
+        }
+      ],
       "complete_reference_extraction": false,
       "source_claim_count": 2,
       "metric_type_check_count": 0,
@@ -381,7 +657,8 @@
           "estimate_matched": true,
           "metric_matched": true,
           "ci_matched": true,
-          "p_matched": null
+          "p_matched": null,
+          "event_counts_matched": []
         },
         {
           "outcome": "trimethoprim-resistant E. coli infection and prior trimethoprim exposure >=7 days",
@@ -391,11 +668,64 @@
           "estimate_matched": true,
           "metric_matched": true,
           "ci_matched": false,
-          "p_matched": null
+          "p_matched": null,
+          "event_counts_matched": []
         }
       ],
       "reference_fields_matched": 9,
       "reference_fields_expected": 10,
+      "reference_field_checks": [
+        {
+          "category": "study_total_n",
+          "field": "total_n",
+          "matched": true
+        },
+        {
+          "category": "outcome_source_sentence",
+          "field": "outcome:1:outcome_source_sentence",
+          "matched": true
+        },
+        {
+          "category": "outcome_estimate",
+          "field": "outcome:1:outcome_estimate",
+          "matched": true
+        },
+        {
+          "category": "outcome_metric",
+          "field": "outcome:1:outcome_metric",
+          "matched": true
+        },
+        {
+          "category": "outcome_confidence_interval",
+          "field": "outcome:1:outcome_confidence_interval",
+          "matched": true
+        },
+        {
+          "category": "outcome_source_sentence",
+          "field": "outcome:2:outcome_source_sentence",
+          "matched": true
+        },
+        {
+          "category": "outcome_estimate",
+          "field": "outcome:2:outcome_estimate",
+          "matched": true
+        },
+        {
+          "category": "outcome_metric",
+          "field": "outcome:2:outcome_metric",
+          "matched": true
+        },
+        {
+          "category": "outcome_confidence_interval",
+          "field": "outcome:2:outcome_confidence_interval",
+          "matched": false
+        },
+        {
+          "category": "study_design",
+          "field": "study_design",
+          "matched": true
+        }
+      ],
       "complete_reference_extraction": false,
       "source_claim_count": 8,
       "metric_type_check_count": 3,
@@ -453,7 +783,8 @@
           "estimate_matched": false,
           "metric_matched": false,
           "ci_matched": null,
-          "p_matched": null
+          "p_matched": null,
+          "event_counts_matched": []
         },
         {
           "outcome": "positive likelihood ratio for abnormal sTSH in ill inpatients vs outpatients",
@@ -463,11 +794,49 @@
           "estimate_matched": false,
           "metric_matched": false,
           "ci_matched": null,
-          "p_matched": null
+          "p_matched": null,
+          "event_counts_matched": []
         }
       ],
       "reference_fields_matched": 1,
       "reference_fields_expected": 7,
+      "reference_field_checks": [
+        {
+          "category": "outcome_source_sentence",
+          "field": "outcome:1:outcome_source_sentence",
+          "matched": false
+        },
+        {
+          "category": "outcome_estimate",
+          "field": "outcome:1:outcome_estimate",
+          "matched": false
+        },
+        {
+          "category": "outcome_metric",
+          "field": "outcome:1:outcome_metric",
+          "matched": false
+        },
+        {
+          "category": "outcome_source_sentence",
+          "field": "outcome:2:outcome_source_sentence",
+          "matched": false
+        },
+        {
+          "category": "outcome_estimate",
+          "field": "outcome:2:outcome_estimate",
+          "matched": false
+        },
+        {
+          "category": "outcome_metric",
+          "field": "outcome:2:outcome_metric",
+          "matched": false
+        },
+        {
+          "category": "study_design",
+          "field": "study_design",
+          "matched": true
+        }
+      ],
       "complete_reference_extraction": false,
       "source_claim_count": 0,
       "metric_type_check_count": 0,
@@ -525,7 +894,8 @@
           "estimate_matched": true,
           "metric_matched": true,
           "ci_matched": null,
-          "p_matched": null
+          "p_matched": null,
+          "event_counts_matched": []
         },
         {
           "outcome": "specificity for categorical ASD diagnosis",
@@ -535,11 +905,54 @@
           "estimate_matched": true,
           "metric_matched": true,
           "ci_matched": null,
-          "p_matched": null
+          "p_matched": null,
+          "event_counts_matched": []
         }
       ],
       "reference_fields_matched": 8,
       "reference_fields_expected": 8,
+      "reference_field_checks": [
+        {
+          "category": "study_total_n",
+          "field": "total_n",
+          "matched": true
+        },
+        {
+          "category": "outcome_source_sentence",
+          "field": "outcome:1:outcome_source_sentence",
+          "matched": true
+        },
+        {
+          "category": "outcome_estimate",
+          "field": "outcome:1:outcome_estimate",
+          "matched": true
+        },
+        {
+          "category": "outcome_metric",
+          "field": "outcome:1:outcome_metric",
+          "matched": true
+        },
+        {
+          "category": "outcome_source_sentence",
+          "field": "outcome:2:outcome_source_sentence",
+          "matched": true
+        },
+        {
+          "category": "outcome_estimate",
+          "field": "outcome:2:outcome_estimate",
+          "matched": true
+        },
+        {
+          "category": "outcome_metric",
+          "field": "outcome:2:outcome_metric",
+          "matched": true
+        },
+        {
+          "category": "study_design",
+          "field": "study_design",
+          "matched": true
+        }
+      ],
       "complete_reference_extraction": true,
       "source_claim_count": 8,
       "metric_type_check_count": 4,
@@ -603,11 +1016,44 @@
           "estimate_matched": false,
           "metric_matched": false,
           "ci_matched": null,
-          "p_matched": null
+          "p_matched": null,
+          "event_counts_matched": []
         }
       ],
       "reference_fields_matched": 2,
       "reference_fields_expected": 6,
+      "reference_field_checks": [
+        {
+          "category": "study_total_n",
+          "field": "total_n",
+          "matched": true
+        },
+        {
+          "category": "arm_participant_n",
+          "field": "arm_n:surgical treatment",
+          "matched": false
+        },
+        {
+          "category": "outcome_source_sentence",
+          "field": "outcome:1:outcome_source_sentence",
+          "matched": false
+        },
+        {
+          "category": "outcome_estimate",
+          "field": "outcome:1:outcome_estimate",
+          "matched": false
+        },
+        {
+          "category": "outcome_metric",
+          "field": "outcome:1:outcome_metric",
+          "matched": false
+        },
+        {
+          "category": "study_design",
+          "field": "study_design",
+          "matched": true
+        }
+      ],
       "complete_reference_extraction": false,
       "source_claim_count": 5,
       "metric_type_check_count": 0,
@@ -672,29 +1118,83 @@
           "outcome": "cervical rib diagnosis",
           "reference_metric": "sensitivity",
           "reference_estimate": "100%",
-          "source_sentence_matched": false,
-          "estimate_matched": false,
-          "metric_matched": false,
+          "source_sentence_matched": true,
+          "estimate_matched": true,
+          "metric_matched": true,
           "ci_matched": null,
-          "p_matched": null
+          "p_matched": null,
+          "event_counts_matched": []
         },
         {
           "outcome": "cervical rib diagnosis",
           "reference_metric": "specificity",
           "reference_estimate": "100%",
-          "source_sentence_matched": false,
-          "estimate_matched": false,
-          "metric_matched": false,
+          "source_sentence_matched": true,
+          "estimate_matched": true,
+          "metric_matched": true,
           "ci_matched": null,
-          "p_matched": null
+          "p_matched": null,
+          "event_counts_matched": []
         }
       ],
-      "reference_fields_matched": 2,
+      "reference_fields_matched": 8,
       "reference_fields_expected": 10,
+      "reference_field_checks": [
+        {
+          "category": "study_total_n",
+          "field": "total_n",
+          "matched": true
+        },
+        {
+          "category": "arm_participant_n",
+          "field": "arm_n:1.5-T MRI",
+          "matched": false
+        },
+        {
+          "category": "arm_participant_n",
+          "field": "arm_n:3-T MRI",
+          "matched": false
+        },
+        {
+          "category": "outcome_source_sentence",
+          "field": "outcome:1:outcome_source_sentence",
+          "matched": true
+        },
+        {
+          "category": "outcome_estimate",
+          "field": "outcome:1:outcome_estimate",
+          "matched": true
+        },
+        {
+          "category": "outcome_metric",
+          "field": "outcome:1:outcome_metric",
+          "matched": true
+        },
+        {
+          "category": "outcome_source_sentence",
+          "field": "outcome:2:outcome_source_sentence",
+          "matched": true
+        },
+        {
+          "category": "outcome_estimate",
+          "field": "outcome:2:outcome_estimate",
+          "matched": true
+        },
+        {
+          "category": "outcome_metric",
+          "field": "outcome:2:outcome_metric",
+          "matched": true
+        },
+        {
+          "category": "study_design",
+          "field": "study_design",
+          "matched": true
+        }
+      ],
       "complete_reference_extraction": false,
-      "source_claim_count": 3,
-      "metric_type_check_count": 0,
-      "source_sentence_matches": 3,
+      "source_claim_count": 9,
+      "metric_type_check_count": 4,
+      "source_sentence_matches": 9,
       "source_sentence_exact_match_rate": 1.0,
       "unsupported_value_claims": [],
       "unsupported_metric_type_claims": [],
@@ -730,5 +1230,5 @@
       }
     }
   ],
-  "report_markdown": "# Çok Branşlı PubMed Klinik Kanıt Benchmark Raporu\n\nBu rapor, sekiz önceden belirlenmiş PubMed kaydında abstract düzeyindeki çıkarımı kaynak cümleleriyle karşılaştırır. Bu bir hekim adjudikasyonu, tam metin incelemesi, GRADE değerlendirmesi veya yanlılık riski değerlendirmesi değildir.\n\n## Sonuç özeti\n\n- PubMed kimliği doğrulanan kayıt: **8/8**.\n- Önceden belirlenmiş referans alanı eşleşmesi: **46/82** (56.1%).\n- Eksiksiz makale çıkarımı: **1/8** (12.5%).\n- Kaynak cümlesi eşleşmesi: **53/53** (100.0%); bu yalnızca cümlenin kaynak abstract'ta yer aldığını ölçer, anlamsal doğruluğu tek başına kanıtlamaz.\n- Yanlış/unsupported çıkarım bayrakları: **0/67** (0.0%); kaynak cümlesi, sayısal değer ve metrik türü kontrollerinde başarısız alanlar sayılır.\n- Yanlış nedensellik koruma bayrağı: **0**.\n\n## Üç ayrı doğrulama kategorisi\n\n1. **Yazılım birim/entegrasyon testleri:** `python -m pytest -q` — PASS; 389 passed, 5 skipped, 17 subtests passed in 146.70s (0:02:26).\n2. **Gerçek PubMed kaynak doğrulaması:** 8/8 kayıt PMID ve sağlanan DOI/başlıkla yeniden alındı/eşleşti; **klinik iddialar bağımsız doğrulanmış sayılmaz**.\n3. **Bağımsız klinik veri doğrulaması:** **NOT_PERFORMED** — Bağımsız hekim değerlendirmeli veri kümesi veya tam metin çıkarımı sağlanmadı; PubMed kayıt kimliği ve özet cümlesi eşleşmesi klinik doğrulama değildir.\n\n## Branş ve tasarım bazında sonuçlar\n\n| Branş | PMID | Beklenen tasarım | Motor tasarımı | N (referans / motor) | Alan eşleşmesi | Kaynak cümlesi | Nedensellik bayrağı |\n|---|---:|---|---|---:|---:|---|---|\n| Kardiyoloji | 34449189 | rct | rct | 5988 / 5988 | 14/18 | 100% | yok |\n| Onkoloji | 39416390 | meta_analysis | systematic_review_and_meta_analysis | 2833 / 2833 | 8/14 | 100% | yok |\n| Nöroloji | 32113113 | cohort | cohort | 302 / 302 | 2/9 | 100% | yok |\n| Enfeksiyon hastalıkları | 17540675 | case_control | case_control | 903 / 903 | 9/10 | 100% | yok |\n| Endokrinoloji | 10218744 | systematic_review | systematic_review | — / belirtilmedi | 1/7 | yok | yok |\n| Pediatri | 37461867 | diagnostic_accuracy | diagnostic_accuracy | 126 / 126 | 8/8 | 100% | yok |\n| Cerrahi | 39071203 | case_series | case_series | 56 / 56 | 2/6 | 100% | yok |\n| Radyoloji | 31732398 | diagnostic_accuracy | diagnostic_accuracy | 48 / 48 | 2/10 | 100% | yok |\n\n## Yorum ve sınırlar\n\nEksiksiz çıkarım, yalnızca referans tablosunda açıkça verilmiş alanların tamamının eşleşmesi olarak tanımlanmıştır; desteklenmeyen alanlar tahminle doldurulmamıştır. Kaynak eşleşme oranı, çıkarılmış değerin doğru klinik yorumlandığını değil, bağlanan kaynak cümlenin PubMed abstract'ında bulunduğunu gösterir. Referans tablosu kısıtlı sayıda makale içerir ve bütün klinik çeşitliliği temsil etmez.\n\nNedensellik bayrağı; gözlemsel, tanısal, olgu serisi ve derleme/meta-analiz kayıtlarının model durum alanındaki korumayı kontrol eder. Bu, oluşturulmuş her Türkçe cümlenin bağımsız hekim tarafından doğrulanmış olduğu anlamına gelmez.\n\nModel sürümü: `1.0`. PubMed referans kaynağı ve her makalenin bağlantısı [önceden belirlenmiş referans tablosunda](pubmed_reference_cases.json) yer alır.\n"
+  "report_markdown": "# Çok Branşlı PubMed Klinik Kanıt Benchmark Raporu\n\nBu rapor, sekiz önceden belirlenmiş PubMed kaydında abstract düzeyindeki çıkarımı kaynak cümleleriyle karşılaştırır. Bu bir hekim adjudikasyonu, tam metin incelemesi, GRADE değerlendirmesi veya yanlılık riski değerlendirmesi değildir.\n\n## Sonuç özeti\n\n- PubMed kimliği doğrulanan kayıt: **8/8**.\n- Önceden belirlenmiş referans alanı eşleşmesi: **62/82** (75.6%).\n- Eksiksiz makale çıkarımı: **3/8** (37.5%).\n- Kaynak cümlesi eşleşmesi: **71/71** (100.0%); bu yalnızca cümlenin kaynak abstract'ta yer aldığını ölçer, anlamsal doğruluğu tek başına kanıtlamaz.\n- Yanlış/unsupported çıkarım bayrakları: **0/91** (0.0%); kaynak cümlesi, sayısal değer ve metrik türü kontrollerinde başarısız alanlar sayılır.\n- Yanlış nedensellik koruma bayrağı: **0**.\n\n## En sık kaçan referans alanları ve güvenli sonraki işler\n\nSıra, kaçan alan sayısı ile kaynak/ölçüt bütünlüğü önceliğini birleştirir; klinik risk sıralaması veya hekim adjudikasyonu değildir.\n1. **P1 — sonuç değeri — outcome_estimate: 11/16 eşleşti; 5 kaçan.** Yalnızca abstract'ta açıkça yazılı sonuç değerleri için dar kapsamlı çıkarım kalıpları ekle.\n2. **P1 — ölçüt türü — outcome_metric: 11/16 eşleşti; 5 kaçan.** HR, OR, oran ve tanısal ölçüt türlerini birbirine karıştırmadan ayır.\n3. **P1 — kaynak bağlantısı — outcome_source_sentence: 11/16 eşleşti; 5 kaçan.** Sonuç değerlerini kaynak cümlesine daha güvenilir bağla; eşleşmeyi genişletirken kaynak dışı iddia üretme.\n4. **P1 — tahmin belirsizliği — outcome_confidence_interval: 6/7 eşleşti; 1 kaçan.** GA'yı eşleşen tahmine bağla; etiketsiz parantezlerden güven aralığı çıkarma.\n5. **P2 — kol paydaları — arm_participant_n: 2/5 eşleşti; 3 kaçan.** Açıkça tahsis edilmiş tedavi kollarının N değerini çalışma toplamı ve sonuç paydasından ayır; karşılaştırmalı kol olmayan grupları zorla eşleme.\n6. **P2 — sonuç sayımları — outcome_event_count: 4/5 eşleşti; 1 kaçan.** Olay sayısını aynı sonuç cümlesinde ve doğru kola bağlı olarak karşılaştır.\n\nNot: Bu referans kümesinde [cerrahi vaka serisindeki 51/56 tedavi edilmiş hasta](https://pubmed.ncbi.nlm.nih.gov/39071203/) ve [MRI teknik grupları (29/19)](https://pubmed.ncbi.nlm.nih.gov/31732398/) karşılaştırmalı tahsis kolları değildir; eksikleri yapay kola dönüştürmek uygun değildir.\n\n## Üç ayrı doğrulama kategorisi\n\n1. **Yazılım birim/entegrasyon testleri:** `python -m pytest -q` — PASS; 395 passed, 5 skipped, 17 subtests passed in 132.68s (0:02:12).\n2. **Gerçek PubMed kaynak doğrulaması:** 8/8 kayıt PMID ve sağlanan DOI/başlıkla yeniden alındı/eşleşti; **klinik iddialar bağımsız doğrulanmış sayılmaz**.\n3. **Bağımsız klinik veri doğrulaması:** **NOT_PERFORMED** — Bu benchmark çalıştırmasında bağımsız klinik adjudikasyon yapılmadı; PMID/DOI/başlık kimliği ve abstract kaynak cümlesi kontrolleri klinik doğruluk doğrulaması değildir.\n\n## Branş ve tasarım bazında sonuçlar\n\n| Branş | PMID | Beklenen tasarım | Motor tasarımı | N (referans / motor) | Alan eşleşmesi | Kaynak cümlesi | Nedensellik bayrağı |\n|---|---:|---|---|---:|---:|---|---|\n| Kardiyoloji | 34449189 | rct | rct | 5988 / 5988 | 18/18 | 100% | yok |\n| Onkoloji | 39416390 | meta_analysis | systematic_review_and_meta_analysis | 2833 / 2833 | 14/14 | 100% | yok |\n| Nöroloji | 32113113 | cohort | cohort | 302 / 302 | 2/9 | 100% | yok |\n| Enfeksiyon hastalıkları | 17540675 | case_control | case_control | 903 / 903 | 9/10 | 100% | yok |\n| Endokrinoloji | 10218744 | systematic_review | systematic_review | — / belirtilmedi | 1/7 | yok | yok |\n| Pediatri | 37461867 | diagnostic_accuracy | diagnostic_accuracy | 126 / 126 | 8/8 | 100% | yok |\n| Cerrahi | 39071203 | case_series | case_series | 56 / 56 | 2/6 | 100% | yok |\n| Radyoloji | 31732398 | diagnostic_accuracy | diagnostic_accuracy | 48 / 48 | 8/10 | 100% | yok |\n\n## Yorum ve sınırlar\n\nEksiksiz çıkarım, yalnızca referans tablosunda açıkça verilmiş alanların tamamının eşleşmesi olarak tanımlanmıştır; desteklenmeyen alanlar tahminle doldurulmamıştır. Kaynak eşleşme oranı, çıkarılmış değerin doğru klinik yorumlandığını değil, bağlanan kaynak cümlenin PubMed abstract'ında bulunduğunu gösterir. Referans tablosu kısıtlı sayıda makale içerir ve bütün klinik çeşitliliği temsil etmez.\n\nNedensellik bayrağı; gözlemsel, tanısal, olgu serisi ve derleme/meta-analiz kayıtlarının model durum alanındaki korumayı kontrol eder. Bu, oluşturulmuş her Türkçe cümlenin bağımsız hekim tarafından doğrulanmış olduğu anlamına gelmez.\n\nModel sürümü: `1.0`. PubMed referans kaynağı ve her makalenin bağlantısı [önceden belirlenmiş referans tablosunda](pubmed_reference_cases.json) yer alır.\n"
 }
