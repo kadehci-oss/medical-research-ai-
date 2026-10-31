@@ -5,6 +5,7 @@ import time
 import xml.etree.ElementTree as ET
 import requests
 from typing import List, Dict, Any, Optional
+from evidence_guards import fill_date_range  # [mrai-fixes]
 
 logger = logging.getLogger(__name__)
 
@@ -307,12 +308,21 @@ def search_pubmed(
         "sort": sort,
     }
 
-    if start_year or end_year:
+    # [mrai-fixes B6] NCBI needs mindate and maxdate together; fill the missing bound.
+    try:
+        _date_range = fill_date_range(start_year or None, end_year or None)
+    except ValueError as exc:
+        return {
+            "articles": [],
+            "total_count": 0,
+            "query": query,
+            "search_date": search_date_str,
+            "search_params": search_params_summary,
+            "error": str(exc)
+        }
+    if _date_range:
         esearch_params["datetype"] = "pdat"
-        if start_year:
-            esearch_params["mindate"] = str(start_year)
-        if end_year:
-            esearch_params["maxdate"] = str(end_year)
+        esearch_params["mindate"], esearch_params["maxdate"] = _date_range
 
     esearch_params.update(eutils_identity_params())
 
