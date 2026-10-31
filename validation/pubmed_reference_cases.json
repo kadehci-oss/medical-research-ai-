@@ -1,5 +1,5 @@
 {
-  "dataset_version": "1.0",
+  "dataset_version": "1.1",
   "scope": "Eight PubMed-indexed articles across the eight requested specialties. Reference values below are explicit PubMed abstract facts, not an independent clinician's assessment.",
   "source_verification": "Each exact PubMed record was opened; PMID/title and DOI when present were checked against the record. Publication types are recorded only when visible in the record. Abstract sentences are quoted verbatim.",
   "cases": [
@@ -61,7 +61,7 @@
       "total_n_sentence": "We followed 302 individuals with adult-onset epilepsy for 9.8 years in our University Hospital.",
       "arms": [],
       "outcomes": [
-        {"outcome": "drug-resistant epilepsy", "metric": "proportion", "estimate": "47 (15.6%)", "ci": null, "p": null, "event_count": 47, "denominator": 302, "source_sentence": "Overall 47 (15.6%) individuals presented drug-resistant epilepsy and the etiology was structural in 70.2% of them, while infectious etiology was present in 8.5% of this group."},
+        {"outcome": "drug-resistant epilepsy", "metric": "proportion", "estimate": "15.6%", "ci": null, "p": null, "event_count": 47, "denominator": null, "source_sentence": "Overall 47 (15.6%) individuals presented drug-resistant epilepsy and the etiology was structural in 70.2% of them, while infectious etiology was present in 8.5% of this group."},
         {"outcome": "seizures in individuals with developmental delay", "metric": "qualitative association", "estimate": "two times more likely", "ci": null, "p": null, "source_sentence": "Those with developmental delay were two times more likely to present seizures."}
       ],
       "study_relationship": "Primary longitudinal cohort report; 302 individuals, 9.8-year follow-up.",
@@ -139,8 +139,9 @@
       "population": "56 adults with Eagle syndrome at a tertiary center; all operations by one surgeon.",
       "total_n": 56,
       "total_n_sentence": "This retrospective case series included 56 patients at least 18 years of age or older with a diagnosis of Eagle syndrome.",
-      "arms": [
-        {"label": "surgical treatment", "participants_n": 51, "intervention": "surgical treatment; 92.2% intraoral and 7.8% cervical approaches"}
+      "arms": [],
+      "non_arm_groups": [
+        {"label": "surgical treatment", "participants_n": 51, "not_arm_reason": "Case-series treatment exposure; no comparative allocation arm is reported."}
       ],
       "outcomes": [
         {"outcome": "patient-reported symptom resolution or improvement after surgery", "metric": "proportion", "estimate": "100% of respondents", "ci": null, "p": null, "event_count": null, "denominator": null, "source_sentence": "All patients (100%) reached in a phone survey stated that their symptoms resolved or improved after surgery."}
@@ -160,9 +161,10 @@
       "population": "48 patients who underwent surgery for thoracic outlet syndrome after work-up including MRI.",
       "total_n": 48,
       "total_n_sentence": "We retrospectively included 48 patients who underwent surgery for TOS after a work-up that included MRI (1.5-T, n=29 and 3-T, n=19).",
-      "arms": [
-        {"label": "1.5-T MRI", "participants_n": 29, "intervention": "MRI at 1.5 T"},
-        {"label": "3-T MRI", "participants_n": 19, "intervention": "MRI at 3 T"}
+      "arms": [],
+      "non_arm_groups": [
+        {"label": "1.5-T MRI", "participants_n": 29, "not_arm_reason": "MRI field-strength technical subgroup; not a treatment or allocation arm."},
+        {"label": "3-T MRI", "participants_n": 19, "not_arm_reason": "MRI field-strength technical subgroup; not a treatment or allocation arm."}
       ],
       "outcomes": [
         {"outcome": "cervical rib diagnosis", "metric": "sensitivity", "estimate": "100%", "ci": null, "p": null, "source_sentence": "For diagnosing a cervical rib, MRI had 100% sensitivity and 100% specificity."},

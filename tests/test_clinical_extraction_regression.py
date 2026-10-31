@@ -11,6 +11,7 @@ import re
 import unittest
 from unittest.mock import patch
 
+from clinical_evidence import build_study_model
 from report_generator import (
     INSUFFICIENT_CLINICAL_DATA_TR,
     classify_study_design,
@@ -227,6 +228,82 @@ class TestConfidenceIntervalsOutcomesAndGrouping(unittest.TestCase):
             "Mortality was lower (HR 0.80, 95% CI 0.70–0.92)."
         )
         self.assertEqual(dash[0]["ci"], "0.70 ile 0.92")
+
+    def test_unlabeled_interval_binds_only_when_immediately_after_named_ratio_estimate(self):
+        sentence = (
+            "For trimethoprim-resistant E. coli infections, the OR was 8.44 (3.12-22.86) "
+            "for prescriptions of trimethoprim of >or=7 days in the previous month and "
+            "13.91 (3.32-58.31) for the previous 2-3 months."
+        )
+        findings = extract_grounded_clinical_findings(sentence)
+        self.assertEqual(len(findings), 1)
+        self.assertEqual(findings[0]["effect"], "OR 8.44")
+        self.assertEqual(findings[0]["ci"], "3.12 ile 22.86")
+
+        detached = extract_grounded_clinical_findings(
+            "The OR was 1.40 for exposure; follow-up values ranged from (0.70-2.00)."
+        )
+        self.assertEqual(len(detached), 1)
+        self.assertEqual(detached[0]["ci"], "özette bildirilmedi")
+
+    def test_narrative_estimates_keep_literal_values_subgroups_and_unknown_denominators(self):
+        sentences = [
+            "Overall 47 (15.6%) individuals presented drug-resistant epilepsy and the etiology was structural in 70.2% of them, while infectious etiology was present in 8.5% of this group.",
+            "Those with developmental delay were two times more likely to present seizures.",
+            "Prevalence of thyroid disease among inpatients is approximately 1% to 2% and is similar to the outpatient population.",
+            "The positive likelihood ratio associated with an abnormal sTSH test result in ill inpatients is about 10 compared with about 100 in outpatients.",
+            "All patients (100%) reached in a phone survey stated that their symptoms resolved or improved after surgery.",
+        ]
+        models = []
+        for index, sentence in enumerate(sentences, 1):
+            model = build_study_model(_article(f"9000020{index}", "Study", ["Journal Article"], sentence))
+            models.append(model)
+            outcomes = [
+                item for item in model["outcomes"]
+                if item["source"]["source_sentence"] == sentence
+            ]
+            self.assertTrue(outcomes, sentence)
+            self.assertEqual(model["arms"], [], sentence)
+
+        epilepsy = next(item for item in models[0]["outcomes"] if item["source"]["source_sentence"] == sentences[0])
+        self.assertEqual(epilepsy["event_count"]["value"], 47)
+        self.assertIsNone(epilepsy["denominator"]["value"])
+        self.assertEqual(epilepsy["effect_estimates"][0]["value"], "15.6%")
+        self.assertEqual(epilepsy["effect_estimates"][0]["metric_type"], "not_named_in_source")
+
+        association = next(item for item in models[1]["outcomes"] if item["source"]["source_sentence"] == sentences[1])
+        self.assertEqual(association["effect_estimates"][0]["value"], "two times more likely")
+        self.assertEqual(association["effect_estimates"][0]["metric_type"], "not_named_in_source")
+        self.assertEqual(association["effect_estimates"][0]["population_subgroup"], "Those with developmental delay")
+
+        prevalence = next(item for item in models[2]["outcomes"] if item["source"]["source_sentence"] == sentences[2])
+        self.assertEqual(prevalence["effect_estimates"][0]["metric_type"], "prevalence")
+        self.assertEqual(prevalence["effect_estimates"][0]["value"], "approximately 1% to 2%")
+        self.assertIsNone(prevalence["effect_estimates"][0]["ci_lower"])
+
+        likelihood = next(item for item in models[3]["outcomes"] if item["source"]["source_sentence"] == sentences[3])
+        self.assertEqual(
+            [(item["value"], item["population_subgroup"]) for item in likelihood["effect_estimates"]],
+            [("about 10", "ill inpatients"), ("about 100", "outpatients")],
+        )
+        self.assertTrue(all(item["metric_type"] == "likelihood_ratio" for item in likelihood["effect_estimates"]))
+
+        survey = next(item for item in models[4]["outcomes"] if item["source"]["source_sentence"] == sentences[4])
+        self.assertEqual(survey["effect_estimates"][0]["value"], "100%")
+        self.assertEqual(survey["effect_estimates"][0]["population_subgroup"], "patients reached in a phone survey")
+        self.assertIsNone(survey["denominator"]["value"])
+
+    def test_case_series_treatment_counts_and_mri_field_strength_groups_are_not_arms(self):
+        case_series = build_study_model(_article(
+            "90000211", "Eagle syndrome outcomes", ["Journal Article"],
+            "This retrospective case series included 56 patients. Surgery was performed in 51 patients.",
+        ))
+        imaging = build_study_model(_article(
+            "90000212", "MRI diagnostic accuracy", ["Journal Article"],
+            "We retrospectively included 48 patients who underwent surgery for TOS after work-up including MRI (1.5-T, n=29 and 3-T, n=19).",
+        ))
+        self.assertEqual(case_series["arms"], [])
+        self.assertEqual(imaging["arms"], [])
 
     def test_one_source_sentence_is_shown_once_and_its_effects_are_grouped(self):
         cell = format_klinik_bulgular_cell(self.by_pmid["40446701"])

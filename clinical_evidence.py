@@ -10,7 +10,7 @@ from dataclasses import asdict, dataclass, field
 import re
 from typing import Any, Dict, List, Optional
 
-MODEL_VERSION = "1.0"
+MODEL_VERSION = "1.1"
 CLAIM_REVIEW_STATUS = "not_independently_clinically_validated"
 _NOT_REPORTED = {None, "", "Belirtilmedi", "bildirilmedi", "belirtilmemiş", "Özette bildirilmedi", "özette açıkça bildirilmedi", "not reported", "not stated", "değerlendirilemedi", "unknown"}
 
@@ -471,6 +471,8 @@ def _metric_type(metric: str) -> Optional[str]:
         (r"\b(?:specificity|özgüllük)\b", "specificity"),
         (r"\b(?:auc|auroc|area\s+under\s+(?:the\s+)?curve)\b", "AUC"),
         (r"\b(?:stratified\s+)?win\s+ratio\b", "win_ratio"),
+        (r"\bprevalence\b", "prevalence"),
+        (r"\b(?:positive\s+)?likelihood\s+ratio\b", "likelihood_ratio"),
     ):
         if re.search(pattern, text, re.IGNORECASE):
             return kind
@@ -487,6 +489,27 @@ def _point_value(metric: str, kind: str) -> Optional[str]:
         match = re.search(rf"\b{label}\b\s*(?:=|:)?\s*(-?\d+(?:\.\d+)?)", metric, re.IGNORECASE)
     elif kind == "win_ratio":
         match = re.search(r"\b(?:stratified\s+)?win\s+ratio\b\s*(?:was|of|=|:)?\s*(\d+(?:\.\d+)?)", metric, re.IGNORECASE)
+    elif kind in {"prevalence", "likelihood_ratio"}:
+        if kind == "prevalence":
+            match = re.search(
+                r"\b(?:approximately|about|around)\s+\d+(?:\.\d+)?\s*%\s*(?:to|through|[-–—])\s*\d+(?:\.\d+)?\s*%",
+                metric,
+                re.IGNORECASE,
+            )
+        else:
+            match = re.search(
+                r"\b(?:positive\s+)?likelihood\s+ratio\b[^\d]{0,100}(?:(?:about|approximately|around)\s+)?\d+(?:\.\d+)?",
+                metric,
+                re.IGNORECASE,
+            )
+        if match:
+            value_match = re.search(
+                r"(?:approximately|about|around)\s+\d+(?:\.\d+)?\s*%\s*(?:to|through|[-–—])\s*\d+(?:\.\d+)?\s*%|"
+                r"(?:about|approximately|around)\s+\d+(?:\.\d+)?|\d+(?:\.\d+)?",
+                match.group(0),
+                re.IGNORECASE,
+            )
+            match = value_match or match
     else:
         label = {"sensitivity": r"(?:sensitivity|sensitivities|duyarlılık)", "specificity": r"(?:specificity|özgüllük)", "AUC": r"(?:AUC|AUROC|area\s+under\s+(?:the\s+)?curve)"}[kind]
         match = re.search(rf"\b{label}\b[^\d%]{{0,24}}(\d+(?:\.\d+)?%?)", metric, re.IGNORECASE)
@@ -737,16 +760,19 @@ def _grounded_effect(article: Dict[str, Any], outcome_id: str, item: Dict[str, A
     sentence = str(item.get("sentence") or "").strip()
     if not raw_effect or not sentence:
         return None
-    kind = _metric_type(raw_effect)
-    value = _point_value(raw_effect, kind) if kind else None
-    reported_label = None
+    kind = str(item.get("metric_type") or _metric_type(raw_effect) or "") or None
+    value = item.get("value")
+    value = str(value) if value not in (None, "") else (_point_value(raw_effect, kind) if kind else None)
+    reported_label = item.get("reported_label")
     if kind is None:
         number = re.search(r"[-−]?\d+(?:\.\d+)?\s*%?", raw_effect)
         if not number:
             return None
         kind = "not_named_in_source"
         value = number.group(0).replace("−", "-").replace(" ", "")
-        reported_label = raw_effect
+        reported_label = reported_label or raw_effect
+    if value is None:
+        return None
 
     raw_ci = str(item.get("ci") or "")
     ci_low, ci_high, confidence_level = _confidence_interval(raw_ci)
@@ -772,6 +798,7 @@ def _grounded_effect(article: Dict[str, Any], outcome_id: str, item: Dict[str, A
         subgroup_match = re.search(r"\bin\s+the\s+([A-Za-z0-9-]+(?:\s+[A-Za-z0-9-]+){0,3})\s+population\b", tail, re.IGNORECASE)
         if subgroup_match:
             subgroup = subgroup_match.group(1)
+    subgroup = item.get("population_subgroup") or subgroup
 
     return EffectEstimate(
         outcome_id=outcome_id,
@@ -1031,6 +1058,8 @@ def build_study_model(
         else:
             candidate.name = _fact(article, outcome_name, sentence)
             candidate.source = _source(article, sentence)
+        if finding.get("event_count") is not None and candidate.event_count.value is None:
+            candidate.event_count = _fact(article, int(finding["event_count"]), sentence)
         estimate.outcome_id = candidate.id
         duplicate = next((e for e in candidate.effect_estimates if e.metric_type == estimate.metric_type and e.value == estimate.value), None)
         if duplicate:

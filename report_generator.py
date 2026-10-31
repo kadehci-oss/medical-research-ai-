@@ -3410,6 +3410,39 @@ def _collect_confidence_intervals(sentence: str) -> List[Dict[str, Any]]:
             "text": f"{low} ile {high}",
             "raw": match.group(0),
         })
+    # A bare parenthetical range is accepted only when it immediately follows
+    # one explicitly named ratio estimate and is numerically compatible with it.
+    # This deliberately does not treat arbitrary parenthetical ranges as CIs.
+    for effect in _collect_named_effects(sentence or ""):
+        if not re.search(r"\b(?:HR|OR|RR|hazard\s*ratio|odds\s*ratio|risk\s*ratio|relative\s*risk)\b", effect["name"], re.IGNORECASE):
+            continue
+        tail = (sentence or "")[effect["value_end"]:]
+        match = re.match(
+            r"\s*\(\s*(?P<low>-?\d+(?:\.\d+)?)\s*[-–—]\s*(?P<high>-?\d+(?:\.\d+)?)\s*\)",
+            tail,
+        )
+        if not match:
+            continue
+        try:
+            point, low_value, high_value = map(float, (effect["value"], match.group("low"), match.group("high")))
+        except (TypeError, ValueError):
+            continue
+        if low_value <= 0 or high_value <= 0 or low_value > high_value or not low_value <= point <= high_value:
+            continue
+        start = effect["value_end"] + match.start()
+        end = effect["value_end"] + match.end()
+        if any(start < item["end"] and end > item["start"] for item in intervals):
+            continue
+        intervals.append({
+            "low": match.group("low"),
+            "high": match.group("high"),
+            "start": start,
+            "end": end,
+            "text": f"{match.group('low')} ile {match.group('high')}",
+            "raw": match.group(0),
+            "unlabeled_but_adjacent": True,
+        })
+    intervals.sort(key=lambda item: item["start"])
     return intervals
 
 
@@ -3700,6 +3733,109 @@ def _dedupe_findings(findings: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     return kept
 
 
+def _narrative_result_findings(sentence: str) -> List[Dict[str, Any]]:
+    """Extract only explicit, sentence-bound narrative result constructions."""
+    found = []
+    count_match = re.search(
+        r"\b(?P<count>[\d,]+)\s*\(\s*(?P<percent>\d+(?:\.\d+)?\s*%)\s*\)\s+"
+        r"(?:individuals?|patients?|participants?)\s+(?:presented|experienced|developed|had|reported)\s+"
+        r"(?P<outcome>.+?)(?=\s+and\s+(?:the|this|their)\b|\s+while\b|[,;.]|$)",
+        sentence or "",
+        re.IGNORECASE,
+    )
+    if count_match:
+        percent = re.sub(r"\s+", "", count_match.group("percent"))
+        finding = _make_finding(
+            count_match.group("outcome").strip(), percent, _MISSING_CI_TR, "", sentence,
+        )
+        finding.update({
+            "metric_type": "not_named_in_source",
+            "value": percent,
+            "reported_label": f"{count_match.group('count')} ({percent})",
+            "event_count": int(count_match.group("count").replace(",", "")),
+        })
+        found.append(finding)
+
+    prevalence_match = re.search(
+        r"\bPrevalence of (?P<outcome>.+?)\s+is\s+(?P<estimate>(?:approximately|about|around)\s+"
+        r"\d+(?:\.\d+)?\s*%\s*(?:to|through|[-–—])\s*\d+(?:\.\d+)?\s*%)",
+        sentence or "",
+        re.IGNORECASE,
+    )
+    if prevalence_match:
+        estimate = re.sub(r"\s+", " ", prevalence_match.group("estimate")).strip()
+        finding = _make_finding(
+            f"prevalence of {prevalence_match.group('outcome').strip()}",
+            f"prevalence {estimate}", _MISSING_CI_TR, "", sentence,
+        )
+        finding.update({"metric_type": "prevalence", "value": estimate, "reported_label": estimate})
+        found.append(finding)
+
+    likelihood_match = re.search(
+        r"\bpositive likelihood ratio associated with (?P<outcome>.+?)\s+in\s+(?P<group1>[^,.;]+?)\s+"
+        r"is\s+(?P<value1>(?:about|approximately|around)\s+\d+(?:\.\d+)?)\s+compared with\s+"
+        r"(?P<value2>(?:about|approximately|around)\s+\d+(?:\.\d+)?)\s+in\s+(?P<group2>[^,.;]+)",
+        sentence or "",
+        re.IGNORECASE,
+    )
+    if likelihood_match:
+        outcome = likelihood_match.group("outcome").strip()
+        for value_key, group_key in (("value1", "group1"), ("value2", "group2")):
+            value = re.sub(r"\s+", " ", likelihood_match.group(value_key)).strip()
+            subgroup = likelihood_match.group(group_key).strip()
+            finding = _make_finding(outcome, f"likelihood ratio {value}", _MISSING_CI_TR, "", sentence)
+            finding.update({
+                "metric_type": "likelihood_ratio",
+                "value": value,
+                "reported_label": f"positive likelihood ratio {value} in {subgroup}",
+                "population_subgroup": subgroup,
+            })
+            found.append(finding)
+
+    association_match = re.search(
+        r"\b(?P<subgroup>(?:those|patients|participants|individuals)\s+with\s+[^,;]+?)\s+"
+        r"(?:were|are|was|is)\s+(?P<estimate>(?:one|two|three|four|five|six|seven|eight|nine|ten|"
+        r"\d+(?:\.\d+)?)\s+times?\s+more likely)\s+to\s+"
+        r"(?:present|experience|develop|have|report)\s+(?P<outcome>[^.;,]+)",
+        sentence or "",
+        re.IGNORECASE,
+    )
+    if association_match:
+        estimate = re.sub(r"\s+", " ", association_match.group("estimate")).strip()
+        subgroup = association_match.group("subgroup").strip()
+        finding = _make_finding(
+            association_match.group("outcome").strip(), estimate, _MISSING_CI_TR, "", sentence,
+        )
+        finding.update({
+            "metric_type": "not_named_in_source",
+            "value": estimate,
+            "reported_label": estimate,
+            "population_subgroup": subgroup,
+        })
+        found.append(finding)
+
+    survey_match = re.search(
+        r"\bAll\s+(?P<people>patients|participants|individuals)\s*\(\s*(?P<percent>\d+(?:\.\d+)?\s*%)\s*\)\s*"
+        r"reached in a (?P<survey>phone|telephone) survey stated that their\s+(?P<outcome>[^.;]+)",
+        sentence or "",
+        re.IGNORECASE,
+    )
+    if survey_match:
+        percent = re.sub(r"\s+", "", survey_match.group("percent"))
+        survey = f"{survey_match.group('people').lower()} reached in a {survey_match.group('survey').lower()} survey"
+        finding = _make_finding(
+            survey_match.group("outcome").strip(), percent, _MISSING_CI_TR, "", sentence,
+        )
+        finding.update({
+            "metric_type": "not_named_in_source",
+            "value": percent,
+            "reported_label": f"{percent} of respondents",
+            "population_subgroup": survey,
+        })
+        found.append(finding)
+    return found
+
+
 def extract_grounded_clinical_findings(abstract: str) -> List[Dict[str, Any]]:
     """Findings taken only from effect measures, CIs, and numeric contrasts.
 
@@ -3710,6 +3846,7 @@ def extract_grounded_clinical_findings(abstract: str) -> List[Dict[str, Any]]:
     findings = []
     definitions = _parenthetical_definitions(abstract)
     for sentence in _finding_sentences(abstract):
+        findings.extend(_narrative_result_findings(sentence))
         predictors = _parenthetical_predictor_findings(sentence)
         if predictors:
             findings.extend(predictors)

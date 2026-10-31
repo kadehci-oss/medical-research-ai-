@@ -37,11 +37,20 @@ def number_tokens(value: Any) -> List[str]:
     tokens = [x.replace(",", "") for x in re.findall(r"(?<![A-Za-z])[-−]?\d[\d,]*(?:\.\d+)?%?", text)]
     tens = {"twenty": 20, "thirty": 30, "forty": 40, "fifty": 50, "sixty": 60, "seventy": 70, "eighty": 80, "ninety": 90}
     units = {"one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6, "seven": 7, "eight": 8, "nine": 9}
-    number_words = r"\b(" + "|".join(tens) + r")(?:[-\s]+(" + "|".join(units) + r"))?\b"
+    teens = {"ten": 10, "eleven": 11, "twelve": 12, "thirteen": 13, "fourteen": 14, "fifteen": 15, "sixteen": 16, "seventeen": 17, "eighteen": 18, "nineteen": 19}
+    number_words = (
+        r"\b(?:(?P<tens>" + "|".join(tens) + r")(?:[-\s]+(?P<unit>" + "|".join(units) + r"))?"
+        r"|(?P<single>" + "|".join(units) + r")|(?P<teen>" + "|".join(teens) + r"))\b"
+    )
     for match in re.finditer(number_words, text, re.IGNORECASE):
-        base = tens[match.group(1).casefold()]
-        unit = units.get((match.group(2) or "").casefold(), 0)
-        tokens.append(str(base + unit))
+        if match.group("tens"):
+            base = tens[match.group("tens").casefold()]
+            unit = units.get((match.group("unit") or "").casefold(), 0)
+            tokens.append(str(base + unit))
+        elif match.group("single"):
+            tokens.append(str(units[match.group("single").casefold()]))
+        else:
+            tokens.append(str(teens[match.group("teen").casefold()]))
     return tokens
 
 
@@ -87,6 +96,8 @@ def metric_aliases(metric: str) -> List[str]:
         "AUC": ["AUC", "AUROC"],
         "MD": ["MD", "mean difference"],
         "SMD": ["SMD", "standardized mean difference", "standardised mean difference"],
+        "prevalence": ["prevalence"],
+        "likelihood ratio": ["likelihood_ratio", "likelihood ratio"],
     }.get(metric, [metric.replace("_", " ")])
 
 
@@ -111,16 +122,39 @@ def expected_outcome_match(outcome: Dict[str, Any], model: Dict[str, Any]) -> Di
     estimate_ok = False
     metric_ok = False
     matched_effect = None
-    for effect in effects:
-        if len(expected_numbers) != 1 or not numbers_equal(effect.get("value"), expected_numbers[0]):
-            continue
-        estimate_ok = True
-        expected_metric = metric_aliases(metric)
+    expected_metric = metric_aliases(metric)
+
+    def metric_matches(effect: Dict[str, Any]) -> bool:
         model_metric = str(effect.get("metric_type") or "")
-        if model_metric in expected_metric or (model_metric == "not_named_in_source" and metric in {"proportion", "prevalence", "qualitative association", "likelihood ratio"}):
-            metric_ok = True
-            matched_effect = effect
-            break
+        return model_metric in expected_metric or (
+            model_metric == "not_named_in_source"
+            and metric in {"proportion", "qualitative association", "likelihood ratio"}
+        )
+
+    if metric == "prevalence" and len(expected_numbers) > 1:
+        # A reported prevalence range is one estimate, not a confidence interval.
+        range_effect = next((
+            effect for effect in effects
+            if norm(effect.get("value")) == norm(estimate)
+        ), None)
+        estimate_ok = range_effect is not None
+        metric_ok = bool(range_effect and metric_matches(range_effect))
+    elif metric == "likelihood ratio" and len(expected_numbers) > 1:
+        # Two explicitly reported populations may have separate likelihood ratios.
+        per_value = [
+            [effect for effect in effects if numbers_equal(effect.get("value"), value)]
+            for value in expected_numbers
+        ]
+        estimate_ok = all(per_value)
+        metric_ok = estimate_ok and all(any(metric_matches(effect) for effect in matches) for matches in per_value)
+    elif len(expected_numbers) == 1:
+        value_matches = [
+            effect for effect in effects
+            if numbers_equal(effect.get("value"), expected_numbers[0])
+        ]
+        estimate_ok = bool(value_matches)
+        matched_effect = next((effect for effect in value_matches if metric_matches(effect)), None)
+        metric_ok = matched_effect is not None
     ci = outcome.get("ci")
     ci_ok = None
     if ci is not None:
@@ -263,6 +297,7 @@ def compare_case(case: Dict[str, Any], article: Dict[str, Any], model: Dict[str,
         "actual_total_n": actual_n,
         "total_n_match": None if expected_n is None else actual_n == expected_n,
         "arms": arm_results,
+        "non_arm_groups_not_scored": list(case.get("non_arm_groups") or []),
         "outcomes": outcomes,
         "reference_fields_matched": sum(1 for _, ok in expected_checks if ok),
         "reference_fields_expected": len(expected_checks),
@@ -364,9 +399,24 @@ def render_markdown(report: Dict[str, Any]) -> str:
             "",
             "Not: Bu referans kümesinde [cerrahi vaka serisindeki 51/56 tedavi edilmiş hasta](https://pubmed.ncbi.nlm.nih.gov/39071203/) ve [MRI teknik grupları (29/19)](https://pubmed.ncbi.nlm.nih.gov/31732398/) karşılaştırmalı tahsis kolları değildir; eksikleri yapay kola dönüştürmek uygun değildir.",
         ])
-    lines.extend([
-        "",
-        "## Üç ayrı doğrulama kategorisi",
+    excluded_groups = [
+        (case, group)
+        for case in report.get("cases", [])
+        for group in case.get("non_arm_groups_not_scored", [])
+    ]
+    if excluded_groups:
+        lines.extend([
+            "",
+            "### Kol olarak puanlanmayan açık grup sayıları",
+            "Aşağıdaki referans sayıları kaynakta yer alır, ancak randomize/tahsis edilmiş karşılaştırma kolu olmadıkları için `StudyArm` eşleşmesi olarak değerlendirilmez:",
+        ])
+        for case, group in excluded_groups:
+            lines.append(
+                f"- PMID {case['pmid']}: {group['label']} — n={group['participants_n']}; {group['not_arm_reason']}"
+            )
+        lines.extend([
+            "",
+            "## Üç ayrı doğrulama kategorisi",
         "",
         f"1. **Yazılım birim/entegrasyon testleri:** `{software['command']}` — {software['status']}; {software.get('summary') or 'özet alınamadı'}.",
         f"2. **Gerçek PubMed kaynak doğrulaması:** {pubmed['verified_records']}/{pubmed['records_checked']} kayıt PMID ve sağlanan DOI/başlıkla yeniden alındı/eşleşti; **klinik iddialar bağımsız doğrulanmış sayılmaz**.",
@@ -417,6 +467,7 @@ def run() -> Dict[str, Any]:
                 "expected_design": reference["required_design"], "actual_design": None,
                 "design_match": False, "expected_total_n": reference.get("total_n"),
                 "actual_total_n": None, "total_n_match": False, "arms": [], "outcomes": [],
+                "non_arm_groups_not_scored": list(reference.get("non_arm_groups") or []),
                 "reference_fields_matched": 0, "reference_fields_expected": 0,
                 "reference_field_checks": [],
                 "complete_reference_extraction": False, "source_claim_count": 0,

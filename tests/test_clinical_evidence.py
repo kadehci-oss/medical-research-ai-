@@ -46,7 +46,7 @@ class TestQuestionFrameworkSelection(unittest.TestCase):
 class TestCanonicalEvidenceModel(unittest.TestCase):
     def test_model_binds_facts_metrics_sources_and_status(self):
         model = build_study_model(article(), query="treatment efficacy")
-        self.assertEqual(model["model_version"], "1.0")
+        self.assertEqual(model["model_version"], "1.1")
         self.assertEqual(model["pmid"], "12345678")
         self.assertEqual(model["doi"], "10.1000/example")
         self.assertEqual(model["research_question"]["framework"], "PICO")
