@@ -73,7 +73,7 @@ class TestHeartFailureRegression(unittest.TestCase):
         self.assertEqual(details["sample_size"], "n = 5988")
         self.assertIn("Rastgele Kontrollü", details["study_design"])
         self.assertEqual(details["evidence_level"], "Değerlendirilemedi")
-        self.assertEqual(details["comparison"], "Placebo")
+        self.assertEqual(details["comparison"], "Plasebo")
         self.assertIn("HR 0.79", details["outcomes_summary"])
 
     def test_heart_failure_report_section_12_synthesis(self):

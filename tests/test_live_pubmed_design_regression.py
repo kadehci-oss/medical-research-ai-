@@ -14,6 +14,7 @@ from pubmed_client import search_pubmed, verify_pmid
 from report_generator import (
     assess_risk_of_bias,
     classify_study_design,
+    extract_article_clinical_details,
     format_klinik_bulgular_cell,
     format_methodological_limitation,
     _format_cross_study_comparison,
@@ -247,11 +248,52 @@ class TestLiveSection56Polish(unittest.TestCase):
                 failures.append(f"PMID 33372889 müdahalesi: {prednisone[3]}")
             if "4.81" in series[4] or "13,000" in compare[4]:
                 failures.append("PMID satırları birbirinin sayısını taşıyor")
+            if "Örneklem ve hasta özellikleri" in compare[1] or "Örneklem ve hasta özellikleri" in series[1]:
+                failures.append("Hasta grubu hücresi sütun başlığını tekrarlıyor")
+            for english in ("diabetes mellitus", "statin-induced", "cancer-associated", "European Neuromuscular"):
+                if english.lower() in compare[4].lower() or english.lower() in series[4].lower():
+                    failures.append(f"Bölüm 6 bulgularında çevrilmemiş İngilizce: {english}")
+            if "diyabet" not in compare[4] or "kanserle ilişkili" not in compare[4]:
+                failures.append(f"PMID 40446701 bulguları Türkçe değil: {compare[4]}")
+            if "Avrupa Nöromusküler Merkezi" not in series[4]:
+                failures.append(f"PMID 41010829 tanı ölçütü İngilizce kaldı: {series[4]}")
         limit_404 = format_methodological_limitation(by_pmid["40446701"])
         if "In this retrospective study" in limit_404:
             failures.append("PMID 40446701 sınırlılık hücresi yöntem cümlesini yapıştırdı")
         if failures:
             self.fail("Gerçek PubMed bölüm 5-6:\n" + "\n".join(failures))
+
+
+class TestLiveStudyCardExtraction(unittest.TestCase):
+    """Search-card values stay complete and are not clipped inside a number or bracket."""
+
+    def test_live_native_american_imnm_card_is_not_cut_mid_token(self):
+        try:
+            article = verify_pmid("35348616")
+        except Exception as exc:  # noqa: BLE001 - report the access barrier
+            self.fail(f"PMID 35348616: PubMed erişim engeli: {exc}")
+        if not isinstance(article, dict) or not article.get("valid"):
+            error = article.get("error") if isinstance(article, dict) else article
+            self.fail(f"PMID 35348616: PubMed erişim engeli: {error}")
+        details = extract_article_clinical_details(
+            article, "statin-associated immune-mediated necrotizing myopathy"
+        )
+        comparison = details["comparison"]
+        outcomes = details["outcomes_summary"]
+        visible = " ".join((
+            details["patient_group"], comparison, details["intervention"], outcomes,
+        ))
+        self.assertNotIn("Iim", visible)
+        self.assertIn("61.6", comparison)
+        self.assertEqual(comparison.count("["), comparison.count("]"))
+        self.assertEqual(comparison.count("("), comparison.count(")"))
+        self.assertIn("9.8", comparison)
+        self.assertRegex(outcomes, r"55\.6%\)")
+        self.assertRegex(outcomes, r"9\.1%")
+        self.assertTrue(
+            any(token in visible for token in ("İİM", "karşı", "yıl", "diyabet")),
+            visible,
+        )
 
 
 if __name__ == "__main__":

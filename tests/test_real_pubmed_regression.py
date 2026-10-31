@@ -101,7 +101,7 @@ class TestRealPubMedRegression(unittest.TestCase):
 
         # 2. Assert intervention and comparison
         self.assertEqual(details["intervention"], "Empagliflozin 10 mg")
-        self.assertTrue(details["comparison"].startswith("Placebo"))
+        self.assertTrue(details["comparison"].startswith("Plasebo"))
 
         # 3. Assert CIs and P-values
         self.assertTrue(any("0.67, 0.94" in ci or "0.67" in ci for ci in metrics["confidence_intervals"]))
@@ -140,7 +140,7 @@ class TestRealPubMedRegression(unittest.TestCase):
         self.assertEqual(metrics["n"], "616")
         self.assertEqual(details["sample_size"], "n = 616")
         self.assertEqual(details["intervention"], "Pembrolizumab")
-        self.assertEqual(details["comparison"], "Placebo")
+        self.assertEqual(details["comparison"], "Plasebo")
         self.assertTrue(any("0.38 to 0.64" in ci or "0.38" in ci for ci in metrics["confidence_intervals"]))
 
     def test_zero_metric_fabrication_for_missing_fields(self):

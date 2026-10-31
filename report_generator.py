@@ -7,6 +7,11 @@ try:
 except ImportError:
     OpenAI = None
 
+from display_turkish import (
+    UNTRANSLATED_OUTCOME_LABEL,
+    display_study_field,
+    localize_clinical_display,
+)
 from pubmed_client import verify_citation
 
 # Reports must never read as if a physician has signed off.
@@ -292,15 +297,191 @@ def _design_record(design_key: str) -> Dict[str, Any]:
     }
 
 
+def _normalize_inline_spaces(text: str) -> str:
+    """Replace unicode spaces without changing string length, so match offsets stay valid."""
+    return (
+        (text or "")
+        .replace("\xa0", " ")
+        .replace("\u2009", " ")
+        .replace("\u200a", " ")
+        .replace("\u202f", " ")
+    )
+
+
+_ABBREV_BEFORE_PERIOD_RE = re.compile(
+    r"(?i)(?:s\.d|e\.g|i\.e|vs|etc|dr|mr|mrs|ms|prof|fig|figs|no|nos|vol|pp|al|approx|eq|cf|jr|sr|st)$"
+)
+
+
+def _period_ends_sentence(text: str, index: int) -> bool:
+    """True when the period at index closes a sentence.
+
+    Decimal points (61.6), abbreviations (s.d., et al., vs.), and initials
+    do not. A following lowercase word does not either.
+    """
+    if index < 0 or index >= len(text) or text[index] not in ".!?":
+        return False
+    if text[index] != ".":
+        return True
+    prev = text[index - 1] if index else ""
+    nxt = text[index + 1] if index + 1 < len(text) else ""
+    if prev.isdigit() and nxt.isdigit():
+        return False
+    before = text[max(0, index - 8):index]
+    if _ABBREV_BEFORE_PERIOD_RE.search(before):
+        return False
+    if prev.isalpha() and (index < 2 or not text[index - 2].isalpha()):
+        return False
+    cursor = index + 1
+    while cursor < len(text) and text[cursor] in " \t":
+        cursor += 1
+    if cursor >= len(text) or text[cursor] == "\n":
+        return True
+    if text[cursor].islower():
+        return False
+    return True
+
+
+def _depth_at(text: str, index: int) -> int:
+    depth = 0
+    for char in (text or "")[: max(index, 0)]:
+        if char in "([{":
+            depth += 1
+        elif char in ")]}":
+            depth = max(0, depth - 1)
+    return depth
+
+
+def _sentence_spans(text: str):
+    """Sentence (start, end) offsets. Brackets, decimals, and abbreviations stay intact."""
+    normalized = _normalize_inline_spaces(text)
+    spans = []
+    start = 0
+    depth = 0
+    index = 0
+    length = len(normalized)
+    while index < length:
+        char = normalized[index]
+        if char in "([{":
+            depth += 1
+        elif char in ")]}":
+            depth = max(0, depth - 1)
+        if char == "\n":
+            if normalized[start:index].strip():
+                spans.append((start, index))
+            start = index + 1
+            depth = 0
+        elif char in ".!?" and depth == 0 and _period_ends_sentence(normalized, index):
+            spans.append((start, index + 1))
+            cursor = index + 1
+            while cursor < length and normalized[cursor] in " \t":
+                cursor += 1
+            start = cursor
+            index = cursor
+            continue
+        index += 1
+    if normalized[start:].strip():
+        spans.append((start, length))
+    return normalized, spans
+
+
 def _sentence_around(text: str, start: int, end: int) -> str:
     if not text or start is None or start < 0:
         return ""
-    left_period = text.rfind(".", 0, start)
-    left_break = text.rfind("\n", 0, start)
-    begin = max(left_period, left_break) + 1
-    right_candidates = [pos for pos in (text.find(".", end), text.find("\n", end)) if pos != -1]
-    finish = (min(right_candidates) + 1) if right_candidates else len(text)
-    return re.sub(r"\s+", " ", text[begin:finish]).strip()
+    normalized, spans = _sentence_spans(text)
+    for begin, finish in spans:
+        if begin <= start < finish or (end and begin < end <= finish):
+            return re.sub(r"\s+", " ", normalized[begin:finish]).strip()
+    return re.sub(r"\s+", " ", normalized[max(0, start):]).strip()
+
+
+def _read_balanced_clause(text: str, start: int) -> str:
+    """Read from start through a complete number and any brackets.
+
+    A comma, semicolon, or sentence period stops the clause only at bracket
+    depth zero. A decimal point and an abbreviation period do not.
+    """
+    if not text or start is None or start < 0 or start >= len(text):
+        return ""
+    base_depth = _depth_at(text, start)
+    depth = base_depth
+    index = start
+    end = start
+    length = len(text)
+    while index < length:
+        char = text[index]
+        if char in "([{":
+            depth += 1
+        elif char in ")]}":
+            depth = max(0, depth - 1)
+        elif depth <= base_depth and char in ",;\n":
+            break
+        elif depth <= base_depth and char in ".!?" and _period_ends_sentence(text, index):
+            break
+        end = index + 1
+        index += 1
+    return text[start:end].strip(" \t")
+
+
+_FINITE_VERB_RE = re.compile(
+    r"\b(?:were|was|are|is|had|have|has|underwent|received|presented|included|"
+    r"enrolled|randomized|randomised|assigned|allocated|treated|identified|"
+    r"characterized|characterised)\b",
+    re.IGNORECASE,
+)
+_ARM_SPLIT_RE = re.compile(
+    r"\s+(?:or|vs\.?|versus|compared\s+(?:to|with))\s+",
+    re.IGNORECASE,
+)
+
+
+def _trim_before_finite_verb(clause: str) -> str:
+    """Keep the noun phrase. A finite verb starts the next clause, not the name."""
+    for match in _FINITE_VERB_RE.finditer(clause or ""):
+        if _depth_at(clause, match.start()) == 0:
+            return clause[:match.start()].strip(" ,;:")
+    return (clause or "").strip(" ,;:")
+
+
+def _raise_initial(text: str) -> str:
+    """Uppercase a leading lowercase letter without rewriting the rest.
+
+    str.capitalize() would turn IIM into Iim. Acronyms stay as written.
+    """
+    cleaned = (text or "").strip()
+    if not cleaned or not cleaned[0].islower():
+        return cleaned
+    return cleaned[0].upper() + cleaned[1:]
+
+
+def _split_treatment_arms(text: str, start: int):
+    """Return (intervention, comparator, comparator_start) after an allocation cue.
+
+    The search stays in the same sentence. A later "or" ("cutaneous or vascular")
+    is not an arm, and a "vs" inside parentheses is a result, not the allocation.
+    """
+    if not text or start is None or start >= len(text):
+        return "", "", start or 0
+    depth = _depth_at(text, start)
+    index = start
+    while index < len(text):
+        char = text[index]
+        if char in "([{":
+            depth += 1
+        elif char in ")]}":
+            depth = max(0, depth - 1)
+        elif depth == 0 and (char == "\n" or (char in ".!?" and _period_ends_sentence(text, index))):
+            break
+        elif depth == 0:
+            match = _ARM_SPLIT_RE.match(text, index)
+            if match:
+                left = text[start:match.start()].strip(" ,;")
+                left = re.sub(r"^.*?\bto\s+receive\s+", "", left, flags=re.IGNORECASE).strip()
+                right = _read_balanced_clause(text, match.end())
+                if left and right:
+                    return left, right, match.end()
+        index += 1
+    return "", "", start
 
 
 def _has_pub_type(pts: List[str], *needles: str) -> bool:
@@ -1182,6 +1363,138 @@ _EFFECT_MEASURE_RE = re.compile(
 )
 
 
+def _effect_clauses(sentence: str) -> List[str]:
+    """Split one sentence on effect measures without opening a bracket.
+
+    A comma or "and" splits only at bracket depth zero, and only when the next
+    piece leads to another effect measure or p-value. An inner "(1.03, 22.6)"
+    is not a split point.
+    """
+    raw_clean = (sentence or "").strip()
+    if not raw_clean:
+        return []
+    eff_count = len(_EFFECT_MEASURE_RE.findall(raw_clean))
+    p_count = len(re.findall(r"\b(?:p|P)\s*[=<]\s*0?\.\d+\b", raw_clean))
+    if eff_count <= 1 and not (eff_count >= 1 and p_count > 1):
+        return [raw_clean]
+    boundary = re.compile(
+        rf"(?:,|\s+and\s+|\s+while\s+)\s*(?=[A-Za-z(\[][^\n]{{0,90}}?\b(?:{_EFFECT_MEASURE_ALTERNATION}|p\s*[=<]))",
+        re.IGNORECASE,
+    )
+    parts = []
+    start = 0
+    depth = 0
+    index = 0
+    while index < len(raw_clean):
+        char = raw_clean[index]
+        if char in "([{":
+            depth += 1
+        elif char in ")]}":
+            depth = max(0, depth - 1)
+        elif depth == 0:
+            match = boundary.match(raw_clean, index)
+            if match and index > start:
+                piece = raw_clean[start:index].strip(" ,;")
+                if piece:
+                    parts.append(piece)
+                start = match.end()
+                index = start
+                continue
+        index += 1
+    tail = raw_clean[start:].strip(" ,;")
+    if tail:
+        parts.append(tail)
+    return parts or [raw_clean]
+
+
+def _label_before_bracket(text: str, start: int) -> str:
+    """Noun phrase immediately before a bracketed contrast, copied from the sentence."""
+    previous = (text or "")[:start]
+    chunk = re.split(r"[,;]", previous)[-1]
+    versus = re.search(r"(?i).*\b(?:vs\.?|versus)\b\s+(.*)$", chunk)
+    if versus and versus.group(1).strip():
+        chunk = versus.group(1)
+    chunk = re.sub(r"^(?:and|or|but|with|the|a|an)\s+", "", chunk.strip(), flags=re.IGNORECASE)
+    words = chunk.split()
+    return " ".join(words[-8:]).strip(" .:")
+
+
+def _outermost_bracket_span(text: str, index: int):
+    """(start, end) of the outermost () or [] that contains index, including the brackets."""
+    best = None
+    stack = []
+    for cursor, char in enumerate(text or ""):
+        if char in "([":
+            stack.append(cursor)
+        elif char in ")]" and stack:
+            start = stack.pop()
+            if start < index < cursor and (best is None or start < best[0]):
+                best = (start, cursor + 1)
+    return best
+
+
+def _simple_numeric_contrast(bracket: str) -> bool:
+    """A bracket is a result contrast when each side of vs is a short number, not a hazard ratio."""
+    parts = re.split(r"\b(?:vs\.?|versus)\b", bracket or "", maxsplit=1, flags=re.IGNORECASE)
+    if len(parts) != 2:
+        return False
+
+    def _side_ok(side: str) -> bool:
+        if re.search(
+            r"\b(?:hazard|odds|ratio|confidence|interval|patients|group|death|survival)\b",
+            side,
+            re.IGNORECASE,
+        ):
+            return False
+        return bool(re.search(r"\d", side)) and len(side) <= 90
+
+    return _side_ok(parts[0]) and _side_ok(parts[1])
+
+
+def _bracket_contrasts(sentence: str) -> List[Dict[str, Any]]:
+    """Percent or numeric contrasts whose brackets are copied whole.
+
+    A value is not stored when the closing bracket is missing. The label is
+    the noun phrase in the same sentence, not a clipped token.
+    """
+    found = []
+    seen = set()
+    for match in re.finditer(r"\b(?:vs\.?|versus)\b", sentence or "", re.IGNORECASE):
+        span = _outermost_bracket_span(sentence, match.start())
+        if not span:
+            continue
+        bracket = sentence[span[0]:span[1]]
+        if bracket in seen or _brackets_unbalanced_local(bracket):
+            continue
+        if not _simple_numeric_contrast(bracket):
+            continue
+        seen.add(bracket)
+        label = _label_before_bracket(sentence, span[0]) or "Karşılaştırma"
+        found.append({
+            "outcome": label,
+            "metrics": [bracket],
+            "sentence": sentence,
+        })
+    return found
+
+
+def _brackets_unbalanced_local(text: str) -> bool:
+    round_depth = 0
+    square_depth = 0
+    for char in text or "":
+        if char == "(":
+            round_depth += 1
+        elif char == ")":
+            round_depth -= 1
+        elif char == "[":
+            square_depth += 1
+        elif char == "]":
+            square_depth -= 1
+        if round_depth < 0 or square_depth < 0:
+            return True
+    return round_depth != 0 or square_depth != 0
+
+
 def extract_outcome_metrics(abstract: str) -> List[Dict[str, Any]]:
     """
     Parses abstract sentences/clauses and binds HR, RR, OR, IRR, SMD, MD, 95% CI,
@@ -1191,28 +1504,10 @@ def extract_outcome_metrics(abstract: str) -> List[Dict[str, Any]]:
     if not abstract:
         return []
 
-    raw_clauses = re.split(r'(?<=[.!?])\s+|\n+|(?:;\s*)', abstract)
+    abstract_clean = _normalize_inline_spaces(abstract)
     clauses = []
-
-    for raw in raw_clauses:
-        raw_clean = raw.strip()
-        if not raw_clean:
-            continue
-
-        eff_count = len(_EFFECT_MEASURE_RE.findall(raw_clean))
-        p_count = len(re.findall(r"\b(?:p|P)\s*[=<]\s*0?\.\d+\b", raw_clean))
-
-        if eff_count > 1 or (eff_count >= 1 and p_count > 1):
-            sub_parts = re.split(
-                rf"(?<=\))\s*(?:and\s+|,|\s+while\s+)|(?:\b(?:and|,)\s+)(?=[A-Za-z\s]+?\b(?:{_EFFECT_MEASURE_ALTERNATION}|p\s*[=<]))",
-                raw_clean,
-                flags=re.IGNORECASE,
-            )
-            for sp in sub_parts:
-                if sp.strip():
-                    clauses.append(sp.strip())
-        else:
-            clauses.append(raw_clean)
+    for sentence in _finding_sentences(abstract_clean):
+        clauses.extend(_effect_clauses(sentence))
 
     results = []
 
@@ -1243,8 +1538,9 @@ def extract_outcome_metrics(abstract: str) -> List[Dict[str, Any]]:
         outcome_name = ""
         clause_lower = clause_clean.lower()
         for kw in outcome_keywords:
-            if kw in clause_lower:
-                outcome_name = kw.title()
+            found_at = clause_lower.find(kw)
+            if found_at >= 0:
+                outcome_name = clause_clean[found_at:found_at + len(kw)]
                 break
 
         if not outcome_name:
@@ -1261,7 +1557,7 @@ def extract_outcome_metrics(abstract: str) -> List[Dict[str, Any]]:
                 prefix = re.sub(r"^[,\s.:;]+|[,\s.:;]+$", "", prefix)
                 words = prefix.split()
                 if len(words) > 0:
-                    cand_name = " ".join(words[-4:]).strip().capitalize()
+                    cand_name = " ".join(words[-6:]).strip()
                     if cand_name and not cand_name.lower().startswith((
                         "hazard", "odds", "relative", "mean", "incidence", "standardized",
                         "p", "ci", "hr", "or", "rr", "md", "irr", "smd", "wmd",
@@ -1276,6 +1572,15 @@ def extract_outcome_metrics(abstract: str) -> List[Dict[str, Any]]:
             "metrics": combined_metrics,
             "sentence": clause_clean
         })
+
+    seen_brackets = set()
+    for sentence in _finding_sentences(abstract_clean):
+        for item in _bracket_contrasts(sentence):
+            bracket = item["metrics"][0]
+            if bracket in seen_brackets:
+                continue
+            seen_brackets.add(bracket)
+            results.append(item)
 
     return results
 
@@ -1361,6 +1666,45 @@ def extract_study_metrics(abstract: str) -> Dict[str, Any]:
     }
 
 
+def _display_effect_text(effect: str) -> str:
+    """Translate effect-measure words. Numeric tokens and OR/HR/RR stay."""
+    text = (effect or "").strip()
+    if not text:
+        return ""
+    if not re.search(
+        r"\b(?:odds|hazard|relative|risk|ratio|win|mean|difference|confidence|interval)\b",
+        text,
+        re.IGNORECASE,
+    ):
+        return text
+    shown = localize_clinical_display(text)
+    return shown or text
+
+
+def _display_outcome_name(outcome: str) -> str:
+    """Turkish outcome label. An untranslatable English name is not shown raw."""
+    text = (outcome or "").strip()
+    if text in (
+        "değerlendirilemedi",
+        "Primer Klinik Sonlanım / Özet İstatistiği",
+        "özette adlandırılmadı",
+    ):
+        return text
+    shown = localize_clinical_display(text)
+    return shown or UNTRANSLATED_OUTCOME_LABEL
+
+
+def _display_metric_text(metric: str) -> str:
+    """Translate metric words (years, vs, s.d.) and keep the number and brackets."""
+    text = (metric or "").strip()
+    if not text:
+        return "değerlendirilemedi"
+    if not re.search(r"[A-Za-z]{2,}", text):
+        return text
+    shown = localize_clinical_display(text)
+    return shown or text
+
+
 def extract_article_clinical_details(article: Dict[str, Any], query: str = "") -> Dict[str, Any]:
     """
     Extracts individual PubMed article clinical details separately:
@@ -1399,20 +1743,24 @@ def extract_article_clinical_details(article: Dict[str, Any], query: str = "") -
         sample_size_str = "Özette bildirilmedi"
         sample_sentence = ""
 
-    # 2. Patient group from the abstract sentence, never from the user's question
+    # 2. Patient group from the abstract sentence, never from the user's question.
+    # Stop at a finite verb and do not end inside a number or a bracket.
     patient_group = "Belirtilmedi"
     pop_sentence = ""
     pop_match = re.search(
         r"\b(?:patients|subjects|adults|children|individuals|participants|hastalar)\s+"
-        r"(?:with|having|diagnosed with|suffering from)\s+([^.,;\n]+)",
+        r"(?:with|having|diagnosed with|suffering from)\s+",
         abstract,
         re.IGNORECASE,
     )
     if pop_match:
-        patient_group = pop_match.group(1).strip().capitalize()
-        pop_sentence = _sentence_around(abstract, pop_match.start(), pop_match.end())
+        raw_population = _trim_before_finite_verb(_read_balanced_clause(abstract, pop_match.end()))
+        if raw_population:
+            patient_group = _raise_initial(raw_population)
+            pop_sentence = _sentence_around(abstract, pop_match.start(), pop_match.end())
 
-    # 3. Intervention and comparator from the abstract or the article title
+    # 3. Intervention and comparator from the abstract or the article title.
+    # Arm text is read through decimals and brackets, then shown in Turkish.
     intervention = "Belirtilmedi"
     comparison = "Belirtilmedi"
     intervention_sentence = ""
@@ -1420,62 +1768,68 @@ def extract_article_clinical_details(article: Dict[str, Any], query: str = "") -
     comparison_sentence = ""
     comparison_source = "missing"
 
-    int_comp_match = re.search(
-        r"\b(?:randomized|assigned|allocated|treated)\b.*?\bto\s+receive\s+([^.,;\n]+?)\s+"
-        r"(?:or|vs\.?|versus|compared\s+(?:to|with))\s+([^.,;\n]+)",
-        abstract,
-        re.IGNORECASE,
-    )
-    if not int_comp_match:
-        int_comp_match = re.search(
-            r"\b(?:randomized|assigned|allocated|treated)\s+(?:to\s+)?(?:receive\s+)?"
-            r"([^.,;\n]+?)\s+(?:or|vs\.?|versus|compared\s+(?:to|with))\s+([^.,;\n]+)",
-            abstract,
-            re.IGNORECASE,
-        )
-
-    if int_comp_match:
-        raw_int = int_comp_match.group(1).strip()
-        raw_comp = int_comp_match.group(2).strip()
-        if "to receive " in raw_int.lower():
-            raw_int = re.sub(r"^.*?\bto\s+receive\s+", "", raw_int, flags=re.IGNORECASE).strip()
-        intervention = raw_int.capitalize()
-        comparison = raw_comp.capitalize()
-        intervention_sentence = _sentence_around(abstract, int_comp_match.start(), int_comp_match.end())
-        comparison_sentence = intervention_sentence
-        intervention_source = "abstract"
-        comparison_source = "abstract"
+    arm_anchor = None
+    for arm_pattern in (
+        r"\b(?:randomized|assigned|allocated|treated)\b.*?\bto\s+receive\s+",
+        r"\b(?:randomized|assigned|allocated)\s+(?:to\s+)?(?:receive\s+)?",
+        r"\btreated\s+(?:to\s+receive\s+|with\s+)",
+    ):
+        arm_anchor = re.search(arm_pattern, abstract, re.IGNORECASE)
+        if not arm_anchor:
+            continue
+        raw_int, raw_comp, comp_at = _split_treatment_arms(abstract, arm_anchor.end())
+        if raw_int and raw_comp:
+            intervention = _raise_initial(raw_int)
+            comparison = _raise_initial(raw_comp)
+            intervention_sentence = _sentence_around(abstract, arm_anchor.start(), comp_at + len(raw_comp))
+            comparison_sentence = intervention_sentence
+            intervention_source = "abstract"
+            comparison_source = "abstract"
+            break
+        arm_anchor = None
 
     if intervention == "Belirtilmedi":
         int_match = re.search(
-            r"\b(?:effect|efficacy|safety|impact|role) of\s+([^.,;\n]+?)\s+(?:in|on|for|vs|versus|compared)\b",
+            r"\b(?:effect|efficacy|safety|impact|role) of\s+",
             abstract or "",
             re.IGNORECASE,
         )
-        if int_match and int_match.group(1):
-            intervention = int_match.group(1).strip().capitalize()
-            intervention_sentence = _sentence_around(abstract, int_match.start(), int_match.end())
-            intervention_source = "abstract"
+        if int_match:
+            raw_effect = _read_balanced_clause(abstract, int_match.end())
+            raw_effect = re.split(
+                r"\s+(?:in|on|for|vs\.?|versus|compared)\b",
+                raw_effect,
+                maxsplit=1,
+                flags=re.IGNORECASE,
+            )[0].strip()
+            if raw_effect:
+                intervention = _raise_initial(raw_effect)
+                intervention_sentence = _sentence_around(abstract, int_match.start(), int_match.end())
+                intervention_source = "abstract"
 
     if intervention == "Belirtilmedi" and title:
         int_title_match = re.search(r"^([A-Za-z0-9\s\-]+?)\s+\b(?:for|in|among|versus|vs\.?)\b", title, re.IGNORECASE)
         if int_title_match and int_title_match.group(1):
             t_cand = int_title_match.group(1).strip()
             if len(t_cand) > 2 and not any(k in t_cand.lower() for k in ["study", "trial", "analysis", "review"]):
-                intervention = t_cand.capitalize()
+                intervention = _raise_initial(t_cand)
                 intervention_sentence = title.strip()
                 intervention_source = "title"
 
     if comparison == "Belirtilmedi":
         comp_match = re.search(
-            r"\b(?:versus|vs\.?|compared with|compared to|against)\s+([^.,;\n]+)",
+            r"\b(?:versus|vs\.?|compared with|compared to|against)\s+",
             abstract or "",
             re.IGNORECASE,
         )
-        if comp_match and comp_match.group(1):
-            comparison = comp_match.group(1).strip().capitalize()
-            comparison_sentence = _sentence_around(abstract, comp_match.start(), comp_match.end())
-            comparison_source = "abstract"
+        if comp_match:
+            raw_comparison = _read_balanced_clause(abstract, comp_match.end())
+            if raw_comparison:
+                comparison = _raise_initial(raw_comparison)
+                comparison_sentence = _sentence_around(
+                    abstract, comp_match.start(), comp_match.end() + len(raw_comparison)
+                )
+                comparison_source = "abstract"
         else:
             placebo_match = re.search(r"\bplacebo\b", abstract or "", re.IGNORECASE)
             if placebo_match:
@@ -1485,6 +1839,10 @@ def extract_article_clinical_details(article: Dict[str, Any], query: str = "") -
 
     if comparison.lower().startswith("placebo"):
         comparison = "Placebo"
+
+    patient_group = display_study_field(patient_group, drop_unknown=False)
+    intervention = display_study_field(intervention)
+    comparison = display_study_field(comparison)
 
     # 4. Outcomes stay tied to the abstract clause that stated the statistic
     bound_outcomes = []
@@ -1500,7 +1858,12 @@ def extract_article_clinical_details(article: Dict[str, Any], query: str = "") -
     outcomes_formatted = []
     if bound_outcomes:
         for om in bound_outcomes:
-            metric_text = ", ".join(om["metrics"]) if om["metrics"] else "değerlendirilemedi"
+            om["outcome"] = _display_outcome_name(om.get("outcome") or "")
+            shown_metrics = []
+            for metric in om["metrics"] or []:
+                shown_metrics.append(_display_metric_text(metric))
+            om["metrics"] = shown_metrics
+            metric_text = ", ".join(shown_metrics) if shown_metrics else "değerlendirilemedi"
             outcomes_formatted.append(f"{om['outcome']}: {metric_text}")
     else:
         outcomes_formatted.append("Özette nicel etki ölçütü bildirilmedi")
@@ -1657,17 +2020,13 @@ _OUTCOME_KEYWORDS = (
 
 
 def _finding_sentences(abstract: str) -> List[str]:
-    """Split an abstract into sentences without changing their wording."""
-    text = (abstract or "").replace("\xa0", " ").replace("\u2009", " ")
+    """Split an abstract into sentences without cutting decimals, abbreviations, or brackets."""
+    _normalized, spans = _sentence_spans(abstract or "")
     sentences = []
-    for block in re.split(r"\n+", text):
-        block = block.strip()
-        if not block:
-            continue
-        for chunk in re.split(r"(?<=[.!?])\s+", block):
-            sentence = re.sub(r"\s+", " ", chunk).strip()
-            if sentence:
-                sentences.append(sentence)
+    for begin, finish in spans:
+        sentence = re.sub(r"\s+", " ", _normalized[begin:finish]).strip()
+        if sentence:
+            sentences.append(sentence)
     return sentences
 
 
@@ -3300,10 +3659,37 @@ def _generate_section_12_synthesis(query: str, articles: List[Dict[str, Any]], c
     return "\n".join(sec_lines)
 
 
+def _safe_clip_end(text: str, limit: int) -> int:
+    """Cut on a bracket boundary or a space, never inside a number or an open bracket."""
+    if len(text) <= limit:
+        return len(text)
+    window = text[:limit]
+    round_depth = 0
+    square_depth = 0
+    last_safe = 0
+    for index, char in enumerate(window):
+        if char == "(":
+            round_depth += 1
+        elif char == ")":
+            round_depth = max(0, round_depth - 1)
+        elif char == "[":
+            square_depth += 1
+        elif char == "]":
+            square_depth = max(0, square_depth - 1)
+        if round_depth == 0 and square_depth == 0 and char in " ,;.":
+            last_safe = index
+    if last_safe > int(limit * 0.5):
+        return last_safe
+    whitespace = re.search(r"\s+\S*$", window)
+    if whitespace and whitespace.start() > 0:
+        return whitespace.start()
+    return limit
+
+
 def _cell(text: str, limit: int = 360) -> str:
     cleaned = re.sub(r"\s+", " ", (text or "").replace("|", "/").replace("\n", " ")).strip()
     if len(cleaned) > limit:
-        return cleaned[: limit - 1] + "…"
+        return cleaned[:_safe_clip_end(cleaned, limit)].rstrip(" ,;:") + "…"
     return cleaned or "özette bildirilmedi"
 
 
@@ -3481,7 +3867,8 @@ def _sample_comparison_cell(profile: List[Dict[str, str]]) -> str:
         bits.append(body)
     if not bits:
         return "özette bildirilmedi"
-    return "Örneklem ve hasta özellikleri: " + "; ".join(bits)
+    # The column header already says "Hasta grubu"; the prefix is not repeated.
+    return "; ".join(bits)
 
 
 def _intervention_comparison_cell(profile: List[Dict[str, str]]) -> str:
@@ -3538,7 +3925,9 @@ def _format_cross_study_comparison(articles: List[Dict[str, Any]], pico: Optiona
             finding_bits.append(text.strip())
 
         for item in findings:
-            bit = f"{item['outcome']}: {item['effect']}"
+            outcome = _display_outcome_name(item.get("outcome") or "")
+            effect = _display_effect_text(item.get("effect") or "")
+            bit = f"{outcome}: {effect}" if effect else outcome
             if item.get("ci") and item["ci"] != _MISSING_CI_TR:
                 bit += f" (GA {item['ci']})"
             if item.get("p"):
@@ -3549,7 +3938,9 @@ def _format_cross_study_comparison(articles: List[Dict[str, Any]], pico: Optiona
                 "ck", "treatment", "course", "qualitative", "biomarker",
                 "diagnosis", "attribution_unclear",
             ):
-                _remember(item["line"])
+                shown = localize_clinical_display(item["line"], drop_unknown=False)
+                if shown:
+                    _remember(shown)
         if not finding_bits:
             finding_bits.append(INSUFFICIENT_CLINICAL_DATA_TR)
         lines.append(
