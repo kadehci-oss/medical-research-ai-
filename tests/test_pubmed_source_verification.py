@@ -16,7 +16,12 @@ _VALIDATION = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__fil
 SETS = [
     ("pubmed_records_multispecialty.json", "reference_dataset.json"),
     ("pubmed_records_holdout.json", "reference_dataset_holdout.json"),
+    ("pubmed_records_holdout2.json", "reference_dataset_holdout2.json"),
 ]
+
+
+REQUIRED_SPECIALTIES = {"Kardiyoloji", "Onkoloji", "Nöroloji", "Enfeksiyon", "Endokrinoloji",
+                        "Pediatri", "Cerrahi", "Radyoloji"}
 
 
 def _load(name):
@@ -42,21 +47,21 @@ class TestRecordedPubMedRecords(unittest.TestCase):
             for row in _load(ref_name)["studies"]:
                 self.assertIn(row["pmid"], pmids, f"{ref_name}: {row['pmid']}")
 
-    def test_no_pmid_is_shared_between_development_and_holdout(self):
-        dev = {r["pmid"] for r in _load(SETS[0][0])}
-        hold = {r["pmid"] for r in _load(SETS[1][0])}
-        self.assertEqual(dev & hold, set())
+    def test_no_pmid_is_shared_between_sets(self):
+        sets = [{r["pmid"] for r in _load(name)} for name, _ref in SETS]
+        for i in range(len(sets)):
+            for j in range(i + 1, len(sets)):
+                self.assertEqual(sets[i] & sets[j], set(), (SETS[i][0], SETS[j][0]))
 
     def test_eight_specialties_and_required_designs_are_covered(self):
-        rows = _load(SETS[0][1])["studies"] + _load(SETS[1][1])["studies"]
+        rows = [row for _name, ref in SETS for row in _load(ref)["studies"]]
         specialties = {r["specialty"] for r in rows}
-        self.assertEqual(specialties, {"Kardiyoloji", "Onkoloji", "Nöroloji", "Enfeksiyon", "Endokrinoloji",
-                                       "Pediatri", "Cerrahi", "Radyoloji"})
+        self.assertLessEqual(REQUIRED_SPECIALTIES, specialties)
         designs = {d for r in rows for d in r["design"][:1]}
         for required in ("rct", "cohort", "case_control", "diagnostic_accuracy", "case_series",
                          "systematic_review", "meta_analysis"):
             self.assertIn(required, designs | {d for r in rows for d in r["design"]}, required)
-        for specialty in specialties:
+        for specialty in REQUIRED_SPECIALTIES:
             kinds = {r["design"][0] for r in rows if r["specialty"] == specialty}
             self.assertGreaterEqual(len(kinds), 2, specialty)
 

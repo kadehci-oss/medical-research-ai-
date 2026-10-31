@@ -1,0 +1,308 @@
+{
+ "generated": "2026-10-31",
+ "app_version": "v1.5.0",
+ "evidence_model_version": "1.0.0",
+ "n_studies": 17,
+ "n_specialties": 9,
+ "overall": {
+  "reference_items": 66,
+  "complete": 52,
+  "complete_rate": 0.7879,
+  "extracted": 59,
+  "false": 7,
+  "false_rate": 0.1186
+ },
+ "per_specialty": {
+  "Cerrahi": {
+   "reference_items": 6,
+   "complete": 4,
+   "complete_rate": 0.6667,
+   "extracted": 5,
+   "false": 1,
+   "false_rate": 0.2,
+   "studies": 2,
+   "designs": [
+    "Vaka-kontrol"
+   ]
+  },
+  "Endokrinoloji": {
+   "reference_items": 14,
+   "complete": 10,
+   "complete_rate": 0.7143,
+   "extracted": 11,
+   "false": 1,
+   "false_rate": 0.0909,
+   "studies": 4,
+   "designs": [
+    "Kohort",
+    "Meta-analiz",
+    "RCT"
+   ]
+  },
+  "Enfeksiyon": {
+   "reference_items": 1,
+   "complete": 1,
+   "complete_rate": 1.0,
+   "extracted": 1,
+   "false": 0,
+   "false_rate": 0.0,
+   "studies": 1,
+   "designs": [
+    "Tanısal doğruluk"
+   ]
+  },
+  "Kadın Hastalıkları ve Doğum": {
+   "reference_items": 5,
+   "complete": 4,
+   "complete_rate": 0.8,
+   "extracted": 4,
+   "false": 0,
+   "false_rate": 0.0,
+   "studies": 1,
+   "designs": [
+    "RCT"
+   ]
+  },
+  "Kardiyoloji": {
+   "reference_items": 10,
+   "complete": 9,
+   "complete_rate": 0.9,
+   "extracted": 11,
+   "false": 2,
+   "false_rate": 0.1818,
+   "studies": 2,
+   "designs": [
+    "Meta-analiz",
+    "RCT"
+   ]
+  },
+  "Nöroloji": {
+   "reference_items": 4,
+   "complete": 2,
+   "complete_rate": 0.5,
+   "extracted": 4,
+   "false": 2,
+   "false_rate": 0.5,
+   "studies": 1,
+   "designs": [
+    "RCT"
+   ]
+  },
+  "Onkoloji": {
+   "reference_items": 6,
+   "complete": 5,
+   "complete_rate": 0.8333,
+   "extracted": 5,
+   "false": 0,
+   "false_rate": 0.0,
+   "studies": 2,
+   "designs": [
+    "Kohort"
+   ]
+  },
+  "Pediatri": {
+   "reference_items": 11,
+   "complete": 9,
+   "complete_rate": 0.8182,
+   "extracted": 10,
+   "false": 1,
+   "false_rate": 0.1,
+   "studies": 2,
+   "designs": [
+    "RCT"
+   ]
+  },
+  "Radyoloji": {
+   "reference_items": 9,
+   "complete": 8,
+   "complete_rate": 0.8889,
+   "extracted": 8,
+   "false": 0,
+   "false_rate": 0.0,
+   "studies": 2,
+   "designs": [
+    "Tanısal doğruluk"
+   ]
+  }
+ },
+ "per_design": {
+  "Vaka-kontrol": {
+   "reference_items": 6,
+   "complete": 4,
+   "complete_rate": 0.6667,
+   "extracted": 5,
+   "false": 1,
+   "false_rate": 0.2,
+   "studies": 2
+  },
+  "Kohort": {
+   "reference_items": 11,
+   "complete": 9,
+   "complete_rate": 0.8182,
+   "extracted": 9,
+   "false": 0,
+   "false_rate": 0.0,
+   "studies": 4
+  },
+  "Tanısal doğruluk": {
+   "reference_items": 10,
+   "complete": 9,
+   "complete_rate": 0.9,
+   "extracted": 9,
+   "false": 0,
+   "false_rate": 0.0,
+   "studies": 3
+  },
+  "Meta-analiz": {
+   "reference_items": 8,
+   "complete": 6,
+   "complete_rate": 0.75,
+   "extracted": 6,
+   "false": 0,
+   "false_rate": 0.0,
+   "studies": 2
+  },
+  "RCT": {
+   "reference_items": 31,
+   "complete": 24,
+   "complete_rate": 0.7742,
+   "extracted": 30,
+   "false": 6,
+   "false_rate": 0.2,
+   "studies": 6
+  }
+ },
+ "outcome_binding": {
+  "bound": 10,
+  "unbound": 1,
+  "wrong": 3
+ },
+ "sample_size_confused_with_event_or_arm_count": [
+  "41406444"
+ ],
+ "background_therapy_reported_as_intervention": 0,
+ "independence_errors": [],
+ "source_match": {
+  "sources_total": 73,
+  "sources_verified": 73,
+  "source_match_accuracy": 1.0,
+  "values_checked": 48,
+  "values_in_source": 48,
+  "value_match_accuracy": 1.0
+ },
+ "false_causal_claims": 0,
+ "causal_permission_errors": [],
+ "question_framework": {
+  "correct": 8,
+  "total": 8,
+  "rows": [
+   {
+    "specialty": "Kardiyoloji",
+    "query": "Duration of dual antiplatelet therapy after PCI in high bleeding risk patients",
+    "question_type": "therapy",
+    "engine": "therapy",
+    "correct": true
+   },
+   {
+    "specialty": "Onkoloji",
+    "query": "Risk of colorectal cancer after Streptococcus bovis bacteraemia",
+    "question_type": "etiology",
+    "engine": "etiology",
+    "correct": true
+   },
+   {
+    "specialty": "Radyoloji",
+    "query": "Sensitivity of dark-field chest radiography for pneumothorax",
+    "question_type": "diagnosis",
+    "engine": "diagnosis",
+    "correct": true
+   },
+   {
+    "specialty": "Pediatri",
+    "query": "Azithromycin mass administration and infant mortality",
+    "question_type": "therapy",
+    "engine": "therapy",
+    "correct": true
+   },
+   {
+    "specialty": "Cerrahi",
+    "query": "Carotid endarterectomy versus medical therapy for asymptomatic stenosis",
+    "question_type": "surgery",
+    "engine": "surgery",
+    "correct": true
+   },
+   {
+    "specialty": "Endokrinoloji",
+    "query": "Prevalence of insulin resistance in irritable bowel syndrome",
+    "question_type": "epidemiology",
+    "engine": "epidemiology",
+    "correct": true
+   },
+   {
+    "specialty": "Enfeksiyon",
+    "query": "Adverse events of SGLT2 inhibitors genital infections",
+    "question_type": "safety",
+    "engine": "safety",
+    "correct": true
+   },
+   {
+    "specialty": "Kadın Hastalıkları ve Doğum",
+    "query": "Preterm doğumda hava kirliliği risk faktörü",
+    "question_type": "etiology",
+    "engine": "etiology",
+    "correct": true
+   }
+  ]
+ },
+ "study_details": {
+  "41631724": [
+   "YANLIŞ BAĞLAMA: 41631724 HR 1.337 [1.043, 1.713] → 'non-inferiority'",
+   "YANLIŞ BAĞLAMA: 41631724 HR 0.657 [0.455, 0.949] → 'non-inferiority'"
+  ],
+  "41667319": [
+   "EKSİK: 41667319 örneklem None (beklenen 736)"
+  ],
+  "41572547": [],
+  "41449806": [
+   "EKSİK: 41449806 örneklem None (beklenen 9988)"
+  ],
+  "41269206": [
+   "YANLIŞ: 41269206 müdahale '44 days' (beklenen ['stenting', 'endarterectomy'])",
+   "YANLIŞ: 41269206 karşılaştırıcı 'ipsilateral ischemic stroke' (beklenen ['medical'])"
+  ],
+  "41474164": [],
+  "41406444": [
+   "YANLIŞ: 41406444 örneklem 6586 (beklenen 13299)",
+   "EKSİK: 41406444 HR 0.92 [0.83, 1.01]"
+  ],
+  "41675637": [
+   "EKSİK: 41675637 örneklem None (beklenen 24463)"
+  ],
+  "42065095": [
+   "EKSİK: 42065095 örneklem None (beklenen 356904)"
+  ],
+  "41883370": [],
+  "41092331": [
+   "EKSİK: 41092331 örneklem None (beklenen 149090)",
+   "YANLIŞ: 41092331 karşılaştırıcı 'azithromycin four times a year' (beklenen ['placebo'])"
+  ],
+  "41051743": [
+   "BAĞLANMADI: 41051743 OR 0.12 [0.06, 0.26] sonlanım adı yok"
+  ],
+  "41552219": [
+   "EKSİK: 41552219 örneklem None (beklenen 235)"
+  ],
+  "41167592": [
+   "EKSİK: 41167592 örneklem None (beklenen 198)",
+   "YANLIŞ BAĞLAMA: 41167592 OR 1.94 None → 'diabetes mellitus'"
+  ],
+  "41410574": [
+   "EKSİK: 41410574 accuracy 78.6 None"
+  ],
+  "41410570": [],
+  "41354041": [
+   "EKSİK: 41354041 örneklem None (beklenen 8094)"
+  ]
+ },
+ "_note": "İkinci ayrılmış kümenin İLK ve ayarsız çalıştırması (birinci kümedeki düzeltmelerden sonra). Donduruldu."
+}

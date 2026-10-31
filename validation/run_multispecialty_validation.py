@@ -419,14 +419,26 @@ def run(records_path: Optional[str] = None, reference_path: Optional[str] = None
     return results
 
 
+HOLDOUT2_RECORDS_PATH = os.path.join(HERE, "pubmed_records_holdout2.json")
+HOLDOUT2_REFERENCE_PATH = os.path.join(HERE, "reference_dataset_holdout2.json")
+HOLDOUT2_FROZEN_PATH = os.path.join(HERE, "holdout2_first_run_results.json")
+
+
+def _load_frozen(path: str) -> Optional[Dict[str, Any]]:
+    if not os.path.exists(path):
+        return None
+    with open(path, encoding="utf-8") as handle:
+        return json.load(handle)
+
+
 def run_all() -> Dict[str, Any]:
-    development = run(RECORDS_PATH, REFERENCE_PATH)
-    holdout = run(HOLDOUT_RECORDS_PATH, HOLDOUT_REFERENCE_PATH)
-    frozen = None
-    if os.path.exists(HOLDOUT_FROZEN_PATH):
-        with open(HOLDOUT_FROZEN_PATH, encoding="utf-8") as handle:
-            frozen = json.load(handle)
-    return {"development": development, "holdout_current": holdout, "holdout_first_run": frozen}
+    return {
+        "development": run(RECORDS_PATH, REFERENCE_PATH),
+        "holdout_current": run(HOLDOUT_RECORDS_PATH, HOLDOUT_REFERENCE_PATH),
+        "holdout_first_run": _load_frozen(HOLDOUT_FROZEN_PATH),
+        "holdout2_current": run(HOLDOUT2_RECORDS_PATH, HOLDOUT2_REFERENCE_PATH),
+        "holdout2_first_run": _load_frozen(HOLDOUT2_FROZEN_PATH),
+    }
 
 
 def _pct(value: Optional[float]) -> str:
@@ -448,8 +460,14 @@ def _headline(res: Dict[str, Any]) -> List[Tuple[str, str]]:
 
 def render_combined_markdown(all_res: Dict[str, Any]) -> str:
     dev = all_res["development"]
-    hold = all_res["holdout_current"]
-    frozen = all_res.get("holdout_first_run")
+    columns = [
+        ("Geliştirme kümesi (ayarlı)", dev, False),
+        ("Ayrılmış küme 1, ilk çalıştırma (bağımsız)", all_res.get("holdout_first_run"), True),
+        ("Ayrılmış küme 2, ilk çalıştırma (bağımsız)", all_res.get("holdout2_first_run"), True),
+        ("Küme 1 + 2, düzeltme sonrası (bağımsız değil)", None, False),
+    ]
+    h1, h2 = all_res["holdout_current"], all_res["holdout2_current"]
+    total = dev["n_studies"] + h1["n_studies"] + h2["n_studies"]
     lines = [
         "# Çok Branşlı Doğrulama Raporu",
         "",
@@ -457,36 +475,45 @@ def render_combined_markdown(all_res: Dict[str, Any]) -> str:
         "",
         "Bu rapor `python validation/run_multispecialty_validation.py` ile üretilir; elle düzenlenmez.",
         "",
-        "## Özet: üç ayrı sonuç kümesi",
+        "## Özet",
         "",
-        "Geliştirme kümesi motor ayarlanırken kullanıldı; sonuçları **iyimserdir** ve doğruluk tahmini olarak okunmamalıdır.",
-        "Bağımsız tahmin için ayrılmış küme kuruldu: referans değerler motor bu kayıtlarda hiç çalıştırılmadan yazıldı ve",
-        "ilk çalıştırma `validation/holdout_first_run_results.json` içinde donduruldu. İlk çalıştırmanın gösterdiği genel hatalar",
-        "sonra düzeltildi; bu yüzden ayrılmış kümenin güncel sonucu artık bağımsız değildir.",
+        "- Geliştirme kümesi motor ayarlanırken kullanıldı; sonuçları **iyimserdir**, doğruluk tahmini değildir.",
+        "- **Ayrılmış küme 1** ve **ayrılmış küme 2** için referans değerler motor bu kayıtlarda hiç çalıştırılmadan yazıldı;",
+        "  ilk çalıştırmalar `validation/holdout_first_run_results.json` ve `validation/holdout2_first_run_results.json` içinde donduruldu.",
+        "  Küme 2, küme 1'in ortaya çıkardığı hatalar düzeltildikten sonra kuruldu: düzeltmelerin genellenip genellenmediğini ölçer.",
+        "- **Gerçekçi beklenti, iki bağımsız ilk çalıştırmadır** (aşağıda kalın). Sonraki düzeltmeler bu kümeleri de görmüş olduğundan",
+        "  güncel sonuçları bağımsız değildir.",
         "",
-        "| Ölçüt | Geliştirme kümesi (ayarlı) | **Ayrılmış küme, ilk çalıştırma (bağımsız)** | Ayrılmış küme, düzeltme sonrası (bağımsız değil) |",
-        "|---|---|---|---|",
+        "| Ölçüt | " + " | ".join(f"**{c[0]}**" if c[2] else c[0] for c in columns) + " |",
+        "|---|" + "---|" * len(columns),
     ]
-    frozen_rows = _headline(frozen) if frozen else []
+    combined_rows = _headline(h1), _headline(h2)
     for i, (name, dev_value) in enumerate(_headline(dev)):
-        frozen_value = frozen_rows[i][1] if frozen_rows else "—"
-        lines.append(f"| {name} | {dev_value} | **{frozen_value}** | {_headline(hold)[i][1]} |")
+        cells = [dev_value]
+        for _label, res, _bold in columns[1:3]:
+            cells.append(f"**{_headline(res)[i][1]}**" if res else "—")
+        cells.append(f"{combined_rows[0][i][1]} / {combined_rows[1][i][1]}")
+        lines.append(f"| {name} | " + " | ".join(cells) + " |")
     lines += [
         "",
-        f"- Geliştirme kümesi: {dev['n_studies']} yayın, {dev['n_specialties']} branş. Ayrılmış küme: {hold['n_studies']} yayın, "
-        f"{hold['n_specialties']} branş. Toplam {dev['n_studies'] + hold['n_studies']} gerçek PubMed yayını.",
-        "- **Sınırlılık:** Her iki referans tabloyu bir yapay zekâ asistanı hazırladı; bağımsız uzman hekim kontrolü yapılmadı. "
-        "Yalnızca özetler kullanıldı. Küme küçük olduğu için oranların belirsizliği yüksektir.",
+        f"- Yayın sayısı: geliştirme {dev['n_studies']}, ayrılmış küme 1 {h1['n_studies']}, ayrılmış küme 2 {h2['n_studies']}; "
+        f"toplam **{total} gerçek PubMed yayını**.",
+        "- **Sınırlılık:** Referans tabloları bir yapay zekâ asistanı hazırladı; bağımsız uzman hekim kontrolü yapılmadı. "
+        "Yalnızca özetler kullanıldı. Kümeler küçük olduğu için oranların belirsizliği yüksektir.",
         "",
     ]
-    if frozen:
-        lines += ["### Ayrılmış kümenin ilk çalıştırmasında bulunan hatalar", ""]
+    for label, key in (("Ayrılmış küme 1", "holdout_first_run"), ("Ayrılmış küme 2", "holdout2_first_run")):
+        frozen = all_res.get(key)
+        if not frozen:
+            continue
+        lines += [f"### {label}: ilk çalıştırmada bulunan hatalar", ""]
         for pmid, details in (frozen.get("study_details") or {}).items():
             if details:
                 lines.append(f"- **PMID {pmid}:** " + "; ".join(details))
         lines.append("")
     lines.append(render_markdown(dev, title="## Geliştirme kümesi ayrıntıları", heading_level=3))
-    lines.append(render_markdown(hold, title="## Ayrılmış küme, güncel çalıştırma ayrıntıları", heading_level=3))
+    lines.append(render_markdown(h1, title="## Ayrılmış küme 1, güncel çalıştırma ayrıntıları", heading_level=3))
+    lines.append(render_markdown(h2, title="## Ayrılmış küme 2, güncel çalıştırma ayrıntıları", heading_level=3))
     return "\n".join(lines) + "\n"
 
 
@@ -498,9 +525,9 @@ def render_markdown(res: Dict[str, Any], title: str = "# Çok Branşlı Doğrula
         "",
         f"{'#' * heading_level} Kapsam ve yöntem",
         "",
-        f"- **{res['n_studies']} gerçek PubMed yayını**, **{res['n_specialties']} branş**: kardiyoloji, onkoloji, nöroloji, enfeksiyon, endokrinoloji, pediatri, cerrahi, radyoloji.",
+        f"- **{res['n_studies']} gerçek PubMed yayını**, **{res['n_specialties']} branş**: {', '.join(res['per_specialty'])}.",
         "- Kayıtlar PubMed'den alındı (PMID, DOI, başlık, özet, yayın türü) ve `validation/` altındaki JSON dosyalarında değiştirilmeden saklandı.",
-        "- Referans tablo (`validation/reference_dataset.json`) özetler elle okunarak, motor çıktısına bakılmadan yazıldı.",
+        "- Referans tablo özetler elle okunarak, motor çıktısına bakılmadan yazıldı.",
         "- **Sınırlılık:** Referans tabloyu bir yapay zekâ asistanı hazırladı. Bağımsız uzman hekim kontrolü henüz yapılmadı. Yalnızca özetler kullanıldı; tam metin okunmadı.",
         "",
         f"{'#' * heading_level} Ölçüt tanımları",

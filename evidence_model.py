@@ -329,7 +329,7 @@ def _to_float(token: str) -> Optional[float]:
 _PEOPLE = (
     r"(?:patients|participants|adults|children|infants|neonates|newborns|adolescents|women|men|"
     r"subjects|individuals|persons|people|cases|volunteers|pregnancies|samples|mothers|students|"
-    r"residents|veterans|survivors|recipients)"
+    r"residents|veterans|survivors|recipients|inpatients|outpatients|villages|clusters|communities|households)"
 )
 _FILLER = r"(?:[A-Za-z][\w'+/-]*\s+){0,6}?"
 _FILLER_SHORT = r"(?:[A-Za-z][\w'+/-]*\s+){0,4}?"
@@ -349,6 +349,17 @@ _ARM_PATTERNS = [
 ]
 
 _TOTAL_PATTERNS: List[Tuple[str, re.Pattern]] = [
+    ("enrolled", re.compile(
+        rf"\b(?:a\s+total\s+of|total\s+of|in\s+total,?)\s+(?P<n>{_DIGIT_NUM_RE})\s+{_FILLER_SHORT}{_PEOPLE}\s+"
+        r"(?:were\s+|was\s+)?(?:underwent\s+randomi[sz]ation|randomi[sz]ed|were\s+randomly\s+assigned|enrolled|included)",
+        re.IGNORECASE)),
+    ("analyzed", re.compile(
+        rf"\bleaving\s+(?P<n>{_DIGIT_NUM_RE})\b[^.;]{{0,30}}?\bin\s+the\s+(?:final\s+)?analys[ie]s", re.IGNORECASE)),
+    ("enrolled", re.compile(
+        rf"\b(?:study|trial|analysis)\s+(?:was\s+conducted\s+)?(?:[^.;]{{0,60}}?\b)?(?:in|of|on|among|including)\s+(?P<n>{_DIGIT_NUM_RE})\s+"
+        rf"{_FILLER_SHORT}{_PEOPLE}\b", re.IGNORECASE)),
+    ("enrolled", re.compile(
+        rf"\b(?:were|was)\s+(?:enrolled|included|recruited)\s*\(\s*(?:n|N)?\s*=\s*(?P<n>{_DIGIT_NUM_RE})\s*\)")),
     ("enrolled", re.compile(
         rf"\bOf\s+(?:the\s+)?{NUM_RE}\s+{_FILLER_SHORT}{_PEOPLE},\s+(?P<n>{NUM_RE})\s+were\s+"
         r"(?:enrolled|included|randomi[sz]ed|analy[sz]ed)",
@@ -384,10 +395,14 @@ _TOTAL_PATTERNS: List[Tuple[str, re.Pattern]] = [
 ]
 
 _CASE_CONTROL_TOTAL_RE = re.compile(
-    rf"\b(?P<c>{NUM_RE})\s+(?:[^.;\d]|(?:19|20)\d{{2}}){{0,90}}?\b(?:were\s+)?(?:matched\b(?:\s*\([^)]*\))?[^.;\d]{{0,40}}?\b(?:to|with)|and)\s+"
+    rf"\b(?P<c>{NUM_RE})\s+(?:[^.;\d]|(?:19|20)\d{{2}}){{0,90}}?\b(?:were\s+)?(?:matched\b(?:\s*\([^)]*\))?[^.;\d]{{0,40}}?\b(?:to|with)|identified\s+and|and)\s+"
     rf"(?P<k>{NUM_RE})\s+(?:[^.;\d]{{0,50}}?)?\bcontrols\b",
     re.IGNORECASE,
 )
+_POOLED_EXTRA = [
+    re.compile(rf"\b(?:studies|trials|RCTs)\s*\(\s*(?P<n>{_DIGIT_NUM_RE})\s+{_PEOPLE}\s*\)", re.IGNORECASE),
+    re.compile(rf"\b(?:studies|trials|RCTs)\s*\(\s*n\s*=\s*(?P<n>{_DIGIT_NUM_RE})\s*\)", re.IGNORECASE),
+]
 _POOLED_PATTERN = re.compile(
     rf"\b(?:studies|trials|RCTs|cohorts|articles)\b[^.]{{0,90}}?\b(?:including|involving|comprising|encompassing|"
     rf"yielding|of|with|enrolling|totaling|totalling)\s+(?P<n>{NUM_RE})\s+{_FILLER_SHORT}{_PEOPLE}\b",
@@ -417,12 +432,26 @@ _THREE_ARM_RE = re.compile(
     rf"(?P<n3>{NUM_RE})\s+(?:were\s+)?(?:assigned\s+)?(?:to\s+)?(?:receive\s+)?(?:the\s+)?(?P<a3>[^,;.()]+)",
     re.IGNORECASE,
 )
-_CONTROL_ARM_RE = re.compile(r"\b(?:placebo|standard\s+(?:of\s+)?care|usual\s+care|control|no\s+treatment|sham)\b", re.IGNORECASE)
+_CONTROL_ARM_RE = re.compile(r"\b(?:placebo|standard\s+(?:of\s+)?care|usual\s+care|control|no\s+treatment|sham|alone)\b", re.IGNORECASE)
+_IN_GROUP_ARMS_RE = re.compile(
+    rf"(?P<n1>{_DIGIT_NUM_RE})\s+(?:{_PEOPLE}\s+)?in\s+the\s+(?P<a1>[\w\s+/-]{{2,40}}?)\s+group\s+and\s+(?P<n2>{_DIGIT_NUM_RE})\s+"
+    rf"(?:{_PEOPLE}\s+)?in\s+the\s+(?P<a2>[\w\s+/-]{{2,40}}?)\s+group\b",
+    re.IGNORECASE,
+)
+_LIST_ARMS_RE = re.compile(
+    r"\bto\s+receive\s+(?:distributions\s+of\s+)?(?P<list>[^.;:]+?,\s*(?:or|and)\s+[^.;:,]+)", re.IGNORECASE)
+_COMPARED_ARMS_RE = re.compile(
+    r"\bcompared\s+(?P<a1>[^()]{3,60}?)\s*(?:\([^)]*\))?\s+with\s+(?P<a2>[^()]{3,80}?)\s*(?:\([^)]*\))?\s*[;.]", re.IGNORECASE)
 
 
 def extract_arms(article: Dict[str, Any], randomized: bool = True) -> List[StudyArm]:
     arms: List[StudyArm] = []
     for sentence in sentences_of(article.get("abstract") or ""):
+        grouped = _IN_GROUP_ARMS_RE.search(sentence)
+        if grouped and parse_count(grouped.group("n1")) and parse_count(grouped.group("n2")):
+            src = _source(article, sentence)
+            return [StudyArm(label=_clean_arm_label(grouped.group("a1")), n=parse_count(grouped.group("n1")), role="intervention", source=src),
+                    StudyArm(label=_clean_arm_label(grouped.group("a2")), n=parse_count(grouped.group("n2")), role="comparator", source=src)]
         three = _THREE_ARM_RE.search(sentence)
         if three and all(parse_count(three.group(k)) for k in ("n1", "n2", "n3")):
             src = _source(article, sentence)
@@ -446,6 +475,20 @@ def extract_arms(article: Dict[str, Any], randomized: bool = True) -> List[Study
     if not randomized:
         return arms
     for sentence in sentences_of(article.get("abstract") or ""):
+        listed = _LIST_ARMS_RE.search(sentence)
+        if listed:
+            parts = [p.strip() for p in re.split(r",\s*(?:or|and)\s+|,\s*|\s+or\s+", listed.group("list")) if p.strip()]
+            if 3 <= len(parts) <= 5 and all(len(p.split()) <= 8 and not re.match(r"\d", p) for p in parts):
+                src = _source(article, sentence)
+                return [StudyArm(label=_clean_arm_label(p), n=None,
+                                 role="comparator" if _CONTROL_ARM_RE.search(p) else "intervention", source=src) for p in parts]
+        compared = _COMPARED_ARMS_RE.search(sentence)
+        if compared:
+            a1, a2 = _clean_arm_label(compared.group("a1")), _clean_arm_label(compared.group("a2"))
+            src = _source(article, sentence)
+            first_control = bool(_CONTROL_ARM_RE.search(a1)) and not _CONTROL_ARM_RE.search(a2)
+            return [StudyArm(label=a1, n=None, role="comparator" if first_control else "intervention", source=src),
+                    StudyArm(label=a2, n=None, role="intervention" if first_control else "comparator", source=src)]
         given = re.search(r"\b(?:provided\s+with|received|given|to\s+receive)\b[^.;]{0,60}?\b(?P<a1>[A-Za-z][\w-]{3,})\s+or\s+"
                           r"(?P<a2>placebo|sham(?:\s+\w+)?|usual\s+care|standard\s+care)\b", sentence, re.IGNORECASE)
         if given and not _ARM_NO_COUNT_RE.search(sentence):
@@ -460,7 +503,8 @@ def extract_arms(article: Dict[str, Any], randomized: bool = True) -> List[Study
                                      flags=re.IGNORECASE))
         a1 = re.sub(r"^(?:(?:once-weekly|once-daily|weekly|daily|oral|intravenous|subcutaneous),?\s+)+", "", a1, flags=re.IGNORECASE)
         a2 = _clean_arm_label(match.group("a2"))
-        if not a1 or not a2 or re.search(r"\d+\s*:\s*\d+", a1) or len(a1.split()) > 8:
+        if not a1 or not a2 or re.search(r"\d+\s*:\s*\d+", a1) or len(a1.split()) > 8 \
+                or re.fullmatch(r"\d+\s*-?\s*(?:days?|weeks?|months?|years?)", a1, re.IGNORECASE):
             continue
         src = _source(article, sentence)
         arms.append(StudyArm(label=a1, n=None, role="intervention", source=src))
@@ -509,14 +553,15 @@ def extract_population(article: Dict[str, Any], design_key: str, arms: List[Stud
     synthesis = design_key in ("meta_analysis", "systematic_review", "systematic_review_and_meta_analysis")
     if synthesis:
         for sentence in sentences:
-            match = _POOLED_PATTERN.search(sentence)
+            match = _POOLED_PATTERN.search(sentence) or next(
+                (m for m in (p.search(sentence) for p in _POOLED_EXTRA) if m), None)
             if match and _accept(parse_count(match.group("n"))):
                 population.n_total = parse_count(match.group("n"))
                 population.n_kind = "pooled"
                 population.source = _source(article, sentence, "Dahil edilen çalışmalardaki toplam katılımcı")
                 return population
 
-    if design_key == "case_control":
+    if design_key in ("case_control", "cohort"):
         for sentence in sentences:
             cc = _CASE_CONTROL_TOTAL_RE.search(sentence)
             if cc and parse_count(cc.group("c")) and parse_count(cc.group("k")) \
@@ -612,7 +657,7 @@ _MEASURES: List[Tuple[str, str, str]] = [
     (r"area\s+under\s+the\s+(?:receiver\s+operating\s+characteristic\s+)?(?:\(ROC\)\s+)?curve|\bAUC\b|\bAUROC\b|\bC-statistic\b", "AUC", "diagnostic"),
     (r"positive\s+predictive\s+values?|\bPPV\b", "PPV", "diagnostic"),
     (r"negative\s+predictive\s+values?|\bNPV\b", "NPV", "diagnostic"),
-    (r"(?:overall\s+|diagnostic\s+)accuracy", "accuracy", "diagnostic"),
+    (r"(?:overall\s+|diagnostic\s+|detection\s+)accuracy", "accuracy", "diagnostic"),
     (r"(?<![\w-])difference(?![\w-])", "RD", "difference"),
 ]
 _CASE_SENSITIVE_ACRONYM = re.compile(r"^(?:\\b)?[A-Z]")
@@ -630,7 +675,7 @@ _VALUE_RE = re.compile(
 )
 _CI_AFTER_RE = re.compile(
     rf"^\s*(?:%|percentage\s+points?|points?|mg/dl|kg|months?|days?)?\s*[;,]?\s*[(\[]?\s*"
-    rf"(?:(?P<lvl>\d{{2}})\s*%\s*(?:CI|confidence\s+intervals?)(?:\s*\[CI\])?|CI)?\s*[,:=]?\s*[(\[]?\s*"
+    rf"(?:(?P<lvl>\d{{2}})(?:\.\d)?\s*%\s*(?:CI|confidence\s+intervals?)(?:\s*\[CI\])?|CI)?\s*[,:=]?\s*[(\[]?\s*"
     rf"(?P<lo>{_NUMBER})\s*%?\s*(?:to|-|,)\s*(?P<hi>{_NUMBER})\s*%?\s*[)\]]?",
     re.IGNORECASE,
 )
@@ -766,7 +811,8 @@ _BAD_OUTCOME_START_RE = re.compile(
     re.IGNORECASE,
 )
 _NOT_OUTCOME_RE = re.compile(
-    r"\b(?:correlation|association|yielded|showed|pooled|trend\s+toward|significant|significantly|no\s+significant)\b",
+    r"\b(?:correlation|association|yielded|showed|pooled|trend\s+toward|significant|significantly|no\s+significant|"
+    r"non-?inferiority|superiority)\b",
     re.IGNORECASE,
 )
 _CUT_RE = re.compile(
@@ -805,12 +851,14 @@ def _clean_outcome(text: str) -> str:
 
 _BEFORE_PATTERNS = [
     re.compile(r"\brisk\s+factors?\s+for\s+(?P<o>[^,;()]+?)\s+(?:was|were)\b", re.IGNORECASE),
+    re.compile(r"\b(?:non-?inferiority|superiority|non-?inferior|superior)\s+(?:to\s+[\w-]+(?:\s+[\w-]+)?\s+)?(?:for|regarding)\s+"
+               r"(?P<o>[^,;()]+?)\s*$", re.IGNORECASE),
     re.compile(r"\bbetween\s+.+?\s+and\s+(?P<o>[^,;()]*?\b(?:risk|incidence|mortality|death|cancer|disease|events?)\b[^,;()]*?)(?:\s+with)?\s*$", re.IGNORECASE),
     re.compile(r"\b(?:on\s+the\s+basis\s+of|in\s+terms\s+of|with\s+respect\s+to)\s+(?P<o>[^;()]+?)\s*$", re.IGNORECASE),
     re.compile(r"\b(?:risks?|incidence|rates?|odds|hazard|likelihood|occurrence|number|frequency|proportion|reductions?|"
                r"increases?|decreases?)\s+(?:in\s+(?:the\s+)?rate\s+)?of\s+(?P<o>[^;(),]+?)\s*(?:,?\s*with)?\s*$", re.IGNORECASE),
     re.compile(r"\b(?:reductions?|increases?|decreases?|differences?|changes?)\s+in\s+(?P<o>[^;(),]+?)\s*$", re.IGNORECASE),
-    re.compile(r"^(?:and\s+)?(?:an?\s+|the\s+)?(?P<o>[A-Za-z][^,;()]{2,70}?)\s+(?:were|was)\s+(?:lower|higher|more\s+common|"
+    re.compile(r"(?:^|,\s+)(?:and\s+)?(?:an?\s+|the\s+)?(?P<o>[A-Za-z][^,;()]{2,70}?)\s+(?:were|was)\s+(?:lower|higher|more\s+common|"
                r"less\s+common|reduced|increased)\b", re.IGNORECASE),
     re.compile(r"^(?:the\s+)?(?P<o>[\w-]+(?:\s+[\w-]+){0,5}?)\s+(?:estimates?\s+)?(?:was|were)\s+-?\d", re.IGNORECASE),
     re.compile(r"\b(?:associated\s+with|reduced|decreased|increased|improved|lowered|lower|higher)\s+(?P<o>[^;()]+?)\s*$", re.IGNORECASE),
@@ -869,9 +917,10 @@ def _clause_before(sentence: str, start: int) -> str:
 
 
 _AFTER_PAREN_RE = re.compile(
-    r"^\s*(?:and\s+[^.;()]{0,40}?\([^)]*\)\s*)?(?:both\s+)?(?:were|was|significantly|both|have|has|\s)*"
-    r"(?:\w+\s+)?(?:associated\s+with|reduced|increased|lowered|decreased)\s+(?:an?\s+|the\s+)?(?:increased\s+|decreased\s+|"
-    r"higher\s+|lower\s+|reduced\s+)?(?:risk|odds|incidence|hazard)\s+of\s+(?P<o>[^,.;()]{3,80})",
+    r"^\s*(?:,?\s*(?:and\s+)?[^.;()]{0,60}?\([^)]*\)\s*)*,?\s*(?:both\s+)?(?:were|was|significantly|both|have|has|\s)*"
+    r"(?:\w+\s+)?(?:(?:associated\s+with|reduced|increased|lowered|decreased)\s+(?:an?\s+|the\s+)?(?:increased\s+|decreased\s+|"
+    r"higher\s+|lower\s+|reduced\s+)?(?:risk|odds|incidence|hazard)\s+of|(?:showed|had)\s+an?\s+association\s+with\s+(?:the\s+)?"
+    r"(?:occurrence\s+of|risk\s+of)?)\s+(?P<o>[^,.;()]{3,80})",
     re.IGNORECASE,
 )
 
@@ -1644,7 +1693,7 @@ def _build_study_uncached(article: Dict[str, Any], query: str) -> Study:
     comparators: List[Comparator] = []
     if arms and claim_type in ("causal_effect", "association", "uncontrolled"):
         # Arm labels are copied verbatim from the allocation sentence.
-        if len(arms) > 2 and any(a.role == "comparator" for a in arms):
+        if any(a.role == "comparator" for a in arms) and any(a.role == "intervention" for a in arms):
             active = [a for a in arms if a.role != "comparator"]
             control = [a for a in arms if a.role == "comparator"]
         else:

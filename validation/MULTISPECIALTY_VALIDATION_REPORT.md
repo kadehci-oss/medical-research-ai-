@@ -4,26 +4,28 @@ Oluşturulma: 2026-10-31 · Yazılım: `v1.5.0` · Kanıt veri modeli: `1.0.0`
 
 Bu rapor `python validation/run_multispecialty_validation.py` ile üretilir; elle düzenlenmez.
 
-## Özet: üç ayrı sonuç kümesi
+## Özet
 
-Geliştirme kümesi motor ayarlanırken kullanıldı; sonuçları **iyimserdir** ve doğruluk tahmini olarak okunmamalıdır.
-Bağımsız tahmin için ayrılmış küme kuruldu: referans değerler motor bu kayıtlarda hiç çalıştırılmadan yazıldı ve
-ilk çalıştırma `validation/holdout_first_run_results.json` içinde donduruldu. İlk çalıştırmanın gösterdiği genel hatalar
-sonra düzeltildi; bu yüzden ayrılmış kümenin güncel sonucu artık bağımsız değildir.
+- Geliştirme kümesi motor ayarlanırken kullanıldı; sonuçları **iyimserdir**, doğruluk tahmini değildir.
+- **Ayrılmış küme 1** ve **ayrılmış küme 2** için referans değerler motor bu kayıtlarda hiç çalıştırılmadan yazıldı;
+  ilk çalıştırmalar `validation/holdout_first_run_results.json` ve `validation/holdout2_first_run_results.json` içinde donduruldu.
+  Küme 2, küme 1'in ortaya çıkardığı hatalar düzeltildikten sonra kuruldu: düzeltmelerin genellenip genellenmediğini ölçer.
+- **Gerçekçi beklenti, iki bağımsız ilk çalıştırmadır** (aşağıda kalın). Sonraki düzeltmeler bu kümeleri de görmüş olduğundan
+  güncel sonuçları bağımsız değildir.
 
-| Ölçüt | Geliştirme kümesi (ayarlı) | **Ayrılmış küme, ilk çalıştırma (bağımsız)** | Ayrılmış küme, düzeltme sonrası (bağımsız değil) |
-|---|---|---|---|
-| Eksiksiz çıkarım oranı | %100.0 (153/153) | **%77.9 (53/68)** | %100.0 (68/68) |
-| Yanlış çıkarım oranı | %0.0 (0/153) | **%8.6 (5/58)** | %0.0 (0/68) |
-| Kaynak eşleşme doğruluğu (cümle) | %100.0 (179/179) | **%100.0 (62/62)** | %100.0 (82/82) |
-| Kaynak eşleşme doğruluğu (sayısal değer) | %100.0 (129/129) | **%100.0 (52/52)** | %100.0 (57/57) |
-| Yanlış nedensellik iddiası | 0 | **0** | 0 |
-| Soru çerçevesi seçimi | 18/18 | **9/10** | 10/10 |
+| Ölçüt | Geliştirme kümesi (ayarlı) | **Ayrılmış küme 1, ilk çalıştırma (bağımsız)** | **Ayrılmış küme 2, ilk çalıştırma (bağımsız)** | Küme 1 + 2, düzeltme sonrası (bağımsız değil) |
+|---|---|---|---|---|
+| Eksiksiz çıkarım oranı | %100.0 (153/153) | **%77.9 (53/68)** | **%78.8 (52/66)** | %100.0 (68/68) / %92.4 (61/66) |
+| Yanlış çıkarım oranı | %0.0 (0/153) | **%8.6 (5/58)** | **%11.9 (7/59)** | %0.0 (0/68) / %1.6 (1/62) |
+| Kaynak eşleşme doğruluğu (cümle) | %100.0 (179/179) | **%100.0 (62/62)** | **%100.0 (73/73)** | %100.0 (82/82) / %100.0 (78/78) |
+| Kaynak eşleşme doğruluğu (sayısal değer) | %100.0 (129/129) | **%100.0 (52/52)** | **%100.0 (48/48)** | %100.0 (57/57) / %100.0 (54/54) |
+| Yanlış nedensellik iddiası | 0 | **0** | **0** | 0 / 0 |
+| Soru çerçevesi seçimi | 18/18 | **9/10** | **8/8** | 10/10 / 8/8 |
 
-- Geliştirme kümesi: 35 yayın, 8 branş. Ayrılmış küme: 16 yayın, 8 branş. Toplam 51 gerçek PubMed yayını.
-- **Sınırlılık:** Her iki referans tabloyu bir yapay zekâ asistanı hazırladı; bağımsız uzman hekim kontrolü yapılmadı. Yalnızca özetler kullanıldı. Küme küçük olduğu için oranların belirsizliği yüksektir.
+- Yayın sayısı: geliştirme 35, ayrılmış küme 1 16, ayrılmış küme 2 17; toplam **68 gerçek PubMed yayını**.
+- **Sınırlılık:** Referans tabloları bir yapay zekâ asistanı hazırladı; bağımsız uzman hekim kontrolü yapılmadı. Yalnızca özetler kullanıldı. Kümeler küçük olduğu için oranların belirsizliği yüksektir.
 
-### Ayrılmış kümenin ilk çalıştırmasında bulunan hatalar
+### Ayrılmış küme 1: ilk çalıştırmada bulunan hatalar
 
 - **PMID 31535829:** EKSİK: 31535829 eşlik eden tedavi '' (beklenen ['recommended therapy'])
 - **PMID 41020486:** EKSİK: 41020486 HR 0.81 [0.68, 0.96]
@@ -37,13 +39,29 @@ sonra düzeltildi; bu yüzden ayrılmış kümenin güncel sonucu artık bağım
 - **PMID 40697501:** EKSİK: 40697501 örneklem None (beklenen 3)
 - **PMID 40996213:** BAĞLANMADI: 40996213 HR 0.8 [0.47, 1.4] sonlanım adı yok; BAĞLANMADI: 40996213 HR 0.6 [0.36, 1.14] sonlanım adı yok; EKSİK: 40996213 müdahale '' (beklenen ['wedge', '4b/5', 'segment']); EKSİK: 40996213 karşılaştırıcı '' (beklenen ['wedge', '4b/5', 'segment']); YANLIŞ: 40996213 birincil çalışma yanlışlıkla 'updated_analysis' sayıldı
 
+### Ayrılmış küme 2: ilk çalıştırmada bulunan hatalar
+
+- **PMID 41631724:** YANLIŞ BAĞLAMA: 41631724 HR 1.337 [1.043, 1.713] → 'non-inferiority'; YANLIŞ BAĞLAMA: 41631724 HR 0.657 [0.455, 0.949] → 'non-inferiority'
+- **PMID 41667319:** EKSİK: 41667319 örneklem None (beklenen 736)
+- **PMID 41449806:** EKSİK: 41449806 örneklem None (beklenen 9988)
+- **PMID 41269206:** YANLIŞ: 41269206 müdahale '44 days' (beklenen ['stenting', 'endarterectomy']); YANLIŞ: 41269206 karşılaştırıcı 'ipsilateral ischemic stroke' (beklenen ['medical'])
+- **PMID 41406444:** YANLIŞ: 41406444 örneklem 6586 (beklenen 13299); EKSİK: 41406444 HR 0.92 [0.83, 1.01]
+- **PMID 41675637:** EKSİK: 41675637 örneklem None (beklenen 24463)
+- **PMID 42065095:** EKSİK: 42065095 örneklem None (beklenen 356904)
+- **PMID 41092331:** EKSİK: 41092331 örneklem None (beklenen 149090); YANLIŞ: 41092331 karşılaştırıcı 'azithromycin four times a year' (beklenen ['placebo'])
+- **PMID 41051743:** BAĞLANMADI: 41051743 OR 0.12 [0.06, 0.26] sonlanım adı yok
+- **PMID 41552219:** EKSİK: 41552219 örneklem None (beklenen 235)
+- **PMID 41167592:** EKSİK: 41167592 örneklem None (beklenen 198); YANLIŞ BAĞLAMA: 41167592 OR 1.94 None → 'diabetes mellitus'
+- **PMID 41410574:** EKSİK: 41410574 accuracy 78.6 None
+- **PMID 41354041:** EKSİK: 41354041 örneklem None (beklenen 8094)
+
 ## Geliştirme kümesi ayrıntıları
 
 ### Kapsam ve yöntem
 
-- **35 gerçek PubMed yayını**, **8 branş**: kardiyoloji, onkoloji, nöroloji, enfeksiyon, endokrinoloji, pediatri, cerrahi, radyoloji.
+- **35 gerçek PubMed yayını**, **8 branş**: Cerrahi, Endokrinoloji, Enfeksiyon, Kardiyoloji, Nöroloji, Onkoloji, Pediatri, Radyoloji.
 - Kayıtlar PubMed'den alındı (PMID, DOI, başlık, özet, yayın türü) ve `validation/` altındaki JSON dosyalarında değiştirilmeden saklandı.
-- Referans tablo (`validation/reference_dataset.json`) özetler elle okunarak, motor çıktısına bakılmadan yazıldı.
+- Referans tablo özetler elle okunarak, motor çıktısına bakılmadan yazıldı.
 - **Sınırlılık:** Referans tabloyu bir yapay zekâ asistanı hazırladı. Bağımsız uzman hekim kontrolü henüz yapılmadı. Yalnızca özetler kullanıldı; tam metin okunmadı.
 
 ### Ölçüt tanımları
@@ -149,13 +167,13 @@ sonra düzeltildi; bu yüzden ayrılmış kümenin güncel sonucu artık bağım
 3. **Bağımsız klinik veri doğrulaması:** `tests/test_clinical_reference_validation.py` (bu raporun ölçütleri; eşik altına düşerse test başarısız olur).
 
 
-## Ayrılmış küme, güncel çalıştırma ayrıntıları
+## Ayrılmış küme 1, güncel çalıştırma ayrıntıları
 
 ### Kapsam ve yöntem
 
-- **16 gerçek PubMed yayını**, **8 branş**: kardiyoloji, onkoloji, nöroloji, enfeksiyon, endokrinoloji, pediatri, cerrahi, radyoloji.
+- **16 gerçek PubMed yayını**, **8 branş**: Cerrahi, Endokrinoloji, Enfeksiyon, Kardiyoloji, Nöroloji, Onkoloji, Pediatri, Radyoloji.
 - Kayıtlar PubMed'den alındı (PMID, DOI, başlık, özet, yayın türü) ve `validation/` altındaki JSON dosyalarında değiştirilmeden saklandı.
-- Referans tablo (`validation/reference_dataset.json`) özetler elle okunarak, motor çıktısına bakılmadan yazıldı.
+- Referans tablo özetler elle okunarak, motor çıktısına bakılmadan yazıldı.
 - **Sınırlılık:** Referans tabloyu bir yapay zekâ asistanı hazırladı. Bağımsız uzman hekim kontrolü henüz yapılmadı. Yalnızca özetler kullanıldı; tam metin okunmadı.
 
 ### Ölçüt tanımları
@@ -240,6 +258,106 @@ sonra düzeltildi; bu yüzden ayrılmış kümenin güncel sonucu artık bağım
 ### Eksik ve yanlış öğeler (çalışma bazında)
 
 - **PMID 40996213:** BAĞLANMADI: 40996213 HR 0.6 [0.36, 1.14] sonlanım adı yok
+
+### Test kategorileri
+
+1. **Yazılım birim ve entegrasyon testleri:** `tests/test_evidence_model.py` (rapor doğrulama testleri dahil), `tests/test_question_framework.py` ve mevcut test paketi.
+2. **Gerçek PubMed kaynak doğrulaması:** `tests/test_pubmed_source_verification.py` (kayıtlı PubMed kayıtlarının bütünlüğü; `RUN_LIVE_PUBMED=1` ile canlı NCBI karşılaştırması).
+3. **Bağımsız klinik veri doğrulaması:** `tests/test_clinical_reference_validation.py` (bu raporun ölçütleri; eşik altına düşerse test başarısız olur).
+
+
+## Ayrılmış küme 2, güncel çalıştırma ayrıntıları
+
+### Kapsam ve yöntem
+
+- **17 gerçek PubMed yayını**, **9 branş**: Cerrahi, Endokrinoloji, Enfeksiyon, Kadın Hastalıkları ve Doğum, Kardiyoloji, Nöroloji, Onkoloji, Pediatri, Radyoloji.
+- Kayıtlar PubMed'den alındı (PMID, DOI, başlık, özet, yayın türü) ve `validation/` altındaki JSON dosyalarında değiştirilmeden saklandı.
+- Referans tablo özetler elle okunarak, motor çıktısına bakılmadan yazıldı.
+- **Sınırlılık:** Referans tabloyu bir yapay zekâ asistanı hazırladı. Bağımsız uzman hekim kontrolü henüz yapılmadı. Yalnızca özetler kullanıldı; tam metin okunmadı.
+
+### Ölçüt tanımları
+
+- **Eksiksiz çıkarım oranı:** Referansta bildirilen öğelerden (tasarım, örneklem, ana etki tahmini + GA, müdahale, karşılaştırıcı, eşlik eden tedavi, yayın ilişkisi) motorun doğru çıkardıklarının oranı.
+- **Yanlış çıkarım oranı:** Motorun ileri sürdüğü öğelerden referansla çelişenlerin oranı (yanlış sonlanım bağlama, olay/kol sayısının örneklem sanılması, eksik değere değer atama dahil).
+- **Kaynak eşleşme doğruluğu:** Her yapılandırılmış öğenin kaynak cümlesinin aynı PMID'nin özetinde birebir bulunma oranı; ayrıca her sayısal değerin o cümlede geçme oranı.
+- **Yanlış nedensellik iddiası:** Randomize olmayan çalışmalara bağlı rapor satırlarında (alıntılar hariç) nedensel/üstünlük ifadesi sayısı + nedensel çıkarıma yanlışlıkla izin verilen çalışma sayısı.
+
+### Genel sonuçlar
+
+| Ölçüt | Değer |
+|---|---|
+| Eksiksiz çıkarım oranı | %92.4 (61/66) |
+| Yanlış çıkarım oranı | %1.6 (1/62) |
+| Kaynak eşleşme doğruluğu (cümle) | %100.0 (78/78) |
+| Kaynak eşleşme doğruluğu (sayısal değer) | %100.0 (54/54) |
+| Yanlış nedensellik iddiası | 0 |
+| Örneklem yerine olay/kol sayısı | 0 |
+| Eşlik eden tedavinin müdahale sanılması | 0 |
+| Bağımsız kanıt sayımı hatası | 0 |
+| Soru çerçevesi seçimi | 8/8 |
+| Sonlanım bağlama (doğru / adsız / yanlış) | 15 / 0 / 0 |
+
+### Branşlara göre
+
+| Branş | Yayın | Tasarımlar | Eksiksiz çıkarım | Yanlış çıkarım |
+|---|---|---|---|---|
+| Cerrahi | 2 | Vaka-kontrol | %83.3 (5/6) | %0.0 (0/5) |
+| Endokrinoloji | 4 | Kohort, Meta-analiz, RCT | %100.0 (14/14) | %0.0 (0/14) |
+| Enfeksiyon | 1 | Tanısal doğruluk | %100.0 (1/1) | %0.0 (0/1) |
+| Kadın Hastalıkları ve Doğum | 1 | RCT | %80.0 (4/5) | %0.0 (0/4) |
+| Kardiyoloji | 2 | Meta-analiz, RCT | %80.0 (8/10) | %0.0 (0/8) |
+| Nöroloji | 1 | RCT | %100.0 (4/4) | %0.0 (0/4) |
+| Onkoloji | 2 | Kohort | %100.0 (6/6) | %0.0 (0/6) |
+| Pediatri | 2 | RCT | %90.9 (10/11) | %9.1 (1/11) |
+| Radyoloji | 2 | Tanısal doğruluk | %100.0 (9/9) | %0.0 (0/9) |
+
+### Araştırma türüne göre
+
+| Tasarım | Yayın | Eksiksiz çıkarım | Yanlış çıkarım |
+|---|---|---|---|
+| Vaka-kontrol | 2 | %83.3 (5/6) | %0.0 (0/5) |
+| Kohort | 4 | %100.0 (11/11) | %0.0 (0/11) |
+| Tanısal doğruluk | 3 | %100.0 (10/10) | %0.0 (0/10) |
+| Meta-analiz | 2 | %100.0 (8/8) | %0.0 (0/8) |
+| RCT | 6 | %87.1 (27/31) | %3.6 (1/28) |
+
+### Çalışma ilişkileri (mükerrer kanıt kontrolü)
+
+- Bağımsız birincil kanıt birimi: 15
+
+### Rapor doğrulama durumu (branş başına tam Türkçe rapor)
+
+| Branş | Durum | Alıntı kontrolü | Kümede olmayan PMID | RoB/GRADE derece iddiası |
+|---|---|---|---|---|
+| Kardiyoloji | Doğrulandı | 32/32 | 0 | 0 |
+| Onkoloji | Doğrulandı | 20/20 | 0 | 0 |
+| Nöroloji | Doğrulandı | 6/6 | 0 | 0 |
+| Enfeksiyon | Doğrulandı | 4/4 | 0 | 0 |
+| Endokrinoloji | Doğrulandı | 38/38 | 0 | 0 |
+| Pediatri | Doğrulandı | 26/26 | 0 | 0 |
+| Cerrahi | Doğrulandı | 17/17 | 0 | 0 |
+| Radyoloji | Doğrulandı | 22/22 | 0 | 0 |
+| Kadın Hastalıkları ve Doğum | Doğrulandı | 6/6 | 0 | 0 |
+
+### Soru çerçevesi seçimi
+
+| Branş | Soru | Beklenen | Motor |
+|---|---|---|---|
+| Kardiyoloji | Duration of dual antiplatelet therapy after PCI in high bleeding risk patients | therapy | therapy ✓ |
+| Onkoloji | Risk of colorectal cancer after Streptococcus bovis bacteraemia | etiology | etiology ✓ |
+| Radyoloji | Sensitivity of dark-field chest radiography for pneumothorax | diagnosis | diagnosis ✓ |
+| Pediatri | Azithromycin mass administration and infant mortality | therapy | therapy ✓ |
+| Cerrahi | Carotid endarterectomy versus medical therapy for asymptomatic stenosis | surgery | surgery ✓ |
+| Endokrinoloji | Prevalence of insulin resistance in irritable bowel syndrome | epidemiology | epidemiology ✓ |
+| Enfeksiyon | Adverse events of SGLT2 inhibitors genital infections | safety | safety ✓ |
+| Kadın Hastalıkları ve Doğum | Preterm doğumda hava kirliliği risk faktörü | etiology | etiology ✓ |
+
+### Eksik ve yanlış öğeler (çalışma bazında)
+
+- **PMID 41631724:** EKSİK: 41631724 müdahale '' (beklenen ['1-month', '3-month']); EKSİK: 41631724 karşılaştırıcı '' (beklenen ['3-month', '12-month'])
+- **PMID 41092331:** YANLIŞ: 41092331 karşılaştırıcı 'control' (beklenen ['placebo'])
+- **PMID 41167592:** EKSİK: 41167592 örneklem None (beklenen 198)
+- **PMID 41354041:** EKSİK: 41354041 örneklem None (beklenen 8094)
 
 ### Test kategorileri
 
