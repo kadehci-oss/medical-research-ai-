@@ -14,6 +14,12 @@ from typing import List, Dict, Any, Optional
 import pubmed_client
 import report_generator
 import specialty_matrix
+from effect_size_extractor import extract_effect_sizes, summarize_effects
+from rob2_assessor import assess_rob2
+from grade_assessor import assess_grade
+# [EVIDENCE_LAYER] auto-import
+# [EVIDENCE_LAYER] auto-import
+# [EVIDENCE_LAYER] auto-import
 
 logger = logging.getLogger(__name__)
 
@@ -329,6 +335,7 @@ class UniversalEvidenceEngine:
             art_enhanced["clinical_details"] = details
             art_enhanced["risk_of_bias"] = rob
             art_enhanced["study_design_info"] = design
+            art_enhanced = enrich_record(art_enhanced)
 
             verified_articles.append(art_enhanced)
             verification_summaries.append(v_res)
@@ -369,10 +376,11 @@ class UniversalEvidenceEngine:
             details = report_generator.extract_article_clinical_details(art, query)
             rob = report_generator.assess_risk_of_bias(art)
 
-            processed.append({
+            record = {
                 "pmid": art.get("pmid"),
                 "doi": art.get("doi"),
                 "title": title,
+                "abstract": abstract,
                 "authors": art.get("authors", []),
                 "authors_short": report_generator._format_authors_short(art.get("authors", [])),
                 "journal": art.get("journal"),
@@ -394,8 +402,10 @@ class UniversalEvidenceEngine:
                 "provenance": details.get("provenance", {}),
                 "evidence_level": details.get("evidence_level") or design.get("level"),
                 "real_findings": details.get("real_findings", ""),
-                "abstract_only": len(abstract) < 100 or "Özet bulunamadı" in abstract
-            })
+                "abstract_only": len(abstract) < 100 or "Özet bulunamadı" in abstract,
+            }
+            record = enrich_record(record)
+            processed.append(record)
         return processed
 
     STOP_WORDS = {
@@ -778,3 +788,39 @@ def generate_universal_evidence_synthesis(
     return engine.generate_synthesis_report(
         query, articles, search_metadata=search_metadata, verification_results=verification_results
     )
+
+
+# [EVIDENCE_LAYER] auto-function
+def enrich_record(rec: dict) -> dict:
+    """RoB 2 + GRADE + etki büyüklüğü ile bir kaydı zenginleştirir."""
+    abstract = rec.get("abstract", "") or ""
+    design = rec.get("study_design", "unknown") or "unknown"
+    design_str = (
+        design.get("design_key") or design.get("design") or ""
+        if isinstance(design, dict)
+        else str(design)
+    )
+
+    rec["effect_summary"] = summarize_effects(extract_effect_sizes(abstract))
+
+    if "rct" in design_str.lower() or "randomized" in abstract.lower():
+        rob = assess_rob2(abstract)
+        rec["rob2"] = rob.to_dict()
+        rob_overall = rob.overall
+    else:
+        rec["rob2"] = None
+        rob_overall = "Low"
+
+    es = rec["effect_summary"].get("primary") or {}
+    ci_width = None
+    if es.get("ci_low") is not None and es.get("ci_high") is not None:
+        ci_width = es["ci_high"] - es["ci_low"]
+
+    rec["grade"] = assess_grade(
+        study_design=design_str,
+        rob2_overall=rob_overall,
+        heterogeneity_i2=rec.get("i2", 0.0) or 0.0,
+        imprecision=bool(ci_width and ci_width > 2),
+    ).to_dict()
+
+    return rec
