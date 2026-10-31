@@ -186,17 +186,53 @@ def _parsed_ci_bounds(ci_strings: List[str]) -> Optional[tuple]:
     return None
 
 
+def _usable_ratio_bounds(abstract: str):
+    """Positive ratio intervals. A source-inconsistent CI is not a precision input."""
+    from report_generator import extract_grounded_clinical_findings
+
+    usable = []
+    excluded = False
+    for item in extract_grounded_clinical_findings(abstract or ""):
+        if item.get("measure") not in {"HR", "OR", "RR", "IRR"}:
+            continue
+        if not item.get("ci_low") or not item.get("ci_high"):
+            continue
+        if item.get("implausible"):
+            excluded = True
+            continue
+        try:
+            low = float(str(item["ci_low"]).replace("−", "-"))
+            high = float(str(item["ci_high"]).replace("−", "-"))
+        except ValueError:
+            continue
+        if high < low:
+            low, high = high, low
+        if low <= 0 or high <= 0 or low >= 10:
+            excluded = True
+            continue
+        usable.append((low, high))
+    return usable, excluded
+
+
 def _imprecision(abstract: str, metrics: Dict[str, Any]) -> Dict[str, str]:
     match = _first_unnegated_match(_IMPRECISION_RE, abstract or "")
     if match:
         return _domain("ciddi düşürme", f"Özet imprecision belirtiyor: '{match.group(0)}'.")
-    bounds = _parsed_ci_bounds(metrics.get("confidence_intervals") or [])
-    if bounds is None:
-        return _domain(_NOT_ASSESSABLE, "Özette güven aralığı veya açık imprecision ifadesi yok.")
-    low, high = bounds
-    # Only positive ratio-style intervals (HR/OR/RR) are scored. Continuous scales are not guessed.
-    if low <= 0 or high <= 0 or low >= 10:
-        return _domain(_NOT_ASSESSABLE, "Ayrıştırılan aralık bir oran ölçütü gibi durmuyor; ölçek varsayılmadı.")
+    usable, excluded = _usable_ratio_bounds(abstract)
+    if not usable:
+        if excluded:
+            return _domain(
+                _NOT_ASSESSABLE,
+                "Kaynakta tutarsız oran aralığı kesinlik yargısına katılmadı.",
+            )
+        bounds = _parsed_ci_bounds(metrics.get("confidence_intervals") or [])
+        if bounds is None:
+            return _domain(_NOT_ASSESSABLE, "Özette güven aralığı veya açık imprecision ifadesi yok.")
+        low, high = bounds
+        if low <= 0 or high <= 0 or low >= 10:
+            return _domain(_NOT_ASSESSABLE, "Ayrıştırılan aralık bir oran ölçütü gibi durmuyor; ölçek varsayılmadı.")
+        usable = [(low, high)]
+    low, high = usable[0]
     ratio = high / low if low else None
     if ratio is not None and ratio >= 3:
         return _domain(

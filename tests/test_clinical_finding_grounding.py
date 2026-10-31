@@ -184,7 +184,7 @@ class TestKlinikBulgularCellIsSourceGrounded(unittest.TestCase):
         self.assertIn("PMID: 12556958", leukaemia)
         self.assertIn("Sonlanım: lösemi", leukaemia)
         self.assertNotIn("Sonlanım: leukaemia", leukaemia)
-        self.assertIn("Etki ölçütü: odds ratio 4.2", leukaemia)
+        self.assertIn("Etki ölçütü: olasılık oranı (OR) 4.2", leukaemia)
         self.assertIn("Güven aralığı: 1.1 ile 16.2", leukaemia)
         self.assertIn("Kaynak cümle:", leukaemia)
         self.assertIn("odds ratio 4.2, 95% confidence interval 1.1-16.2", leukaemia)
@@ -192,16 +192,16 @@ class TestKlinikBulgularCellIsSourceGrounded(unittest.TestCase):
 
         cardio = format_klinik_bulgular_cell(self.by_pmid["35228754"])
         self.assertIn("PMID: 35228754", cardio)
-        self.assertIn("Etki ölçütü: win ratio 1.36", cardio)
+        self.assertIn("Etki ölçütü: kazanma oranı (win ratio) 1.36", cardio)
         self.assertIn("Güven aralığı: 1.09 ile 1.68", cardio)
         self.assertIn("stratified win ratio, 1.36", cardio)
         self.assertNotIn("4.2", cardio)
 
         oncology = format_klinik_bulgular_cell(self.by_pmid["40532178"])
         self.assertIn("PMID: 40532178", oncology)
-        self.assertIn("Etki ölçütü: hazard ratio 0.66", oncology)
+        self.assertIn("Etki ölçütü: tehlike oranı (HR) 0.66", oncology)
         self.assertIn("Güven aralığı: 0.49 ile 0.88", oncology)
-        self.assertIn("Etki ölçütü: hazard ratio 0.70", oncology)
+        self.assertIn("Etki ölçütü: tehlike oranı (HR) 0.70", oncology)
         self.assertIn("Güven aralığı: 0.55 ile 0.89", oncology)
         self.assertIn("progression, recurrence, or death", oncology)
 
@@ -256,7 +256,8 @@ class TestKlinikBulgularCellIsSourceGrounded(unittest.TestCase):
         self.assertNotIn("win ratio 1.36", leukaemia_row)
 
         oncology_row = _table_row(section, "40532178")
-        self.assertIn("hazard ratio 0.66", oncology_row)
+        self.assertIn("tehlike oranı (HR) 0.66", oncology_row)
+        self.assertIn("hazard ratio for progression", oncology_row)
         self.assertIn("0.49 ile 0.88", oncology_row)
         self.assertNotIn("odds ratio 4.2", oncology_row)
 

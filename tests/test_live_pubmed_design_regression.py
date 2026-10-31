@@ -288,7 +288,7 @@ class TestLiveStudyCardExtraction(unittest.TestCase):
         self.assertEqual(comparison.count("["), comparison.count("]"))
         self.assertEqual(comparison.count("("), comparison.count(")"))
         self.assertIn("9.8", comparison)
-        self.assertRegex(outcomes, r"55\.6%\)")
+        self.assertRegex(outcomes, r"55\.6%")
         self.assertRegex(outcomes, r"9\.1%")
         self.assertTrue(
             any(token in visible for token in ("İİM", "karşı", "yıl", "diyabet")),

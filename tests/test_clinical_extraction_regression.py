@@ -239,8 +239,8 @@ class TestConfidenceIntervalsOutcomesAndGrouping(unittest.TestCase):
         self.assertNotIn("Sonlanım: diabetes mellitus", cell)
         self.assertIn("Güven aralığı: 1.03 ile 22.6", cell)
         self.assertIn("p değeri: p = 0.045", cell)
-        self.assertLess(cell.find("OR 4.81"), cell.find("OR 2.54"))
-        self.assertLess(cell.find(sentence), cell.find("OR 4.81"))
+        self.assertLess(cell.find("(OR) 4.81"), cell.find("(OR) 2.54"))
+        self.assertLess(cell.find(sentence), cell.find("(OR) 4.81"))
 
     def test_case_series_profile_keeps_ck_treatment_and_sample_on_their_sentences(self):
         article = self.by_pmid["41010829"]

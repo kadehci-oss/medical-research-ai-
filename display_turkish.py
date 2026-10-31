@@ -76,7 +76,7 @@ _PHRASE_PAIRS = (
     ("immune-mediated necrotizing myositis", "immün aracılı nekrotizan miyozit"),
     ("idiopathic inflammatory myopathy", "idiyopatik inflamatuar miyopati"),
     ("idiopathic inflammatory myositis", "idiyopatik inflamatuar miyozit"),
-    ("standardized mean difference", "standartlaştırılmış ortalama fark"),
+    ("standardized mean difference", "standartlaştırılmış ortalama fark (SMD)"),
     ("european neuromuscular center", "Avrupa Nöromusküler Merkezi"),
     ("european neuromuscular centre", "Avrupa Nöromusküler Merkezi"),
     ("significant group difference in post-treatment", "tedavi sonrası anlamlı grup farkı"),
@@ -100,22 +100,55 @@ _PHRASE_PAIRS = (
     ("interstitial lung disease", "interstisyel akciğer hastalığı"),
     ("significant group difference", "anlamlı grup farkı"),
     ("waist circumference", "bel çevresi"),
-    ("incidence rate ratio", "insidans hız oranı"),
+    ("annual rate of decline in the estimated glomerular filtration rate", "yıllık eGFR azalma hızı"),
+    ("ml per minute per 1.73 m2 of body-surface area per year", "mL/dk/1,73 m²/yıl"),
+    ("ml per minute per 1.73 m² of body-surface area per year", "mL/dk/1,73 m²/yıl"),
+    ("ml per minute per 1.73 m2 per year", "mL/dk/1,73 m²/yıl"),
+    ("ml per minute per 1.73 m² per year", "mL/dk/1,73 m²/yıl"),
+    ("new york heart association class ii, iii, or iv heart failure", "NYHA sınıf II, III veya IV kalp yetersizliği"),
+    ("new york heart association class ii, iii, or iv", "NYHA sınıf II, III veya IV"),
+    ("class ii, iii, or iv heart failure", "sınıf II, III veya IV kalp yetersizliği"),
+    ("class ii-iv heart failure", "sınıf II-IV kalp yetersizliği"),
+    ("class ii, iii, or iv", "sınıf II, III veya IV"),
+    ("atopic march progression", "atopik yürüyüş ilerlemesi"),
+    ("ige category shift", "IgE kategori değişimi"),
+    ("ige category change", "IgE kategori değişimi"),
+    ("allergic rhinitis", "alerjik rinit"),
+    ("atopic march", "atopik yürüyüş"),
+    ("peak pruritus numerical rating scale", "kaşıntı NRS"),
+    ("peak pruritus nrs", "kaşıntı NRS"),
+    ("pruritus nrs", "kaşıntı NRS"),
+    ("itch nrs", "kaşıntı NRS"),
+    ("eczema area and severity index", "EASI"),
+    ("investigator global assessment", "IGA"),
+    ("iga 0/1", "IGA 0/1"),
+    ("iga 0 or 1", "IGA 0/1"),
+    ("easi-75", "EASI-75"),
+    ("easi75", "EASI-75"),
+    ("body weight", "vücut ağırlığı"),
+    ("lymphocytic leukaemia", "lenfositik lösemi"),
+    ("lymphocytic leukemia", "lenfositik lösemi"),
+    ("adverse events", "advers olaylar"),
+    ("response rate", "yanıt oranı"),
+    ("incidence rate ratio", "insidans oranı oranı (IRR)"),
     ("inflammatory myopathy", "inflamatuar miyopati"),
     ("inflammatory myositis", "inflamatuar miyozit"),
     ("necrotizing myopathy", "nekrotizan miyopati"),
     ("necrotising myopathy", "nekrotizan miyopati"),
     ("confidence interval", "güven aralığı"),
-    ("mean difference", "ortalama fark"),
+    ("mean difference", "ortalama fark (MD)"),
     ("heart failure", "kalp yetersizliği"),
     ("muscle weakness", "kas güçsüzlüğü"),
     ("creatine kinase", "kreatin kinaz"),
     ("diabetes mellitus", "diyabet"),
+    ("anti-hmgcr antibodies", "anti-HMGCR antikorlar"),
     ("anti-hmgcr antibody", "anti-HMGCR antikoru"),
-    ("odds ratio", "odds oranı"),
-    ("hazard ratio", "tehlike oranı"),
-    ("relative risk", "göreli risk"),
-    ("risk ratio", "risk oranı"),
+    ("necrotizing im", "nekrotizan IM"),
+    ("necrotising im", "nekrotizan IM"),
+    ("odds ratio", "olasılık oranı (OR)"),
+    ("hazard ratio", "tehlike oranı (HR)"),
+    ("relative risk", "risk oranı (RR)"),
+    ("risk ratio", "risk oranı (RR)"),
     ("win ratio", "kazanma oranı (win ratio)"),
     ("statin-induced", "statin ilişkili"),
     ("statin-associated", "statin ilişkili"),
@@ -389,6 +422,11 @@ _WORDS = {
     "speed": "hız",
     "gait": "yürüyüş",
     "rehabilitation": "rehabilitasyon",
+    "asthma": "astım",
+    "rhinitis": "rinit",
+    "atopic": "atopik",
+    "pruritus": "kaşıntı",
+    "itch": "kaşıntı",
     "inhibitor": "inhibitör",
     "inhibitors": "inhibitörler",
     "conventional": "konvansiyonel",
@@ -496,6 +534,7 @@ UNTRANSLATED_OUTCOME_LABEL = "Sonlanım adı güvenle çevrilemedi"
 # line that still contains one of these next to a Turkish word is mixed.
 _LEFTOVER_ENGLISH = {
     "type", "chronic", "kidney", "renal", "should", "would", "could", "might",
+    "class", "association", "receive", "receiving", "matching", "once", "daily",
     "must", "guidelines", "guideline", "treat", "treating", "treated",
     "congestive", "baseline", "irrespective", "regardless", "followed",
     "varying", "composite", "endpoint", "endpoints", "frail", "frailty",
@@ -578,13 +617,218 @@ def _map_token(token: str, drop_unknown: bool = True) -> str:
     return "" if drop_unknown else token
 
 
+_SLOPE_UNIT_RE = re.compile(
+    r"m[lL]\s*(?:/|\bper\b)\s*min(?:ute)?\s*(?:/|\bper\b)\s*1[.,]73\s*m\s*(?:2|²)"
+    r"(?:\s*of\s+body[-\s]?surface\s+area)?"
+    r"(?:\s*(?:/|\bper\b)\s*years?)?",
+    re.IGNORECASE,
+)
+
+# Outcome names are translated only as a whole controlled term. These English
+# heads are real endpoints, not function words and not generic person nouns.
+_SINGLE_OUTCOME_TR = {
+    "death": "ölüm",
+    "deaths": "ölüm",
+    "mortality": "mortalite",
+    "remission": "remisyon",
+    "relapse": "nüks",
+    "leukemia": "lösemi",
+    "leukaemia": "lösemi",
+    "myopathy": "miyopati",
+    "myositis": "miyozit",
+    "weight": "ağırlık",
+    "hospitalization": "hastaneye yatış",
+    "hospitalisation": "hastaneye yatış",
+    "stroke": "inme",
+    "infection": "enfeksiyon",
+    "asthma": "astım",
+    "diabetes": "diyabet",
+    "antimetabolites": "antimetabolitler",
+    "antimetabolite": "antimetabolit",
+    "rituximab": "rituksimab",
+    "ivig": "IVIG",
+    "hba1c": "HbA1c",
+    "egfr": "eGFR",
+    "exacerbation": "alevlenme",
+    "depression": "depresyon",
+    "seizure": "nöbet",
+    "easi-75": "EASI-75",
+    "easi75": "EASI-75",
+    "iga": "IGA",
+}
+
+_GENERIC_OUTCOME_EN = {
+    "individual", "individuals", "patient", "patients", "person", "people",
+    "subject", "subjects", "participant", "participants", "group", "groups",
+    "including", "included", "include", "the", "a", "an", "of", "in", "for",
+    "and", "or", "with", "by", "to", "from", "on", "at", "was", "were", "is",
+    "are", "be", "been", "this", "that", "these", "those", "than", "then",
+    "significant", "significantly", "lower", "higher", "reduced", "reduction",
+    "risk", "new", "worsening", "combined", "versus", "vs", "per", "into",
+    "their", "its", "also", "not", "no", "more", "less", "most", "such",
+    "between", "among", "both", "all", "any", "other", "who", "which", "that",
+}
+
+_CLOSED_OUTCOME_ABBREV = {
+    "IIM": "İİM",
+    "IMNM": "İMNM",
+    "HHF": "KYHY",
+    "CKD": "KBH",
+    "AD": "AD",
+    "NRS": "NRS",
+    "IGA": "IGA",
+    "EASI": "EASI",
+}
+
+_NOT_OUTCOME_PHRASES = {
+    "confidence interval",
+    "mean difference",
+    "standardized mean difference",
+    "odds ratio",
+    "hazard ratio",
+    "relative risk",
+    "risk ratio",
+    "incidence rate ratio",
+    "win ratio",
+    "ml per minute per 1.73 m2 of body-surface area per year",
+    "ml per minute per 1.73 m² of body-surface area per year",
+    "ml per minute per 1.73 m2 per year",
+    "ml per minute per 1.73 m² per year",
+    "new york heart association class ii, iii, or iv heart failure",
+    "new york heart association class ii, iii, or iv",
+    "class ii, iii, or iv heart failure",
+    "class ii-iv heart failure",
+    "class ii, iii, or iv",
+}
+
+
+def render_clinical_units(text: str) -> str:
+    """Canonical Turkish units. The source numbers stay outside this replacement."""
+
+    def _unit(match: re.Match) -> str:
+        yearly = bool(re.search(r"year", match.group(0), re.IGNORECASE))
+        return "mL/dk/1,73 m²/yıl" if yearly else "mL/dk/1,73 m²"
+
+    return _SLOPE_UNIT_RE.sub(_unit, text or "")
+
+
+def _has_stray_outcome_punctuation(text: str) -> bool:
+    """Commas, stray slashes, and sentence marks are not part of an outcome name."""
+    cleaned = re.sub(r"\bIGA\s*0/1\b", "IGA01", text or "", flags=re.IGNORECASE)
+    cleaned = re.sub(r"\bEASI-?75\b", "EASI75", cleaned, flags=re.IGNORECASE)
+    return bool(re.search(r"[,:;]|/(?!\d)|/\.|\.$", cleaned))
+
+
+def _phrase_translation(lowered: str):
+    """Turkish text when the whole string is one controlled phrase."""
+    for source, turkish in _PHRASES:
+        if lowered == source and source not in _NOT_OUTCOME_PHRASES:
+            return turkish
+    return ""
+
+
+def translate_controlled_outcome(text: str) -> str:
+    """Turkish outcome name only when the whole span is controlled terminology.
+
+    Unknown words are not dropped and the remainder is not shown. An empty
+    string means the caller should use the unnamed-outcome label.
+    """
+    raw = re.sub(r"\s+", " ", (text or "")).strip(" .;:")
+    if not raw or _has_stray_outcome_punctuation(raw):
+        return ""
+    lowered = raw.lower()
+    exact = _phrase_translation(lowered)
+    if exact:
+        return exact
+    if lowered in _SINGLE_OUTCOME_TR:
+        return _SINGLE_OUTCOME_TR[lowered]
+    parts = raw.split()
+    if len(parts) < 2:
+        return ""
+    rendered = []
+    for part in parts:
+        token = part.strip(",.;:")
+        low = token.lower()
+        if not token or low in _GENERIC_OUTCOME_EN:
+            return ""
+        phrase = _phrase_translation(low)
+        if phrase:
+            rendered.append(phrase)
+            continue
+        if low in _SINGLE_OUTCOME_TR:
+            rendered.append(_SINGLE_OUTCOME_TR[low])
+            continue
+        anti = re.fullmatch(r"anti-([A-Za-z0-9]+)", token, flags=re.IGNORECASE)
+        if anti:
+            rendered.append("anti-" + anti.group(1).upper())
+            continue
+        if re.fullmatch(r"EASI-?75", token, flags=re.IGNORECASE):
+            rendered.append("EASI-75")
+            continue
+        if re.fullmatch(r"IGA\s*0/1", token, flags=re.IGNORECASE):
+            rendered.append("IGA 0/1")
+            continue
+        upper = token.upper()
+        if upper in _CLOSED_OUTCOME_ABBREV and token.isupper():
+            rendered.append(_CLOSED_OUTCOME_ABBREV[upper])
+            continue
+        return ""
+    return " ".join(rendered)
+
+
+def nearest_controlled_outcome(text: str) -> str:
+    """Rightmost controlled outcome phrase inside a clause, or empty.
+
+    Modifiers around the phrase are not translated. A function word or a
+    generic noun is not returned on its own.
+    """
+    raw = re.sub(r"\s+", " ", (text or ""))
+    if not raw.strip():
+        return ""
+    lowered = raw.lower()
+    found = []
+    for source, turkish in _PHRASES:
+        if source in _NOT_OUTCOME_PHRASES or not turkish:
+            continue
+        for match in re.finditer(r"\b" + re.escape(source) + r"\b", lowered):
+            found.append((match.end(), match.end() - match.start(), source))
+    for source in _SINGLE_OUTCOME_TR:
+        for match in re.finditer(r"\b" + re.escape(source) + r"\b", lowered):
+            found.append((match.end(), match.end() - match.start(), match.group(0)))
+    if not found:
+        return ""
+    found.sort(key=lambda item: (item[0], item[1]), reverse=True)
+    return found[0][2]
+
+
+def outcome_label_rejected(shown: str) -> bool:
+    """Function words, generic nouns, and stray punctuation are not outcome names."""
+    text = re.sub(r"\s+", " ", (shown or "")).strip(" .")
+    if not text:
+        return True
+    if _has_stray_outcome_punctuation(text):
+        return True
+    tokens = re.findall(r"[A-Za-zÇĞİÖŞÜçğıöşüıİ0-9/+-]+", text)
+    generic = {
+        "birey", "bireyler", "hasta", "hastalar", "dahil", "anlamlı",
+        "grup", "gruplar", "kişi", "kişiler", "katılımcı", "katılımcılar",
+    }
+    if not tokens:
+        return True
+    if tokens[0].casefold() in generic:
+        return True
+    if len(tokens) == 1 and tokens[0].casefold() in generic:
+        return True
+    return False
+
+
 def localize_clinical_display(text: str, drop_unknown: bool = True) -> str:
     """Turkish display text. Unsafe English tokens are left out.
 
     An empty string means nothing safe remained. Callers decide the Turkish
     fallback. Balanced brackets and numbers are preserved.
     """
-    raw = re.sub(r"\s+", " ", (text or "")).strip()
+    raw = render_clinical_units(re.sub(r"\s+", " ", (text or "")).strip())
     if not raw:
         return ""
     if _brackets_unbalanced(raw):
@@ -623,6 +867,9 @@ def localize_clinical_display(text: str, drop_unknown: bool = True) -> str:
         return ""
     for pattern, replacement in _POSSESSIVE_REPAIRS:
         working = pattern.sub(replacement, working)
+    working = re.sub(r"\b(başına)(?:\s+\1)+\b", r"\1", working, flags=re.IGNORECASE)
+    working = re.sub(r"\({2,}", "(", working)
+    working = re.sub(r"\){2,}", ")", working)
     return working
 
 

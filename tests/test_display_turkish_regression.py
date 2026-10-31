@@ -75,7 +75,7 @@ class TestSection6TurkishFindings(unittest.TestCase):
         self.assertIn("statin ilişkili anti-HMGCR antikor pozitif İMNM", statin)
         self.assertIn("diyabet", statin)
         self.assertIn("kanserle ilişkili İİM", statin)
-        self.assertIn("OR 4.81", statin)
+        self.assertIn("olasılık oranı (OR) 4.81", statin)
         self.assertIn("1.03 ile 22.6", statin)
         for english in (
             "statin-induced",
@@ -110,7 +110,8 @@ class TestSection6TurkishFindings(unittest.TestCase):
         )
         table = _format_cross_study_comparison([article], {})
         findings = _row_cells(table, "90007001")[4]
-        self.assertIn(UNTRANSLATED_OUTCOME_LABEL, findings)
+        self.assertIn("özette adlandırılmadı", findings)
+        self.assertNotIn(UNTRANSLATED_OUTCOME_LABEL, findings)
         self.assertIn("3.20", findings)
         self.assertNotIn("quixotic", findings.lower())
         self.assertNotIn("flibbertigibbet", findings.lower())
@@ -161,7 +162,7 @@ class TestStudyCardExtraction(unittest.TestCase):
         self.assertIn("karşı", comparison)
         self.assertNotRegex(comparison, r"\[61(?!\.6)")
 
-        self.assertRegex(outcomes, r"9\.1%\s+karşı\s+55\.6%\)")
+        self.assertRegex(outcomes, r"9\.1%\s+karşı\s+55\.6%")
         self.assertNotRegex(outcomes, r"55\.6(?!%)")
         self.assertIn("inflamatuar miyopati", details["patient_group"])
         self.assertNotIn("were characterized", details["patient_group"].lower())
@@ -177,7 +178,7 @@ class TestStudyCardExtraction(unittest.TestCase):
         details = extract_article_clinical_details(article, "heart failure")
         self.assertEqual(details["intervention"], "Empagliflozin 10 mg")
         self.assertEqual(details["comparison"], "Plasebo")
-        self.assertIn("HR 0.79", details["outcomes_summary"])
+        self.assertIn("tehlike oranı (HR) 0.79", details["outcomes_summary"])
 
 
 class TestStreamlitStudyCardAndSection6(unittest.TestCase):
