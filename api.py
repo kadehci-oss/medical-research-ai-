@@ -1,5 +1,5 @@
 from fastapi import FastAPI, Query, HTTPException, Body
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Literal
 from pydantic import BaseModel, Field
 
 from pubmed_client import search_pubmed, verify_pmid, verify_doi, verify_citation
@@ -17,7 +17,7 @@ from report_generator import (
 
 app = FastAPI(
     title="Medical Research AI API",
-    description="Universal Physician Medical Research AI REST API backed by NCBI PubMed E-utilities and CrossRef.",
+    description="PubMed tabanlı klinik araştırma prototipi. Kayıt/özet tabanlıdır; uzman hekim tarafından klinik doğrulaması yapılmamıştır.",
     version="1.2.0"
 )
 
@@ -39,8 +39,20 @@ class ReportRequest(BaseModel):
         False,
         description="If true, the query and PubMed article metadata/abstracts are sent to OpenAI for synthesis.",
     )
+    llm_data_transfer_confirmed: bool = Field(
+        False,
+        description="Confirm that the query contains no patient-identifying or confidential health data and may be sent with PubMed metadata/abstracts to OpenAI.",
+    )
     model: str = Field("gpt-4o-mini", max_length=64, description="OpenAI model to use if use_llm is True")
     search_date: Optional[str] = Field(None, max_length=10, description="Date the source search was run, YYYY-MM-DD")
+
+
+def _require_llm_transfer_confirmation(req: ReportRequest) -> None:
+    if req.use_llm and req.api_key and req.api_key.strip() and not req.llm_data_transfer_confirmed:
+        raise HTTPException(
+            status_code=422,
+            detail="OpenAI sentezi için sorgu ve PubMed verilerinin OpenAI'ye gönderileceğini ve hasta kimliği/gizli sağlık verisi içermediğini açıkça onaylayın.",
+        )
 
 
 def _load_verified_articles(citations: List[ArticleCitation]):
@@ -96,13 +108,15 @@ def health_check():
 
 @app.get("/api/search")
 def api_search_pubmed(
-    query: str = Query(..., description="Clinical query or medical term"),
+    query: str = Query(..., min_length=1, max_length=2000, description="Clinical query or medical term"),
     max_results: int = Query(10, ge=1, le=50, description="Max results to return"),
-    sort: str = Query("relevance", description="Sort order: relevance or pub_date"),
-    publication_type: Optional[str] = Query("Tümü", description="Filter by publication type"),
-    start_year: Optional[int] = Query(None, description="Start publication year"),
-    end_year: Optional[int] = Query(None, description="End publication year")
+    sort: Literal["relevance", "pub_date"] = Query("relevance", description="Sort order: relevance or pub_date"),
+    publication_type: Optional[str] = Query("Tümü", max_length=100, description="Filter by publication type"),
+    start_year: Optional[int] = Query(None, ge=1800, le=2100, description="Start publication year"),
+    end_year: Optional[int] = Query(None, ge=1800, le=2100, description="End publication year")
 ):
+    if start_year is not None and end_year is not None and start_year > end_year:
+        raise HTTPException(status_code=422, detail="start_year end_year değerinden büyük olamaz.")
     result = search_pubmed(
         query=query,
         max_results=max_results,
@@ -112,7 +126,10 @@ def api_search_pubmed(
         end_year=end_year
     )
     if "error" in result and not result.get("articles"):
-        raise HTTPException(status_code=502, detail=f"PubMed API Error: {result['error']}")
+        raise HTTPException(
+            status_code=502,
+            detail="PubMed araması tamamlanamadı. Sorgu biçimini kontrol edin veya daha sonra tekrar deneyin.",
+        )
     return result
 
 
@@ -120,7 +137,8 @@ def api_search_pubmed(
 def api_verify_pmid(pmid: str):
     result = verify_pmid(pmid)
     if not result.get("valid"):
-        raise HTTPException(status_code=404, detail=result.get("error", "PMID not found or invalid"))
+        status_code = 502 if result.get("reason") == "upstream_error" else 404
+        raise HTTPException(status_code=status_code, detail=result.get("error", "PMID not found or invalid"))
     return result
 
 
@@ -143,6 +161,7 @@ def api_verify_citation(citation: Dict[str, Any] = Body(...)):
 
 @app.post("/api/report")
 def api_generate_report(req: ReportRequest):
+    _require_llm_transfer_confirmation(req)
     articles, verification_results = _load_verified_articles(req.articles)
     audit = perform_red_team_audit(req.query, articles, verification_results=verification_results)
     search_meta = {
@@ -154,6 +173,7 @@ def api_generate_report(req: ReportRequest):
         articles=articles,
         api_key=req.api_key,
         use_llm=req.use_llm,
+        allow_external_data_transfer=req.llm_data_transfer_confirmed,
         model=req.model,
         search_metadata=search_meta,
         audit=audit,
@@ -179,15 +199,17 @@ def api_generate_report(req: ReportRequest):
 @app.post("/api/universal_engine/synthesize")
 def api_universal_engine_synthesize(req: ReportRequest):
     """
-    Universal Evidence Engine endpoint for disease-agnostic Turkish clinical report synthesis,
-    cross-study comparative analysis, and structured parameter extraction.
+    PubMed-record and available-abstract based preliminary Turkish synthesis.
+    Matching and structured extraction are heuristic, not specialist validation.
     """
+    _require_llm_transfer_confirmation(req)
     articles, verification_results = _load_verified_articles(req.articles)
     return generate_universal_evidence_synthesis(
         query=req.query,
         articles=articles,
         api_key=req.api_key,
         use_llm=req.use_llm,
+        allow_external_data_transfer=req.llm_data_transfer_confirmed,
         model=req.model,
         search_metadata={"search_date": req.search_date, "query": req.query},
         verification_results=verification_results,

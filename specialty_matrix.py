@@ -256,12 +256,12 @@ def load_specialty_matrix(path: Optional[str] = None) -> Dict[str, Any]:
     try:
         raw = matrix_path.read_text(encoding="utf-8")
     except OSError as exc:
-        return _empty_matrix(f"Specialty matrix not found or unreadable: {matrix_path} ({exc})")
+        return _empty_matrix("Specialty matrix not found or unreadable")
 
     try:
         data = json.loads(raw)
     except json.JSONDecodeError as exc:
-        return _empty_matrix(f"Malformed specialty matrix JSON: {exc}")
+        return _empty_matrix("Malformed specialty matrix JSON")
 
     if not isinstance(data, dict) or not isinstance(data.get("specialties"), list):
         return _empty_matrix("Specialty matrix is missing a specialties list")
@@ -463,7 +463,7 @@ def enhance_query_with_specialty(
         try:
             specialty = detect_specialty(original, matrix=matrix, path=path)
         except Exception as exc:  # defensive: detection must not break search
-            logger.warning("Specialty detection failed: %s", exc)
+            logger.warning("Specialty detection failed (%s)", type(exc).__name__)
             result["strategy"] = "detection_error"
             return result
 
