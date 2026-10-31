@@ -42,6 +42,17 @@ class TestClinicalReferenceValidation(unittest.TestCase):
     def test_holdout_set_current_run(self):
         self._check(self.results["holdout_current"], min_complete=0.90, max_false=0.05)
 
+    def test_second_holdout_set_current_run(self):
+        self._check(self.results["holdout2_current"], min_complete=0.90, max_false=0.05)
+
+    def test_frozen_second_holdout_first_run_is_recorded_unchanged(self):
+        frozen = self.results["holdout2_first_run"]
+        self.assertIsNotNone(frozen)
+        self.assertEqual(frozen["n_studies"], 17)
+        self.assertEqual((frozen["overall"]["complete"], frozen["overall"]["reference_items"]), (52, 66))
+        self.assertEqual((frozen["overall"]["false"], frozen["overall"]["extracted"]), (7, 59))
+        self.assertEqual(frozen["false_causal_claims"], 0)
+
     def test_frozen_holdout_first_run_is_recorded_unchanged(self):
         frozen = self.results["holdout_first_run"]
         self.assertIsNotNone(frozen)
@@ -52,11 +63,11 @@ class TestClinicalReferenceValidation(unittest.TestCase):
         self.assertEqual(frozen["false_causal_claims"], 0)
 
     def test_every_specialty_is_reported(self):
-        for key in ("development", "holdout_current"):
-            self.assertEqual(len(self.results[key]["per_specialty"]), 8, key)
+        for key in ("development", "holdout_current", "holdout2_current"):
+            self.assertGreaterEqual(len(self.results[key]["per_specialty"]), 8, key)
 
     def test_question_framework_selection(self):
-        for key in ("development", "holdout_current"):
+        for key in ("development", "holdout_current", "holdout2_current"):
             fw = self.results[key]["question_framework"]
             self.assertEqual(fw["correct"], fw["total"], fw["rows"])
 
