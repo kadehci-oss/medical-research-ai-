@@ -1885,7 +1885,9 @@ def render_study_card_lines(study: Study) -> List[str]:
                      f" (PMID: {pmid})")
     if rejected:
         lines.append(f"**Reddedilen eşleştirmeler:** {len(rejected)} (tutarsız güven aralığı veya geçersiz aralık; sentezde kullanılmadı)")
-    lines.append(f"**Yanlılık riski:** {study.risk_of_bias.tool or 'araç seçilemedi'} — {NOT_ASSESSED_TR} (derece verilmedi)")
+    # Same label rule as sections 5/6: the tool is shown as its acronym only.
+    tool_label = rg.display_bias_tool(study.risk_of_bias.tool) if study.risk_of_bias.tool else "araç seçilemedi"
+    lines.append(f"**Yanlılık riski:** {tool_label} — {NOT_ASSESSED_TR} (derece verilmedi)")
     lines.append(f"**GRADE:** {NOT_ASSESSED_TR}")
     if study.relations:
         rel = "; ".join(

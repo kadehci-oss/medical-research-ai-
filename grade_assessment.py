@@ -409,8 +409,10 @@ def assess_preliminary_grade(article: Dict[str, Any], query: str = "") -> Dict[s
 
 
 _AUTHOR_CLAIM_RE = re.compile(
-    r"\b(?:outperform\w*|superior|inferior|protective|beneficial|effective|reduced|improved|prevent\w*|caused?|causes|"
-    r"led\s+to|pooled|yielded|showed)\b",
+    r"\b(?:outperform\w*|superior|inferior|protective|beneficial|effective|reduced|improved|prevent\w*|"
+    r"led\s+to|pooled|yielded|showed)\b"
+    # "caused" is a claim; "all-cause" and "cause-specific" are endpoint names.
+    r"|(?<![-\w])caus(?:e|ed|es)\b(?!-)",
     re.IGNORECASE,
 )
 
