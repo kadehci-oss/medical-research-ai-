@@ -3,6 +3,7 @@ from typing import Optional, List, Dict, Any, Literal
 from pydantic import BaseModel, Field
 
 from pubmed_client import search_pubmed, verify_pmid, verify_doi, verify_citation
+from evidence_guards import retraction_status  # [mrai-fixes]
 from universal_evidence_engine import UniversalEvidenceEngine, run_universal_evidence_search, generate_universal_evidence_synthesis
 from report_generator import (
     generate_turkish_evidence_report,
@@ -94,6 +95,15 @@ def _load_verified_articles(citations: List[ArticleCitation]):
                 detail={"pmid": pmid, "reason": "missing_canonical_record", "message": "PubMed did not return canonical article metadata."},
             )
 
+        if retraction_status(fetched) == "retracted":  # [mrai-fixes B9]
+            raise HTTPException(
+                status_code=422,
+                detail={
+                    "pmid": pmid,
+                    "reason": "retracted",
+                    "message": "Bu makale PubMed'de geri çekilmiş (Retracted Publication) olarak işaretli; rapora alınmadı.",
+                },
+            )
         seen_pmids.add(pmid)
         verification_results.append(result)
         articles.append({key: value for key, value in fetched.items() if key != "valid"})
