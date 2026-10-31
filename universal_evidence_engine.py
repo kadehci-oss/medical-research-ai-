@@ -20,6 +20,7 @@ import pico_compat  # [mrai-fixes]
 import stat_direction  # [mrai-fixes]
 from effect_size_extractor import extract_effect_sizes, summarize_effects
 from rob2_assessor import assess_rob2
+from clinical_evidence import build_study_model, ensure_study_model, legacy_details_from_study, validate_study_model
 # [EVIDENCE_LAYER] auto-import
 # [EVIDENCE_LAYER] auto-import
 # [EVIDENCE_LAYER] auto-import
@@ -348,7 +349,16 @@ class UniversalEvidenceEngine:
             art_enhanced["risk_of_bias"] = rob
             art_enhanced["study_design_info"] = design
             art_enhanced["retraction_status"] = evidence_guards.retraction_status(art)  # [mrai-fixes B9]
+            art_enhanced["from_pubmed"] = bool(pmid)
             art_enhanced = enrich_record(art_enhanced)
+            art_enhanced["evidence_model"] = build_study_model(
+                art_enhanced,
+                query=query,
+                clinical_details=details,
+                study_design=design,
+                risk_of_bias=rob,
+            )
+            art_enhanced["evidence_model_validation"] = validate_study_model(art_enhanced["evidence_model"])
 
             verified_articles.append(art_enhanced)
             verification_summaries.append(v_res)
@@ -383,10 +393,17 @@ class UniversalEvidenceEngine:
             abstract = art.get("abstract", "")
             pub_types = art.get("publication_types", [])
 
-            design = report_generator.classify_study_design(pub_types, title, abstract)
             metrics = report_generator.extract_study_metrics(abstract)
-            outcome_metrics = report_generator.extract_outcome_metrics(abstract)
-            details = report_generator.extract_article_clinical_details(art, query)
+            evidence_model = ensure_study_model(art, query)
+            details = legacy_details_from_study(evidence_model)
+            design = {
+                "design": evidence_model.get("design_label"),
+                "design_key": evidence_model.get("design_key"),
+                "level": "Değerlendirilemedi",
+                "level_num": None,
+                "evidence_level_note": "Kanıt düzeyi tasarımdan üretilmez; resmi değerlendirme yapılmadı.",
+            }
+            outcome_metrics = details.get("outcome_metrics", [])
             rob = report_generator.assess_risk_of_bias(art)
 
             record = {
@@ -402,7 +419,7 @@ class UniversalEvidenceEngine:
                 "study_design": design,
                 "patient_population": details.get("patient_group", "Belirtilmedi"),
                 "sample_size": details.get("sample_size", "özette bildirilmedi"),
-                "sample_size_n": metrics.get("n"),
+                "sample_size_n": str(evidence_model.get("population", {}).get("total_participants", {}).get("value")) if evidence_model.get("population", {}).get("total_participants", {}).get("value") is not None else None,
                 "intervention": details.get("intervention", "Belirtilmedi"),
                 "comparison": details.get("comparison", "Belirtilmedi"),
                 "effect_sizes": metrics.get("effect_sizes", []),
@@ -414,6 +431,11 @@ class UniversalEvidenceEngine:
                 "causality_limitations": metrics.get("causality_limitations", []),
                 "risk_of_bias": rob,
                 "provenance": details.get("provenance", {}),
+                "evidence_model": evidence_model,
+                "evidence_model_validation": validate_study_model(evidence_model),
+                "evidence_family_id": evidence_model.get("evidence_family_id"),
+                "study_relationship": evidence_model.get("relationship"),
+                "causal_interpretation_status": evidence_model.get("causal_interpretation_status"),
                 "evidence_level": details.get("evidence_level") or design.get("level"),
                 "real_findings": details.get("real_findings", ""),
                 "abstract_only": len(abstract) < 100 or "Özet bulunamadı" in abstract,
@@ -493,8 +515,19 @@ class UniversalEvidenceEngine:
             self._mrai_query_pico = None
 
         _nonprimary = ("Derleme", "Meta-Analiz", "Kılavuz", "Uzman Görüşü", "Editör", "Review", "Editorial", "Guideline")
-        primary_studies = [p for p in processed if not any(k in p["study_design"]["design"] for k in _nonprimary)]
+        candidate_primaries = [p for p in processed if not any(k in p["study_design"]["design"] for k in _nonprimary)]
         review_studies = [p for p in processed if any(k in p["study_design"]["design"] for k in _nonprimary)]
+        primary_studies = []
+        family_repeats = []
+        seen_families = {}
+        for record in candidate_primaries:
+            family_id = record.get("evidence_family_id") or (record.get("evidence_model") or {}).get("evidence_family_id")
+            if family_id and family_id in seen_families:
+                family_repeats.append((record, seen_families[family_id]))
+                continue
+            if family_id:
+                seen_families[family_id] = record
+            primary_studies.append(record)
 
         consistent = []
         conflicting = []
@@ -525,6 +558,8 @@ class UniversalEvidenceEngine:
                 "outcome_metrics": p.get("outcome_metrics"),
                 "outcome_lines": p.get("outcome_lines") or [],
                 "risk_of_bias": p.get("risk_of_bias", {}).get("overall_rating"),
+                "evidence_family_id": p.get("evidence_family_id"),
+                "study_relationship": p.get("study_relationship"),
                 "source_citations": f"{pmid_link} / {doi_link}",
                 "real_findings": p.get("real_findings")
             })
@@ -552,62 +587,56 @@ class UniversalEvidenceEngine:
 
                 if eval_res["compatible"]:
                     # Compare bound outcomes
-                    # [mrai-fixes B1/B2] compare only named, matched outcome pairs and never
-                    # classify a pair whose direction could not be read from the abstract.
-                    _direction_tr = {
-                        "benefit": "yarar yönünde",
-                        "harm": "zarar yönünde",
-                        "neutral": "anlamlı fark bildirilmedi",
-                        "significant_unclear": "anlamlı fark; yönü özetten belirlenemedi",
-                    }
-                    for om1, om2 in eval_res["outcome_pairs"]:
-                        if om1.get("implausible") or om2.get("implausible"):
-                            continue  # source-inconsistent values are not compared (upstream rule, kept)
-                        dir1 = self._determine_statistical_direction(om1)
-                        dir2 = self._determine_statistical_direction(om2)
-                        m1_str = ", ".join(om1.get("metrics", [])) or "Özette nicel etki ölçütü yok"
-                        m2_str = ", ".join(om2.get("metrics", [])) or "Özette nicel etki ölçütü yok"
-                        # A significant result of unknown direction can only be set against a
-                        # non-significant one (the difference is then in significance alone).
-                        _unreadable = (
-                            "uncertain" in (dir1, dir2)
-                            or (dir1 == "significant_unclear" and dir2 != "neutral")
-                            or (dir2 == "significant_unclear" and dir1 != "neutral")
-                        )
-                        if _unreadable:
-                            non_comparable.append({
-                                "articles": [p1.get("pmid"), p2.get("pmid")],
-                                "source_citations": f"{pmid1_link} ve {pmid2_link}",
-                                "reason": (
-                                    f"**{p1['authors_short']} ({p1['pub_year']})** {pmid1_link} ({m1_str}) ile "
-                                    f"**{p2['authors_short']} ({p2['pub_year']})** {pmid2_link} ({m2_str}) "
-                                    f"çalışmalarında **{om1['outcome']}** sonlanımının etki yönü özetten güvenle "
-                                    f"belirlenemedi; bu nedenle tutarlı veya çelişkili olarak sınıflandırılmadı."
-                                )
-                            })
-                        elif dir1 == dir2:
-                            consistent.append({
-                                "outcome": om1["outcome"],
-                                "articles": [p1.get("pmid"), p2.get("pmid")],
-                                "source_citations": f"{pmid1_link} ve {pmid2_link}",
-                                "details": (
-                                    f"**{p1['authors_short']} ({p1['pub_year']})** {pmid1_link} ({m1_str}) ve "
-                                    f"**{p2['authors_short']} ({p2['pub_year']})** {pmid2_link} ({m2_str}) "
-                                    f"çalışmaları **{om1['outcome']}** sonlanımında tutarlı istatistiksel bulgular "
-                                    f"({_direction_tr[dir1]}) göstermektedir."
-                                )
-                            })
-                        else:
-                            conflicting.append({
-                                "outcome": om1["outcome"],
-                                "articles": [p1.get("pmid"), p2.get("pmid")],
-                                "source_citations": f"{pmid1_link} ve {pmid2_link}",
-                                "details": (
-                                    f"**{p1['authors_short']} ({p1['pub_year']})** {pmid1_link} ({m1_str}; {_direction_tr[dir1]}) ile "
-                                    f"**{p2['authors_short']} ({p2['pub_year']})** {pmid2_link} ({m2_str}; {_direction_tr[dir2]}) "
-                                    f"çalışmaları **{om1['outcome']}** sonlanımında çelişkili veya farklı istatistiksel sonuçlar bildirmektedir."
-                                )
-                            })
+                    def _fold_outcome(text: str) -> str:
+                        return (text or "").casefold().replace("i\u0307", "i").replace("ı", "i").strip()
+
+                    outcomes1_map = {_fold_outcome(om["outcome"]): om for om in p1.get("outcome_metrics", [])}
+                    outcomes2_map = {_fold_outcome(om["outcome"]): om for om in p2.get("outcome_metrics", [])}
+
+                    for matched_outcome_name in eval_res["matching_outcomes"]:
+                        om1 = outcomes1_map.get(matched_outcome_name) or (p1.get("outcome_metrics")[0] if p1.get("outcome_metrics") else None)
+                        om2 = outcomes2_map.get(matched_outcome_name) or (p2.get("outcome_metrics")[0] if p2.get("outcome_metrics") else None)
+
+                        if om1 and om2:
+                            if om1.get("implausible") or om2.get("implausible"):
+                                continue
+                            dir1 = self._determine_statistical_direction(om1)
+                            dir2 = self._determine_statistical_direction(om2)
+
+                            m1_str = ", ".join(om1.get("metrics", [])) or "Özette nicel etki ölçütü yok"
+                            m2_str = ", ".join(om2.get("metrics", [])) or "Özette nicel etki ölçütü yok"
+
+                            if dir1 == dir2 and dir1 != "direction_unspecified":
+                                consistent.append({
+                                    "outcome": om1["outcome"],
+                                    "articles": [p1.get("pmid"), p2.get("pmid")],
+                                    "source_citations": f"{pmid1_link} ve {pmid2_link}",
+                                    "details": (
+                                        f"**{p1['authors_short']} ({p1['pub_year']})** {pmid1_link} ({m1_str}) ve "
+                                        f"**{p2['authors_short']} ({p2['pub_year']})** {pmid2_link} ({m2_str}) "
+                                        f"çalışmaları **{om1['outcome']}** sonlanımında tutarlı istatistiksel bulgular göstermektedir."
+                                    )
+                                })
+                            elif "direction_unspecified" in {dir1, dir2}:
+                                non_comparable.append({
+                                    "articles": [p1.get("pmid"), p2.get("pmid")],
+                                    "source_citations": f"{pmid1_link} ve {pmid2_link}",
+                                    "reason": (
+                                        f"{pmid1_link} ve {pmid2_link} için aynı sonlanım ölçütü raporlanmış olsa da kaynak cümlesi etki yönünü güvenle belirlemiyor; "
+                                        "tutarlılık veya çelişki sınıflaması yapılmadı."
+                                    ),
+                                })
+                            else:
+                                conflicting.append({
+                                    "outcome": om1["outcome"],
+                                    "articles": [p1.get("pmid"), p2.get("pmid")],
+                                    "source_citations": f"{pmid1_link} ve {pmid2_link}",
+                                    "details": (
+                                        f"**{p1['authors_short']} ({p1['pub_year']})** {pmid1_link} ({m1_str}) ile "
+                                        f"**{p2['authors_short']} ({p2['pub_year']})** {pmid2_link} ({m2_str}) "
+                                        f"çalışmaları **{om1['outcome']}** sonlanımında çelişkili veya farklı istatistiksel sonuçlar bildirmektedir."
+                                    )
+                                })
                 else:
                     reasons_str = "; ".join(eval_res["unmatched_reasons"])
                     non_comparable.append({
@@ -621,6 +650,15 @@ class UniversalEvidenceEngine:
                     })
 
         # Add explicit notice for review/guideline studies
+        for duplicate, original in family_repeats:
+            dup_link = f"[PMID: {duplicate.get('pmid')}](https://pubmed.ncbi.nlm.nih.gov/{duplicate.get('pmid')}/)" if duplicate.get("pmid") else "PMID Yok"
+            original_link = f"[PMID: {original.get('pmid')}](https://pubmed.ncbi.nlm.nih.gov/{original.get('pmid')}/)" if original.get("pmid") else "PMID Yok"
+            non_comparable.append({
+                "articles": [original.get("pmid"), duplicate.get("pmid")],
+                "source_citations": f"{original_link} ve {dup_link}",
+                "reason": f"{original_link} ve {dup_link} aynı kanıt ailesine ({duplicate.get('evidence_family_id')}) bağlandı; alt analiz/uzatılmış takip bağımsız yeni örneklem olarak sayılmadı ve primer karşılaştırma dışında tutuldu.",
+            })
+
         for r_study in review_studies:
             r_pmid_link = f"[PMID: {r_study.get('pmid')}](https://pubmed.ncbi.nlm.nih.gov/{r_study.get('pmid')}/)" if r_study.get("pmid") else "PMID Yok"
             non_comparable.append({

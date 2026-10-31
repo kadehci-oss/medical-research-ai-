@@ -17,6 +17,7 @@ from report_generator import (
     display_bias_tool,
     validate_clinical_report_quality,
 )
+from clinical_evidence import MODEL_VERSION, ensure_study_model, legacy_details_from_study, validate_study_model
 
 def _render_specialty_caption(search_res: dict) -> None:
     """Show the detected specialty without hiding the query that was actually sent."""
@@ -163,7 +164,7 @@ def main():
     )
     # Canlı Streamlit Sürüm ve Commit Doğrulama Bilgisi
     import subprocess
-    app_version = "v1.4.1"
+    app_version = "v1.5.0"
     git_commit_hash = os.environ.get("GIT_COMMIT", "").strip()
     if not git_commit_hash:
         try:
@@ -174,7 +175,7 @@ def main():
             git_commit_hash = "bilinmiyor"
 
     st.sidebar.markdown("---")
-    st.sidebar.caption(f"📌 **Sürüm:** `{app_version}` | **Commit:** `{git_commit_hash}`")
+    st.sidebar.caption(f"**Sürüm:** `{app_version}` | **Kanıt modeli:** `{MODEL_VERSION}` | **Commit:** `{git_commit_hash}`")
 
     # Main Tabs
     tab1, tab2, tab3 = st.tabs([
@@ -243,9 +244,19 @@ def main():
                 st.markdown(f"**Bulunan Toplam Kayıt:** {total_count} | **Gösterilen:** {len(articles)}")
                 _render_specialty_caption(res)
                 for idx, art in enumerate(articles, 1):
-                    cd = classify_study_design(art.get("publication_types", []), art.get("title", ""), art.get("abstract", ""))
-                    rob = assess_risk_of_bias(art)
-                    art_details = extract_article_clinical_details(art, search_query if 'search_query' in locals() else "")
+                    active_query = st.session_state.get("active_query", "")
+                    study = art.get("evidence_model") or ensure_study_model(art, active_query)
+                    model_validation = art.get("evidence_model_validation") or study.get("extraction_validation") or validate_study_model(study)
+                    cd = {
+                        "design": study.get("design_label", "Çalışma tasarımı belirlenemedi"),
+                        "level": "Değerlendirilemedi",
+                        "evidence_level_note": "Kanıt düzeyi resmi değerlendirme yapılmadan üretilmez.",
+                    }
+                    rob = study.get("risk_of_bias") or {}
+                    rob.setdefault("tool", "Uygun araçla değerlendirme yapılmadı")
+                    rob.setdefault("overall_rating", "Değerlendirilmedi (Not Assessed)")
+                    rob.setdefault("rating_policy", "Gerçek araçla değerlendirme yapılmadan yanlılık derecesi verilmez.")
+                    art_details = legacy_details_from_study(study)
                     with st.expander(f"{idx}. {art['title']} ({art['pub_year']}) - {cd['design']}", expanded=(idx <= 3)):
                         st.markdown(f"**Yazarlar:** {', '.join(art['authors']) if art['authors'] else 'Bilinmiyor'}")
                         st.markdown(f"**Dergi:** {art['journal']} ({art['pub_year']})")
@@ -260,7 +271,13 @@ def main():
 
                         st.markdown(f"**Hasta Grubu:** {art_details['patient_group']} | **Örneklem (n):** {art_details['sample_size']}")
                         st.markdown(f"**Müdahale:** {art_details['intervention']} | **Karşılaştırma:** {art_details['comparison']}")
+                        exposure_value = str(art_details.get("exposure") or "").strip()
+                        if exposure_value and exposure_value.casefold() not in {"belirtilmedi", "değerlendirilemedi", "not reported", "unknown"}:
+                            st.markdown(f"**Gözlemsel maruziyet:** {exposure_value}")
                         st.markdown(f"**Sonlanımlar ve metrikler:** {art_details['outcomes_summary']}")
+                        record_status = (study.get("source") or {}).get("verification_status", "not_verified")
+                        structural_status = "Kaynak yapısı uygun" if model_validation.get("valid") else "Kaynak incelemesi gerekli"
+                        st.caption(f"Kanıt modeli v{MODEL_VERSION} | {structural_status} | PubMed kaydı: {record_status} | Bağımsız klinik doğrulama yapılmadı.")
                         provenance = art_details.get("provenance") or {}
                         if provenance:
                             st.markdown("**Kaynak cümleleri ve PMID**")
@@ -284,6 +301,20 @@ def main():
                                     note = "Kaynak cümle yok"
                                 st.caption(
                                     f"{label}: {item.get('value') or 'değerlendirilemedi'} — {note} "
+                                    f"(PMID: {provenance.get('pmid') or art.get('pmid') or 'yok'})"
+                                )
+                            exposure_source = provenance.get("exposure") or {}
+                            if exposure_source.get("value") and exposure_source.get("source_sentence"):
+                                sentence = re.sub(r"\s+", " ", exposure_source.get("source_sentence") or "").strip()
+                                if exposure_source.get("source") == "title":
+                                    note = "Kaynak: makale başlığı"
+                                elif sentence.casefold() in seen_quotes:
+                                    note = "Kaynak cümle: yukarıdaki ile aynı"
+                                else:
+                                    seen_quotes.add(sentence.casefold())
+                                    note = f'Kaynak cümle: "{sentence}"'
+                                st.caption(
+                                    f"Gözlemsel maruziyet: {exposure_source['value']} — {note} "
                                     f"(PMID: {provenance.get('pmid') or art.get('pmid') or 'yok'})"
                                 )
                             for om in provenance.get("outcomes") or []:
@@ -380,7 +411,7 @@ def main():
             audit_res = perform_red_team_audit(query, articles)
 
             # Audit Summary Cards
-            col_a1, col_a2, col_a3, col_a4, col_a5 = st.columns(5)
+            col_a1, col_a2, col_a3, col_a4, col_a5, col_a6 = st.columns(6)
             with col_a1:
                 st.metric("Toplam Kaynak", len(articles))
             with col_a2:
@@ -391,7 +422,15 @@ def main():
                 st.metric("GRADE Statüsü", "Değerlendirilmedi")
             with col_a5:
                 st.metric("Uzman Hekim Değerlendirmesi", audit_res.get("expert_physician_review", "Yapılmadı"))
+            model_checks = [
+                art.get("evidence_model_validation") or validate_study_model(art.get("evidence_model") or ensure_study_model(art, query))
+                for art in articles
+            ]
+            structurally_valid = sum(1 for check in model_checks if check.get("valid"))
+            with col_a6:
+                st.metric("Rapor kaynak yapısı", f"{structurally_valid}/{len(articles)} uygun")
             st.caption("Eşleşme; PMID'nin yeniden alınmasını ve yalnızca sağlanmış başlık/DOI alanlarının kontrolünü ifade eder.")
+            st.caption(f"Kanıt modeli v{MODEL_VERSION}. Bu gösterge kaynak alanlarının yapısal bütünlüğüdür; klinik doğrulama veya GRADE değildir.")
 
             st.markdown(
                 f"""<div class="grade-notice-card">
@@ -433,6 +472,10 @@ def main():
 
             if "generated_report" in st.session_state:
                 st.markdown("---")
+                if structurally_valid == len(articles):
+                    st.success(f"Rapor doğrulaması: {structurally_valid}/{len(articles)} makalenin yapısal kaynak bağı uygun. Bağımsız klinik doğrulama yapılmadı.")
+                else:
+                    st.warning(f"Rapor doğrulaması: {structurally_valid}/{len(articles)} makalenin yapısal kaynak bağı uygun; kalan kayıtlar kaynak incelemesi gerektiriyor. Klinik doğrulama yapılmadı.")
                 quality_qc = validate_clinical_report_quality(st.session_state["generated_report"])
                 if not quality_qc.get("valid"):
                     problems = []

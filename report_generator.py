@@ -20,6 +20,7 @@ from display_turkish import (
     translate_controlled_outcome,
 )
 from pubmed_client import verify_citation
+from clinical_evidence import ensure_study_model, legacy_details_from_study, select_research_question_framework
 
 logger = logging.getLogger(__name__)
 
@@ -54,6 +55,16 @@ _FORBIDDEN_REPORT_CLAIMS = [
         "Uzman hekim değerlendirmesi tamamlandı asılsız iddiası",
     ),
 ]
+
+
+def _canonicalize_articles(articles: List[Dict[str, Any]], query: str = "") -> List[Dict[str, Any]]:
+    """Attach the shared canonical Study object while preserving legacy article fields."""
+    normalized = []
+    for article in articles or []:
+        record = dict(article)
+        record["evidence_model"] = ensure_study_model(record, query)
+        normalized.append(record)
+    return normalized
 
 
 def validate_clinical_report_quality(report_text: str) -> Dict[str, Any]:
@@ -1859,6 +1870,9 @@ INCONSISTENT_SOURCE_FLAG = "⚠ Kaynakta tutarsız değer (özette böyle bildir
 _EFFECT_LABELS = (
     ("IRR", re.compile(r"\bincidence\s+rate\s+ratios?\b", re.IGNORECASE), "insidans hızı oranı (IRR)"),
     ("IRR", re.compile(r"\bIRR\b"), "insidans hızı oranı (IRR)"),
+    ("sensitivity", re.compile(r"\bsensitivities?\b", re.IGNORECASE), "duyarlılık (sensitivity)"),
+    ("specificity", re.compile(r"\bspecificities?\b", re.IGNORECASE), "özgüllük (specificity)"),
+    ("AUC", re.compile(r"\b(?:area\s+under\s+(?:the\s+)?(?:ROC\s+)?curve|AUROC|AUC)\b", re.IGNORECASE), "eğri altında kalan alan (AUC)"),
     ("HR", re.compile(r"\bhazard\s+ratios?\b", re.IGNORECASE), "tehlike oranı (HR)"),
     ("HR", re.compile(r"\bHR\b"), "tehlike oranı (HR)"),
     ("OR", re.compile(r"\bodds\s+ratios?\b", re.IGNORECASE), "olasılık oranı (OR)"),
@@ -1999,10 +2013,12 @@ def _display_outcome_name(outcome: str) -> str:
         if text == "Primer Klinik Sonlanım / Özet İstatistiği":
             return _UNNAMED_OUTCOME_TR
         return text
+
     span = _exact_outcome_span(text)
     shown = translate_controlled_outcome(span) if span else ""
     if not shown or outcome_label_rejected(shown) or _orphan_outcome_label(shown):
         return _UNNAMED_OUTCOME_TR
+
     if re.search(r"(?:^|[\s,;])(?:ve|veya)\s*$", shown, re.IGNORECASE):
         return _UNNAMED_OUTCOME_TR
     return shown
@@ -2267,13 +2283,24 @@ def _arm_drug_phrase(arm_text: str) -> str:
 
 def _allocation_arms(abstract: str):
     """Intervention and comparator taken only from an allocation sentence."""
-    match = _ALLOCATION_CUE_RE.search(abstract or "")
-    if not match:
-        return "", ""
-    raw_int, raw_comp, _at = _split_treatment_arms(abstract, match.end())
-    if not raw_int:
-        return "", ""
-    return _arm_drug_phrase(raw_int), _arm_drug_phrase(raw_comp)
+    assignment = re.compile(r"\b(?:randomly\s+assigned|randomi[sz]ed|assigned|allocated)\b", re.IGNORECASE)
+    sentences = [s.strip() for s in re.split(r"(?<=[.!?])\s+", abstract or "") if s.strip()]
+    for sentence in sentences:
+        match = assignment.search(sentence)
+        if not match:
+            continue
+        start = match.end()
+        receive = re.search(r"\bto\s+(?:receive|take)\b", sentence[start:], re.IGNORECASE)
+        if receive:
+            start += receive.end()
+        raw_int, raw_comp, _at = _split_treatment_arms(sentence, start)
+        if not raw_int or not raw_comp:
+            continue
+        intervention = _arm_drug_phrase(raw_int)
+        comparator = _arm_drug_phrase(raw_comp)
+        if intervention and comparator:
+            return intervention, comparator
+    return "", ""
 
 
 def _explicit_comparator(abstract: str, pub_types: Optional[List[str]] = None) -> str:
@@ -2546,6 +2573,17 @@ def _author_limitation_label(sentence: str) -> str:
             return turkish
     return ""
 
+def _display_effect_metric(effect: Dict[str, Any]) -> str:
+    """Use the same controlled Turkish effect terminology in every report view."""
+    kind = str(effect.get("metric_type") or "")
+    value = effect.get("value")
+    raw = str(effect.get("metric_label") or effect.get("reported_label") or "").strip()
+    if not raw:
+        raw = f"{kind} {value}".strip() if value is not None else kind
+    raw = raw.replace("_", " ")
+    formatted = format_effect_measure(raw)
+    return formatted or _display_metric_text(raw)
+
 
 def extract_article_clinical_details(article: Dict[str, Any], query: str = "") -> Dict[str, Any]:
     """
@@ -2558,6 +2596,9 @@ def extract_article_clinical_details(article: Dict[str, Any], query: str = "") -
     - Sonlanım & İstatistiksel Metrikler (Outcomes & Bound Metrics)
     - Gerçek Bulgular (Ground-Truth Findings)
     """
+    if isinstance(article.get("evidence_model"), dict):
+        return legacy_details_from_study(article["evidence_model"])
+
     title = article.get("title", "")
     abstract = (article.get("abstract") or "").replace("\xa0", " ")
     pub_types = article.get("publication_types", [])
@@ -2769,6 +2810,16 @@ def _claim_source_phrase(item: Dict[str, Any], pmid: str, seen_quotes: set) -> s
     return f"Kaynak cümle yok (PMID: {pmid})"
 
 
+def _format_bound_metric(metric: str) -> str:
+    """Translate a leading effect label while preserving its CI/p suffix."""
+    parts = str(metric or "").split(",", 1)
+    head = format_effect_measure(parts[0]) or parts[0].strip()
+    suffix = parts[1].strip() if len(parts) > 1 else ""
+    suffix = re.sub(r"\bconfidence\s+interval\b", "güven aralığı", suffix, flags=re.IGNORECASE)
+    suffix = re.sub(r"\bCI\b", "GA", suffix, flags=re.IGNORECASE)
+    return head + (", " + suffix if suffix else "")
+
+
 def _format_bound_claims(details: Dict[str, Any], include_implausible: bool = True) -> str:
     """Turkish lines that keep each extracted item next to its sentence and PMID."""
     prov = details.get("provenance") or {}
@@ -2788,19 +2839,20 @@ def _format_bound_claims(details: Dict[str, Any], include_implausible: bool = Tr
         lines.append(f"{label}: {value}. {source_phrase}")
     outcomes = [
         om for om in (prov.get("outcomes") or [])
-        if include_implausible or not om.get("implausible")
+        if include_implausible or om.get("synthesis_metrics") or not om.get("implausible")
     ]
     seen_outcome = set()
     if not outcomes:
         lines.append(f"Sonlanım ve istatistik: değerlendirilemedi (PMID: {pmid})")
     for om in outcomes:
-        metric_text = ", ".join(om.get("metrics") or []) or "değerlendirilemedi"
+        metric_values = (om.get("metrics") or []) if include_implausible else (om.get("synthesis_metrics") or om.get("metrics") or [])
+        metric_text = ", ".join(_format_bound_metric(metric) for metric in metric_values) or "değerlendirilemedi"
         if om.get("ci") and om.get("ci") not in ("özette bildirilmedi", "değerlendirilemedi"):
             metric_text += f", GA {om['ci']}"
         if om.get("p"):
             metric_text += f", {om['p']}"
         metric_text = _sanitize_display_line(metric_text)
-        flag = f" {INCONSISTENT_SOURCE_FLAG}" if om.get("implausible") else ""
+        flag = f" {INCONSISTENT_SOURCE_FLAG}" if include_implausible and om.get("implausible") else ""
         sentence = om.get("source_sentence") or om.get("sentence") or ""
         lead = _outcome_lead(om.get("outcome") or "")
         value_key = re.sub(r"\s+", " ", f"{lead}|{metric_text}|{sentence}").strip().lower()
@@ -4605,73 +4657,88 @@ def extract_clinical_profile(abstract: str) -> List[Dict[str, str]]:
 
 
 def format_klinik_bulgular_cell(article: Dict[str, Any]) -> str:
-    """Klinik Bulgular cell: Turkish summary, each fact tied to one source sentence.
+    """Render model-backed findings; each fact stays beside its source sentence."""
+    record = dict(article or {})
+    study = record.get("evidence_model") or ensure_study_model(record)
+    pmid = str(study.get("pmid") or record.get("pmid") or "").strip() or "yok"
+    order: List[str] = []
+    buckets: Dict[str, List[str]] = {}
 
-    The raw abstract is not pasted in. Effects that share a sentence are grouped
-    under that sentence. When neither a quantitative nor a qualitative finding
-    can be read, the cell says the abstract data are insufficient.
-    """
-    pmid = str((article or {}).get("pmid") or "").strip() or "yok"
-    abstract = (article or {}).get("abstract") or ""
-    findings = extract_grounded_clinical_findings(abstract)
-    profile = extract_clinical_profile(abstract)
-    if not findings and not profile:
-        return f"{INSUFFICIENT_CLINICAL_DATA_TR} (PMID: {pmid})."
-
-    order = []
-    buckets = {}
-    seen_lines = set()
-
-    def _add(sentence: str, kind: str, text: str) -> None:
-        key = re.sub(r"\s+", " ", text or "").strip().lower()
-        if not key or key in seen_lines:
+    def add(sentence: str, text: str) -> None:
+        sentence = (sentence or "").strip()
+        if not sentence:
             return
-        seen_lines.add(key)
         if sentence not in buckets:
-            buckets[sentence] = {"profile": [], "effects": []}
+            buckets[sentence] = []
             order.append(sentence)
-        buckets[sentence][kind].append(text)
+        if text and text not in buckets[sentence]:
+            buckets[sentence].append(text)
 
-    canonical, canonical_sentence = _canonical_patient_group(abstract, profile)
-    sample_added = False
-    for item in profile:
-        if item.get("category") == "sample":
-            if sample_added or not canonical or canonical == "özette bildirilmedi":
-                continue
-            _add(canonical_sentence or item.get("sentence") or "", "profile", canonical)
-            sample_added = True
+
+    population = study.get("population") or {}
+    description = population.get("description") or {}
+    profile_facts = ([description] if description.get("value") else []) + list(population.get("characteristics") or []) + list(study.get("clinical_findings") or [])
+    seen_profile_lines = set()
+    for finding in sorted(
+        profile_facts,
+        key=lambda x: (record.get("abstract") or "").find(((x.get("source") or {}).get("source_sentence") or "")),
+    ):
+        source = finding.get("source") or {}
+        value = str(finding.get("value") or "")
+        normalized_value = re.sub(r"\W+", " ", value.casefold()).strip()
+        if normalized_value in seen_profile_lines:
             continue
-        _add(item["sentence"], "profile", item["line"])
-    for item in findings:
-        if not _finding_is_displayable(item):
-            if item.get("sentence") and item["sentence"] not in buckets:
-                buckets[item["sentence"]] = {"profile": [], "effects": []}
-                order.append(item["sentence"])
-            continue
-        p_bit = f" p değeri: {item['p']}." if item.get("p") else ""
-        outcome_label = _display_outcome_name(item.get("outcome") or "")
-        effect_label = format_effect_measure(item.get("effect") or "")
-        outcome_head = _outcome_lead(item.get("outcome") or "")
-        if outcome_label == _UNNAMED_OUTCOME_TR and _unlabeled_number_effect(effect_label):
-            if item.get("sentence") and item["sentence"] not in buckets:
-                buckets[item["sentence"]] = {"profile": [], "effects": []}
-                order.append(item["sentence"])
-            continue
-        flag = f" {INCONSISTENT_SOURCE_FLAG}" if item.get("implausible") else ""
-        _add(
-            item["sentence"],
-            "effects",
-            f"{outcome_head}. Etki ölçütü: {effect_label}. "
-            f"Güven aralığı: {item['ci']}.{p_bit}{flag}",
-        )
+        seen_profile_lines.add(normalized_value)
+        add(source.get("source_sentence", ""), value)
+
+    for outcome in study.get("outcomes") or []:
+        name_obj = outcome.get("name") or {}
+        raw_outcome_name = str(name_obj.get("value") or "değerlendirilemedi")
+        outcome_name_missing = raw_outcome_name.strip().casefold() in {"stratified", "win ratio", "win_ratio", "stratified win ratio"}
+        outcome_name = "Sonlanım adı özette belirtilmedi" if outcome_name_missing else _display_outcome_name(raw_outcome_name)
+        source = outcome.get("source") or {}
+        sentence = source.get("source_sentence", "")
+        estimates = outcome.get("effect_estimates") or []
+        if estimates:
+            for estimate in estimates:
+                metric_label = _display_effect_metric(estimate)
+                context_bits = []
+                if estimate.get("arm_label"):
+                    context_bits.append(f"Kol: {estimate['arm_label']}")
+                if estimate.get("population_subgroup"):
+                    context_bits.append(f"Alt grup: {estimate['population_subgroup']}")
+                context_label = f" {'; '.join(context_bits)}." if context_bits else ""
+                ci_low, ci_high = estimate.get("ci_lower"), estimate.get("ci_upper")
+                ci = f"{ci_low} ile {ci_high}" if ci_low is not None and ci_high is not None else "özette bildirilmedi"
+                p_value = estimate.get("p_value")
+                if p_value:
+                    p_match = re.match(r"\s*p\s*([<=>])\s*(.+?)\s*$", str(p_value), re.IGNORECASE)
+                    shown_p = f"p {p_match.group(1)} {p_match.group(2)}" if p_match else _display_metric_text(str(p_value))
+                    p_bit = f" p değeri: {shown_p}."
+                else:
+                    p_bit = ""
+                inconsistent_bit = f" {INCONSISTENT_SOURCE_FLAG}" if estimate.get("implausible_source_value") else ""
+                add(sentence, f"Sonlanım: {outcome_name}. Etki ölçütü: {metric_label}.{context_label} Güven aralığı: {ci}.{p_bit}{inconsistent_bit}")
+        for arm_count in outcome.get("arm_event_counts") or []:
+            arm_label = ((arm_count.get("arm_label") or {}).get("value") or "kol")
+            event_count = (arm_count.get("event_count") or {}).get("value")
+            denominator = (arm_count.get("denominator") or {}).get("value")
+            if event_count is not None:
+                count_text = f"{event_count} / {denominator}" if denominator is not None else str(event_count)
+                add(sentence, f"Sonlanım: {outcome_name}. {arm_label} kolunda bildirilen olay: {count_text}; bu olay/payda bilgisidir, ayrı toplam örneklem sayısı değildir.")
+        if (outcome.get("event_count") or {}).get("value") is not None:
+            event_count = outcome["event_count"]["value"]
+            denominator = (outcome.get("denominator") or {}).get("value")
+            count_text = f"{event_count} / {denominator}" if denominator is not None else str(event_count)
+            add(sentence, f"Sonlanım: {outcome_name}. Bildirilen olay sayısı: {count_text}.")
+
+    if not order:
+        return f"{INSUFFICIENT_CLINICAL_DATA_TR} (PMID: {pmid})."
 
     parts = [f"PMID: {pmid}."]
     for sentence in order:
         shown = sentence.replace("|", "/").replace("\n", " ")
-        block = [f'Kaynak cümle: "{shown}".']
-        block.extend(buckets[sentence]["profile"])
-        block.extend(buckets[sentence]["effects"])
-        parts.append(" ".join(block))
+        parts.append(f'Kaynak cümle: "{shown}". ' + " ".join(buckets[sentence]))
     return " ".join(parts)
 
 
@@ -4679,6 +4746,7 @@ def generate_evidence_table_markdown(articles: List[Dict[str, Any]]) -> str:
     """Generates a structured Markdown table of evidence with PICO & Risk of Bias for the report."""
     if not articles:
         return "*Tablo için gösterilecek veri bulunamadı.*"
+    articles = _canonicalize_articles(articles)
 
     rows = [
         "| # | Çalışma / Yazar (Yıl) | Çalışma Tasarımı | Yanlılık Aracı (derece yok) | PMID / DOI | Klinik Bulgular |",
@@ -4693,21 +4761,22 @@ def generate_evidence_table_markdown(articles: List[Dict[str, Any]]) -> str:
         pmid = art.get("pmid", "")
         doi = art.get("doi", "")
 
-        classification = classify_study_design(
-            art.get("publication_types", []),
-            title,
-            art.get("abstract", "")
-        )
-        design_str = f"**{classification['design']}** — *Kanıt düzeyi: {classification['level']}*"
+        study = art["evidence_model"]
+        design_str = f"**{study['design_label']}** — *Kanıt düzeyi: Değerlendirilemedi*"
 
-        rob = assess_risk_of_bias(art)
-        rob_str = f"**{display_bias_rating(rob['overall_rating'])}** — *{display_bias_tool(rob['tool'])}*"
+        rob = study.get("risk_of_bias") or assess_risk_of_bias(art)
+        rob_str = (
+            f"**{display_bias_rating(rob.get('overall_rating', 'Değerlendirilmedi'))}** — "
+            f"*{display_bias_tool(rob.get('tool', 'Değerlendirilmedi'))}*"
+        )
 
         pmid_link = f"[PMID: {pmid}]({art.get('pubmed_url', '#')})" if pmid else "-"
         if doi:
             pmid_link += f" / [DOI: {doi}]({art.get('doi_url', '#')})"
 
+        record_status = (study.get("source") or {}).get("verification_status", "not_verified")
         finding_cell = format_klinik_bulgular_cell(art).replace("|", "/").replace("\n", " ")
+        finding_cell += f" Kaynak kaydı: {record_status}; klinik iddialar bağımsız doğrulanmadı."
         title_clean = title.replace("|", "-")
 
         rows.append(
@@ -4732,6 +4801,7 @@ def generate_evidence_table_html(articles: List[Dict[str, Any]]) -> str:
 
     if not articles:
         return "<p><em>Gösterilecek literatür verisi bulunamadı.</em></p>"
+    articles = _canonicalize_articles(articles)
 
     html_rows = []
     for idx, art in enumerate(articles, 1):
@@ -4742,15 +4812,20 @@ def generate_evidence_table_html(articles: List[Dict[str, Any]]) -> str:
         pmid = html.escape(str(art.get("pmid", "")))
         doi = html.escape(str(art.get("doi", "")))
 
-        classification = classify_study_design(
-            art.get("publication_types", []),
-            art.get("title", ""),
-            art.get("abstract", "")
-        )
+        study = art["evidence_model"]
+        classification = {
+            "level": "Değerlendirilemedi",
+            "design": study.get("design_label", "Çalışma tasarımı belirlenemedi"),
+            "badge_color": "#6B7280",
+        }
+        rob = study.get("risk_of_bias") or {}
+        rob.setdefault("overall_rating", "Değerlendirilmedi")
+        rob.setdefault("tool", "Uygun araçla değerlendirme yapılmadı")
+        rob.setdefault("badge_color", "#6B7280")
 
-        rob = assess_risk_of_bias(art)
-
+        record_status = (study.get("source") or {}).get("verification_status", "not_verified")
         finding_cell = html.escape(format_klinik_bulgular_cell(art))
+        finding_cell += html.escape(f" Kaynak kaydı: {record_status}; klinik iddialar bağımsız doğrulanmadı.")
 
         pubmed_url = safe_http_url(art.get("pubmed_url", "#"))
         doi_url = safe_http_url(art.get("doi_url", "#"))
@@ -5126,6 +5201,42 @@ def _synthesize_article_conclusion_tr(art: Dict[str, Any], query: str) -> str:
     )
 
 
+def _synthesis_outcome_summary(study: Dict[str, Any]) -> str:
+    """Summarize only source-consistent effects; flagged source values stay in Sections 5/6."""
+    rows = []
+    excluded = 0
+    for outcome in study.get("outcomes") or []:
+        raw_name = str(((outcome.get("name") or {}).get("value") or "Sonlanım adı bildirilmedi"))
+        metric_only = raw_name.strip().casefold() in {"stratified", "win ratio", "win_ratio", "stratified win ratio"}
+        name = "Sonlanım adı özette belirtilmedi" if metric_only else _display_outcome_name(raw_name)
+        values = []
+        for effect in outcome.get("effect_estimates") or []:
+            if effect.get("implausible_source_value"):
+                excluded += 1
+                continue
+            label = _display_effect_metric(effect)
+            if effect.get("ci_lower") is not None and effect.get("ci_upper") is not None:
+                label += f" ({effect.get('confidence_level') or '95%'} GA {effect['ci_lower']} ile {effect['ci_upper']})"
+            if effect.get("p_value"):
+                label += f", {effect['p_value']}"
+            values.append(label)
+        for arm_count in outcome.get("arm_event_counts") or []:
+            count = (arm_count.get("event_count") or {}).get("value")
+            denominator = (arm_count.get("denominator") or {}).get("value")
+            arm_label = (arm_count.get("arm_label") or {}).get("value") or "kol"
+            if count is not None:
+                values.append(f"{arm_label}: bildirilen olay {count}" + (f"/{denominator}" if denominator is not None else ""))
+        event_count = (outcome.get("event_count") or {}).get("value")
+        denominator = (outcome.get("denominator") or {}).get("value")
+        if event_count is not None and not (outcome.get("arm_event_counts") or []):
+            values.append(f"bildirilen olay {event_count}" + (f"/{denominator}" if denominator is not None else ""))
+        if values:
+            rows.append(f"{name}: {', '.join(values)}")
+    if excluded:
+        rows.append(f"Kaynakla matematiksel olarak tutarsız {excluded} etki ölçütü klinik sentez dışında bırakıldı.")
+    return "; ".join(rows) or "Özette senteze uygun nicel etki ölçütü bildirilmedi"
+
+
 def _generate_section_12_synthesis(query: str, articles: List[Dict[str, Any]], cross_comp: Optional[Dict[str, Any]] = None) -> str:
     """
     Synthesizes Section 12 ("Klinik Sonuç") in Turkish without printing a bulleted article list.
@@ -5164,12 +5275,14 @@ def _generate_section_12_synthesis(query: str, articles: List[Dict[str, Any]], c
             pmid_link = f"[PMID: {pmid}]({pubmed_url})" if pmid else "PMID Yok"
             authors_short = _format_authors_short(art.get("authors", []))
             year = art.get("pub_year", "")
-            details = extract_article_clinical_details(art, query)
+            from clinical_evidence import ensure_study_model, legacy_details_from_study
+            study = ensure_study_model(art, query)
+            details = legacy_details_from_study(study)
 
             quant_summaries.append(
                 f"**{authors_short} ({year})** ({pmid_link}): {details['real_findings']} "
                 f"(Tasarım: {details['study_design']}, kanıt düzeyi: {details.get('evidence_level', UNASSIGNED_EVIDENCE_LEVEL)}, "
-                f"Örneklem: {details['sample_size']}, Sonlanım Ölçütleri: {details.get('synthesis_outcomes') or details['outcomes_summary']}). "
+                f"Örneklem: {details['sample_size']}, Sonlanım Ölçütleri: {_synthesis_outcome_summary(study)}). "
                 f"{_format_bound_claims(details, include_implausible=False)}"
             )
 
@@ -5185,12 +5298,10 @@ def _generate_section_12_synthesis(query: str, articles: List[Dict[str, Any]], c
             p_url = a.get("pubmed_url", f"https://pubmed.ncbi.nlm.nih.gov/{pmid}/" if pmid else "#")
             p_link = f"[PMID: {pmid}]({p_url})" if pmid else "PMID Yok"
             rev_citations.append(f"{_format_authors_short(a.get('authors', []))} ({a.get('pub_year', '')}) {p_link}")
-            rev_bound.append(
-                _format_bound_claims(
-                    extract_article_clinical_details(a, query),
-                    include_implausible=False,
-                )
-            )
+
+            from clinical_evidence import ensure_study_model, legacy_details_from_study
+            rev_bound.append(_format_bound_claims(legacy_details_from_study(ensure_study_model(a, query)), include_implausible=False))
+
 
         sec_lines.append(
             f"Derleme, meta-analiz, kılavuz ve olgu sunumu niteliğindeki yayınlarda ({', '.join(rev_citations)}) "
@@ -5842,111 +5953,211 @@ def _intervention_comparison_cell(
     return ", ".join(drugs) if drugs else "Belirtilmedi"
 
 
-def _format_cross_study_comparison(articles: List[Dict[str, Any]], pico: Optional[Dict[str, str]] = None) -> str:
-    """Compare studies on population, design, intervention, findings, and limits.
-
-    Every cell is taken from that article alone. A number from one PMID is not
-    written into another PMID's row. PMIDs are listed as supporting the clinical
-    result only when their own abstract states an effect or a qualitative finding.
-    """
-    query_outcome = ((pico or {}).get("outcome") or "").strip()
+def _format_cross_study_comparison(
+    articles: List[Dict[str, Any]],
+    pico: Optional[Dict[str, str]] = None,
+    query: str = "",
+) -> str:
+    """Render Section 6 from canonical Study records; no abstract is reparsed here."""
+    article_list = list(articles or [])
+    first_design = ""
+    if article_list:
+        first_model = article_list[0].get("evidence_model") or ensure_study_model(article_list[0], query)
+        first_design = str(first_model.get("design_key") or "")
+    pico = pico or {}
+    query_outcome = str(pico.get("outcome") or "").strip()
+    frame_query = query.strip() or " ".join(str(value) for value in pico.values() if value).strip()
+    if not frame_query:
+        if first_design == "rct":
+            frame_query = "treatment efficacy"
+        elif first_design in {"cohort", "case_control", "cross_sectional", "retrospective_comparative", "observational_unspecified"}:
+            frame_query = "epidemiology association"
+    frame = select_research_question_framework(frame_query, first_design)
     lines = [
-        "Karşılaştırma hasta grubu, tasarım, müdahale, bulgular, çelişkiler ve metodolojik "
-        "sınırlılıklar üzerinden yapılır. Her satır yalnızca o PMID'nin özetine bağlıdır.",
+        f"**Seçilen araştırma çerçevesi:** {frame['label']}. Bileşenler çalışma türü ve soruya göre seçilir; tüm çalışmalara PICO zorunlu tutulmaz.",
         "",
-        "| PMID | Hasta grubu | Tasarım | Müdahale | Bulgular | Metodolojik sınırlılık |",
+        "| PMID | Hasta grubu / popülasyon | Tasarım | Müdahale / indeks | Bulgular: sonlanımlar ve ölçütler | Nedensellik / doğrulama notu |",
         "|---|---|---|---|---|---|",
     ]
     supporters = []
-    for art in articles:
-        pmid = str(art.get("pmid") or "").strip() or "yok"
-        design = classify_study_design(
-            art.get("publication_types", []),
-            art.get("title", ""),
-            art.get("abstract", ""),
+
+    def effect_label(effect: Dict[str, Any]) -> str:
+        return _display_effect_metric(effect)
+
+    for article in _canonicalize_articles(article_list, query):
+        study = article["evidence_model"]
+        pmid = str(study.get("pmid") or "").strip() or "yok"
+        population_record = study.get("population") or {}
+        population_parts = []
+        description = str(((population_record.get("description") or {}).get("value") or "")).strip()
+        if description.casefold() not in {"belirtilmedi", "not reported", "unknown", "özette bildirilmedi"}:
+            shown = localize_clinical_display(description, drop_unknown=True)
+            if shown and not has_mixed_clinical_language(shown):
+                population_parts.append(shown)
+        for item in population_record.get("characteristics") or []:
+            value = str(item.get("value") or "").strip()
+            value = re.sub(r"^Örneklem ve hasta özellikleri:\s*", "", value, flags=re.IGNORECASE).strip().rstrip(".")
+            if value and value not in population_parts:
+                population_parts.append(value)
+        total_n = (population_record.get("total_participants") or {}).get("value")
+        if total_n is not None and not any(re.search(rf"\b{re.escape(str(total_n))}\b", item) for item in population_parts):
+            population_parts.append(f"N={total_n} katılımcı")
+        population = "; ".join(population_parts) or "özette bildirilmedi"
+
+        design_key = str(study.get("design_key") or "")
+        intervention_fact = ((study.get("intervention") or {}).get("name") or {})
+        intervention = str(intervention_fact.get("value") or "").strip()
+        intervention_source_field = str(((intervention_fact.get("source") or {}).get("source_field") or ""))
+        if intervention_source_field == "title":
+            intervention = ""
+        if intervention.casefold() in {"belirtilmedi", "not reported", "unknown", "değerlendirilemedi"}:
+            intervention = ""
+        treatment_lines = [
+            str(item.get("value") or "").strip()
+            for item in study.get("clinical_findings") or []
+            if str(item.get("value") or "").strip().casefold().startswith("tedavi:")
+        ]
+        if design_key in {"case_report", "case_series", "case_series_or_report"} and treatment_lines:
+            intervention = ""
+        if intervention:
+            shown = localize_clinical_display(intervention, drop_unknown=True)
+            first_token = re.match(r"[A-Za-z][A-Za-z0-9-]*", shown or "")
+            if first_token and first_token.group(0).upper() != first_token.group(0):
+                start, end = first_token.span()
+                shown = shown[:start] + shown[start:start + 1].lower() + shown[start + 1:]
+            intervention = shown if shown and not has_mixed_clinical_language(shown) else ""
+        if not intervention and treatment_lines:
+            treatments = []
+            for line in treatment_lines:
+                value = re.sub(r"^Tedavi:\s*", "", line, flags=re.IGNORECASE).strip().rstrip(".")
+                shown = localize_clinical_display(value, drop_unknown=True)
+                first_token = re.match(r"[A-Za-z][A-Za-z0-9-]*", shown or "")
+                if first_token and first_token.group(0).upper() != first_token.group(0):
+                    start, end = first_token.span()
+                    shown = shown[:start] + shown[start:start + 1].lower() + shown[start + 1:]
+                if shown and not has_mixed_clinical_language(shown) and shown not in treatments:
+                    treatments.append(shown)
+            intervention = "Tedavi bildirimi: " + "; ".join(treatments) if treatments else ""
+        if not intervention:
+            exposure = study.get("exposure") or {}
+            exposure_value = str(exposure.get("value") or "").strip()
+            if exposure_value:
+                shown_exposure = localize_clinical_display(exposure_value, drop_unknown=True)
+                if shown_exposure and not has_mixed_clinical_language(shown_exposure):
+                    intervention = f"Maruziyet: {shown_exposure}"
+        if design_key == "rct":
+            explicit_arms = [
+                arm for arm in study.get("arms") or []
+                if arm.get("role") in {"intervention", "comparator"} and str(arm.get("label") or "").strip()
+            ]
+            arm_names = []
+            for arm in explicit_arms:
+                raw_label = re.sub(r"\s*\([^)]*\)", "", str(arm.get("label") or "")).strip()
+                raw_label = re.sub(r"\s+\d+(?:\.\d+)?\s*(?:mg|g|mcg|µg|iu|ml|kg)\b", "", raw_label, flags=re.IGNORECASE).strip()
+                shown_label = (localize_clinical_display(raw_label, drop_unknown=True) or raw_label).casefold()
+                if shown_label and shown_label not in arm_names:
+                    arm_names.append(shown_label)
+            if len(arm_names) >= 2:
+                intervention = " vs ".join(arm_names)
+        intervention = intervention or "Belirtilmedi"
+
+        outcome_bits = []
+        for outcome in study.get("outcomes") or []:
+            raw_name = str(((outcome.get("name") or {}).get("value") or "")).strip()
+            metric_only_name = raw_name.strip().casefold() in {"stratified", "win ratio", "win_ratio", "stratified win ratio"}
+            name = "Bildirilen olay sayısı" if raw_name.casefold() == "reported event count" else (
+                "Sonlanım adı özette belirtilmedi" if metric_only_name else _display_outcome_name(raw_name or "Sonlanım adı bildirilmedi")
+            )
+            effects = []
+            for effect in outcome.get("effect_estimates") or []:
+                label = effect_label(effect)
+                if effect.get("ci_lower") is not None and effect.get("ci_upper") is not None:
+                    label += f" ({effect.get('confidence_level') or '95%'} GA {effect['ci_lower']} ile {effect['ci_upper']})"
+                if effect.get("p_value"):
+                    p_match = re.match(r"\s*p\s*([<=>])\s*(.+?)\s*$", str(effect["p_value"]), re.IGNORECASE)
+                    label += f", p {p_match.group(1)} {p_match.group(2)}" if p_match else f", {_display_metric_text(str(effect['p_value']))}"
+                if effect.get("arm_label"):
+                    label += f"; kol: {effect['arm_label']}"
+                if effect.get("population_subgroup"):
+                    label += f"; alt grup: {effect['population_subgroup']}"
+                if effect.get("implausible_source_value"):
+                    label += f" {INCONSISTENT_SOURCE_FLAG}"
+                effects.append(label)
+            for arm_count in outcome.get("arm_event_counts") or []:
+                arm_label = str(((arm_count.get("arm_label") or {}).get("value") or "kol"))
+                event_count = (arm_count.get("event_count") or {}).get("value")
+                denominator = (arm_count.get("denominator") or {}).get("value")
+                if event_count is not None:
+                    effects.append(f"{arm_label} kolunda bildirilen olay: {event_count}" + (f"/{denominator}" if denominator is not None else ""))
+            event_count = (outcome.get("event_count") or {}).get("value")
+            if event_count is not None:
+                denominator = (outcome.get("denominator") or {}).get("value")
+                effects.append(f"bildirilen olay sayısı {event_count}" + (f"/{denominator}" if denominator is not None else ""))
+            if effects:
+                outcome_bits.append(f"{name}: {', '.join(effects)}")
+        qualitative = []
+        for item in study.get("clinical_findings") or []:
+            value = str(item.get("value") or "").strip()
+            if not value:
+                continue
+            if value.casefold().startswith("nitel klinik bulgu:"):
+                shown = value
+            elif value.casefold().startswith("tedavi:"):
+                # Keep this explicitly typed as treatment information rather than
+                # silently relabelling it as an outcome.
+                shown = "Tedavi bildirimi: " + re.sub(r"^Tedavi:\s*", "", value, flags=re.IGNORECASE)
+            else:
+                shown = localize_clinical_display(value, drop_unknown=True)
+            if shown and not has_mixed_clinical_language(shown) and shown not in qualitative:
+                qualitative.append(shown)
+        outcome_bits.extend(item for item in qualitative if item not in outcome_bits)
+        if not outcome_bits:
+            outcome_bits.append(INSUFFICIENT_CLINICAL_DATA_TR)
+
+        causal = study.get("causal_interpretation_status", "descriptive_or_unclear; no_causal_superiority_claim")
+        source_status = (study.get("source") or {}).get("verification_status", "not_verified")
+        limitations = study.get("methodological_limitations") or []
+        derived_labels = [str(item.get("value")) for item in limitations if str(((item.get("source") or {}).get("source_field") or "")).startswith("derived_")]
+        explicit_labels = [str(item.get("value")) for item in limitations if str(((item.get("source") or {}).get("source_field") or "")).startswith("explicit_")]
+        if derived_labels:
+            limitation_text = f"Tasarımından türetilen sınırlılık (PMID: {pmid}): " + "; ".join(dict.fromkeys(derived_labels))
+        elif explicit_labels:
+            limitation_text = f"Yazarın bildirdiği sınırlılık (PMID: {pmid}): " + "; ".join(dict.fromkeys(explicit_labels))
+        else:
+            limitation_text = "Özette spesifik metodolojik sınırlılık bildirilmedi"
+        note = (
+            f"{limitation_text}; {causal}; PubMed kayıt durumu: {source_status}; klinik iddialar bağımsız doğrulanmadı."
+            if derived_labels or explicit_labels
+            else limitation_text
         )
-        profile = extract_clinical_profile(art.get("abstract") or "")
-        findings = extract_grounded_clinical_findings(art.get("abstract") or "")
-        finding_bits = []
-        seen_findings = set()
 
-        def _remember(text: str) -> None:
-            key = re.sub(r"\s+", " ", text or "").strip().lower()
-            if not key or key in seen_findings:
-                return
-            seen_findings.add(key)
-            finding_bits.append(text.strip())
-
-        for item in findings:
-            if not _finding_is_displayable(item):
-                continue
-            outcome = _display_outcome_name(item.get("outcome") or "")
-            effect = format_effect_measure(item.get("effect") or "")
-            if outcome == _UNNAMED_OUTCOME_TR and _unlabeled_number_effect(effect):
-                continue
-            bit = f"{outcome}: {effect}" if effect else outcome
-            if item.get("ci") and item["ci"] != _MISSING_CI_TR:
-                bit += f" (GA {item['ci']})"
-            if item.get("p"):
-                bit += f", {item['p']}"
-            if item.get("implausible"):
-                bit += f" {INCONSISTENT_SOURCE_FLAG}"
-            _remember(bit)
-        for item in profile:
-            if item["category"] in (
-                "ck", "treatment", "course", "qualitative", "biomarker",
-                "diagnosis", "attribution_unclear",
-            ):
-                shown = localize_clinical_display(item["line"], drop_unknown=False)
-                if shown:
-                    _remember(shown)
-        if not finding_bits:
-            finding_bits.append(INSUFFICIENT_CLINICAL_DATA_TR)
-        details = extract_article_clinical_details(art, "")
-        # Hasta grubu is the same string as the matrix and section 5.
-        sample_cell = details.get("patient_group") or "özette bildirilmedi"
 
         lines.append(
-            "| {pmid} | {patient} | {design} | {intervention} | {findings} | {limit} |".format(
+            "| {pmid} | {population} | {design} | {intervention} | {findings} | {note} |".format(
                 pmid=pmid,
-                patient=_cell(sample_cell, limit=500),
-                design=_cell(details.get("study_design") or design["design"]),
-                intervention=_cell(
-                    _intervention_comparison_cell(
-                        profile,
-                        art.get("abstract") or "",
-                        art.get("title") or "",
-                    ),
-                    limit=500,
-                ),
-                findings=_findings_cell("; ".join(finding_bits)),
-                limit=_cell(format_methodological_limitation(art), limit=900),
+
+                population=_cell(str(population), limit=700),
+                design=_cell(str(study.get("design_label") or "Çalışma tasarımı belirlenemedi")),
+                intervention=_cell(str(intervention), limit=700),
+                findings=_findings_cell("; ".join(outcome_bits)),
+                note=_cell(note, limit=1000),
+
             )
         )
-        if findings or any(item["category"] in ("course", "qualitative", "ck", "treatment") for item in profile):
+        if outcome_bits and outcome_bits[0] != INSUFFICIENT_CLINICAL_DATA_TR:
             supporters.append(pmid)
 
-    lines.append("")
     if supporters:
         cited = ", ".join(f"PMID: {pmid}" for pmid in supporters)
         outcome_bit = f" Sorgu sonlanımı: {query_outcome}." if query_outcome and query_outcome != "Belirtilmemiş" else ""
-        lines.append(
-            "Klinik sonucu doğrudan destekleyen PMID'ler, kendi özetinde etki ölçütü, "
-            f"CK/tedavi yanıtı veya nitel olgu bulgusu bulunanlardır: {cited}.{outcome_bit} "
-            "Destek ifadesi başka bir makalenin sayısına dayanmaz."
-        )
+        lines.append(f"\nKlinik sonucu doğrudan destekleyen PMID (kaynaklı ölçüt veya bulgu): {cited}.{outcome_bit}")
     else:
-        lines.append(
-            "Klinik sonucu doğrudan destekleyen PMID saptanamadı. Özetlerde bağlı etki ölçütü "
-            "veya nitel klinik bulgu yok; eksik destek uydurulmadı."
-        )
+        lines.append("\nKaynağa bağlı klinik bulgu saptanmadı; eksik destek uydurulmadı.")
     lines.append(
-        "Çelişki yalnızca aynı sonlanım için farklı yön bildiren PMID çiftlerinde kurulur. "
-        "Aşağıdaki tutarlılık ve çelişki maddeleri bu kurala uyar. "
-        "Kontrol grubu bulunmayan tek kollu veya gözlemsel olgu serilerinden nedensel tedavi üstünlüğü (superiority) "
-        "çıkarılamaz; bu çalışmalardaki bulgular yalnızca tanımlayıcı klinik gözlem olarak değerlendirilir."
+        "**Metodolojik sınırlılık:** Gözlemsel veya kontrolsüz tasarımlardan nedensel üstünlüğü (superiority) çıkarılamaz. "
+        "PubMed kayıt doğrulaması klinik iddiaların bağımsız doğrulaması değildir."
     )
-    lines.append("")
+    lines.append("Çelişki değerlendirmesi, ortak popülasyon ve karşılaştırılabilir sonlanım olmadan yapay bir çelişki iddiası üretmez.")
     return "\n".join(lines)
 
 
@@ -5976,9 +6187,11 @@ Aranan klinik sorgu için doğrulanan PubMed veritabanında kriterlere uygun mak
 Lütfen arama terimlerini veya filtreleri genişleterek tekrar deneyiniz.
 """
 
+    articles = _canonicalize_articles(articles, query)
     total_articles = len(articles)
     audit = audit or perform_red_team_audit(query, articles)
-    pico = extract_pico(query)
+    research_question = (articles[0].get("evidence_model") or {}).get("research_question") or {}
+    pico = extract_pico(query) if research_question.get("framework") == "PICO" else {}
 
     report = []
     report.append("# 📑 Türkçe Klinik Araştırma Raporu\n")
@@ -5987,16 +6200,21 @@ Lütfen arama terimlerini veya filtreleri genişleterek tekrar deneyiniz.
     # 1. Klinik Araştırma Sorusu
     report.append("## 1. Klinik Araştırma Sorusu")
     report.append(f"**Sorgu / Araştırma Konusu:** {query}")
-    report.append("### 📋 PICO Çerçevesi")
-    report.append(f"- **P (Hasta Grubu / Population):** {pico['population']}")
-    report.append(f"- **I (Müdahale / Intervention):** {pico['intervention']}")
-    report.append(f"- **C (Karşılaştırma / Comparison):** {pico['comparison']}")
-    report.append(f"- **O (Sonlanım / Outcome):** {pico['outcome']}\n")
+    report.append(f"### 📋 {research_question.get('label', 'Kapsam / betimleyici soru (PCC)')}")
+    report.append(f"- **Soru türü:** {research_question.get('question_type', 'descriptive_or_unclear')}")
+    if research_question.get("framework") == "PICO":
+        report.append(f"- **P (Hasta Grubu / Population):** {pico.get('population', 'Belirtilmemiş')}")
+        report.append(f"- **I (Müdahale / Intervention):** {pico.get('intervention', 'Belirtilmemiş')}")
+        report.append(f"- **C (Karşılaştırma / Comparison):** {pico.get('comparison', 'Belirtilmemiş')}")
+        report.append(f"- **O (Sonlanım / Outcome):** {pico.get('outcome', 'Belirtilmemiş')}\n")
+    else:
+        report.append("PICO zorunlu tutulmadı. Soru çerçevesi bu araştırma türüne göre seçildi; kaynakta bildirilmeyen bileşenler çıkarım yoluyla doldurulmadı.\n")
 
     # 2. Yönetici Özeti
     report.append("## 2. Yönetici Özeti")
     report.append(f"Bu kanıt raporu, **{query}** sorusu için NCBI PubMed kaydından alınan **{total_articles}** yayının özetine dayanır.")
     report.append("Çalışma tasarımı sınıflandırıldı; çalışma tasarımından kanıt düzeyi üretilmedi. Özetteki sınırlı metin sinyalleri sonlanım cümlesine bağlanabilir, ancak bunlar GRADE değerlendirmesi veya kesinlik derecesi değildir ve çalışmalar arasında birleştirilmez. Eksik alanlar 'değerlendirilemedi' bırakılır. *Tüm analizler yayınlanmış özet (abstract) metinlerine dayanmaktadır.*\n")
+    report.append("**Doğrulama:** PubMed kayıt kimliği ile klinik iddia doğrulaması ayrı tutulur. Klinik iddialar bağımsız uzman doğrulamasından geçmemiştir; GRADE ve yanlılık riski değerlendirmeleri yapılmamıştır.\n")
 
     # 3. Araştırma Yöntemi ve Tarama Tarihi
     report.append("## 3. Araştırma Yöntemi ve Tarama Tarihi")
@@ -6057,42 +6275,57 @@ Lütfen arama terimlerini veya filtreleri genişleterek tekrar deneyiniz.
 
     # 6. Önemli Çalışmaların Karşılaştırılması
     report.append("## 6. Önemli Çalışmaların Karşılaştırılması")
-    report.append("Bu bölümdeki PICO eşleştirmeleri metin tabanlı sezgisel ön taramadır. Klinik eşdeğerlik veya tedavi karşılaştırılabilirliği kanıtı değildir; uzman incelemesi gerekir.\n")
-    report.append(_format_cross_study_comparison(articles, pico))
+    report.append(_format_cross_study_comparison(articles, pico, query=query))
     report.append("### 📊 Karşılaştırmalı Sentez Matrisi")
 
     comp_lines = []
     for art in articles:
         first_author = _format_authors_short(art.get("authors", []))
         year = art.get("pub_year", "Tarih Yok")
-        cd = classify_study_design(art.get("publication_types", []), art.get("title", ""), art.get("abstract", ""))
-        rob = assess_risk_of_bias(art)
+        study = art["evidence_model"]
+        cd = {"design": study.get("design_label", "Çalışma tasarımı belirlenemedi"), "level": "Değerlendirilemedi"}
+        rob = study.get("risk_of_bias") or {}
         pmid = art.get("pmid", "")
         pmid_link = f"[PMID: {pmid}]({art.get('pubmed_url', '#')})" if pmid else "-"
-        metrics = extract_study_metrics(art.get("abstract", ""))
+        total_n = ((study.get("population") or {}).get("total_participants") or {}).get("value")
+        n_str = f"n = {total_n}" if total_n is not None else "n bildirilmedi"
 
-        n_str = f"n = {metrics['n']}" if metrics.get("n") else "n bildirilmedi"
+        legacy_details = legacy_details_from_study(study)
+        stat_summary = legacy_details.get("real_findings") or "Özette kaynaklı nitel bulgu bildirilmedi."
+        lim_str = f"{study.get('causal_interpretation_status', 'Değerlendirilemedi')}; resmi RoB/GRADE değerlendirmesi yapılmadı."
 
-        stat_summary = _translate_clinical_conclusion_to_turkish(
-            "", art.get("abstract", ""), metrics, cd["design"], "", pico=pico,
-            authors=art.get("authors") or [], year=year, pmid=pmid,
-        )
-        lim_str = format_methodological_limitation(art)
 
-        o_str_parts = study_effect_lines(art.get("abstract", ""))
-        if o_str_parts:
+        outcomes_list = study.get("outcomes", [])
+        o_str_parts = []
+        if outcomes_list:
+            for om in outcomes_list:
+                raw_outcome_name = str(((om.get("name") or {}).get("value") or "Sonlanım adı bildirilmedi"))
+                metric_only_name = raw_outcome_name.strip().casefold() in {"stratified", "win ratio", "win_ratio", "stratified win ratio"}
+                outcome_name = "Sonlanım adı özette belirtilmedi" if metric_only_name else _display_outcome_name(raw_outcome_name)
+                metrics = []
+                for effect in om.get("effect_estimates") or []:
+                    metric = _display_effect_metric(effect)
+                    if effect.get("ci_lower") is not None and effect.get("ci_upper") is not None:
+                        metric += f" ({effect.get('confidence_level') or '95%'} GA {effect['ci_lower']} ile {effect['ci_upper']})"
+                    if effect.get("p_value"):
+                        metric += f", {effect['p_value']}"
+                    if effect.get("implausible_source_value"):
+                        metric += f" {INCONSISTENT_SOURCE_FLAG}"
+                    metrics.append(metric)
+                o_str_parts.append(f"{outcome_name} ({', '.join(metrics) if metrics else 'Özette nicel etki ölçütü yok'})")
+
             o_str = "; ".join(o_str_parts)
         else:
             o_str = "Özette bağlı nicel sonlanım ölçütü bildirilmedi"
 
-        bound = _format_bound_claims(extract_article_clinical_details(art, query))
+        bound = _format_bound_claims(legacy_details)
         comp_lines.append(
             f"- **{first_author} ({year})** ({pmid_link}):\n"
             f"  - **Yöntem ve tasarım:** {cd['design']} | **Kanıt düzeyi:** {cd['level']}\n"
             f"  - **Yanlılık aracı:** {display_bias_tool(rob['tool'])} | **Risk derecesi:** {display_bias_rating(rob['overall_rating'])}\n"
             f"  - **Hasta / Örneklem Sayısı:** {n_str}\n"
             f"  - **Klinik Sonlanımlar ve Etki Ölçütleri:** {o_str}\n"
-            f"  - **Kaynağa bağlı PICO ve istatistik:** {bound}\n"
+            f"  - **Kaynağa bağlı soru bileşenleri ve istatistik:** {bound}\n"
             f"  - **Klinik Bulgular:** {stat_summary}\n"
             f"  - **Kanıt Sınırlılıkları:** {lim_str}"
         )

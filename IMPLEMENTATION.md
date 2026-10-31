@@ -115,7 +115,7 @@ Sistem, NLM yayın türü ile başlık ve özetteki tasarım ifadesini kullanara
 
 Resmi GRADE değerlendirmesi veya kesinlik derecesi üretilmez. Özetten çıkarılan sınırlı, kural tabanlı metin sinyalleri sonlanım cümlesine bağlanabilir; bunlar tek bir makale için toplam puana veya çalışmalar arası kanıt bütünü değerlendirmesine dönüştürülmez. Sonlanım veya alan eksikse `değerlendirilemedi` yazılır. RoB 2, ROBINS-I, ROBIS, AXIS, JBI, AGREE II veya QUADAS-2 tasarıma göre seçilebilir; tam yöntem değerlendirmesi yapılmadan araç sonucu veya risk derecesi verildiği iddia edilmez. Hasta grubu, örneklem, müdahale, karşılaştırıcı, sonlanım ve istatistik, kaynak cümle ve PMID ile gösterilir.
 
-### 🔢 Nicel Parametre Çıkarımı ve PICO Analizi
+### 🔢 Nicel Parametre Çıkarımı ve Araştırma Sorusu Çerçevesi
 
 `report_generator.py` ve `universal_evidence_engine.py`, makale özetlerinden yalnızca açıkça bildirilen verileri çıkarır:
 
@@ -123,11 +123,8 @@ Resmi GRADE değerlendirmesi veya kesinlik derecesi üretilmez. Özetten çıkar
 - **Etki Büyüklükleri**: Hazard Ratio (HR), Odds Ratio (OR), Relative Risk (RR), Mean Difference (MD).
 - **Güven Aralıkları (%95 CI)**: İstatistiksel kesinlik aralıkları.
 - **P Değerleri ($p$)**: İstatistiksel anlamlılık sınırları ($p < 0.05$).
-- **PICO Bileşenleri**:
-  - **P (Population/Patient)**: Hasta grubu ve demografik özellikler.
-  - **I (Intervention)**: İncelenen klinik müdahale veya ilaç.
-  - **C (Comparison)**: Karşılaştırma grubu veya plasebo.
-  - **O (Outcome)**: Klinik sonlanım noktaları.
+- **Araştırma sorusu çerçevesi**: PICO yalnızca uygun tedavi karşılaştırmalarında kullanılır. Soru ve tasarıma göre PIRD (tanısal doğruluk), PICOTS-S (tarama), PFO (prognoz), PECO (epidemiyoloji/güvenlilik), PICOT-HS (sağlık hizmetleri) veya PCC (kapsam/olgu betimlemesi) seçilebilir. Her araştırmaya zorunlu PICO atanmaz.
+- **Araştırma türleri**: Tedavi, tanı, prognoz, tarama, epidemiyoloji, cerrahi, güvenlilik ve sağlık hizmetleri soruları desteklenir; seçilen çerçeve raporda görünürdür.
 
 ### ⚖️ Risk of Bias (RoB) ve GRADE Değerlendirme Kuralları
 
@@ -168,7 +165,7 @@ Raporlama sistemi, uzman hekimlerin klinik karar alma süreçlerini desteklemek 
 
 1. **Başlık ve Arama Parametreleri**
 2. **Metodolojik Taraması ve Kanıt Düzeyi Özeti**
-3. **PICO Analizi (Hasta, Müdahale, Karşılaştırma, Sonuç)**
+3. **Araştırma Sorusu Çerçevesi (soruya uygun PICO/PIRD/PECO/PFO/PCC vb.)**
 4. **Klinik Arka Plan ve Literatür Özeti**
 5. **Seçilen Çalışmaların Özeti**
 6. **Karşılaştırmalı Çalışma Matrisi**
@@ -259,6 +256,14 @@ Depo kök dizinindeki `all_specialty_matrix.json`, 88 uzmanlık etiketi ve anaht
   - **Fizik Tedavi ve Rehabilitasyon** (`fizik_tedavi_ve_rehabilitasyon`)
 - **Alt Odak Alanı Sayısı**: Bütün 88 branş kaydının her birinde **14 özel alt odak alanı** (`sub_focus_areas`) tanımlanmıştır.
 - **Zorunlu Alanlar**: `id`, `specialty_name`, `specialty_name_en`, `category`, `description`, `sub_focus_areas`, `search_keywords`.
+
+### 7.1. Kanonik Klinik Kanıt Modeli ve Doğrulama
+
+`clinical_evidence.py` içinde `Study`, `Population`, `StudyArm`, `Intervention`, `Comparator`, `Outcome`, `EffectEstimate`, `EvidenceSource` ve `RiskOfBiasAssessment` modelleri bulunur. Arayüz kartları, Bölüm 5/6 raporları ve dışa aktarılan klinik raporlar aynı modelin uyumluluk görünümlerini kullanır. Kaynaklanan her fact PMID/DOI, kaynak cümlesi, kaynak alanı ve kayıt kimliği doğrulama durumunu taşır; PubMed kayıt kimliği eşleşmesi bağımsız klinik doğrulama değildir.
+
+Örneklem büyüklüğü, kol katılımcı sayısı, olay sayısı/payda ve istatistiksel etki ayrı alanlardır. HR/RR/OR/duyarlılık/özgüllük/AUC/MD/SMD sonlanıma bağlanır; raporlanmayan değerler boş bırakılır. Yanlılık riski ve GRADE değerlendirmesi yapılmadıysa “değerlendirilmedi” kalır. Ana çalışma, alt analiz, ikincil analiz, uzatılmış takip ve derleme/meta-analiz ilişkileri kanıt ailesi üzerinden ayrıştırılır; aynı katılımcıların bağımsız kohort gibi sayılması engellenir.
+
+`validation/run_pubmed_benchmark.py` önceden belirlenmiş sekiz branşlı PubMed referans tablosunu canlı kayıt kimliği doğrulaması ve model çıkarımıyla karşılaştırır. Rapor yazılım birim/entegrasyon testlerini, gerçek PubMed kaynak doğrulamasını ve bağımsız klinik veri doğrulamasını ayrı sunar. Hekimce etiketlenmiş bağımsız veri yoksa klinik doğrulama “yapılmadı” olarak gösterilir; bu benchmark GRADE veya klinik onay yerine geçmez.
 
 ---
 *Doküman Sonu - Medical Research AI Sistem Mimarisi*

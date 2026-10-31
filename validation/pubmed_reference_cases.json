@@ -1,0 +1,175 @@
+{
+  "dataset_version": "1.0",
+  "scope": "Eight PubMed-indexed articles across the eight requested specialties. Reference values below are explicit PubMed abstract facts, not an independent clinician's assessment.",
+  "source_verification": "Each exact PubMed record was opened; PMID/title and DOI when present were checked against the record. Publication types are recorded only when visible in the record. Abstract sentences are quoted verbatim.",
+  "cases": [
+    {
+      "specialty": "Kardiyoloji",
+      "required_design": "rct",
+      "pmid": "34449189",
+      "doi": "10.1056/NEJMoa2107038",
+      "title": "Empagliflozin in Heart Failure with a Preserved Ejection Fraction",
+      "pubmed_url": "https://pubmed.ncbi.nlm.nih.gov/34449189/",
+      "publication_types": ["Multicenter Study", "Randomized Controlled Trial", "Research Support, Non-U.S. Gov't"],
+      "record_status": "PubMed record identity confirmed; abstract-level claims not clinically independently validated.",
+      "population": "Patients with class II-IV heart failure and ejection fraction >40%.",
+      "total_n": 5988,
+      "total_n_sentence": "In this double-blind trial, we randomly assigned 5988 patients with class II-IV heart failure and an ejection fraction of more than 40% to receive empagliflozin (10 mg once daily) or placebo, in addition to usual therapy.",
+      "arms": [
+        {"label": "empagliflozin", "participants_n": 2997, "intervention": "empagliflozin (10 mg once daily)", "concomitant_treatment": "usual therapy"},
+        {"label": "placebo", "participants_n": 2991, "intervention": "placebo", "concomitant_treatment": "usual therapy"}
+      ],
+      "outcomes": [
+        {"outcome": "composite cardiovascular death or hospitalization for heart failure", "metric": "HR", "estimate": "0.79", "ci": ["0.69", "0.90"], "p": "<0.001", "event_count": [415, 511], "source_sentence": "Over a median of 26.2 months, a primary outcome event occurred in 415 of 2997 patients (13.8%) in the empagliflozin group and in 511 of 2991 patients (17.1%) in the placebo group (hazard ratio, 0.79; 95% confidence interval [CI], 0.69 to 0.90; P<0.001)."},
+        {"outcome": "total number of hospitalizations for heart failure", "metric": "HR", "estimate": "0.73", "ci": ["0.61", "0.88"], "p": "<0.001", "event_count": [407, 541], "source_sentence": "The total number of hospitalizations for heart failure was lower in the empagliflozin group than in the placebo group (407 with empagliflozin and 541 with placebo; hazard ratio, 0.73; 95% CI, 0.61 to 0.88; P<0.001)."}
+      ],
+      "study_relationship": "Primary EMPEROR-Preserved randomized trial report; one study cohort.",
+      "sources": ["https://pubmed.ncbi.nlm.nih.gov/34449189/"]
+    },
+    {
+      "specialty": "Onkoloji",
+      "required_design": "meta_analysis",
+      "pmid": "39416390",
+      "doi": "10.1016/j.eclinm.2024.102870",
+      "title": "Effectiveness of immune checkpoint inhibitors and other treatment modalities in patients with advanced mucosal melanomas: a systematic review and individual patient data meta-analysis",
+      "pubmed_url": "https://pubmed.ncbi.nlm.nih.gov/39416390/",
+      "publication_types": [],
+      "record_status": "PubMed record identity confirmed; publication type field was not available in the captured record and remains unassigned.",
+      "population": "Patients with locally advanced or metastatic mucosal melanoma included in eligible cohort and observational studies.",
+      "total_n": 2833,
+      "total_n_sentence": "From a total of 7402 studies, 35 eligible studies comprising a total of 2833 participants were included.",
+      "arms": [],
+      "outcomes": [
+        {"outcome": "12-month overall survival for combined anti-PD1 and anti-CTLA4", "metric": "proportion", "estimate": "71.8%", "ci": ["67.6%", "76.2%"], "p": null, "sample_subset_n": 476, "source_sentence": "Combined anti-PD1 and anti-CTLA4 therapy had the highest 12-month OS and 12-month PFS at 71.8% (95% CI: 67.6%, 76.2%, n = 476) and 35.1% (95% CI: 30.5%, 40.4%, n = 401) respectively"},
+        {"outcome": "12-month progression-free survival for combined anti-PD1 and anti-CTLA4", "metric": "proportion", "estimate": "35.1%", "ci": ["30.5%", "40.4%"], "p": null, "sample_subset_n": 401, "source_sentence": "Combined anti-PD1 and anti-CTLA4 therapy had the highest 12-month OS and 12-month PFS at 71.8% (95% CI: 67.6%, 76.2%, n = 476) and 35.1% (95% CI: 30.5%, 40.4%, n = 401) respectively"},
+        {"outcome": "overall survival, anti-PD1 plus anti-CTLA4 versus anti-PD1 alone", "metric": "HR", "estimate": "0.856", "ci": ["0.704", "1.04"], "p": null, "source_sentence": "In the double-arm studies, combination therapy with anti-PD1 and anti-CTLA4 had similar OS and PFS with anti-PD1 alone (OS: HR 0.856 (95% CI: 0.704, 1.04); RMTL ratio 0.932 (95% CI: 0.832, 1.044, P = 0.225); RMST ratio 1.102 (95% CI: 0.948, 1.281, P = 0.204); PFS: HR 0.919 (95% CI: 0.788, 1.07); RMTL ratio 0.936 (95% CI: 0.866, 1.013, P = 0.100); RMST ratio 1.21 (95% CI: 0.979, 1.496, P = 0.078))"}
+      ],
+      "study_relationship": "Systematic review and IPD meta-analysis of 35 included studies; 2833 participants are pooled data, not a new primary cohort. Subgroup n values (476, 401, etc.) must not be mistaken for total N.",
+      "sources": ["https://pubmed.ncbi.nlm.nih.gov/39416390/"]
+    },
+    {
+      "specialty": "Nöroloji",
+      "required_design": "cohort",
+      "pmid": "32113113",
+      "doi": "10.1016/j.yebeh.2020.106969",
+      "title": "Course and prognosis of adult-onset epilepsy in Brazil: A cohort study.",
+      "pubmed_url": "https://pubmed.ncbi.nlm.nih.gov/32113113/",
+      "publication_types": ["Journal Article"],
+      "record_status": "PubMed PMID/title/DOI, publication type, and abstract confirmed.",
+      "population": "302 individuals with adult-onset epilepsy followed in a University Hospital in Brazil.",
+      "total_n": 302,
+      "total_n_sentence": "We followed 302 individuals with adult-onset epilepsy for 9.8 years in our University Hospital.",
+      "arms": [],
+      "outcomes": [
+        {"outcome": "drug-resistant epilepsy", "metric": "proportion", "estimate": "47 (15.6%)", "ci": null, "p": null, "event_count": 47, "denominator": 302, "source_sentence": "Overall 47 (15.6%) individuals presented drug-resistant epilepsy and the etiology was structural in 70.2% of them, while infectious etiology was present in 8.5% of this group."},
+        {"outcome": "seizures in individuals with developmental delay", "metric": "qualitative association", "estimate": "two times more likely", "ci": null, "p": null, "source_sentence": "Those with developmental delay were two times more likely to present seizures."}
+      ],
+      "study_relationship": "Primary longitudinal cohort report; 302 individuals, 9.8-year follow-up.",
+      "sources": ["https://pubmed.ncbi.nlm.nih.gov/32113113/"]
+    },
+    {
+      "specialty": "Enfeksiyon hastalıkları",
+      "required_design": "case_control",
+      "pmid": "17540675",
+      "doi": "10.1093/jac/dkm141",
+      "title": "Prior antibiotics and risk of antibiotic-resistant community-acquired urinary tract infection: a case-control study",
+      "pubmed_url": "https://pubmed.ncbi.nlm.nih.gov/17540675/",
+      "publication_types": ["Research Support, Non-U.S. Gov't"],
+      "record_status": "PubMed record confirms title/DOI/abstract; case-control design is explicit in the article title and abstract, while publication-type field itself does not list that design.",
+      "population": "Patients with symptomatic UTI and laboratory-proven E. coli infection in 10 UK general practices; cases had resistant infection and controls susceptible infection.",
+      "total_n": 903,
+      "total_n_sentence": "Risk of ampicillin-resistant E. coli infection in 903 patients was associated with amoxicillin prescriptions of >or=7 days duration in the previous 1 month [odds ratio (OR)=3.91, 95% CI 1.64-9.34] and previous 2-3 months (2.29, 1.12-4.70) before illness onset.",
+      "arms": [],
+      "outcomes": [
+        {"outcome": "ampicillin-resistant E. coli infection and prior amoxicillin exposure >=7 days in previous month", "metric": "OR", "estimate": "3.91", "ci": ["1.64", "9.34"], "p": null, "source_sentence": "Risk of ampicillin-resistant E. coli infection in 903 patients was associated with amoxicillin prescriptions of >or=7 days duration in the previous 1 month [odds ratio (OR)=3.91, 95% CI 1.64-9.34] and previous 2-3 months (2.29, 1.12-4.70) before illness onset."},
+        {"outcome": "trimethoprim-resistant E. coli infection and prior trimethoprim exposure >=7 days", "metric": "OR", "estimate": "8.44", "ci": ["3.12", "22.86"], "p": null, "source_sentence": "For trimethoprim-resistant E. coli infections, the OR was 8.44 (3.12-22.86) for prescriptions of trimethoprim of >or=7 days in the previous month and 13.91 (3.32-58.31) for the previous 2-3 months."}
+      ],
+      "study_relationship": "Primary case-control report; association estimates do not establish treatment causality.",
+      "sources": ["https://pubmed.ncbi.nlm.nih.gov/17540675/"]
+    },
+    {
+      "specialty": "Endokrinoloji",
+      "required_design": "systematic_review",
+      "pmid": "10218744",
+      "doi": "10.1001/archinte.159.7.658",
+      "title": "Diagnosis of thyroid disease in hospitalized patients: a systematic review.",
+      "pubmed_url": "https://pubmed.ncbi.nlm.nih.gov/10218744/",
+      "publication_types": ["Journal Article", "Systematic Review"],
+      "record_status": "PubMed PMID/title/DOI, publication types, and abstract confirmed.",
+      "population": "Hospitalized inpatients; general medical, geriatric, or psychiatric inpatient populations are discussed.",
+      "total_n": null,
+      "total_n_sentence": "",
+      "arms": [],
+      "outcomes": [
+        {"outcome": "prevalence of thyroid disease among inpatients", "metric": "prevalence", "estimate": "approximately 1% to 2%", "ci": null, "p": null, "source_sentence": "Prevalence of thyroid disease among inpatients is approximately 1% to 2% and is similar to the outpatient population."},
+        {"outcome": "positive likelihood ratio for abnormal sTSH in ill inpatients vs outpatients", "metric": "likelihood ratio", "estimate": "about 10 vs about 100", "ci": null, "p": null, "source_sentence": "The positive likelihood ratio associated with an abnormal sTSH test result in ill inpatients is about 10 compared with about 100 in outpatients."}
+      ],
+      "study_relationship": "Systematic review; no new cohort or pooled participant total is reported in the abstract.",
+      "sources": ["https://pubmed.ncbi.nlm.nih.gov/10218744/"]
+    },
+    {
+      "specialty": "Pediatri",
+      "required_design": "diagnostic_accuracy",
+      "pmid": "37461867",
+      "doi": "10.1542/peds.2023-061188",
+      "title": "Diagnostic Accuracy of Primary Care Clinicians Across a Statewide System of Autism Evaluation",
+      "pubmed_url": "https://pubmed.ncbi.nlm.nih.gov/37461867/",
+      "publication_types": ["Research Support, Non-U.S. Gov't", "Research Support, N.I.H., Extramural"],
+      "record_status": "PubMed PMID/title/DOI, abstract, and listed publication types confirmed.",
+      "population": "Children aged 14 to 48 months referred for expert follow-up evaluation.",
+      "total_n": 126,
+      "total_n_sentence": "Among 126 children (mean age: 2.6 years; 77% male; 14% Latinx; 66% non-Latinx white), 82% (n = 103) had consistent ASD outcomes between the index and reference evaluation.",
+      "arms": [],
+      "outcomes": [
+        {"outcome": "sensitivity for categorical ASD diagnosis", "metric": "sensitivity", "estimate": "81.5%", "ci": null, "p": null, "source_sentence": "Sensitivity was 81.5%, specificity was 82.4%, positive predictive value was 92.6%, and negative predictive value was 62.2%."},
+        {"outcome": "specificity for categorical ASD diagnosis", "metric": "specificity", "estimate": "82.4%", "ci": null, "p": null, "source_sentence": "Sensitivity was 81.5%, specificity was 82.4%, positive predictive value was 92.6%, and negative predictive value was 62.2%."}
+      ],
+      "study_relationship": "Primary prospective diagnostic accuracy study; n=103 agreement subset is not total sample size; AUC and confidence intervals are not reported in the abstract.",
+      "sources": ["https://pubmed.ncbi.nlm.nih.gov/37461867/"]
+    },
+    {
+      "specialty": "Cerrahi",
+      "required_design": "case_series",
+      "pmid": "39071203",
+      "doi": "10.1002/lio2.1289",
+      "title": "Eagle syndrome presentation and outcomes in a large surgical case series",
+      "pubmed_url": "https://pubmed.ncbi.nlm.nih.gov/39071203/",
+      "publication_types": [],
+      "record_status": "PubMed PMID/title/DOI and complete abstract confirmed; publication-types field not exposed in the captured record.",
+      "population": "56 adults with Eagle syndrome at a tertiary center; all operations by one surgeon.",
+      "total_n": 56,
+      "total_n_sentence": "This retrospective case series included 56 patients at least 18 years of age or older with a diagnosis of Eagle syndrome.",
+      "arms": [
+        {"label": "surgical treatment", "participants_n": 51, "intervention": "surgical treatment; 92.2% intraoral and 7.8% cervical approaches"}
+      ],
+      "outcomes": [
+        {"outcome": "patient-reported symptom resolution or improvement after surgery", "metric": "proportion", "estimate": "100% of respondents", "ci": null, "p": null, "event_count": null, "denominator": null, "source_sentence": "All patients (100%) reached in a phone survey stated that their symptoms resolved or improved after surgery."}
+      ],
+      "study_relationship": "Primary retrospective case series; report does not state phone-survey respondent count, so no denominator may be inferred.",
+      "sources": ["https://pubmed.ncbi.nlm.nih.gov/39071203/"]
+    },
+    {
+      "specialty": "Radyoloji",
+      "required_design": "diagnostic_accuracy",
+      "pmid": "31732398",
+      "doi": "10.1016/j.otsr.2019.09.020",
+      "title": "Thoracic Outlet Syndrome: Diagnostic Accuracy of MRI.",
+      "pubmed_url": "https://pubmed.ncbi.nlm.nih.gov/31732398/",
+      "publication_types": ["Journal Article"],
+      "record_status": "PubMed PMID/title/DOI, publication type and abstract confirmed; abstract defines intra-operative findings as reference standard.",
+      "population": "48 patients who underwent surgery for thoracic outlet syndrome after work-up including MRI.",
+      "total_n": 48,
+      "total_n_sentence": "We retrospectively included 48 patients who underwent surgery for TOS after a work-up that included MRI (1.5-T, n=29 and 3-T, n=19).",
+      "arms": [
+        {"label": "1.5-T MRI", "participants_n": 29, "intervention": "MRI at 1.5 T"},
+        {"label": "3-T MRI", "participants_n": 19, "intervention": "MRI at 3 T"}
+      ],
+      "outcomes": [
+        {"outcome": "cervical rib diagnosis", "metric": "sensitivity", "estimate": "100%", "ci": null, "p": null, "source_sentence": "For diagnosing a cervical rib, MRI had 100% sensitivity and 100% specificity."},
+        {"outcome": "cervical rib diagnosis", "metric": "specificity", "estimate": "100%", "ci": null, "p": null, "source_sentence": "For diagnosing a cervical rib, MRI had 100% sensitivity and 100% specificity."}
+      ],
+      "study_relationship": "Primary retrospective diagnostic cohort; 1.5-T and 3-T are imaging subgroups within n=48 and must not be counted as independent cohorts.",
+      "sources": ["https://pubmed.ncbi.nlm.nih.gov/31732398/"]
+    }
+  ]
+}
