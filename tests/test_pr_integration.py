@@ -1,5 +1,6 @@
 """Regression checks for the combined appraisal and structured evidence paths."""
 from report_generator import build_evidence_table
+from report_generator import _number_after, _quote_sentence
 
 
 def article(abstract):
@@ -37,3 +38,13 @@ def test_appraisal_table_escapes_markdown_cell_content():
     table = build_evidence_table([record])
     assert len(table.splitlines()) == 3
     assert all(line.count("|") == 7 for line in table.splitlines())
+
+
+def test_confidence_level_is_not_an_estimate_at_search_window_boundary():
+    text = "Odds Ratio (OR) and 95% confidence interval were calculated."
+    assert _number_after(text, len("Odds Ratio"), max_gap=24) is None
+
+
+def test_attributed_long_source_sentence_is_never_abbreviated_or_rewritten():
+    sentence = 'The authors reported "uncertain results" ' + "from the recorded source " * 20 + "."
+    assert _quote_sentence(sentence) == sentence

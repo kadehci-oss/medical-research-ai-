@@ -2990,7 +2990,8 @@ def _number_after(text: str, start: int, max_gap: int):
             return None
         if _is_calendar_year(match.group(0)):
             continue
-        tail = window[match.end():]
+        # The numeric search stays bounded; its unit can extend past that window.
+        tail = text[start + match.end():]
         # "1-year" and "1-," are time frames, not effect estimates. "0.70-0.92" is.
         if re.match(r"\s*-\s*(?!\d)", tail):
             continue
@@ -5425,11 +5426,9 @@ def _explicit_limit_label(sentence: str) -> str:
     return "özette metodolojik sınırlılık belirtildi"
 
 
-def _quote_sentence(sentence: str, limit: int = 220) -> str:
-    text = re.sub(r"\s+", " ", sentence or "").strip().replace('"', "'")
-    if len(text) > limit:
-        text = text[: limit - 1].rstrip() + "…"
-    return text
+def _quote_sentence(sentence: str) -> str:
+    """Keep attributed source sentences verbatim apart from whitespace."""
+    return re.sub(r"\s+", " ", sentence or "").strip()
 
 
 _NO_CONTROL_DESIGNS = {"case_report", "case_series", "retrospective_case_series"}

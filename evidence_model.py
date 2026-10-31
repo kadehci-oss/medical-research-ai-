@@ -1884,9 +1884,16 @@ def render_study_card_lines(study: Study) -> List[str]:
             bits.append(f"{item['outcome'] or 'sonlanım adı yok'}: {', '.join(item['metrics'])}")
         lines.append("**Özetteki diğer sayısal bulgular (etki ölçütü olarak yapılandırılmadı):** " + "; ".join(bits) +
                      f" (PMID: {pmid})")
+        seen_sources = set()
+        for item in study.other_numeric_findings:
+            source = item.get("source")
+            if source and source.sentence and source.sentence not in seen_sources:
+                seen_sources.add(source.sentence)
+                lines.append(f'- Kaynak cümle: "{source.sentence}" (PMID: {pmid})')
     if rejected:
         lines.append(f"**Reddedilen eşleştirmeler:** {len(rejected)} (tutarsız güven aralığı veya geçersiz aralık; sentezde kullanılmadı)")
-    lines.append(f"**Yanlılık riski:** {study.risk_of_bias.tool or 'araç seçilemedi'} — {NOT_ASSESSED_TR} (derece verilmedi)")
+    bias_tool = rg.display_bias_tool(study.risk_of_bias.tool) if study.risk_of_bias.tool else "araç seçilemedi"
+    lines.append(f"**Yanlılık riski:** {bias_tool} — {NOT_ASSESSED_TR} (derece verilmedi)")
     lines.append(f"**GRADE:** {NOT_ASSESSED_TR}")
     if study.relations:
         rel = "; ".join(
