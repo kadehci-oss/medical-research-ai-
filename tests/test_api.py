@@ -92,20 +92,39 @@ class TestFastAPIApp(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["status"], "verified")
 
+    @patch("api.verify_citation")
     @patch("api.generate_turkish_evidence_report")
-    def test_api_generate_report(self, mock_generate):
+    def test_api_generate_report(self, mock_generate, mock_verify_citation):
         mock_generate.return_value = "# 📑 Türkçe Kanıt Raporu\n\nTest report content."
+        mock_verify_citation.return_value = {
+            "status": "verified",
+            "verified": True,
+            "pmid": "35771962",
+            "reason": "match",
+            "fetched_article": {
+                "valid": True,
+                "pmid": "35771962",
+                "title": "Canonical PubMed title",
+                "authors": ["PubMed Author"],
+                "journal": "PubMed Journal",
+                "pub_year": "2022",
+                "publication_types": ["Journal Article"],
+                "abstract": "Canonical abstract from PubMed",
+                "doi": "10.1000/pubmed",
+                "pubmed_url": "https://pubmed.ncbi.nlm.nih.gov/35771962/",
+            },
+        }
 
         payload = {
             "query": "diabetes",
             "articles": [
                 {
                     "pmid": "35771962",
-                    "title": "Test Title",
-                    "authors": ["Author One"],
-                    "journal": "Test Journal",
+                    "title": "Canonical PubMed title",
+                    "authors": ["Attacker-supplied author"],
+                    "journal": "Untrusted journal",
                     "pub_year": "2022",
-                    "abstract": "Test abstract"
+                    "abstract": "Untrusted abstract"
                 }
             ],
             "use_llm": False
@@ -122,6 +141,76 @@ class TestFastAPIApp(unittest.TestCase):
         self.assertIn("quality_control", data)
         self.assertFalse(data["quality_control"]["valid"])
         self.assertTrue(data["quality_control"]["missing_sections"])
+        self.assertEqual(mock_generate.call_args.kwargs["articles"][0]["title"], "Canonical PubMed title")
+        self.assertEqual(mock_generate.call_args.kwargs["articles"][0]["abstract"], "Canonical abstract from PubMed")
+
+    @patch("api.verify_citation")
+    @patch("api.generate_turkish_evidence_report")
+    def test_api_report_rejects_mismatched_citation_before_synthesis(self, mock_generate, mock_verify_citation):
+        mock_verify_citation.return_value = {
+            "status": "rejected",
+            "verified": False,
+            "pmid": "35771962",
+            "reason": "title_mismatch",
+            "error": "Title mismatch",
+        }
+        response = client.post(
+            "/api/report",
+            json={"query": "diabetes", "articles": [{"pmid": "35771962", "title": "Fake title"}]},
+        )
+        self.assertEqual(response.status_code, 422)
+        mock_generate.assert_not_called()
+
+    def test_api_report_limits_citations_to_50(self):
+        response = client.post(
+            "/api/report",
+            json={"query": "diabetes", "articles": [{"pmid": str(10000 + index)} for index in range(51)]},
+        )
+        self.assertEqual(response.status_code, 422)
+
+    @patch("api.verify_citation")
+    def test_api_report_rejects_invalid_or_duplicate_pmids(self, mock_verify_citation):
+        mock_verify_citation.return_value = {
+            "status": "verified",
+            "verified": True,
+            "pmid": "12345",
+            "fetched_article": {"valid": True, "pmid": "12345", "title": "Canonical title"},
+        }
+        invalid = client.post("/api/report", json={"query": "diabetes", "articles": [{"pmid": "abc"}]})
+        empty = client.post("/api/report", json={"query": "diabetes", "articles": []})
+        duplicate = client.post(
+            "/api/report",
+            json={"query": "diabetes", "articles": [{"pmid": "12345"}, {"pmid": "12345"}]},
+        )
+        self.assertEqual(invalid.status_code, 422)
+        self.assertEqual(empty.status_code, 422)
+        self.assertEqual(duplicate.status_code, 422)
+        mock_verify_citation.assert_called_once()
+
+    @patch("api.verify_citation")
+    @patch("api.generate_universal_evidence_synthesis")
+    def test_universal_synthesis_uses_canonical_pubmed_record(self, mock_synthesize, mock_verify_citation):
+        mock_synthesize.return_value = {"status": "success"}
+        mock_verify_citation.return_value = {
+            "status": "verified",
+            "verified": True,
+            "pmid": "12345",
+            "reason": "match",
+            "fetched_article": {
+                "valid": True,
+                "pmid": "12345",
+                "title": "Canonical title",
+                "abstract": "Canonical PubMed abstract",
+                "authors": ["Canonical author"],
+            },
+        }
+        response = client.post(
+            "/api/universal_engine/synthesize",
+            json={"query": "diabetes", "articles": [{"pmid": "12345", "abstract": "untrusted"}]},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(mock_synthesize.call_args.kwargs["articles"][0]["abstract"], "Canonical PubMed abstract")
+        self.assertEqual(mock_synthesize.call_args.kwargs["verification_results"][0]["status"], "verified")
 
 
 if __name__ == "__main__":

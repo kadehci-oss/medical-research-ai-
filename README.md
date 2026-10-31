@@ -2,7 +2,7 @@
 
 A physician-oriented literature assistant built with Python, Streamlit, FastAPI, and NCBI PubMed E-utilities.
 
-It searches live PubMed, verifies PMIDs and DOIs against PubMed and CrossRef, and drafts a Turkish evidence synthesis report (*Türkçe Kanıt Raporu*) from those records. Bibliographic fields come from the APIs. The project rule is zero citation fabrication: do not invent PMIDs, DOIs, titles, authors, or journal names.
+It searches live PubMed, checks citation identifiers and available title/DOI fields against PubMed and CrossRef, and drafts a Turkish evidence synthesis report (*Türkçe Kanıt Raporu*) from those records. Bibliographic fields come from APIs. Avoiding invented citations is a design goal, not a guarantee of factual or clinical correctness; generated claims still need human source review.
 
 **Not for clinical use.** The independent expert physician review described in [`UZMAN_HEKIM_DEGERLENDIRME.md`](UZMAN_HEKIM_DEGERLENDIRME.md) has not been done. That file is an empty protocol (scoring form, reviewer slots, and acceptance criteria), not a completed evaluation. No specialist has signed off. Do not use this tool to diagnose, treat, or make clinical decisions.
 
@@ -16,6 +16,8 @@ It searches live PubMed, verifies PMIDs and DOIs against PubMed and CrossRef, an
 2. **PMID and DOI verification:** PMID lookup on PubMed; DOI lookup on CrossRef with a PubMed cross-check. Citation checks re-fetch the PMID and compare the normalized title and DOI.
 3. **Turkish evidence report:** rule-based synthesis, with optional OpenAI synthesis when `OPENAI_API_KEY` is set. Citations point at `https://pubmed.ncbi.nlm.nih.gov/<PMID>/`.
 4. **Two interfaces:** a Streamlit dashboard (`app.py`) and a FastAPI service (`api.py`) that also exposes the universal evidence engine (`universal_evidence_engine.py`).
+
+Search is a PubMed-based preliminary search, not a systematic review or a claim of comprehensive coverage. The report does not screen every retrieved record against a registered inclusion/exclusion protocol. Cross-study matching is heuristic and abstract-only; it is not evidence that studies are clinically equivalent.
 
 ---
 
@@ -91,7 +93,7 @@ CI (`.github/workflows/ci.yml`) and the live NCBI workflow install from `require
 | `NCBI_TOOL` | No | Tool name sent as `tool` on every E-utilities request and used in the User-Agent. Default: `MedicalResearchAI`. |
 | `NCBI_EMAIL` | No | Contact email sent as `email` on every E-utilities request and in the User-Agent. Default: `medical-research-ai@example.com` (not a personal address). Set this to a monitored mailbox before sustained use so NCBI can reach you. |
 | `NCBI_API_KEY` | No | When set, sent as `api_key` on E-utilities requests only (not to CrossRef). Raises the NCBI rate limit. Omit it to leave the parameter off the request. |
-| `OPENAI_API_KEY` | No | Enables optional LLM report synthesis. Without it, synthesis stays rule-based. The Streamlit sidebar can also take this key. |
+| `OPENAI_API_KEY` | No | Enables optional LLM report synthesis. Without it, synthesis stays rule-based. When enabled, the query, article metadata, and PubMed abstracts are sent to OpenAI. Do not include patient-identifying or confidential health information. |
 
 ```bash
 export NCBI_TOOL="MedicalResearchAI"
@@ -129,6 +131,10 @@ uvicorn api:app --host 127.0.0.1 --port 8000
 - `POST /api/report`
 - `POST /api/universal_engine/synthesize`
 
+The report endpoints accept citation identifiers (PMID, with optional title/DOI for matching), fetch the authoritative article record from PubMed, and synthesize from that fetched record rather than trusting client-supplied abstracts or authors. At most 50 citations are accepted per report request.
+
+The API does not provide user authentication or request-rate limiting. The documented Uvicorn command binds to `127.0.0.1`; do not expose the service directly to the public internet. A public deployment must add authentication, rate/body limits, TLS, and appropriate proxy configuration.
+
 ---
 
 ## Tests and live NCBI check
@@ -144,7 +150,7 @@ python live_ncbi_validation.py
 
 ## Citation integrity
 
-Records are parsed from PubMed XML or CrossRef JSON. The report generator is only supposed to cite articles present in that payload. A green test run does not mean a physician has reviewed the wording, evidence grades, or clinical applicability.
+Records are parsed from PubMed XML or CrossRef JSON. Report endpoints fetch canonical PubMed records by PMID and compare submitted title/DOI only when those fields are provided; absent fields are not considered matched. This check confirms record identity, not that every generated statement is supported by its citation. A green test run does not mean a physician has reviewed the wording, evidence grades, or clinical applicability.
 
 ---
 
