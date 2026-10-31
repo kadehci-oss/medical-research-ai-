@@ -452,12 +452,10 @@ def main():
                                 st.caption("Araç seçilmiş olsa da değerlendirme yapılmadan risk derecesi verilmez.")
 
                                 st.markdown("**Klinik Sonlanımlar ve Etki Ölçütleri:**")
-                                o_metrics = s_item.get("outcome_metrics", [])
-                                if o_metrics:
-                                    for om in o_metrics:
-                                        m_str = ", ".join(om.get("metrics", [])) if om.get("metrics") else "Özette nicel etki ölçütü yok"
-                                        st.markdown(f"- 📌 **{om.get('outcome')}:** `{m_str}`")
-                                        st.caption(f"Cümle bağlamı: {om.get('sentence')}")
+                                outcome_lines = s_item.get("outcome_lines") or []
+                                if outcome_lines:
+                                    for line in outcome_lines:
+                                        st.markdown(f"- 📌 {line}")
                                 else:
                                     st.write("Özette doğrudan bağlı nicel sonlanım ölçütü tespit edilmemiştir.")
 

@@ -74,7 +74,7 @@ class TestHeartFailureRegression(unittest.TestCase):
         self.assertIn("Rastgele Kontrollü", details["study_design"])
         self.assertEqual(details["evidence_level"], "Değerlendirilemedi")
         self.assertEqual(details["comparison"], "Plasebo")
-        self.assertIn("HR 0.79", details["outcomes_summary"])
+        self.assertIn("tehlike oranı (HR) 0.79", details["outcomes_summary"])
 
     def test_heart_failure_report_section_12_synthesis(self):
         query = "SGLT2 inhibitors and ARNI in heart failure"
@@ -96,7 +96,7 @@ class TestHeartFailureRegression(unittest.TestCase):
 
         # Check sample sizes and metrics in narrative
         self.assertIn("n = 5988", sec_12)
-        self.assertIn("HR 0.79", sec_12)
+        self.assertIn("tehlike oranı (HR) 0.79", sec_12)
         self.assertIn("n = 4744", sec_12)
 
 

@@ -13,6 +13,10 @@ from display_turkish import (
     display_study_field,
     has_mixed_clinical_language,
     localize_clinical_display,
+    nearest_controlled_outcome,
+    outcome_label_rejected,
+    render_clinical_units,
+    translate_controlled_outcome,
 )
 from pubmed_client import verify_citation
 
@@ -1676,7 +1680,28 @@ def extract_outcome_metrics(abstract: str) -> List[Dict[str, Any]]:
             seen_brackets.add(bracket)
             results.append(item)
 
+    _mark_implausible_outcome_metrics(abstract_clean, results)
     return results
+
+
+def _mark_implausible_outcome_metrics(abstract: str, results: List[Dict[str, Any]]) -> None:
+    """Flag raw outcome rows whose ratio estimate has a non-usable CI.
+
+    Cross-article synthesis skips these rows. The study line still prints them.
+    """
+    findings = [
+        item for item in extract_grounded_clinical_findings(abstract or "")
+        if item.get("implausible") and item.get("estimate")
+    ]
+    for item in results:
+        blob = " ".join(item.get("metrics") or [])
+        sentence = item.get("sentence") or ""
+        item["implausible"] = any(
+            re.search(r"(?<!\d)" + re.escape(finding["estimate"]) + r"(?!\d)", blob)
+            and sentence
+            and sentence in (finding.get("sentence") or "")
+            for finding in findings
+        )
 
 
 def extract_study_metrics(abstract: str) -> Dict[str, Any]:
@@ -1783,19 +1808,102 @@ def extract_study_metrics(abstract: str) -> Dict[str, Any]:
     }
 
 
-def _display_effect_text(effect: str) -> str:
-    """Translate effect-measure words. Numeric tokens and OR/HR/RR stay."""
+INCONSISTENT_SOURCE_FLAG = "⚠ Kaynakta tutarsız değer (özette böyle bildirilmiş)"
+
+_EFFECT_LABELS = (
+    ("IRR", re.compile(r"\bincidence\s+rate\s+ratios?\b", re.IGNORECASE), "insidans oranı oranı (IRR)"),
+    ("IRR", re.compile(r"\bIRR\b"), "insidans oranı oranı (IRR)"),
+    ("HR", re.compile(r"\bhazard\s+ratios?\b", re.IGNORECASE), "tehlike oranı (HR)"),
+    ("HR", re.compile(r"\bHR\b"), "tehlike oranı (HR)"),
+    ("OR", re.compile(r"\bodds\s+ratios?\b", re.IGNORECASE), "olasılık oranı (OR)"),
+    ("OR", re.compile(r"\bOR\b"), "olasılık oranı (OR)"),
+    ("RR", re.compile(r"\b(?:relative\s+risks?|risk\s+ratios?)\b", re.IGNORECASE), "risk oranı (RR)"),
+    ("RR", re.compile(r"\bRR\b"), "risk oranı (RR)"),
+    ("WIN", re.compile(r"\bwin\s+ratios?\b", re.IGNORECASE), "kazanma oranı (win ratio)"),
+    ("SMD", re.compile(r"\bstandardized\s+mean\s+differences?\b", re.IGNORECASE), "standartlaştırılmış ortalama fark (SMD)"),
+    ("SMD", re.compile(r"\bSMD\b"), "standartlaştırılmış ortalama fark (SMD)"),
+    ("WMD", re.compile(r"\bWMD\b"), "ağırlıklı ortalama fark (WMD)"),
+    ("MD", re.compile(r"\bmean\s+differences?\b", re.IGNORECASE), "ortalama fark (MD)"),
+    ("MD", re.compile(r"\bMD\b"), "ortalama fark (MD)"),
+)
+_RATIO_MEASURES = {"HR", "OR", "RR", "IRR"}
+
+
+def _parse_effect_measure(effect: str) -> Dict[str, str]:
+    """Split a source effect token into code, Turkish label, and the number."""
+    text = (effect or "").strip()
+    for code, pattern, label in _EFFECT_LABELS:
+        match = pattern.search(text)
+        if not match:
+            continue
+        value = _number_after(text, match.end(), 24)
+        if not value:
+            continue
+        return {
+            "code": code,
+            "label": label,
+            "value": value.group(0).replace("−", "-"),
+        }
+    return {"code": "", "label": "", "value": ""}
+
+
+def _sanitize_display_line(text: str) -> str:
+    """Drop doubled parentheses and an immediately repeated word."""
+    cleaned = render_clinical_units(text or "")
+    cleaned = re.sub(r"\({2,}", "(", cleaned)
+    cleaned = re.sub(r"\){2,}", ")", cleaned)
+    # "başına başına" is a duplicated "per". "oranı oranı" is the IRR label.
+    cleaned = re.sub(r"\b(başına)(?:\s+\1\b)+", r"\1", cleaned, flags=re.IGNORECASE)
+    return re.sub(r"\s{2,}", " ", cleaned).strip()
+
+
+def format_effect_measure(effect: str) -> str:
+    """Turkish effect label with its abbreviation, then the source value."""
     text = (effect or "").strip()
     if not text:
         return ""
-    if not re.search(
-        r"\b(?:odds|hazard|relative|risk|ratio|win|mean|difference|confidence|interval)\b",
-        text,
-        re.IGNORECASE,
-    ):
-        return text
-    shown = localize_clinical_display(text)
-    return shown or text
+    parsed = _parse_effect_measure(text)
+    if parsed["label"] and parsed["value"]:
+        return _sanitize_display_line(f"{parsed['label']} {parsed['value']}")
+    if text.lower().startswith("p ") or text.lower().startswith("özette adlandırılmadı"):
+        return _sanitize_display_line(text)
+    if not re.search(r"[A-Za-z]{3,}", text):
+        return _sanitize_display_line(text)
+    return _sanitize_display_line(text)
+
+
+def _display_effect_text(effect: str) -> str:
+    """Turkish effect-measure label. The source number is kept."""
+    return format_effect_measure(effect)
+
+
+def _to_float(token: str):
+    if token is None or token == "":
+        return None
+    try:
+        return float(str(token).replace("−", "-").replace("%", "").replace(",", ""))
+    except ValueError:
+        return None
+
+
+def ratio_interval_implausible(code: str, estimate: str, low: str, high: str) -> bool:
+    """True when a ratio CI contains a non-positive bound or the point lies outside it.
+
+    The source numbers are still shown. Mean differences are not judged here.
+    """
+    if code not in _RATIO_MEASURES:
+        return False
+    lo = _to_float(low)
+    hi = _to_float(high)
+    if lo is None or hi is None:
+        return False
+    if lo <= 0 or hi <= 0:
+        return True
+    point = _to_float(estimate)
+    if point is None:
+        return False
+    lower, upper = (lo, hi) if lo <= hi else (hi, lo)
+    return point < lower - 1e-9 or point > upper + 1e-9
 
 
 _ORPHAN_OUTCOME_TOKENS = {
@@ -1814,21 +1922,40 @@ def _orphan_outcome_label(shown: str) -> bool:
     return not content
 
 
+def _exact_outcome_span(text: str) -> str:
+    """Return the English span when it is one controlled outcome, else empty.
+
+    A longer clause is reduced only to a controlled phrase that sits inside it.
+    The other words are not translated one by one.
+    """
+    raw = re.sub(r"\s+", " ", (text or "")).strip(" .;:")
+    if not raw:
+        return ""
+    if translate_controlled_outcome(raw):
+        return raw
+    inner = nearest_controlled_outcome(raw)
+    if inner and translate_controlled_outcome(inner):
+        return inner
+    return ""
+
+
 def _display_outcome_name(outcome: str) -> str:
-    """Turkish outcome label. An untranslatable English name is not shown raw."""
+    """Turkish outcome label. Partial word-by-word translation is not used."""
     text = (outcome or "").strip()
     if text in (
         "değerlendirilemedi",
         "Primer Klinik Sonlanım / Özet İstatistiği",
         "özette adlandırılmadı",
     ):
+        if text == "Primer Klinik Sonlanım / Özet İstatistiği":
+            return _UNNAMED_OUTCOME_TR
         return text
-    shown = localize_clinical_display(text)
-    if not shown or _orphan_outcome_label(shown):
-        return UNTRANSLATED_OUTCOME_LABEL
-    # "BB, MRA, ve" is a clipped treatment list, not an endpoint name.
+    span = _exact_outcome_span(text)
+    shown = translate_controlled_outcome(span) if span else ""
+    if not shown or outcome_label_rejected(shown) or _orphan_outcome_label(shown):
+        return _UNNAMED_OUTCOME_TR
     if re.search(r"(?:^|[\s,;])(?:ve|veya)\s*$", shown, re.IGNORECASE):
-        return UNTRANSLATED_OUTCOME_LABEL
+        return _UNNAMED_OUTCOME_TR
     return shown
 
 
@@ -2004,29 +2131,41 @@ def extract_article_clinical_details(article: Dict[str, Any], query: str = "") -
     intervention = display_study_field(intervention)
     comparison = display_study_field(comparison)
 
-    # 4. Outcomes stay tied to the abstract clause that stated the statistic
+    # 4. Outcomes stay tied to the abstract sentence that stated the statistic.
+    # The displayed line uses the same structured effect as sections 5 and 6.
+    grounded = extract_grounded_clinical_findings(abstract)
     bound_outcomes = []
-    for om in outcome_metrics:
+    for item in grounded:
         bound_outcomes.append({
-            "outcome": om.get("outcome") or "değerlendirilemedi",
-            "metrics": list(om.get("metrics") or []),
-            "sentence": om.get("sentence") or "",
-            "source_sentence": om.get("sentence") or "",
+            "outcome": _display_outcome_name(item.get("outcome") or ""),
+            "metrics": [format_effect_measure(item.get("effect") or "") or "değerlendirilemedi"],
+            "ci": item.get("ci") or "",
+            "p": item.get("p") or "",
+            "implausible": bool(item.get("implausible")),
+            "estimate": item.get("estimate") or "",
+            "sentence": item.get("sentence") or "",
+            "source_sentence": item.get("sentence") or "",
             "pmid": pmid,
         })
 
     outcomes_formatted = []
+    synthesis_outcomes = []
     if bound_outcomes:
         for om in bound_outcomes:
-            om["outcome"] = _display_outcome_name(om.get("outcome") or "")
-            shown_metrics = []
-            for metric in om["metrics"] or []:
-                shown_metrics.append(_display_metric_text(metric))
-            om["metrics"] = shown_metrics
-            metric_text = ", ".join(shown_metrics) if shown_metrics else "değerlendirilemedi"
-            outcomes_formatted.append(f"{om['outcome']}: {metric_text}")
+            metric_text = ", ".join(om["metrics"]) if om["metrics"] else "değerlendirilemedi"
+            if om.get("ci") and om["ci"] not in ("özette bildirilmedi",):
+                metric_text += f", GA {om['ci']}"
+            if om.get("p"):
+                metric_text += f", {om['p']}"
+            metric_text = _sanitize_display_line(metric_text)
+            flag = f" {INCONSISTENT_SOURCE_FLAG}" if om.get("implausible") else ""
+            line = f"{om['outcome']}: {metric_text}{flag}"
+            outcomes_formatted.append(line)
+            if not om.get("implausible"):
+                synthesis_outcomes.append(f"{om['outcome']}: {metric_text}")
     else:
         outcomes_formatted.append("Özette nicel etki ölçütü bildirilmedi")
+        synthesis_outcomes.append("Özette nicel etki ölçütü bildirilmedi")
 
     real_findings = _translate_clinical_conclusion_to_turkish(
         "", abstract, metrics, classification["design"], title, pico=extract_pico(query)
@@ -2052,13 +2191,22 @@ def extract_article_clinical_details(article: Dict[str, Any], query: str = "") -
         "comparison": comparison,
         "outcome_metrics": bound_outcomes,
         "outcomes_summary": "; ".join(outcomes_formatted),
+        "synthesis_outcomes": (
+            "; ".join(synthesis_outcomes)
+            if synthesis_outcomes
+            else (
+                "Kaynakta tutarsız oran aralığı senteze katılmadı"
+                if bound_outcomes
+                else "Özette nicel etki ölçütü bildirilmedi"
+            )
+        ),
         "real_findings": real_findings,
         "provenance": provenance,
         "pmid": pmid,
     }
 
 
-def _format_bound_claims(details: Dict[str, Any]) -> str:
+def _format_bound_claims(details: Dict[str, Any], include_implausible: bool = True) -> str:
     """Turkish lines that keep each extracted item next to its sentence and PMID."""
     prov = details.get("provenance") or {}
     pmid = prov.get("pmid") or details.get("pmid") or "PMID yok"
@@ -2077,27 +2225,36 @@ def _format_bound_claims(details: Dict[str, Any]) -> str:
             lines.append(f"{label}: {value}. Kaynak cümle: \"{sentence}\" (PMID: {pmid})")
         else:
             lines.append(f"{label}: değerlendirilemedi. Kaynak cümle yok (PMID: {pmid})")
-    outcomes = prov.get("outcomes") or []
+    outcomes = [
+        om for om in (prov.get("outcomes") or [])
+        if include_implausible or not om.get("implausible")
+    ]
     if not outcomes:
         lines.append(f"Sonlanım ve istatistik: değerlendirilemedi (PMID: {pmid})")
     for om in outcomes:
         metric_text = ", ".join(om.get("metrics") or []) or "değerlendirilemedi"
+        if om.get("ci") and om.get("ci") not in ("özette bildirilmedi", "değerlendirilemedi"):
+            metric_text += f", GA {om['ci']}"
+        if om.get("p"):
+            metric_text += f", {om['p']}"
+        metric_text = _sanitize_display_line(metric_text)
+        flag = f" {INCONSISTENT_SOURCE_FLAG}" if om.get("implausible") else ""
         sentence = om.get("source_sentence") or om.get("sentence") or ""
         if sentence:
             lines.append(
-                f"Sonlanım: {om.get('outcome')}. İstatistik: {metric_text}. "
+                f"Sonlanım: {om.get('outcome')}. İstatistik: {metric_text}.{flag} "
                 f"Kaynak cümle: \"{sentence}\" (PMID: {pmid})"
             )
         else:
-            lines.append(f"Sonlanım: değerlendirilemedi. İstatistik: {metric_text} (PMID: {pmid})")
+            lines.append(f"Sonlanım: değerlendirilemedi. İstatistik: {metric_text}{flag} (PMID: {pmid})")
     return " ".join(lines)
 
 
 # Section 5 must not paste the English abstract. Labels stay Turkish.
 # Outcome names use the same controlled terminology map as section 6.
-# The quoted source sentence stays verbatim. The effect-measure token (HR,
-# risk ratio, mean difference) stays in the source wording so the number
-# remains tied to the measure the abstract named. Nothing is invented.
+# The quoted source sentence stays verbatim. The structured effect line uses
+# a Turkish measure label with its abbreviation. The number is the source
+# number. Nothing is invented.
 NO_NUMERIC_CLINICAL_FINDING_TR = "Özette sayısal klinik bulgu bulunamadı"
 INSUFFICIENT_CLINICAL_DATA_TR = "Özette sayısal veya nitel klinik bulgu yetersiz"
 _UNNAMED_OUTCOME_TR = "özette adlandırılmadı"
@@ -2156,6 +2313,21 @@ _P_VALUE_RE = re.compile(
 )
 # Longer phrases first so "body weight" wins over "weight".
 _OUTCOME_KEYWORDS = (
+    "annual rate of decline in the estimated glomerular filtration rate",
+    "estimated glomerular filtration rate",
+    "atopic march progression",
+    "ige category shift",
+    "ige category change",
+    "allergic rhinitis",
+    "atopic march",
+    "peak pruritus numerical rating scale",
+    "peak pruritus nrs",
+    "pruritus nrs",
+    "itch nrs",
+    "iga 0/1",
+    "iga 0 or 1",
+    "easi-75",
+    "easi75",
     "event-free survival",
     "progression-free survival",
     "overall survival",
@@ -2249,6 +2421,14 @@ def _number_after(text: str, start: int, max_gap: int):
         if re.match(r"\s*-\s*(?!\d)", tail):
             continue
         if re.match(r"\s*(?:year|years|month|months|week|weeks|day|days)\b", tail, re.IGNORECASE):
+            continue
+        # "95% CI" is the interval's confidence level, not the estimate.
+        # "0.23CI:" keeps 0.23; the percent sign is what marks the level.
+        if re.match(
+            r"\s*%\s*(?:\(\s*)?(?:confidence\s+intervals?|CIs?|CI)\b",
+            tail,
+            re.IGNORECASE,
+        ):
             continue
         return match
     return None
@@ -2444,26 +2624,82 @@ def _local_outcome_phrase(sentence: str, anchor: int) -> str:
     return _clean_outcome_clause(prefix[cut + 1:])
 
 
+_MEASURE_ABBREV = {"HR", "OR", "RR", "IRR", "CI", "MD", "SMD", "WMD", "SD", "SE", "IQR"}
+
+
+def _parenthetical_definitions(text: str) -> Dict[str, str]:
+    """Map a short abbreviation to the phrase defined beside it in the same abstract.
+
+    "allergic rhinitis (AR)" defines AR. Effect-measure abbreviations are not
+    redefined as outcomes.
+    """
+    found = {}
+    for match in re.finditer(
+        r"([A-Za-z][^()]{2,60}?)\(\s*([A-Z][A-Z0-9]{1,6})\s*\)",
+        text or "",
+    ):
+        abbr = match.group(2)
+        if abbr in _MEASURE_ABBREV:
+            continue
+        name = re.sub(r"\s+", " ", match.group(1)).strip(" ,;:")
+        known = nearest_controlled_outcome(name) or name
+        if known and abbr not in found:
+            found[abbr] = known
+    return found
+
+
+def _expand_defined_abbrev(span: str, definitions: Dict[str, str]) -> str:
+    """Replace a trailing defined abbreviation after generic words are removed."""
+    tokens = (span or "").split()
+    generic = {
+        "individual", "individuals", "patient", "patients", "the", "a", "an",
+        "including", "significant", "significantly",
+    }
+    while tokens and tokens[0].lower().strip(",.;:") in generic:
+        tokens = tokens[1:]
+    while tokens and tokens[-1].lower().strip(",.;:") in generic:
+        tokens = tokens[:-1]
+    if len(tokens) != 1:
+        return ""
+    abbr = tokens[0].strip(",.;:").upper()
+    if abbr in _MEASURE_ABBREV:
+        return ""
+    return definitions.get(abbr, "")
+
+
 def _resolve_finding_outcome(
     sentence: str,
     anchor: int,
     name_end: Optional[int] = None,
     value_start: Optional[int] = None,
+    definitions: Optional[Dict[str, str]] = None,
 ) -> str:
-    """Endpoint name copied from this sentence, or the unnamed label.
+    """Endpoint copied from this sentence, or the unnamed label.
 
-    Leading prepositions are stripped. Subgroup, covariate, and treatment-list
-    fragments are not endpoint names; the preceding endpoint in the same
-    sentence is used instead.
+    A messy clause is not translated word by word. A controlled phrase inside
+    that clause is kept. Function words and generic nouns are not the name.
     """
+    definitions = definitions or {}
     local = _local_outcome_phrase(sentence, anchor)
     if local:
-        return local
+        exact = _exact_outcome_span(local)
+        if exact:
+            return exact
+        expanded = _expand_defined_abbrev(local, definitions)
+        exact_expanded = _exact_outcome_span(expanded)
+        if exact_expanded:
+            return exact_expanded
+        return _UNNAMED_OUTCOME_TR
     if name_end is not None and value_start is not None:
         gap = _clean_outcome_clause(_outcome_from_gap(sentence, name_end, value_start, anchor))
-        if gap:
-            return gap
-    return _keyword_outcome(sentence, anchor) or _UNNAMED_OUTCOME_TR
+        exact_gap = _exact_outcome_span(gap)
+        if exact_gap:
+            return exact_gap
+    keyword = _keyword_outcome(sentence, anchor)
+    exact_keyword = _exact_outcome_span(keyword)
+    if exact_keyword:
+        return exact_keyword
+    return _UNNAMED_OUTCOME_TR
 
 
 def _p_between(sentence: str, start: int, end: int) -> str:
@@ -2607,16 +2843,113 @@ def _sentence_has_clinical_result(sentence: str) -> bool:
     ))
 
 
-def extract_grounded_clinical_findings(abstract: str) -> List[Dict[str, str]]:
-    """Turkish-labeled findings taken only from effect measures and CIs in the abstract.
+def _make_finding(
+    outcome: str,
+    effect: str,
+    ci: str,
+    p_text: str,
+    sentence: str,
+    low: str = "",
+    high: str = "",
+) -> Dict[str, Any]:
+    """One grounded finding. Ratio intervals that cannot be a real CI are flagged."""
+    parsed = _parse_effect_measure(effect)
+    implausible = ratio_interval_implausible(parsed["code"], parsed["value"], low, high)
+    return {
+        "outcome": outcome,
+        "effect": effect,
+        "ci": ci,
+        "p": p_text,
+        "sentence": sentence,
+        "measure": parsed["code"],
+        "estimate": parsed["value"],
+        "ci_low": low or "",
+        "ci_high": high or "",
+        "implausible": implausible,
+    }
 
-    Each item keeps the PMID-ready fields outcome, effect, ci, and the exact
-    source sentence. Missing outcome, effect name, or CI is stated in Turkish.
+
+_ANTI_SHORT_RE = re.compile(
+    r"\banti-(?:[A-Za-z0-9]+(?:[-\s]+[A-Za-z0-9]+){1,18}?)\s*"
+    r"\(\s*(?:anti-)?([A-Za-z][A-Za-z0-9]{1,14})\s*\)",
+    re.IGNORECASE,
+)
+
+
+def _short_anti_name(text: str) -> str:
+    """'anti-<long chemical name> (HMGCR)' becomes 'anti-HMGCR'."""
+    return _ANTI_SHORT_RE.sub(lambda match: "anti-" + match.group(1).upper(), text or "")
+
+
+def _contrast_outcome_span(label: str) -> str:
+    """Controlled name before a numeric contrast. A group clause is not a name."""
+    text = re.split(r"[.]\s+", _short_anti_name(label or ""))[-1].strip()
+    cleaned = _clean_outcome_clause(text)
+    candidates = []
+    if cleaned:
+        candidates.append(cleaned)
+    if text and text not in candidates:
+        candidates.append(text)
+    tokens = text.split()
+    if tokens:
+        candidates.append(tokens[-1].strip(" .,"))
+    for candidate in candidates:
+        span = _exact_outcome_span(candidate)
+        if span:
+            return span
+    return ""
+
+
+def _numeric_contrast_findings(sentence: str, definitions: Dict[str, str]) -> List[Dict[str, Any]]:
+    """Numeric 'a vs b' contrasts with a controlled name and a rendered unit.
+
+    The raw bracket is not pasted. Arm names such as 'empagliflozin group' are
+    not used as the outcome.
+    """
+    found = []
+    for item in _bracket_contrasts(sentence or ""):
+        bracket = item["metrics"][0]
+        parts = re.split(r"\bvs\.?\b", bracket, maxsplit=1, flags=re.IGNORECASE)
+        if len(parts) != 2:
+            continue
+        left_match = re.search(r"[-−]?\d+(?:\.\d+)?%?", parts[0])
+        right_match = re.search(r"[-−]?\d+(?:\.\d+)?%?", parts[1])
+        if not left_match or not right_match:
+            continue
+        rendered = render_clinical_units(bracket)
+        unit_match = re.search(r"mL/dk/1,73 m²(?:/yıl)?", rendered)
+        unit = f" {unit_match.group(0)}" if unit_match else ""
+        left = left_match.group(0).replace("−", "-")
+        right = right_match.group(0).replace("−", "-")
+        pos = (sentence or "").find(bracket)
+        anchor = pos if pos >= 0 else 0
+        outcome = _contrast_outcome_span(item.get("outcome") or "")
+        if not outcome:
+            outcome = _resolve_finding_outcome(sentence, anchor, definitions=definitions)
+        p_text = _p_between(sentence, anchor, anchor + len(bracket) + 24)
+        found.append(_make_finding(
+            outcome,
+            f"kaynak değer: {left} karşı {right}{unit}",
+            _MISSING_CI_TR,
+            p_text,
+            sentence,
+        ))
+    return found
+
+
+def extract_grounded_clinical_findings(abstract: str) -> List[Dict[str, Any]]:
+    """Findings taken only from effect measures, CIs, and numeric contrasts.
+
+    Each item keeps outcome, effect, ci, and the exact source sentence.
+    A ratio whose CI is not a positive interval around the estimate is flagged
+    and kept verbatim. Missing names stay Turkish. Nothing is invented.
     """
     findings = []
+    definitions = _parenthetical_definitions(abstract)
     for sentence in _finding_sentences(abstract):
         effects = _collect_named_effects(sentence)
         intervals = _collect_confidence_intervals(sentence)
+        contrasts = _numeric_contrast_findings(sentence, definitions)
         if effects:
             pairs, ambiguous = _pair_effects_with_intervals(effects, intervals, sentence)
             ambiguous_text = "; ".join(note for note in ambiguous if note)
@@ -2626,35 +2959,47 @@ def extract_grounded_clinical_findings(abstract: str) -> List[Dict[str, str]]:
                     effect["name_start"],
                     effect["name_end"],
                     effect["value_start"],
+                    definitions,
                 )
                 if interval is not None:
                     ci_text = interval["text"]
+                    low, high = interval["low"], interval["high"]
                 elif ambiguous_text:
                     ci_text = f"{_UNPAIRED_CI_TR} ({ambiguous_text})"
+                    low, high = "", ""
                 else:
                     ci_text = _MISSING_CI_TR
+                    low, high = "", ""
                 next_start = effects[index + 1]["name_start"] if index + 1 < len(effects) else len(sentence)
                 p_text = _p_between(sentence, effect["value_end"], next_start)
-                findings.append({
-                    "outcome": outcome,
-                    "effect": f"{effect['name']} {effect['value']}",
-                    "ci": ci_text,
-                    "p": p_text,
-                    "sentence": sentence,
-                })
+                findings.append(_make_finding(
+                    outcome,
+                    f"{effect['name']} {effect['value']}",
+                    ci_text,
+                    p_text,
+                    sentence,
+                    low,
+                    high,
+                ))
+            findings.extend(contrasts)
+            continue
+        if contrasts:
+            findings.extend(contrasts)
             continue
         if not intervals:
             p_matches = list(_P_VALUE_RE.finditer(sentence))
             if p_matches and _sentence_has_clinical_result(sentence):
                 for match in p_matches:
-                    outcome = _resolve_finding_outcome(sentence, match.start())
-                    findings.append({
-                        "outcome": outcome,
-                        "effect": f"p {match.group(1)} {match.group(2)}",
-                        "ci": _MISSING_CI_TR,
-                        "p": "",
-                        "sentence": sentence,
-                    })
+                    outcome = _resolve_finding_outcome(
+                        sentence, match.start(), definitions=definitions
+                    )
+                    findings.append(_make_finding(
+                        outcome,
+                        f"p {match.group(1)} {match.group(2)}",
+                        _MISSING_CI_TR,
+                        "",
+                        sentence,
+                    ))
             continue
         for interval in intervals:
             point = _point_before_ci(sentence, interval["start"])
@@ -2662,15 +3007,39 @@ def extract_grounded_clinical_findings(abstract: str) -> List[Dict[str, str]]:
                 effect = f"{_UNNAMED_EFFECT_TR}; kaynak değer: {point}"
             else:
                 effect = _UNNAMED_EFFECT_TR
-            outcome = _resolve_finding_outcome(sentence, interval["start"])
-            findings.append({
-                "outcome": outcome,
-                "effect": effect,
-                "ci": interval["text"],
-                "p": "",
-                "sentence": sentence,
-            })
+            outcome = _resolve_finding_outcome(
+                sentence, interval["start"], definitions=definitions
+            )
+            findings.append(_make_finding(
+                outcome,
+                effect,
+                interval["text"],
+                "",
+                sentence,
+                interval["low"],
+                interval["high"],
+            ))
     return findings
+
+
+def format_finding_brief(item: Dict[str, Any]) -> str:
+    """One structured effect: Turkish outcome, Turkish measure, value, GA, p."""
+    outcome = _display_outcome_name(item.get("outcome") or "")
+    effect = format_effect_measure(item.get("effect") or "")
+    bits = [f"{outcome}: {effect}" if effect else outcome]
+    if item.get("ci") and item["ci"] != _MISSING_CI_TR:
+        bits.append(f"GA {item['ci']}")
+    if item.get("p"):
+        bits.append(item["p"])
+    line = ", ".join(bits)
+    if item.get("implausible"):
+        line += f" {INCONSISTENT_SOURCE_FLAG}"
+    return _sanitize_display_line(line)
+
+
+def study_effect_lines(abstract: str) -> List[str]:
+    """Structured effect lines for one abstract. Raw English slices are not returned."""
+    return [format_finding_brief(item) for item in extract_grounded_clinical_findings(abstract)]
 
 
 _NUMBER_WORDS = {
@@ -3543,11 +3912,13 @@ def format_klinik_bulgular_cell(article: Dict[str, Any]) -> str:
     for item in findings:
         p_bit = f" p değeri: {item['p']}." if item.get("p") else ""
         outcome_label = _display_outcome_name(item.get("outcome") or "")
+        effect_label = format_effect_measure(item.get("effect") or "")
+        flag = f" {INCONSISTENT_SOURCE_FLAG}" if item.get("implausible") else ""
         _add(
             item["sentence"],
             "effects",
-            f"Sonlanım: {outcome_label}. Etki ölçütü: {item['effect']}. "
-            f"Güven aralığı: {item['ci']}.{p_bit}",
+            f"Sonlanım: {outcome_label}. Etki ölçütü: {effect_label}. "
+            f"Güven aralığı: {item['ci']}.{p_bit}{flag}",
         )
 
     parts = [f"PMID: {pmid}."]
@@ -3804,6 +4175,41 @@ def perform_red_team_audit(
     }
 
 
+def _metrics_for_synthesis(metrics: Dict[str, Any], abstract: str) -> Dict[str, Any]:
+    """Drop ratio estimates whose reported interval is not a usable ratio CI.
+
+    The study line still shows those numbers with a flag. Synthesis and the
+    narrative stat string do not treat them as effects.
+    """
+    copied = dict(metrics or {})
+    findings = extract_grounded_clinical_findings(abstract or "")
+    bad = [item for item in findings if item.get("implausible") and item.get("estimate")]
+    if not bad:
+        return copied
+
+    def _is_bad_effect(text: str) -> bool:
+        for item in bad:
+            estimate = item.get("estimate") or ""
+            if estimate and re.search(r"(?<!\d)" + re.escape(estimate) + r"(?!\d)", text or ""):
+                if (item.get("sentence") or "") and (item["sentence"] in (abstract or "") or True):
+                    return True
+        return False
+
+    def _is_bad_ci(text: str) -> bool:
+        for item in bad:
+            low = str(item.get("ci_low") or "")
+            high = str(item.get("ci_high") or "")
+            if low and high and low in (text or "") and high in (text or ""):
+                return True
+        return False
+
+    copied["effect_sizes"] = [item for item in copied.get("effect_sizes") or [] if not _is_bad_effect(item)]
+    copied["confidence_intervals"] = [
+        item for item in copied.get("confidence_intervals") or [] if not _is_bad_ci(item)
+    ]
+    return copied
+
+
 def _translate_clinical_conclusion_to_turkish(
     raw_conc: str,
     abstract: str,
@@ -3819,13 +4225,15 @@ def _translate_clinical_conclusion_to_turkish(
     and reports evidence limitations when data is unverified or non-quantitative.
     """
     text_to_check = (raw_conc or abstract or "").lower()
+    metrics = _metrics_for_synthesis(metrics, abstract)
 
-    # Format extracted metrics
+    # Format extracted metrics. Implausible ratio intervals are not synthesized.
     stat_parts = []
     if metrics.get("n"):
         stat_parts.append(f"n = {metrics['n']}")
     if metrics.get("effect_sizes"):
-        stat_parts.append(f"Etki büyüklüğü: {', '.join(metrics['effect_sizes'])}")
+        labeled = [format_effect_measure(item) for item in metrics["effect_sizes"]]
+        stat_parts.append(f"Etki büyüklüğü: {', '.join(labeled)}")
     if metrics.get("confidence_intervals"):
         cleaned_cis = [re.sub(r"^\s*\[?\s*(?:95%\s*CI|95%CI|CI\s*95%)\s*[:=,]?\s*", "", ci, flags=re.IGNORECASE).rstrip("]") for ci in metrics["confidence_intervals"]]
         stat_parts.append(f"%95 GA: {', '.join(cleaned_cis)}")
@@ -3922,7 +4330,7 @@ def _synthesize_article_conclusion_tr(art: Dict[str, Any], query: str) -> str:
         f"- **{authors_short} ({year})** ({pmid_link}): {summary_tr}{review_note}\n"
         f"  - *Hasta Sayısı:* {n_val_str} | *Etki Ölçütleri:* {eff_val_str} | *Belirsizlikler:* {lim_val_str}\n"
         f"  - *Sorgu PICO (makale özeti değildir):* {pico_str}\n"
-        f"  - {_format_bound_claims(details)}"
+        f"  - {_format_bound_claims(details, include_implausible=False)}"
     )
 
 
@@ -3969,8 +4377,8 @@ def _generate_section_12_synthesis(query: str, articles: List[Dict[str, Any]], c
             quant_summaries.append(
                 f"**{authors_short} ({year})** ({pmid_link}): {details['real_findings']} "
                 f"(Tasarım: {details['study_design']}, kanıt düzeyi: {details.get('evidence_level', UNASSIGNED_EVIDENCE_LEVEL)}, "
-                f"Örneklem: {details['sample_size']}, Sonlanım Ölçütleri: {details['outcomes_summary']}). "
-                f"{_format_bound_claims(details)}"
+                f"Örneklem: {details['sample_size']}, Sonlanım Ölçütleri: {details.get('synthesis_outcomes') or details['outcomes_summary']}). "
+                f"{_format_bound_claims(details, include_implausible=False)}"
             )
 
         sec_lines.append(f"**{query}** odağında incelenen ampirik primer araştırmalar klinik verileri ve nicel etki ölçütlerini ortaya koymaktadır:")
@@ -3985,7 +4393,12 @@ def _generate_section_12_synthesis(query: str, articles: List[Dict[str, Any]], c
             p_url = a.get("pubmed_url", f"https://pubmed.ncbi.nlm.nih.gov/{pmid}/" if pmid else "#")
             p_link = f"[PMID: {pmid}]({p_url})" if pmid else "PMID Yok"
             rev_citations.append(f"{_format_authors_short(a.get('authors', []))} ({a.get('pub_year', '')}) {p_link}")
-            rev_bound.append(_format_bound_claims(extract_article_clinical_details(a, query)))
+            rev_bound.append(
+                _format_bound_claims(
+                    extract_article_clinical_details(a, query),
+                    include_implausible=False,
+                )
+            )
 
         sec_lines.append(
             f"Derleme, meta-analiz, kılavuz ve olgu sunumu niteliğindeki yayınlarda ({', '.join(rev_citations)}) "
@@ -4353,8 +4766,48 @@ def _sample_comparison_cell(profile: List[Dict[str, str]]) -> str:
     return cell
 
 
-def _intervention_comparison_cell(profile: List[Dict[str, str]]) -> str:
-    """Turkish treatment names. The disease name is not an intervention."""
+_TRIAL_DRUG_RE = re.compile(
+    r"\b([A-Za-z]{4,}(?:flozin|mab|nib|glutide|sartan|xaban|pril|olol|dipine|"
+    r"tide|vir|cillin|mycin|prazole|lukast|setron|parin|statin))\b",
+    re.IGNORECASE,
+)
+
+
+def _trial_arm_label(abstract: str) -> str:
+    """Drug names in the allocation sentence, for example 'empagliflozin vs plasebo'.
+
+    Only names written in that sentence are used. A disease name is not a drug.
+    """
+    if not abstract:
+        return ""
+    match = re.search(
+        r"\b(?:randomly\s+assigned|randomi[sz]ed|assigned|allocated|to\s+receive)\b",
+        abstract,
+        re.IGNORECASE,
+    )
+    if not match:
+        return ""
+    sentence = _sentence_around(abstract, match.start(), match.end())
+    drugs = []
+    for drug_match in _TRIAL_DRUG_RE.finditer(sentence):
+        name = drug_match.group(1).lower()
+        if name not in drugs:
+            drugs.append(name)
+    placebo = bool(re.search(r"\bplacebos?\b", sentence, re.IGNORECASE))
+    if not drugs:
+        return ""
+    if placebo:
+        return ", ".join(drugs) + " vs plasebo"
+    if len(drugs) == 1:
+        return drugs[0]
+    return " vs ".join(drugs)
+
+
+def _intervention_comparison_cell(profile: List[Dict[str, str]], abstract: str = "") -> str:
+    """Reported intervention names. The disease name is not an intervention."""
+    arms = _trial_arm_label(abstract)
+    if arms:
+        return arms
     drugs = []
     seen = set()
     for item in profile:
@@ -4408,12 +4861,14 @@ def _format_cross_study_comparison(articles: List[Dict[str, Any]], pico: Optiona
 
         for item in findings:
             outcome = _display_outcome_name(item.get("outcome") or "")
-            effect = _display_effect_text(item.get("effect") or "")
+            effect = format_effect_measure(item.get("effect") or "")
             bit = f"{outcome}: {effect}" if effect else outcome
             if item.get("ci") and item["ci"] != _MISSING_CI_TR:
                 bit += f" (GA {item['ci']})"
             if item.get("p"):
                 bit += f", {item['p']}"
+            if item.get("implausible"):
+                bit += f" {INCONSISTENT_SOURCE_FLAG}"
             _remember(bit)
         for item in profile:
             if item["category"] in (
@@ -4435,7 +4890,10 @@ def _format_cross_study_comparison(articles: List[Dict[str, Any]], pico: Optiona
                 pmid=pmid,
                 patient=_cell(sample_cell, limit=500),
                 design=_cell(details.get("study_design") or design["design"]),
-                intervention=_cell(_intervention_comparison_cell(profile), limit=500),
+                intervention=_cell(
+                    _intervention_comparison_cell(profile, art.get("abstract") or ""),
+                    limit=500,
+                ),
                 findings=_findings_cell("; ".join(finding_bits)),
                 limit=_cell(format_methodological_limitation(art), limit=900),
             )
@@ -4593,12 +5051,21 @@ Lütfen arama terimlerini veya filtreleri genişleterek tekrar deneyiniz.
         stat_summary = _translate_clinical_conclusion_to_turkish("", art.get("abstract", ""), metrics, cd["design"], art.get("title", ""), pico=pico)
         lim_str = format_methodological_limitation(art)
 
-        outcomes_list = extract_outcome_metrics(art.get("abstract", ""))
+        structured = extract_grounded_clinical_findings(art.get("abstract", ""))
         o_str_parts = []
-        if outcomes_list:
-            for om in outcomes_list:
-                m_str = ", ".join(om.get("metrics", [])) if om.get("metrics") else "Özette nicel etki ölçütü yok"
-                o_str_parts.append(f"{om['outcome']} ({m_str})")
+        for item in structured:
+            outcome = _display_outcome_name(item.get("outcome") or "")
+            effect = format_effect_measure(item.get("effect") or "")
+            bits = [f"{outcome}: {effect}" if effect else outcome]
+            if item.get("ci") and item["ci"] != _MISSING_CI_TR:
+                bits.append(f"GA {item['ci']}")
+            if item.get("p"):
+                bits.append(item["p"])
+            line = ", ".join(bits)
+            if item.get("implausible"):
+                line += f" {INCONSISTENT_SOURCE_FLAG}"
+            o_str_parts.append(_sanitize_display_line(line))
+        if o_str_parts:
             o_str = "; ".join(o_str_parts)
         else:
             o_str = "Özette bağlı nicel sonlanım ölçütü bildirilmedi"
@@ -4654,12 +5121,20 @@ Lütfen arama terimlerini veya filtreleri genişleterek tekrar deneyiniz.
         metric_str_parts = []
         if metrics.get("n"):
             metric_str_parts.append(f"Hasta/Örneklem Sayısı (n): {metrics['n']}")
-        if metrics.get("effect_sizes"):
-            metric_str_parts.append(f"Etki Büyüklükleri: {', '.join(metrics['effect_sizes'])}")
-        if metrics.get("confidence_intervals"):
-            metric_str_parts.append(f"%95 Güven Aralığı: {', '.join(metrics['confidence_intervals'])}")
-        if metrics.get("p_values"):
-            metric_str_parts.append(f"p Değerleri: {', '.join(metrics['p_values'])}")
+        structured_bits = []
+        for item in extract_grounded_clinical_findings(art.get("abstract", "")):
+            outcome = _display_outcome_name(item.get("outcome") or "")
+            effect = format_effect_measure(item.get("effect") or "")
+            piece = f"{outcome}: {effect}" if effect else outcome
+            if item.get("ci") and item["ci"] != _MISSING_CI_TR:
+                piece += f", GA {item['ci']}"
+            if item.get("p"):
+                piece += f", {item['p']}"
+            if item.get("implausible"):
+                piece += f" {INCONSISTENT_SOURCE_FLAG}"
+            structured_bits.append(_sanitize_display_line(piece))
+        if structured_bits:
+            metric_str_parts.append("Etki ölçütleri: " + "; ".join(structured_bits))
 
         if metric_str_parts:
             report.append(f"- **Çıkarılan Sayısal / İstatistiksel Parametreler:** {' | '.join(metric_str_parts)}")

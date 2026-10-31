@@ -396,6 +396,7 @@ class UniversalEvidenceEngine:
                 "confidence_intervals": metrics.get("confidence_intervals", []),
                 "p_values": metrics.get("p_values", []),
                 "outcome_metrics": outcome_metrics,
+                "outcome_lines": report_generator.study_effect_lines(abstract),
                 "concomitant_treatments": metrics.get("concomitant_treatments", []),
                 "causality_limitations": metrics.get("causality_limitations", []),
                 "risk_of_bias": rob,
@@ -609,6 +610,7 @@ class UniversalEvidenceEngine:
                 "intervention": p.get("intervention"),
                 "comparison": p.get("comparison"),
                 "outcome_metrics": p.get("outcome_metrics"),
+                "outcome_lines": p.get("outcome_lines") or [],
                 "risk_of_bias": p.get("risk_of_bias", {}).get("overall_rating"),
                 "source_citations": f"{pmid_link} / {doi_link}",
                 "real_findings": p.get("real_findings")
@@ -648,6 +650,8 @@ class UniversalEvidenceEngine:
                         om2 = outcomes2_map.get(matched_outcome_name) or (p2.get("outcome_metrics")[0] if p2.get("outcome_metrics") else None)
 
                         if om1 and om2:
+                            if om1.get("implausible") or om2.get("implausible"):
+                                continue
                             dir1 = self._determine_statistical_direction(om1)
                             dir2 = self._determine_statistical_direction(om2)
 
