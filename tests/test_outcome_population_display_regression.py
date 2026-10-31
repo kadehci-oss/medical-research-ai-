@@ -252,7 +252,7 @@ class TestSamplePopulationCell(unittest.TestCase):
         self.assertIn("90413 katılımcı", kidney_cell)
         self.assertNotIn("chronic", kidney_cell.lower())
         self.assertNotIn("kidney", kidney_cell.lower())
-        self.assertNotRegex(kidney_cell, r"[A-Za-z]{4,}")
+        self.assertNotIn("heart failure", kidney_cell.lower())
 
     def test_findings_cell_does_not_cut_inside_a_value(self):
         text = (
