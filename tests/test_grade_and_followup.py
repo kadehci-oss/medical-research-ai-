@@ -32,7 +32,8 @@ class TestPreliminaryGrade(unittest.TestCase):
     def test_rct_without_bias_language_does_not_invent_a_rob_downgrade(self):
         note = assess_preliminary_grade(SAMPLE_ARTICLES[0], "SGLT2 inhibitors in heart failure")
         self.assertEqual(note["starting_level"], "Yüksek")
-        self.assertEqual(note["domains"]["risk_of_bias"]["status"], "düşürme yok")
+        # [mrai-fixes B3] "double-blind" alone no longer counts as low risk of bias.
+        self.assertEqual(note["domains"]["risk_of_bias"]["status"], "değerlendirilemedi")
         self.assertEqual(note["domains"]["inconsistency"]["status"], "değerlendirilemedi")
         self.assertEqual(note["domains"]["publication_bias"]["status"], "değerlendirilemedi")
         self.assertEqual(note["preliminary_level"], "değerlendirilemedi")
