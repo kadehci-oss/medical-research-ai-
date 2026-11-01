@@ -40,5 +40,5 @@ Kanonik model sürümü: `1.0.0`. Referans verisi: `pubmed_reference_cases.json`
 
 ## Çalıştırma izi
 
-UTC zamanı: `2026-11-01T09:49:59.714606+00:00`; Python: `3.12.3`; çalıştırıcı SHA-256: `940603a093e9c0d7009743b06b354f65859274945724ff47f92e015b91e96510`; referans verisi SHA-256: `246793d61354b5fcc5a724d733b2fcd76c5af1292d9c9a5611b497289ccb4fe3`; çalıştırma anındaki Git HEAD: `2e26ee597988d08df36c9ddb80958032200daf2b`.
+UTC zamanı: `2026-11-01T10:14:30.210190+00:00`; Python: `3.12.3`; çalıştırıcı SHA-256: `940603a093e9c0d7009743b06b354f65859274945724ff47f92e015b91e96510`; referans verisi SHA-256: `246793d61354b5fcc5a724d733b2fcd76c5af1292d9c9a5611b497289ccb4fe3`; çalıştırma anındaki Git HEAD: `903139a503aba79284570f2ee67f695cf6e4c731`.
 Canlı abstract SHA-256 özeti her doğrulanan kayıt için JSON raporunda saklanır. Kimliği doğrulanamayan kayıtlar bu metriklerin paydasına dahil edilmez; değerlendirilmedikleri ayrıca sayılır.
