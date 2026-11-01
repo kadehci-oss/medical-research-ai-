@@ -1,6 +1,6 @@
 {
  "development": {
-  "generated": "2026-10-31",
+  "generated": "2026-11-01",
   "app_version": "v1.5.0",
   "evidence_model_version": "1.0.0",
   "n_studies": 35,
@@ -251,9 +251,9 @@
   "causal_permission_errors": [],
   "report_verification_by_specialty": {
    "Kardiyoloji": {
-    "status": "Doğrulandı",
+    "status": "Uyarılarla doğrulandı",
     "unknown_pmids": [],
-    "quotes_checked": 67,
+    "quotes_checked": 68,
     "quotes_failed": 0,
     "rob_rating_claims": 0,
     "grade_rating_claims": 0
@@ -285,7 +285,7 @@
    "Endokrinoloji": {
     "status": "Doğrulandı",
     "unknown_pmids": [],
-    "quotes_checked": 51,
+    "quotes_checked": 50,
     "quotes_failed": 0,
     "rob_rating_claims": 0,
     "grade_rating_claims": 0
@@ -293,7 +293,7 @@
    "Pediatri": {
     "status": "Doğrulandı",
     "unknown_pmids": [],
-    "quotes_checked": 41,
+    "quotes_checked": 45,
     "quotes_failed": 0,
     "rob_rating_claims": 0,
     "grade_rating_claims": 0
@@ -301,7 +301,7 @@
    "Cerrahi": {
     "status": "Doğrulandı",
     "unknown_pmids": [],
-    "quotes_checked": 39,
+    "quotes_checked": 41,
     "quotes_failed": 0,
     "rob_rating_claims": 0,
     "grade_rating_claims": 0
@@ -309,7 +309,7 @@
    "Radyoloji": {
     "status": "Doğrulandı",
     "unknown_pmids": [],
-    "quotes_checked": 33,
+    "quotes_checked": 34,
     "quotes_failed": 0,
     "rob_rating_claims": 0,
     "grade_rating_claims": 0
@@ -486,7 +486,7 @@
   }
  },
  "holdout_current": {
-  "generated": "2026-10-31",
+  "generated": "2026-11-01",
   "app_version": "v1.5.0",
   "evidence_model_version": "1.0.0",
   "n_studies": 16,
@@ -701,7 +701,7 @@
    "Onkoloji": {
     "status": "Doğrulandı",
     "unknown_pmids": [],
-    "quotes_checked": 28,
+    "quotes_checked": 29,
     "quotes_failed": 0,
     "rob_rating_claims": 0,
     "grade_rating_claims": 0
@@ -709,7 +709,7 @@
    "Nöroloji": {
     "status": "Doğrulandı",
     "unknown_pmids": [],
-    "quotes_checked": 34,
+    "quotes_checked": 36,
     "quotes_failed": 0,
     "rob_rating_claims": 0,
     "grade_rating_claims": 0
@@ -741,7 +741,7 @@
    "Cerrahi": {
     "status": "Doğrulandı",
     "unknown_pmids": [],
-    "quotes_checked": 30,
+    "quotes_checked": 34,
     "quotes_failed": 0,
     "rob_rating_claims": 0,
     "grade_rating_claims": 0
@@ -1180,7 +1180,7 @@
   "_note": "Ayrılmış kümenin İLK ve ayarsız çalıştırması. Motor bu sonuçlardan sonra değiştirildiği için bu dosya donduruldu; sonraki çalıştırmalar ayrılmış küme sayılmaz."
  },
  "holdout2_current": {
-  "generated": "2026-10-31",
+  "generated": "2026-11-01",
   "app_version": "v1.5.0",
   "evidence_model_version": "1.0.0",
   "n_studies": 17,
@@ -1404,7 +1404,7 @@
     "grade_rating_claims": 0
    },
    "Enfeksiyon": {
-    "status": "Doğrulandı",
+    "status": "Uyarılarla doğrulandı",
     "unknown_pmids": [],
     "quotes_checked": 4,
     "quotes_failed": 0,
@@ -1414,7 +1414,7 @@
    "Endokrinoloji": {
     "status": "Doğrulandı",
     "unknown_pmids": [],
-    "quotes_checked": 38,
+    "quotes_checked": 36,
     "quotes_failed": 0,
     "rob_rating_claims": 0,
     "grade_rating_claims": 0
@@ -1436,9 +1436,9 @@
     "grade_rating_claims": 0
    },
    "Radyoloji": {
-    "status": "Doğrulandı",
+    "status": "Uyarılarla doğrulandı",
     "unknown_pmids": [],
-    "quotes_checked": 22,
+    "quotes_checked": 23,
     "quotes_failed": 0,
     "rob_rating_claims": 0,
     "grade_rating_claims": 0

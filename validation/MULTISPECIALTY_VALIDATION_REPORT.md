@@ -1,6 +1,6 @@
 # Çok Branşlı Doğrulama Raporu
 
-Oluşturulma: 2026-10-31 · Yazılım: `v1.5.0` · Kanıt veri modeli: `1.0.0`
+Oluşturulma: 2026-11-01 · Yazılım: `v1.5.0` · Kanıt veri modeli: `1.0.0`
 
 Bu rapor `python validation/run_multispecialty_validation.py` ile üretilir; elle düzenlenmez.
 
@@ -125,14 +125,14 @@ Bu rapor `python validation/run_multispecialty_validation.py` ile üretilir; ell
 
 | Branş | Durum | Alıntı kontrolü | Kümede olmayan PMID | RoB/GRADE derece iddiası |
 |---|---|---|---|---|
-| Kardiyoloji | Doğrulandı | 67/67 | 0 | 0 |
+| Kardiyoloji | Uyarılarla doğrulandı | 68/68 | 0 | 0 |
 | Onkoloji | Doğrulandı | 66/66 | 0 | 0 |
 | Nöroloji | Doğrulandı | 58/58 | 0 | 0 |
 | Enfeksiyon | Doğrulandı | 35/35 | 0 | 0 |
-| Endokrinoloji | Doğrulandı | 51/51 | 0 | 0 |
-| Pediatri | Doğrulandı | 41/41 | 0 | 0 |
-| Cerrahi | Doğrulandı | 39/39 | 0 | 0 |
-| Radyoloji | Doğrulandı | 33/33 | 0 | 0 |
+| Endokrinoloji | Doğrulandı | 50/50 | 0 | 0 |
+| Pediatri | Doğrulandı | 45/45 | 0 | 0 |
+| Cerrahi | Doğrulandı | 41/41 | 0 | 0 |
+| Radyoloji | Doğrulandı | 34/34 | 0 | 0 |
 
 ### Soru çerçevesi seçimi
 
@@ -232,12 +232,12 @@ Bu rapor `python validation/run_multispecialty_validation.py` ile üretilir; ell
 | Branş | Durum | Alıntı kontrolü | Kümede olmayan PMID | RoB/GRADE derece iddiası |
 |---|---|---|---|---|
 | Kardiyoloji | Doğrulandı | 25/25 | 0 | 0 |
-| Onkoloji | Doğrulandı | 28/28 | 0 | 0 |
-| Nöroloji | Doğrulandı | 34/34 | 0 | 0 |
+| Onkoloji | Doğrulandı | 29/29 | 0 | 0 |
+| Nöroloji | Doğrulandı | 36/36 | 0 | 0 |
 | Enfeksiyon | Doğrulandı | 38/38 | 0 | 0 |
 | Endokrinoloji | Doğrulandı | 9/9 | 0 | 0 |
 | Pediatri | Doğrulandı | 6/6 | 0 | 0 |
-| Cerrahi | Doğrulandı | 30/30 | 0 | 0 |
+| Cerrahi | Doğrulandı | 34/34 | 0 | 0 |
 | Radyoloji | Doğrulandı | 15/15 | 0 | 0 |
 
 ### Soru çerçevesi seçimi
@@ -332,11 +332,11 @@ Bu rapor `python validation/run_multispecialty_validation.py` ile üretilir; ell
 | Kardiyoloji | Doğrulandı | 32/32 | 0 | 0 |
 | Onkoloji | Doğrulandı | 20/20 | 0 | 0 |
 | Nöroloji | Doğrulandı | 6/6 | 0 | 0 |
-| Enfeksiyon | Doğrulandı | 4/4 | 0 | 0 |
-| Endokrinoloji | Doğrulandı | 38/38 | 0 | 0 |
+| Enfeksiyon | Uyarılarla doğrulandı | 4/4 | 0 | 0 |
+| Endokrinoloji | Doğrulandı | 36/36 | 0 | 0 |
 | Pediatri | Doğrulandı | 26/26 | 0 | 0 |
 | Cerrahi | Doğrulandı | 17/17 | 0 | 0 |
-| Radyoloji | Doğrulandı | 22/22 | 0 | 0 |
+| Radyoloji | Uyarılarla doğrulandı | 23/23 | 0 | 0 |
 | Kadın Hastalıkları ve Doğum | Doğrulandı | 6/6 | 0 | 0 |
 
 ### Soru çerçevesi seçimi
