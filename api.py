@@ -213,11 +213,12 @@ def api_generate_report(req: ReportRequest):
 def api_universal_engine_synthesize(req: ReportRequest):
     """
     PubMed-record and available-abstract based preliminary Turkish synthesis.
-    Matching and structured extraction are heuristic, not specialist validation.
+    Matching and structured extraction are heuristic, not specialist validation;
+    failed synthesis is returned as an HTTP error, not a successful empty report.
     """
     _require_llm_transfer_confirmation(req)
     articles, verification_results = _load_verified_articles(req.articles)
-    return generate_universal_evidence_synthesis(
+    result = generate_universal_evidence_synthesis(
         query=req.query,
         articles=articles,
         api_key=req.api_key,
@@ -227,3 +228,10 @@ def api_universal_engine_synthesize(req: ReportRequest):
         search_metadata={"search_date": req.search_date, "query": req.query},
         verification_results=verification_results,
     )
+    if not isinstance(result, dict) or result.get("status") != "success":
+        detail = result.get("error") if isinstance(result, dict) else None
+        raise HTTPException(
+            status_code=500,
+            detail=detail or "Sentez tamamlanamadı. Lütfen daha sonra tekrar deneyin.",
+        )
+    return result

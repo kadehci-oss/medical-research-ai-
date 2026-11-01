@@ -430,16 +430,20 @@ def main():
                         search_metadata=search_meta,
                         verification_results=audit_res.get("verification_results", []),
                     )
-                    report_md = synth_res.get("report_markdown", "")
-                    st.session_state["generated_report_verification"] = synth_res.get("report_verification") or {}
-                    st.session_state["generated_structured_json"] = synth_res.get("structured_evidence_json") or ""
-                    st.session_state["generated_report_export"] = synth_res.get("report_markdown_export") or report_md
-                    html_report = synth_res.get("report_html", "")
-                    cross_comp = synth_res.get("cross_comparison", {})
-                    st.session_state["generated_report"] = report_md
-                    st.session_state["generated_html_report"] = html_report
-                    st.session_state["generated_cross_comp"] = cross_comp
-                    st.session_state["generated_report_query"] = query
+                    if not isinstance(synth_res, dict) or synth_res.get("status") != "success":
+                        error_message = synth_res.get("error") if isinstance(synth_res, dict) else None
+                        st.error(error_message or "Sentez tamamlanamadı. Lütfen daha sonra tekrar deneyin.")
+                    else:
+                        report_md = synth_res.get("report_markdown", "")
+                        st.session_state["generated_report_verification"] = synth_res.get("report_verification") or {}
+                        st.session_state["generated_structured_json"] = synth_res.get("structured_evidence_json") or ""
+                        st.session_state["generated_report_export"] = synth_res.get("report_markdown_export") or report_md
+                        html_report = synth_res.get("report_html", "")
+                        cross_comp = synth_res.get("cross_comparison", {})
+                        st.session_state["generated_report"] = report_md
+                        st.session_state["generated_html_report"] = html_report
+                        st.session_state["generated_cross_comp"] = cross_comp
+                        st.session_state["generated_report_query"] = query
 
             if "generated_report" in st.session_state:
                 st.markdown("---")

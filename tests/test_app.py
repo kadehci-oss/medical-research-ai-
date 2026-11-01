@@ -86,6 +86,55 @@ class TestAppRegression(unittest.TestCase):
         self.assertNotIn("generated_report", at.session_state)
         self.assertNotIn("generated_html_report", at.session_state)
 
+    @patch("app.perform_red_team_audit")
+    @patch("app.UniversalEvidenceEngine.generate_synthesis_report")
+    @patch("app.UniversalEvidenceEngine.search_and_verify")
+    def test_synthesis_error_is_not_saved_as_downloadable_report(
+        self, mock_search, mock_synthesize, mock_audit
+    ):
+        mock_search.return_value = {
+            "articles": [{
+                "pmid": "12345",
+                "title": "Test study",
+                "authors": ["Author One"],
+                "journal": "Test Journal",
+                "pub_year": "2024",
+                "publication_types": ["Journal Article"],
+                "abstract": "A study enrolled 100 patients and reported outcomes.",
+                "doi": "10.1000/test",
+                "pubmed_url": "https://pubmed.ncbi.nlm.nih.gov/12345/",
+                "doi_url": "https://doi.org/10.1000/test",
+            }],
+            "total_count": 1,
+            "query": "test query",
+            "search_date": "2024-01-01",
+        }
+        mock_audit.return_value = {
+            "status": "DENETLEME TAMAMLANDI",
+            "citation_integrity": {"verified_citations": 1},
+            "grade_rating_policy": {
+                "notice": "GRADE değerlendirilmedi.",
+                "grade_status": "GRADE Değerlendirilmedi",
+            },
+            "expert_physician_review": "Yapılmadı",
+            "verification_results": [],
+        }
+        mock_synthesize.return_value = {
+            "status": "error",
+            "error": "Sentez sırasında beklenmeyen bir hata oluştu. Lütfen daha sonra tekrar deneyin.",
+        }
+
+        at = AppTest.from_file(os.path.abspath("app.py"), default_timeout=20)
+        at.run()
+        at.text_input[0].input("test query")
+        next(button for button in at.button if "Ara" in button.label).click().run()
+        next(button for button in at.button if "Türkçe Kanıt Raporu" in button.label).click().run()
+
+        self.assertTrue(any("Sentez sırasında beklenmeyen" in item.value for item in at.error))
+        self.assertNotIn("generated_report", at.session_state)
+        self.assertNotIn("generated_html_report", at.session_state)
+        self.assertNotIn("generated_structured_json", at.session_state)
+
     def test_streamlit_displays_version_and_commit_info(self):
         app_path = os.path.abspath("app.py")
         at = AppTest.from_file(app_path, default_timeout=10)

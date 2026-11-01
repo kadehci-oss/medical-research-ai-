@@ -303,6 +303,24 @@ class TestFastAPIApp(unittest.TestCase):
         self.assertEqual(mock_synthesize.call_args.kwargs["articles"][0]["abstract"], "Canonical PubMed abstract")
         self.assertEqual(mock_synthesize.call_args.kwargs["verification_results"][0]["status"], "verified")
 
+    @patch("api._load_verified_articles", return_value=([], []))
+    @patch("api.generate_universal_evidence_synthesis")
+    def test_universal_synthesis_engine_error_is_not_returned_as_success(self, mock_synthesize, _mock_load):
+        mock_synthesize.return_value = {
+            "status": "error",
+            "error": "Sentez sırasında beklenmeyen bir hata oluştu. Lütfen daha sonra tekrar deneyin.",
+            "report_markdown": "# Hata Oluştu",
+        }
+
+        response = client.post(
+            "/api/universal_engine/synthesize",
+            json={"query": "diabetes", "articles": [{"pmid": "12345"}]},
+        )
+
+        self.assertEqual(response.status_code, 500)
+        self.assertIn("Sentez sırasında beklenmeyen", response.json()["detail"])
+        self.assertNotIn("report_markdown", response.json())
+
 
 if __name__ == "__main__":
     unittest.main()
