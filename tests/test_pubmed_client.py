@@ -4,6 +4,7 @@ import requests
 from unittest.mock import patch, MagicMock
 from pubmed_client import (
     parse_pubmed_xml,
+    PubMedXMLParseError,
     search_pubmed,
     verify_pmid,
     verify_doi,
@@ -75,6 +76,19 @@ class TestPubMedClient(unittest.TestCase):
         self.assertIn("Stefan D Anker", art["authors"])
         self.assertIn("Javed Butler", art["authors"])
         self.assertIn("BACKGROUND: SGLT2 inhibitors", art["abstract"])
+
+    def test_parse_pubmed_xml_malformed_response_is_not_empty_result(self):
+        with self.assertRaises(PubMedXMLParseError):
+            parse_pubmed_xml("<PubmedArticleSet><PubmedArticle>")
+
+    def test_parse_pubmed_xml_rejects_entity_expansion(self):
+        unsafe_xml = (
+            '<!DOCTYPE PubmedArticleSet [<!ENTITY xxe SYSTEM "file:///dev/null">]>'
+            '<PubmedArticleSet><PubmedArticle><ArticleTitle>&xxe;</ArticleTitle>'
+            '</PubmedArticle></PubmedArticleSet>'
+        )
+        with self.assertRaises(PubMedXMLParseError):
+            parse_pubmed_xml(unsafe_xml)
 
     @patch("requests.get")
     def test_search_pubmed_success(self, mock_get):
@@ -296,6 +310,25 @@ class TestPubMedClient(unittest.TestCase):
         self.assertFalse(res["verified"])
         self.assertEqual(res["reason"], "doi_mismatch")
         self.assertIn("DOI uyuşmazlığı nedeniyle reddedildi", res["error"])
+
+    @patch("pubmed_client.verify_pmid")
+    def test_verify_citation_doi_missing_from_record_remains_unverified(self, mock_verify_pmid):
+        mock_verify_pmid.return_value = {
+            "valid": True,
+            "pmid": "34449189",
+            "title": "Empagliflozin in Heart Failure",
+            "doi": "",
+        }
+
+        result = verify_citation({
+            "pmid": "34449189",
+            "title": "Empagliflozin in Heart Failure",
+            "doi": "10.1056/NEJMoa2107038",
+        })
+
+        self.assertEqual(result["status"], "unverified")
+        self.assertFalse(result["verified"])
+        self.assertEqual(result["reason"], "doi_missing_from_pubmed_record")
 
     @patch("pubmed_client.verify_pmid")
     def test_verify_citation_api_failure_unverified(self, mock_verify_pmid):

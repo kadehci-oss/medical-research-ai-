@@ -2,7 +2,9 @@ import logging
 import os
 import re
 import time
-import xml.etree.ElementTree as ET
+from defusedxml import ElementTree as ET
+from defusedxml.common import DefusedXmlException
+from xml.etree.ElementTree import Element
 import requests
 from typing import List, Dict, Any, Optional
 from evidence_guards import fill_date_range  # [mrai-fixes]
@@ -129,10 +131,14 @@ def _get_with_retry(
     return response  # pragma: no cover
 
 
-def _get_element_text(elem: Optional[ET.Element]) -> str:
+def _get_element_text(elem: Optional[Element]) -> str:
     if elem is None:
         return ""
     return "".join(elem.itertext()).strip()
+
+
+class PubMedXMLParseError(ValueError):
+    """A non-empty NCBI XML response was malformed or unsafe to parse."""
 
 
 def parse_pubmed_xml(xml_content: str) -> List[Dict[str, Any]]:
@@ -143,8 +149,8 @@ def parse_pubmed_xml(xml_content: str) -> List[Dict[str, Any]]:
 
     try:
         root = ET.fromstring(xml_content)
-    except ET.ParseError as e:
-        return articles
+    except (ET.ParseError, DefusedXmlException) as exc:
+        raise PubMedXMLParseError("PubMed XML response could not be parsed safely.") from exc
 
     for article_elem in root.findall(".//PubmedArticle"):
         medline = article_elem.find("MedlineCitation")
@@ -547,7 +553,16 @@ def verify_citation(citation: Dict[str, Any]) -> Dict[str, Any]:
     if input_doi and str(input_doi).strip():
         norm_input_doi = normalize_doi(str(input_doi))
         norm_fetched_doi = normalize_doi(fetched.get("doi", ""))
-        if norm_input_doi and norm_fetched_doi and norm_input_doi != norm_fetched_doi:
+        if norm_input_doi and not norm_fetched_doi:
+            return {
+                "status": "unverified",
+                "verified": False,
+                "pmid": clean_pmid,
+                "reason": "doi_missing_from_pubmed_record",
+                "error": "DOI PubMed kaydında bulunmadığı için PMID–DOI eşleşmesi doğrulanamadı.",
+                "fetched_article": fetched
+            }
+        if norm_input_doi and norm_fetched_doi != norm_input_doi:
             return {
                 "status": "rejected",
                 "verified": False,
