@@ -14,6 +14,7 @@ from report_generator import (
     extract_article_clinical_details,
     assess_risk_of_bias,
     validate_clinical_report_quality,
+    apply_structured_sample_size,
 )
 
 app = FastAPI(
@@ -192,7 +193,9 @@ def api_generate_report(req: ReportRequest):
     html_report = generate_html_report(req.query, articles, report_md, audit=audit)
     pico = extract_pico(req.query)
     risk_of_bias_list = [assess_risk_of_bias(art) for art in articles]
-    article_clinical_details = [extract_article_clinical_details(art, req.query) for art in articles]
+    article_clinical_details = [
+        apply_structured_sample_size(extract_article_clinical_details(art, req.query), art) for art in articles
+    ]
 
     return {
         "query": req.query,

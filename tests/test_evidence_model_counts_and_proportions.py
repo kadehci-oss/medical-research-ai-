@@ -150,5 +150,21 @@ class TimePointProportions(unittest.TestCase):
         self.assertEqual(em.outcome_label_tr(""), "sonlanım özette adlandırılmadı")
 
 
+class ConfidenceLevelIsNotAnEstimate(unittest.TestCase):
+    def test_methods_sentence_does_not_yield_or_95(self):
+        abstract = ("We performed conditional logistic regression to estimate Odds Ratio (OR) and 95% confidence "
+                    "interval (95% CI). Use was associated with higher risk (OR 1.8, 95% CI 1.2-2.7).")
+        study = _study(abstract, types=("Journal Article",), title="A case-control study")
+        values = {e.value for e in study.estimates}
+        self.assertNotIn(95.0, values)
+        self.assertIn(1.8, values)
+
+    def test_wmd_with_95_ci_in_methods(self):
+        abstract = ("Effect sizes were summarized as risk ratios (RR) or weighted mean differences (WMD) with 95% "
+                    "confidence intervals (CI).")
+        study = _study(abstract, types=("Meta-Analysis",), title="A meta-analysis")
+        self.assertNotIn(95.0, {e.value for e in study.estimates})
+
+
 if __name__ == "__main__":
     unittest.main()

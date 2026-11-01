@@ -17,8 +17,8 @@ Bu rapor `python validation/run_multispecialty_validation.py` ile üretilir; ell
 |---|---|---|---|---|
 | Eksiksiz çıkarım oranı | %100.0 (153/153) | **%77.9 (53/68)** | **%78.8 (52/66)** | %100.0 (68/68) / %93.9 (62/66) |
 | Yanlış çıkarım oranı | %0.0 (0/153) | **%8.6 (5/58)** | **%11.9 (7/59)** | %0.0 (0/68) / %1.6 (1/63) |
-| Kaynak eşleşme doğruluğu (cümle) | %100.0 (179/179) | **%100.0 (62/62)** | **%100.0 (73/73)** | %100.0 (82/82) / %100.0 (79/79) |
-| Kaynak eşleşme doğruluğu (sayısal değer) | %100.0 (129/129) | **%100.0 (52/52)** | **%100.0 (48/48)** | %100.0 (57/57) / %100.0 (55/55) |
+| Kaynak eşleşme doğruluğu (cümle) | %100.0 (210/210) | **%100.0 (62/62)** | **%100.0 (73/73)** | %100.0 (92/92) / %100.0 (87/87) |
+| Kaynak eşleşme doğruluğu (sayısal değer) | %100.0 (160/160) | **%100.0 (52/52)** | **%100.0 (48/48)** | %100.0 (67/67) / %100.0 (63/63) |
 | Yanlış nedensellik iddiası | 0 | **0** | **0** | 0 / 0 |
 | Soru çerçevesi seçimi | 18/18 | **9/10** | **8/8** | 10/10 / 8/8 |
 
@@ -100,8 +100,8 @@ Puanlama `python validation/run_external_reference_check.py` ile yapılır ve ya
 |---|---|
 | Eksiksiz çıkarım oranı | %100.0 (153/153) |
 | Yanlış çıkarım oranı | %0.0 (0/153) |
-| Kaynak eşleşme doğruluğu (cümle) | %100.0 (179/179) |
-| Kaynak eşleşme doğruluğu (sayısal değer) | %100.0 (129/129) |
+| Kaynak eşleşme doğruluğu (cümle) | %100.0 (210/210) |
+| Kaynak eşleşme doğruluğu (sayısal değer) | %100.0 (160/160) |
 | Yanlış nedensellik iddiası | 0 |
 | Örneklem yerine olay/kol sayısı | 0 |
 | Eşlik eden tedavinin müdahale sanılması | 0 |
@@ -148,14 +148,14 @@ Puanlama `python validation/run_external_reference_check.py` ile yapılır ve ya
 
 | Branş | Durum | Alıntı kontrolü | Kümede olmayan PMID | RoB/GRADE derece iddiası |
 |---|---|---|---|---|
-| Kardiyoloji | Doğrulandı | 67/67 | 0 | 0 |
-| Onkoloji | Doğrulandı | 66/66 | 0 | 0 |
-| Nöroloji | Doğrulandı | 58/58 | 0 | 0 |
-| Enfeksiyon | Doğrulandı | 35/35 | 0 | 0 |
-| Endokrinoloji | Doğrulandı | 51/51 | 0 | 0 |
-| Pediatri | Doğrulandı | 41/41 | 0 | 0 |
-| Cerrahi | Doğrulandı | 39/39 | 0 | 0 |
-| Radyoloji | Doğrulandı | 33/33 | 0 | 0 |
+| Kardiyoloji | Doğrulandı | 68/68 | 0 | 0 |
+| Onkoloji | Doğrulandı | 68/68 | 0 | 0 |
+| Nöroloji | Doğrulandı | 57/57 | 0 | 0 |
+| Enfeksiyon | Doğrulandı | 36/36 | 0 | 0 |
+| Endokrinoloji | Doğrulandı | 52/52 | 0 | 0 |
+| Pediatri | Doğrulandı | 43/43 | 0 | 0 |
+| Cerrahi | Doğrulandı | 42/42 | 0 | 0 |
+| Radyoloji | Doğrulandı | 34/34 | 0 | 0 |
 
 ### Soru çerçevesi seçimi
 
@@ -212,8 +212,8 @@ Puanlama `python validation/run_external_reference_check.py` ile yapılır ve ya
 |---|---|
 | Eksiksiz çıkarım oranı | %100.0 (68/68) |
 | Yanlış çıkarım oranı | %0.0 (0/68) |
-| Kaynak eşleşme doğruluğu (cümle) | %100.0 (82/82) |
-| Kaynak eşleşme doğruluğu (sayısal değer) | %100.0 (57/57) |
+| Kaynak eşleşme doğruluğu (cümle) | %100.0 (92/92) |
+| Kaynak eşleşme doğruluğu (sayısal değer) | %100.0 (67/67) |
 | Yanlış nedensellik iddiası | 0 |
 | Örneklem yerine olay/kol sayısı | 0 |
 | Eşlik eden tedavinin müdahale sanılması | 0 |
@@ -255,12 +255,12 @@ Puanlama `python validation/run_external_reference_check.py` ile yapılır ve ya
 | Branş | Durum | Alıntı kontrolü | Kümede olmayan PMID | RoB/GRADE derece iddiası |
 |---|---|---|---|---|
 | Kardiyoloji | Doğrulandı | 25/25 | 0 | 0 |
-| Onkoloji | Doğrulandı | 28/28 | 0 | 0 |
-| Nöroloji | Doğrulandı | 34/34 | 0 | 0 |
-| Enfeksiyon | Doğrulandı | 38/38 | 0 | 0 |
+| Onkoloji | Doğrulandı | 29/29 | 0 | 0 |
+| Nöroloji | Doğrulandı | 36/36 | 0 | 0 |
+| Enfeksiyon | Doğrulandı | 39/39 | 0 | 0 |
 | Endokrinoloji | Doğrulandı | 9/9 | 0 | 0 |
-| Pediatri | Doğrulandı | 6/6 | 0 | 0 |
-| Cerrahi | Doğrulandı | 30/30 | 0 | 0 |
+| Pediatri | Doğrulandı | 8/8 | 0 | 0 |
+| Cerrahi | Doğrulandı | 34/34 | 0 | 0 |
 | Radyoloji | Doğrulandı | 15/15 | 0 | 0 |
 
 ### Soru çerçevesi seçimi
@@ -311,8 +311,8 @@ Puanlama `python validation/run_external_reference_check.py` ile yapılır ve ya
 |---|---|
 | Eksiksiz çıkarım oranı | %93.9 (62/66) |
 | Yanlış çıkarım oranı | %1.6 (1/63) |
-| Kaynak eşleşme doğruluğu (cümle) | %100.0 (79/79) |
-| Kaynak eşleşme doğruluğu (sayısal değer) | %100.0 (55/55) |
+| Kaynak eşleşme doğruluğu (cümle) | %100.0 (87/87) |
+| Kaynak eşleşme doğruluğu (sayısal değer) | %100.0 (63/63) |
 | Yanlış nedensellik iddiası | 0 |
 | Örneklem yerine olay/kol sayısı | 0 |
 | Eşlik eden tedavinin müdahale sanılması | 0 |
@@ -354,12 +354,12 @@ Puanlama `python validation/run_external_reference_check.py` ile yapılır ve ya
 |---|---|---|---|---|
 | Kardiyoloji | Doğrulandı | 32/32 | 0 | 0 |
 | Onkoloji | Doğrulandı | 20/20 | 0 | 0 |
-| Nöroloji | Doğrulandı | 6/6 | 0 | 0 |
-| Enfeksiyon | Doğrulandı | 4/4 | 0 | 0 |
-| Endokrinoloji | Doğrulandı | 38/38 | 0 | 0 |
+| Nöroloji | Doğrulandı | 7/7 | 0 | 0 |
+| Enfeksiyon | Doğrulandı | 5/5 | 0 | 0 |
+| Endokrinoloji | Doğrulandı | 39/39 | 0 | 0 |
 | Pediatri | Doğrulandı | 26/26 | 0 | 0 |
-| Cerrahi | Doğrulandı | 18/18 | 0 | 0 |
-| Radyoloji | Doğrulandı | 22/22 | 0 | 0 |
+| Cerrahi | Doğrulandı | 19/19 | 0 | 0 |
+| Radyoloji | Doğrulandı | 24/24 | 0 | 0 |
 | Kadın Hastalıkları ve Doğum | Doğrulandı | 6/6 | 0 | 0 |
 
 ### Soru çerçevesi seçimi

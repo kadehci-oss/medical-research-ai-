@@ -409,7 +409,7 @@ class UniversalEvidenceEngine:
                 "confidence_intervals": metrics.get("confidence_intervals", []),
                 "p_values": metrics.get("p_values", []),
                 "outcome_metrics": outcome_metrics,
-                "outcome_lines": report_generator.study_effect_lines(abstract),
+                "outcome_lines": report_generator.study_effect_lines(abstract, art),
                 "concomitant_treatments": metrics.get("concomitant_treatments", []),
                 "causality_limitations": metrics.get("causality_limitations", []),
                 "risk_of_bias": rob,
@@ -820,12 +820,19 @@ def enrich_record(rec: dict) -> dict:
     # A background mention of other randomized trials is not this study's design
     # and is not a completed RoB 2 rating. Non-RCTs are not stamped "Low".
     if is_rct:
+        # Text signals only. A keyword scan of the abstract is not a RoB 2 judgement,
+        # so no domain or overall rating is returned.
         rob = assess_rob2(abstract)
-        rec["rob2"] = rob.to_dict()
-        rec["rob2"]["scope"] = (
-            "Özet metninden sinyal taraması. Tam metin RoB 2 değerlendirmesi yapılmadı; "
-            "bu alan bir kanıt düzeyi değildir."
-        )
+        rec["rob2"] = {
+            "status": "not_assessed",
+            "overall": None,
+            "overall_tr": "Değerlendirilmedi (derece verilmedi)",
+            "signals": list(rob.signals),
+            "scope": (
+                "Özet metninden ifade taraması. Tam metin RoB 2 değerlendirmesi yapılmadı; "
+                "alan veya genel yanlılık derecesi verilmez."
+            ),
+        }
     else:
         rec["rob2"] = None
 

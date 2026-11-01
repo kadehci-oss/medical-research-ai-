@@ -182,7 +182,9 @@ class TestKlinikBulgularCellIsSourceGrounded(unittest.TestCase):
     def test_named_effects_keep_pmid_outcome_value_ci_and_source_sentence(self):
         leukaemia = format_klinik_bulgular_cell(self.by_pmid["12556958"])
         self.assertIn("PMID: 12556958", leukaemia)
-        self.assertIn("Sonlanım: lösemi", leukaemia)
+        # The source restricts the OR to lymphocytic (not myeloid) leukaemia; the
+        # more specific endpoint is the faithful one.
+        self.assertIn("Sonlanım: lenfositik lösemi", leukaemia)
         self.assertNotIn("Sonlanım: leukaemia", leukaemia)
         self.assertIn("Etki ölçütü: olasılık oranı (OR) 4.2", leukaemia)
         self.assertIn("Güven aralığı: 1.1 ile 16.2", leukaemia)
