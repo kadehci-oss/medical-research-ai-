@@ -4,7 +4,6 @@ import re
 import time
 from defusedxml import ElementTree as ET
 from defusedxml.common import DefusedXmlException
-from xml.etree.ElementTree import Element
 import requests
 from typing import List, Dict, Any, Optional
 from evidence_guards import fill_date_range  # [mrai-fixes]
@@ -131,7 +130,7 @@ def _get_with_retry(
     return response  # pragma: no cover
 
 
-def _get_element_text(elem: Optional[Element]) -> str:
+def _get_element_text(elem: Optional[Any]) -> str:
     if elem is None:
         return ""
     return "".join(elem.itertext()).strip()
