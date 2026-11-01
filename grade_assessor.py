@@ -2,7 +2,7 @@
 grade_assessor.py — GRADE benzeri kanıt gücü değerlendirmesi.
 """
 from dataclasses import dataclass, asdict
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 
 @dataclass
 class GradeResult:
@@ -14,8 +14,11 @@ class GradeResult:
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self)
 
+NOT_ASSESSED = "Değerlendirilemedi"
+
+
 def assess_grade(study_design: Any,
-                 rob2_overall: str = "Low",
+                 rob2_overall: Optional[str] = None,
                  heterogeneity_i2: float = 0.0,
                  imprecision: bool = False,
                  indirectness: bool = False,
@@ -27,10 +30,15 @@ def assess_grade(study_design: Any,
 
     if "rct" in design or "randomized" in design:
         starting = "High"
-    elif "cohort" in design or "case-control" in design or "cross-sectional" in design:
+    elif "cohort" in design or "case-control" in design or "case_control" in design \
+            or "cross-sectional" in design or "cross_sectional" in design:
         starting = "Low"
     else:
-        starting = "Very low"
+        # An unknown design is not rated "Very low"; it is not rated at all.
+        return GradeResult(NOT_ASSESSED, NOT_ASSESSED, ["Tasarım GRADE başlangıcı için belirlenemedi"], [])
+    if rob2_overall is None:
+        # Risk of bias was not assessed, so no certainty level is given.
+        return GradeResult(starting, NOT_ASSESSED, ["Yanlılık riski değerlendirilmedi; kesinlik düzeyi atanmadı"], [])
 
     score = {"High": 4, "Moderate": 3, "Low": 2, "Very low": 1}[starting]
     downgrades, upgrades = [], []

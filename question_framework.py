@@ -123,9 +123,10 @@ _RULES: List[Tuple[str, re.Pattern]] = [
     ("health_services", re.compile(
         r"\b(?:cost[- ]effective\w*|cost[- ]utility|cost[- ]benefit|costs?\b|economic\s+evaluation|health\s+services?|"
         r"implementation|telemedicine|teleradiology|telehealth|care\s+delivery|access\s+to\s+care|waiting\s+times?|"
-        r"workflow|quality\s+improvement|readmission\s+program|maliyet|sağlık\s+hizmet\w*|erişim|teletıp)\b",
+        r"workflow|quality\s+improvement|readmission\s+program|patient\s+satisfaction|maliyet|sağlık\s+hizmet\w*|erişim|teletıp|"
+        r"bekleme\s+süre\w*|memnuniyet\w*|kalite\s+iyileştirme\w*)\b",
         re.IGNORECASE)),
-    ("screening", re.compile(r"\b(?:screening|screened|tarama(?:sı|da|nın)?|taranması)\b", re.IGNORECASE)),
+    ("screening", re.compile(r"\b(?:screening|screened|tarama\w*|taranma\w*)\b", re.IGNORECASE)),
     ("diagnosis", re.compile(
         r"\b(?:diagnos\w*|sensitivity|specificity|accuracy|detection|detect\w*|positive\s+predictive|negative\s+predictive|"
         r"likelihood\s+ratio|ROC|AUC|area\s+under|tanı\w*|tanısal|duyarlılı\w*|özgüllü\w*|doğruluğu?)\b",
@@ -135,11 +136,11 @@ _RULES: List[Tuple[str, re.Pattern]] = [
         re.IGNORECASE)),
     ("prognosis", re.compile(
         r"\b(?:prognos\w*|predictors?\s+of|predict\w*|long[- ]term\s+(?:outcome|risk|prognosis)|survival\s+(?:after|of)|"
-        r"natural\s+history|recurrence\s+risk|prognoz\w*|öngörü\w*|seyri)\b",
+        r"natural\s+history|recurrence\s+risk|prognoz\w*|öngör\w*|seyri)\b",
         re.IGNORECASE)),
     ("safety", re.compile(
         r"\b(?:adverse\s+(?:events?|effects?|reactions?)|safety|toxicity|side[- ]effects?|harms?|complications?\s+of\s+\w+\s+therapy|"
-        r"yan\s+etki\w*|advers|güvenlili\w*|toksisite\w*)\b",
+        r"\w+[- ]induced|ilaca\s+bağlı|ilaç\s+kaynaklı|yan\s+etki\w*|advers|güvenlili\w*|toksisite\w*)\b",
         re.IGNORECASE)),
     ("etiology", re.compile(
         r"\b(?:risk\s+factors?|risk\s+of|associated\s+with|association|exposure|aetiolog\w*|etiolog\w*|causes?\s+of|"

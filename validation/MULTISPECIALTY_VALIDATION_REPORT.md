@@ -1,6 +1,6 @@
 # Çok Branşlı Doğrulama Raporu
 
-Oluşturulma: 2026-10-31 · Yazılım: `v1.5.0` · Kanıt veri modeli: `1.0.0`
+Oluşturulma: 2026-11-01 · Yazılım: `v1.5.0` · Kanıt veri modeli: `1.0.0`
 
 Bu rapor `python validation/run_multispecialty_validation.py` ile üretilir; elle düzenlenmez.
 
@@ -15,10 +15,10 @@ Bu rapor `python validation/run_multispecialty_validation.py` ile üretilir; ell
 
 | Ölçüt | Geliştirme kümesi (ayarlı) | **Ayrılmış küme 1, ilk çalıştırma (bağımsız)** | **Ayrılmış küme 2, ilk çalıştırma (bağımsız)** | Küme 1 + 2, düzeltme sonrası (bağımsız değil) |
 |---|---|---|---|---|
-| Eksiksiz çıkarım oranı | %100.0 (153/153) | **%77.9 (53/68)** | **%78.8 (52/66)** | %100.0 (68/68) / %92.4 (61/66) |
-| Yanlış çıkarım oranı | %0.0 (0/153) | **%8.6 (5/58)** | **%11.9 (7/59)** | %0.0 (0/68) / %1.6 (1/62) |
-| Kaynak eşleşme doğruluğu (cümle) | %100.0 (179/179) | **%100.0 (62/62)** | **%100.0 (73/73)** | %100.0 (82/82) / %100.0 (78/78) |
-| Kaynak eşleşme doğruluğu (sayısal değer) | %100.0 (129/129) | **%100.0 (52/52)** | **%100.0 (48/48)** | %100.0 (57/57) / %100.0 (54/54) |
+| Eksiksiz çıkarım oranı | %100.0 (153/153) | **%77.9 (53/68)** | **%78.8 (52/66)** | %100.0 (68/68) / %93.9 (62/66) |
+| Yanlış çıkarım oranı | %0.0 (0/153) | **%8.6 (5/58)** | **%11.9 (7/59)** | %0.0 (0/68) / %1.6 (1/63) |
+| Kaynak eşleşme doğruluğu (cümle) | %100.0 (210/210) | **%100.0 (62/62)** | **%100.0 (73/73)** | %100.0 (92/92) / %100.0 (87/87) |
+| Kaynak eşleşme doğruluğu (sayısal değer) | %100.0 (160/160) | **%100.0 (52/52)** | **%100.0 (48/48)** | %100.0 (67/67) / %100.0 (63/63) |
 | Yanlış nedensellik iddiası | 0 | **0** | **0** | 0 / 0 |
 | Soru çerçevesi seçimi | 18/18 | **9/10** | **8/8** | 10/10 / 8/8 |
 
@@ -55,6 +55,29 @@ Bu rapor `python validation/run_multispecialty_validation.py` ile üretilir; ell
 - **PMID 41410574:** EKSİK: 41410574 accuracy 78.6 None
 - **PMID 41354041:** EKSİK: 41354041 örneklem None (beklenen 8094)
 
+## Dış referans: PR #64'ün sekiz PubMed vakası
+
+Referans tablosu (`validation/reference_external_pr64.json`) PR #64'te başka bir yapay zekâ ajanı tarafından, bu motor
+bu kayıtları görmeden yazıldı ve buraya değiştirilmeden kopyalandı. Sekiz branşın her birinden bir yayın içerir.
+Puanlama `python validation/run_external_reference_check.py` ile yapılır ve yalnızca sayısal alanları kapsar
+(tasarım, toplam n, kol n, etki tahmini, GA, p, olay sayısı); niteliksel alanlar ayrıca listelenir.
+Ölçüt tanımları yukarıdaki kümelerden farklıdır; oranlar doğrudan karşılaştırılamaz.
+
+| Ölçüt | **İlk çalıştırma (bağımsız)** | Düzeltme sonrası (bağımsız değil) |
+|---|---|---|
+| Doğru alan | **%67.4 (31/46)** | %97.7 (42/43) |
+| Yanlış alan | **%8.7 (4/46)** | %0.0 (0/43) |
+| Eksik alan | **11/46** | 1/43 |
+| Eksiksiz makale | **3/8** | 7/8 |
+
+### Dış referans: ilk çalıştırmada bulunan hatalar
+
+- **PMID 34449189** (Kardiyoloji, rct): eksik arm_n:empagliflozin (beklenen 2997, bulunan None); eksik arm_n:placebo (beklenen 2991, bulunan None); eksik events:407 (total number of hospitalizatio) (beklenen 407, bulunan [415, 511, 2997, 2991]); eksik events:541 (total number of hospitalizatio) (beklenen 541, bulunan [415, 511, 2997, 2991]); yanlış olay sayısı olarak hasta sayısı: 2997 (beklenen olay değil, bulunan 2997); yanlış olay sayısı olarak hasta sayısı: 2991 (beklenen olay değil, bulunan 2991)
+- **PMID 39416390** (Onkoloji, meta_analysis): yanlış total_n (beklenen 2833, bulunan 5); eksik estimate:proportion 71.8% (12-month overall survival for combined a) (beklenen 71.8%, bulunan None); eksik ci:proportion 71.8% (12-month overall survival for combined a) (beklenen ['67.6%', '76.2%'], bulunan None); eksik estimate:proportion 35.1% (12-month progression-free survival for c) (beklenen 35.1%, bulunan None); eksik ci:proportion 35.1% (12-month progression-free survival for c) (beklenen ['30.5%', '40.4%'], bulunan None)
+- **PMID 32113113** (Nöroloji, cohort): eksik total_n (beklenen 302, bulunan None)
+- **PMID 17540675** (Enfeksiyon hastalıkları, case_control): eksik total_n (beklenen 903, bulunan None)
+- **PMID 31732398** (Radyoloji, diagnostic_accuracy): eksik total_n (beklenen 48, bulunan None); yanlış olay sayısı olarak hasta sayısı: 48 (beklenen olay değil, bulunan 48)
+
 ## Geliştirme kümesi ayrıntıları
 
 ### Kapsam ve yöntem
@@ -77,8 +100,8 @@ Bu rapor `python validation/run_multispecialty_validation.py` ile üretilir; ell
 |---|---|
 | Eksiksiz çıkarım oranı | %100.0 (153/153) |
 | Yanlış çıkarım oranı | %0.0 (0/153) |
-| Kaynak eşleşme doğruluğu (cümle) | %100.0 (179/179) |
-| Kaynak eşleşme doğruluğu (sayısal değer) | %100.0 (129/129) |
+| Kaynak eşleşme doğruluğu (cümle) | %100.0 (210/210) |
+| Kaynak eşleşme doğruluğu (sayısal değer) | %100.0 (160/160) |
 | Yanlış nedensellik iddiası | 0 |
 | Örneklem yerine olay/kol sayısı | 0 |
 | Eşlik eden tedavinin müdahale sanılması | 0 |
@@ -125,14 +148,14 @@ Bu rapor `python validation/run_multispecialty_validation.py` ile üretilir; ell
 
 | Branş | Durum | Alıntı kontrolü | Kümede olmayan PMID | RoB/GRADE derece iddiası |
 |---|---|---|---|---|
-| Kardiyoloji | Doğrulandı | 67/67 | 0 | 0 |
-| Onkoloji | Doğrulandı | 66/66 | 0 | 0 |
-| Nöroloji | Doğrulandı | 58/58 | 0 | 0 |
-| Enfeksiyon | Doğrulandı | 35/35 | 0 | 0 |
-| Endokrinoloji | Doğrulandı | 51/51 | 0 | 0 |
-| Pediatri | Doğrulandı | 41/41 | 0 | 0 |
-| Cerrahi | Doğrulandı | 39/39 | 0 | 0 |
-| Radyoloji | Doğrulandı | 33/33 | 0 | 0 |
+| Kardiyoloji | Doğrulandı | 68/68 | 0 | 0 |
+| Onkoloji | Doğrulandı | 68/68 | 0 | 0 |
+| Nöroloji | Doğrulandı | 57/57 | 0 | 0 |
+| Enfeksiyon | Doğrulandı | 36/36 | 0 | 0 |
+| Endokrinoloji | Doğrulandı | 52/52 | 0 | 0 |
+| Pediatri | Doğrulandı | 43/43 | 0 | 0 |
+| Cerrahi | Doğrulandı | 42/42 | 0 | 0 |
+| Radyoloji | Doğrulandı | 34/34 | 0 | 0 |
 
 ### Soru çerçevesi seçimi
 
@@ -189,8 +212,8 @@ Bu rapor `python validation/run_multispecialty_validation.py` ile üretilir; ell
 |---|---|
 | Eksiksiz çıkarım oranı | %100.0 (68/68) |
 | Yanlış çıkarım oranı | %0.0 (0/68) |
-| Kaynak eşleşme doğruluğu (cümle) | %100.0 (82/82) |
-| Kaynak eşleşme doğruluğu (sayısal değer) | %100.0 (57/57) |
+| Kaynak eşleşme doğruluğu (cümle) | %100.0 (92/92) |
+| Kaynak eşleşme doğruluğu (sayısal değer) | %100.0 (67/67) |
 | Yanlış nedensellik iddiası | 0 |
 | Örneklem yerine olay/kol sayısı | 0 |
 | Eşlik eden tedavinin müdahale sanılması | 0 |
@@ -232,12 +255,12 @@ Bu rapor `python validation/run_multispecialty_validation.py` ile üretilir; ell
 | Branş | Durum | Alıntı kontrolü | Kümede olmayan PMID | RoB/GRADE derece iddiası |
 |---|---|---|---|---|
 | Kardiyoloji | Doğrulandı | 25/25 | 0 | 0 |
-| Onkoloji | Doğrulandı | 28/28 | 0 | 0 |
-| Nöroloji | Doğrulandı | 34/34 | 0 | 0 |
-| Enfeksiyon | Doğrulandı | 38/38 | 0 | 0 |
+| Onkoloji | Doğrulandı | 29/29 | 0 | 0 |
+| Nöroloji | Doğrulandı | 36/36 | 0 | 0 |
+| Enfeksiyon | Doğrulandı | 39/39 | 0 | 0 |
 | Endokrinoloji | Doğrulandı | 9/9 | 0 | 0 |
-| Pediatri | Doğrulandı | 6/6 | 0 | 0 |
-| Cerrahi | Doğrulandı | 30/30 | 0 | 0 |
+| Pediatri | Doğrulandı | 8/8 | 0 | 0 |
+| Cerrahi | Doğrulandı | 34/34 | 0 | 0 |
 | Radyoloji | Doğrulandı | 15/15 | 0 | 0 |
 
 ### Soru çerçevesi seçimi
@@ -286,10 +309,10 @@ Bu rapor `python validation/run_multispecialty_validation.py` ile üretilir; ell
 
 | Ölçüt | Değer |
 |---|---|
-| Eksiksiz çıkarım oranı | %92.4 (61/66) |
-| Yanlış çıkarım oranı | %1.6 (1/62) |
-| Kaynak eşleşme doğruluğu (cümle) | %100.0 (78/78) |
-| Kaynak eşleşme doğruluğu (sayısal değer) | %100.0 (54/54) |
+| Eksiksiz çıkarım oranı | %93.9 (62/66) |
+| Yanlış çıkarım oranı | %1.6 (1/63) |
+| Kaynak eşleşme doğruluğu (cümle) | %100.0 (87/87) |
+| Kaynak eşleşme doğruluğu (sayısal değer) | %100.0 (63/63) |
 | Yanlış nedensellik iddiası | 0 |
 | Örneklem yerine olay/kol sayısı | 0 |
 | Eşlik eden tedavinin müdahale sanılması | 0 |
@@ -301,7 +324,7 @@ Bu rapor `python validation/run_multispecialty_validation.py` ile üretilir; ell
 
 | Branş | Yayın | Tasarımlar | Eksiksiz çıkarım | Yanlış çıkarım |
 |---|---|---|---|---|
-| Cerrahi | 2 | Vaka-kontrol | %83.3 (5/6) | %0.0 (0/5) |
+| Cerrahi | 2 | Vaka-kontrol | %100.0 (6/6) | %0.0 (0/6) |
 | Endokrinoloji | 4 | Kohort, Meta-analiz, RCT | %100.0 (14/14) | %0.0 (0/14) |
 | Enfeksiyon | 1 | Tanısal doğruluk | %100.0 (1/1) | %0.0 (0/1) |
 | Kadın Hastalıkları ve Doğum | 1 | RCT | %80.0 (4/5) | %0.0 (0/4) |
@@ -315,7 +338,7 @@ Bu rapor `python validation/run_multispecialty_validation.py` ile üretilir; ell
 
 | Tasarım | Yayın | Eksiksiz çıkarım | Yanlış çıkarım |
 |---|---|---|---|
-| Vaka-kontrol | 2 | %83.3 (5/6) | %0.0 (0/5) |
+| Vaka-kontrol | 2 | %100.0 (6/6) | %0.0 (0/6) |
 | Kohort | 4 | %100.0 (11/11) | %0.0 (0/11) |
 | Tanısal doğruluk | 3 | %100.0 (10/10) | %0.0 (0/10) |
 | Meta-analiz | 2 | %100.0 (8/8) | %0.0 (0/8) |
@@ -331,12 +354,12 @@ Bu rapor `python validation/run_multispecialty_validation.py` ile üretilir; ell
 |---|---|---|---|---|
 | Kardiyoloji | Doğrulandı | 32/32 | 0 | 0 |
 | Onkoloji | Doğrulandı | 20/20 | 0 | 0 |
-| Nöroloji | Doğrulandı | 6/6 | 0 | 0 |
-| Enfeksiyon | Doğrulandı | 4/4 | 0 | 0 |
-| Endokrinoloji | Doğrulandı | 38/38 | 0 | 0 |
+| Nöroloji | Doğrulandı | 7/7 | 0 | 0 |
+| Enfeksiyon | Doğrulandı | 5/5 | 0 | 0 |
+| Endokrinoloji | Doğrulandı | 39/39 | 0 | 0 |
 | Pediatri | Doğrulandı | 26/26 | 0 | 0 |
-| Cerrahi | Doğrulandı | 17/17 | 0 | 0 |
-| Radyoloji | Doğrulandı | 22/22 | 0 | 0 |
+| Cerrahi | Doğrulandı | 19/19 | 0 | 0 |
+| Radyoloji | Doğrulandı | 24/24 | 0 | 0 |
 | Kadın Hastalıkları ve Doğum | Doğrulandı | 6/6 | 0 | 0 |
 
 ### Soru çerçevesi seçimi
@@ -356,7 +379,6 @@ Bu rapor `python validation/run_multispecialty_validation.py` ile üretilir; ell
 
 - **PMID 41631724:** EKSİK: 41631724 müdahale '' (beklenen ['1-month', '3-month']); EKSİK: 41631724 karşılaştırıcı '' (beklenen ['3-month', '12-month'])
 - **PMID 41092331:** YANLIŞ: 41092331 karşılaştırıcı 'control' (beklenen ['placebo'])
-- **PMID 41167592:** EKSİK: 41167592 örneklem None (beklenen 198)
 - **PMID 41354041:** EKSİK: 41354041 örneklem None (beklenen 8094)
 
 ### Test kategorileri

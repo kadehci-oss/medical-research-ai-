@@ -231,3 +231,26 @@ class TestReviewPacket(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestAuthorClaimGuardKeepsEndpointNames(unittest.TestCase):
+    """'all-cause' and 'cause-specific' are endpoint names, not author claims."""
+
+    def test_all_cause_mortality_is_not_an_author_claim(self):
+        from grade_assessment import _AUTHOR_CLAIM_RE
+        for label in ("all-cause mortality", "cause-specific mortality", "All-cause death"):
+            self.assertIsNone(_AUTHOR_CLAIM_RE.search(label), label)
+
+    def test_claim_verbs_are_still_caught(self):
+        from grade_assessment import _AUTHOR_CLAIM_RE
+        for label in ("Drug A caused fewer deaths", "statins cause myopathy", "Drug A outperformed placebo"):
+            self.assertIsNotNone(_AUTHOR_CLAIM_RE.search(label), label)
+
+    def test_section11_line_keeps_all_cause_mortality(self):
+        from grade_assessment import format_preliminary_grade_markdown
+        article = {
+            "pmid": "123", "title": "Drug A trial", "publication_types": ["Randomized Controlled Trial"],
+            "abstract": "In this randomized trial of 600 adults, Drug A reduced all-cause mortality (HR 0.75, 95% CI 0.62-0.90).",
+        }
+        md = format_preliminary_grade_markdown("Drug A", [article])
+        self.assertNotIn("yazar yorumu var", md)

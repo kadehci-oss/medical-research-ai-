@@ -366,7 +366,7 @@ _TOTAL_PATTERNS: List[Tuple[str, re.Pattern]] = [
         re.IGNORECASE)),
     ("enrolled", re.compile(
         rf"\b(?:randomly\s+assigned|randomi[sz]ed|randomised|assigned|enrolled|recruited|included|analy[sz]ed|include|enrol{{1,2}}|recruit|"
-        rf"evaluated|examined|studied|conducted\s+(?:on|in|among)|involving|comprising)\s+(?:a\s+total\s+of\s+)?"
+        rf"evaluated|examined|studied|followed(?:\s+up)?|conducted\s+(?:on|in|among)|involving|comprising)\s+(?:a\s+total\s+of\s+)?"
         rf"(?P<n>{NUM_RE})\s+{_FILLER}{_PEOPLE}\b",
         re.IGNORECASE)),
     ("enrolled", re.compile(
@@ -405,15 +405,23 @@ _POOLED_EXTRA = [
 ]
 _POOLED_PATTERN = re.compile(
     rf"\b(?:studies|trials|RCTs|cohorts|articles)\b[^.]{{0,90}}?\b(?:including|involving|comprising|encompassing|"
-    rf"yielding|of|with|enrolling|totaling|totalling)\s+(?P<n>{NUM_RE})\s+{_FILLER_SHORT}{_PEOPLE}\b",
+    rf"yielding|of|with|enrolling|totaling|totalling)\s+(?:a\s+total\s+of\s+|an?\s+overall\s+)?(?P<n>{NUM_RE})\s+{_FILLER_SHORT}{_PEOPLE}\b",
     re.IGNORECASE,
 )
 
 _EVENT_PATTERNS = [
-    re.compile(rf"\b(?P<e>{_DIGIT_NUM_RE})\s+(?:\((?P<p>\d+(?:\.\d+)?)%\)\s+)?of\s+(?:the\s+)?(?P<t>{_DIGIT_NUM_RE})\b"),
+    # "415 of 2997 patients (13.8%)": the percent after the denominator belongs to the numerator.
+    re.compile(rf"\b(?P<e>{_DIGIT_NUM_RE})\s+(?:\((?P<p>\d+(?:\.\d+)?)%\)\s+)?of\s+(?:the\s+)?(?P<t>{_DIGIT_NUM_RE})\b"
+               rf"(?:\s+{_FILLER_SHORT}{_PEOPLE})?(?:\s*\((?P<p2>\d+(?:\.\d+)?)%\))?"),
+    # "14/48 (29%)": numerator over denominator.
+    re.compile(rf"(?<![\d/.])(?P<e>\d{{1,6}})\s*/\s*(?P<t>\d{{1,6}})(?![\d/.])(?:\s*\((?P<p>\d+(?:\.\d+)?)%\))?"),
     re.compile(rf"\b(?P<e>{_DIGIT_NUM_RE})\s+{_FILLER_SHORT}{_PEOPLE}\s+\((?P<p>\d+(?:\.\d+)?)%\)"),
     re.compile(rf"\b(?P<e>{_DIGIT_NUM_RE})\s+\((?P<p>\d+(?:\.\d+)?)%\)"),
 ]
+# A number right after "of" or "/" is a denominator, never an event count.
+_DENOMINATOR_BEFORE_RE = re.compile(r"(?:\bof\s+(?:the\s+)?|/\s*)$", re.IGNORECASE)
+# ... except "a total of N" / "number of N", which introduce a count, not a denominator.
+_TOTAL_OF_BEFORE_RE = re.compile(r"\b(?:total|number|sum)\s+of\s+(?:the\s+)?$", re.IGNORECASE)
 
 _FUTURE_RE = re.compile(r"\b(?:will|shall)\s+(?:be\s+)?(?:include|enrol|enroll|recruit|randomi[sz]e|included|enrolled|recruited)", re.IGNORECASE)
 
@@ -522,14 +530,350 @@ def extract_event_counts(article: Dict[str, Any]) -> List[EventCount]:
                 events = parse_count(match.group("e"))
                 if events is None or rg._is_calendar_year(str(events)):
                     continue
+                before = sentence[:match.start()]
+                if _DENOMINATOR_BEFORE_RE.search(before) and not _TOTAL_OF_BEFORE_RE.search(before):
+                    continue
                 total = parse_count(match.groupdict().get("t") or "")
-                pct = _to_float(match.groupdict().get("p") or "")
+                if total is not None and events > total:
+                    continue
+                pct = _to_float(match.groupdict().get("p") or match.groupdict().get("p2") or "")
                 key = (events, total, pct, sentence)
                 if key in seen:
                     continue
                 seen.add(key)
                 counts.append(EventCount(events=events, total=total, percent=pct, source=_source(article, sentence)))
     return counts
+
+
+def _arm_label_re(label: str) -> str:
+    """Arm label as a regex: whitespace-tolerant, case-insensitive literal."""
+    words = [re.escape(w) for w in (label or "").split()]
+    return r"\s+".join(words)
+
+
+def fill_arm_sizes_from_results(article: Dict[str, Any], arms: List[StudyArm]) -> None:
+    """Fill a missing arm size from "x of N patients (...) in the <arm> group".
+
+    Only an arm whose label is written out in the same clause is filled, and
+    only once. The source sentence is kept on the arm.
+    """
+    missing = [arm for arm in arms if arm.n is None and arm.label]
+    if not missing:
+        return
+    for sentence in sentences_of(article.get("abstract") or ""):
+        for arm in missing:
+            if arm.n is not None:
+                continue
+            match = re.search(
+                rf"\b{_DIGIT_NUM_RE}\s+of\s+(?:the\s+)?(?P<t>{_DIGIT_NUM_RE})\s+{_FILLER_SHORT}{_PEOPLE}"
+                rf"(?:\s*\([^)]*\))?\s+in\s+the\s+{_arm_label_re(arm.label)}\s+(?:group|arm)\b",
+                sentence, re.IGNORECASE)
+            if match and parse_count(match.group("t")):
+                arm.n = parse_count(match.group("t"))
+                arm.source = _source(article, sentence, "Kol büyüklüğü sonuç cümlesindeki paydadan alındı")
+
+
+_EFFECT_WORD_RE = re.compile(r"\b(?:hazard\s+ratio|odds\s+ratio|risk\s+ratio|rate\s+ratio|relative\s+risk|HR|OR|RR|IRR)\b")
+
+
+def extract_arm_labelled_event_counts(article: Dict[str, Any], arms: List[StudyArm],
+                                      existing: List[EventCount]) -> List[EventCount]:
+    """Event counts written as "407 with empagliflozin and 541 with placebo".
+
+    Accepted only when both labels are this study's arm labels and the clause
+    reports an effect measure, so "120 patients with diabetes" is not read as
+    an event count. The total is unknown and is not filled in.
+    """
+    labels = [arm.label for arm in arms if arm.label]
+    if len(labels) < 2:
+        return []
+    seen = {(ev.events, ev.source.sentence) for ev in existing}
+    found: List[EventCount] = []
+    alternation = "|".join(_arm_label_re(lbl) for lbl in labels)
+    pattern = re.compile(
+        rf"\b(?P<e1>{_DIGIT_NUM_RE})\s+with\s+(?:the\s+)?(?P<a1>{alternation})\s+and\s+"
+        rf"(?P<e2>{_DIGIT_NUM_RE})\s+with\s+(?:the\s+)?(?P<a2>{alternation})\b",
+        re.IGNORECASE)
+    for sentence in sentences_of(article.get("abstract") or ""):
+        if not _EFFECT_WORD_RE.search(sentence):
+            continue
+        for match in pattern.finditer(sentence):
+            if match.group("a1").casefold() == match.group("a2").casefold():
+                continue
+            for key in ("e1", "e2"):
+                events = parse_count(match.group(key))
+                if events is None or (events, _collapse(sentence)) in seen:
+                    continue
+                found.append(EventCount(events=events, total=None, percent=None,
+                                        source=_source(article, sentence)))
+    return found
+
+
+# "five or more participants", "at least 30 patients": an eligibility threshold, not a count.
+_THRESHOLD_AFTER_RE = re.compile(r"^\s*(?:or\s+(?:more|fewer|less|greater|above|over)|\+)\b", re.IGNORECASE)
+_THRESHOLD_BEFORE_RE = re.compile(
+    r"(?:\bat\s+least|\bminimum\s+of|\bmore\s+than|\bfewer\s+than|\bless\s+than|\bup\s+to|\bover|≥|>=?|<=?|≤)\s*$",
+    re.IGNORECASE)
+
+
+def _is_threshold(sentence: str, match: re.Match) -> bool:
+    start, end = match.span("n")
+    tail = sentence[end:]
+    tail = re.sub(rf"^\s+{_FILLER_SHORT}(?={_PEOPLE})", " ", tail, flags=re.IGNORECASE)
+    after_people = re.sub(rf"^\s*{_PEOPLE}", "", tail, flags=re.IGNORECASE)
+    return bool(_THRESHOLD_BEFORE_RE.search(sentence[:start])
+                or _THRESHOLD_AFTER_RE.search(sentence[end:])
+                or _THRESHOLD_AFTER_RE.search(after_people))
+
+
+# ---------------------------------------------------------------------------
+# Time-point proportions with their own CI: "12-month OS 71.8% (95% CI: 67.6%, 76.2%)"
+# ---------------------------------------------------------------------------
+
+_SURV_ENDPOINT_RE = re.compile(
+    r"(?:(?:\d+|one|two|three|five|ten)[-\s](?:month|year)\s+)?"
+    r"(?:overall\s+survival|progression[-\s]free\s+survival|disease[-\s]free\s+survival|event[-\s]free\s+survival|"
+    r"recurrence[-\s]free\s+survival|\bOS\b|\bPFS\b|\bDFS\b|\bEFS\b|\bRFS\b)",
+    re.IGNORECASE)
+_PCT_CI_RE = re.compile(
+    r"(?P<v>\d+(?:\.\d+)?)\s*%\s*\(\s*(?P<lvl>\d{2})\s*%\s*CI\s*[:,]?\s*(?P<lo>\d+(?:\.\d+)?)\s*%?\s*"
+    r"(?:,|to|-|–)\s*(?P<hi>\d+(?:\.\d+)?)\s*%?",
+    re.IGNORECASE)
+
+
+_ENDPOINT_ACRONYMS = {
+    "os": "overall survival", "pfs": "progression-free survival", "dfs": "disease-free survival",
+    "efs": "event-free survival", "rfs": "recurrence-free survival",
+}
+
+
+def _expand_endpoint(endpoint: str) -> str:
+    """'12-month OS' -> '12-month overall survival'. Full names are kept as written."""
+    return re.sub(r"\b(OS|PFS|DFS|EFS|RFS)\b", lambda m: _ENDPOINT_ACRONYMS[m.group(1).lower()], endpoint)
+
+
+def _proportion_estimate(article, sentence, endpoint, m, basis) -> EffectEstimate:
+    est = EffectEstimate(
+        measure="proportion", measure_text=endpoint, family="proportion",
+        value=float(m.group("v")), value_text=f"{m.group('v')}%",
+        ci_low=float(m.group("lo")), ci_high=float(m.group("hi")), ci_level=int(m.group("lvl")),
+        outcome_name=_expand_endpoint(endpoint), outcome_basis=basis, source=_source(article, sentence),
+    )
+    _validate_estimate(est)
+    if est.validation == "gecerli" and not (0.0 <= est.value <= 100.0):
+        est.validation, est.validation_note = "tutarsiz", "Yüzde 0-100 aralığı dışında."
+    return est
+
+
+def extract_timepoint_proportions(article: Dict[str, Any]) -> List[EffectEstimate]:
+    """Survival-type proportions with a CI, bound to a named endpoint only.
+
+    Two forms are accepted: a labelled value ("OS: 64.0% (95% CI ...)") and an
+    ordered list closed by "respectively" whose endpoint count equals the value
+    count. Anything else is left out instead of guessed.
+    """
+    found: List[EffectEstimate] = []
+    for sentence in sentences_of(article.get("abstract") or ""):
+        values = list(_PCT_CI_RE.finditer(sentence))
+        if not values:
+            continue
+        used = set()
+        resp = re.search(r"\brespectively\b", sentence, re.IGNORECASE)
+        if resp:
+            before = [v for v in values if v.end() <= resp.start()]
+            if len(before) >= 2:
+                head = sentence[:before[0].start()]
+                head = head[max(head.rfind(";"), head.rfind("("), -1) + 1:]
+                endpoints = [e.group(0) for e in _SURV_ENDPOINT_RE.finditer(head)]
+                if len(endpoints) >= len(before):
+                    for endpoint, m in zip(endpoints[-len(before):], before):
+                        found.append(_proportion_estimate(
+                            article, sentence, endpoint, m, "kaynakta 'respectively' ile sırasıyla eşlendi"))
+                        used.add(m.start())
+        for m in values:
+            if m.start() in used:
+                continue
+            label = re.search(rf"({_SURV_ENDPOINT_RE.pattern})\s*[:=]\s*$", sentence[:m.start()], re.IGNORECASE)
+            if label:
+                # The treatment group the value belongs to, when written right before "(OS: ...".
+                group = re.search(r"(?:\bby|[,;])\s+(?P<g>[^,;()]{3,60}?)\s*\(\s*$", sentence[:label.start()])
+                basis = "kaynakta sonlanım etiketiyle verildi"
+                group_text = re.sub(r"^(?:followed\s+by|then|and|versus|vs\.?)\s+", "", group.group("g").strip(),
+                                    flags=re.IGNORECASE) if group else ""
+                if group_text:
+                    basis += f"; ilgili grup: \"{group_text}\""
+                else:
+                    basis += "; ilgili grup kaynak cümlede"
+                found.append(_proportion_estimate(article, sentence, label.group(1), m, basis))
+    return found
+
+
+# ---------------------------------------------------------------------------
+# Reconcile with the report generator's grounded findings
+# ---------------------------------------------------------------------------
+
+_RATIO_CODES = {"HR", "OR", "RR", "IRR", "DOR", "LR+", "LR-", "WIN"}
+_DIFFERENCE_CODES = {"MD", "SMD", "WMD", "RD"}
+_DIAGNOSTIC_CODES = {"sensitivity", "specificity", "AUC", "PPV", "NPV", "accuracy"}
+_LEADING_NUMBER_RE = re.compile(r"[-−]?\d+(?:[.,]\d+)?")
+
+
+def _first_number(text: str) -> Optional[float]:
+    match = _LEADING_NUMBER_RE.search(text or "")
+    return _to_float(match.group(0)) if match else None
+
+
+def _name_tokens(name: str) -> set:
+    return {t for t in re.findall(r"[a-z0-9]+", (name or "").lower()) if len(t) > 2}
+
+
+def _model_name_is_more_specific(model_name: str, other_name: str) -> bool:
+    """True when the model's outcome contains the other name and adds detail."""
+    m, o = _name_tokens(model_name), _name_tokens(other_name)
+    return bool(m) and bool(o) and o <= m and len(m) > len(o)
+
+
+def _translates(name: str) -> bool:
+    shown = rg._display_outcome_name(name or "")
+    return bool(shown) and shown != rg.UNTRANSLATED_OUTCOME_LABEL and shown.strip().casefold() not in _UNNAMED_LABELS
+
+
+def _prefer_other_outcome_name(model_name: str, other_name: str) -> bool:
+    """Keep the model's outcome name; replace it only when it is empty or a bare acronym.
+
+    Measured on the reference sets, the model's names bind more often than the
+    report generator's ("new macroalbuminuria" vs "remission"). A bare acronym
+    such as "ARNi" picked from a drug list after the CI is not an endpoint, so
+    a translatable endpoint name from the other extractor is used instead.
+    "öngördürücü" labels and quoted fragments are never used.
+    """
+    if re.match(r"\s*(?:öngördürücü|predictor)\b", other_name or "", re.IGNORECASE) or '"' in (other_name or ""):
+        return False
+    if not _translates(other_name):
+        return False
+    if not (model_name or "").strip():
+        return True
+    bare_acronym = re.fullmatch(r"[A-Za-z0-9-]{2,8}", model_name.strip()) and sum(c.isupper() for c in model_name) >= 2
+    return bool(bare_acronym)
+
+def _is_confidence_level(value: float, sentence: str) -> bool:
+    """True when every occurrence of the value in the sentence is a CI level ("95% CI")."""
+    occurrences = [m for m in _LEADING_NUMBER_RE.finditer(sentence or "") if _to_float(m.group(0)) == value]
+    if not occurrences:
+        return False
+    return all(re.match(r"\s*%\s*(?:\(\s*)?(?:CI|CIs|confidence)", sentence[m.end():], re.IGNORECASE) for m in occurrences)
+
+
+def reconcile_with_grounded_findings(article: Dict[str, Any], estimates: List[EffectEstimate]) -> List[EffectEstimate]:
+    """One structured list of estimates from both extractors.
+
+    For a value found by both in the same sentence, the more specific outcome
+    name is kept (the report generator's outcome span unless the model's name
+    contains it and adds detail), and a missing CI is filled from the other.
+    A value only the report generator found is added with its own sentence
+    and marked as such. No value is created that is not in the source.
+    """
+    try:
+        items = rg.extract_grounded_clinical_findings(article.get("abstract") or "")
+    except Exception:  # the structured record must not fail on a display helper
+        return estimates
+    by_sentence: Dict[str, List[EffectEstimate]] = {}
+    for est in estimates:
+        by_sentence.setdefault(_collapse(est.source.sentence), []).append(est)
+    added: List[EffectEstimate] = []
+    counterpart: Dict[int, str] = {}
+    for item in items:
+        sentence = _collapse(item.get("sentence") or "")
+        value = _to_float(item.get("estimate") or "")
+        if value is None:
+            value = _first_number(item.get("effect") or "")
+        if not sentence or value is None or not rg._finding_is_displayable(item):
+            continue
+        if _is_confidence_level(value, sentence):
+            continue  # "OR and 95% CI" in a methods sentence: 95 is the CI level, not an estimate
+        other_name = item.get("outcome") or ""
+        named = bool(other_name) and other_name != rg._UNNAMED_OUTCOME_TR
+        low, high = _to_float(item.get("ci_low") or ""), _to_float(item.get("ci_high") or "")
+        same = [e for e in by_sentence.get(sentence, []) if e.value is not None and abs(e.value - value) < 1e-9]
+        if same:
+            for est in same:
+                counterpart[id(est)] = other_name if named else ""
+                if named and est.outcome_name != other_name and _prefer_other_outcome_name(est.outcome_name, other_name):
+                    est.outcome_name = other_name
+                    est.outcome_basis = "; ".join(b for b in (est.outcome_basis, "sonlanım adı kaynak cümledeki sonlanım ifadesinden") if b)
+                if est.ci_low is None and low is not None and high is not None:
+                    est.ci_low, est.ci_high, est.ci_level = low, high, est.ci_level or 95
+                    _validate_estimate(est)
+            continue
+        code = item.get("measure") or ""
+        family = ("ratio" if code in _RATIO_CODES else "difference" if code in _DIFFERENCE_CODES
+                  else "diagnostic" if code in _DIAGNOSTIC_CODES else "unspecified")
+        effect_text = item.get("effect") or ""
+        measure_text = re.sub(r"\s*[-−]?\d+(?:[.,]\d+)?\s*%?\s*$", "", effect_text).strip()
+        est = EffectEstimate(
+            measure=code or "unnamed", measure_text=measure_text, family=family, value=value,
+            value_text=(re.search(r"[-−]?\d+(?:[.,]\d+)?\s*%?", effect_text) or re.search(r".+", str(value))).group(0).strip(),
+            ci_low=low, ci_high=high, ci_level=95 if low is not None and high is not None else None,
+            p_value=item.get("p") or "", outcome_name=other_name if named else "",
+            outcome_basis="rapor üreticisinin kaynak cümleye bağlı bulgusundan eklendi",
+            source=_source(article, item.get("sentence") or ""),
+        )
+        _validate_estimate(est)
+        if item.get("implausible") and est.validation == "gecerli":
+            est.validation, est.validation_note = "tutarsiz", "Kaynakta tutarsız aralık; değer bayraklı gösterilir."
+        added.append(est)
+        by_sentence.setdefault(sentence, []).append(est)
+    # One outcome name on two different values of one sentence ("IMNM was increased
+    # (OR 4.81) as was diabetes mellitus (OR 2.54)") is a binding error when the
+    # other extractor names the values apart.
+    for group in by_sentence.values():
+        names: Dict[str, List[EffectEstimate]] = {}
+        for est in group:
+            if est.outcome_name and est.value is not None:
+                names.setdefault(est.outcome_name, []).append(est)
+        for shared, ests in names.items():
+            if len({e.value for e in ests}) < 2:
+                continue
+            others = [counterpart.get(id(e), "") for e in ests]
+            if all(others) and len(set(others)) == len(others) and all(
+                    _translates(o) and not re.match(r"\s*(?:öngördürücü|predictor)\b", o, re.IGNORECASE) and '"' not in o
+                    for o in others):
+                for est, other in zip(ests, others):
+                    if other != est.outcome_name:
+                        est.outcome_name = other
+                        est.outcome_basis = "; ".join(b for b in (est.outcome_basis, "aynı cümlede ayrı sonlanıma bağlandı") if b)
+    return estimates + added
+
+
+def _fallback_total_from_details(article: Dict[str, Any], details: Dict[str, Any], population: Population,
+                                 arms: List[StudyArm], events: List[EventCount]) -> None:
+    """Use the report generator's stated total when this module found none.
+
+    Accepted only for "n = N" with a source sentence that holds N as written
+    (digits or a number word), and only when N is not an arm size or an event
+    numerator, so a group size is not promoted to the study total.
+    """
+    value = str(details.get("sample_size") or "")
+    match = re.fullmatch(r"n = (\d+)", value.strip())
+    prov = ((details.get("provenance") or {}).get("sample_size") or {})
+    sentence = prov.get("source_sentence") or ""
+    if not match or not sentence:
+        abstract = article.get("abstract") or ""
+        canonical, canonical_sentence = rg._canonical_patient_group(abstract, rg.extract_clinical_profile(abstract))
+        match = re.match(r"(\d+)\s+(?:hasta|katılımcı|olgu|kişi|birey|çocuk)\b", canonical or "")
+        sentence = canonical_sentence or ""
+        if not match or not sentence:
+            return
+    n = int(match.group(1))
+    if n in {a.n for a in arms if a.n} or n in {e.events for e in events}:
+        return
+    words = {v: k for k, v in getattr(rg, "_NUMBER_WORDS", {}).items()}
+    if not re.search(rf"(?<![\d.,]){n}(?![\d.,]\d)", sentence) and not (
+            n in words and re.search(rf"\b{words[n]}\b", sentence, re.IGNORECASE)):
+        return
+    population.n_total = n
+    population.n_kind = "enrolled"
+    population.source = _source(article, sentence, "Toplam, rapor üreticisinin örneklem ifadesinden alındı")
 
 
 def extract_population(article: Dict[str, Any], design_key: str, arms: List[StudyArm],
@@ -541,8 +885,10 @@ def extract_population(article: Dict[str, Any], design_key: str, arms: List[Stud
     event_numerators = {ev.events for ev in events if ev.total is not None or ev.percent is not None}
     population = Population()
 
-    def _accept(n: Optional[int]) -> bool:
+    def _accept(n: Optional[int], sentence: str = "", match: Optional[re.Match] = None) -> bool:
         if not n or n < 1:
+            return False
+        if match is not None and _is_threshold(sentence, match):
             return False
         if rg._is_calendar_year(str(n)):
             return False
@@ -553,9 +899,11 @@ def extract_population(article: Dict[str, Any], design_key: str, arms: List[Stud
     synthesis = design_key in ("meta_analysis", "systematic_review", "systematic_review_and_meta_analysis")
     if synthesis:
         for sentence in sentences:
-            match = _POOLED_PATTERN.search(sentence) or next(
-                (m for m in (p.search(sentence) for p in _POOLED_EXTRA) if m), None)
-            if match and _accept(parse_count(match.group("n"))):
+            candidates = list(_POOLED_PATTERN.finditer(sentence))
+            for extra in _POOLED_EXTRA:
+                candidates.extend(extra.finditer(sentence))
+            match = next((m for m in candidates if _accept(parse_count(m.group("n")), sentence, m)), None)
+            if match:
                 population.n_total = parse_count(match.group("n"))
                 population.n_kind = "pooled"
                 population.source = _source(article, sentence, "Dahil edilen çalışmalardaki toplam katılımcı")
@@ -588,7 +936,7 @@ def extract_population(article: Dict[str, Any], design_key: str, arms: List[Stud
                         population.n_planned = n
                         population.source = _source(article, sentence, "Planlanan örneklem; sonuç bildirilmedi")
                     continue
-                if not _accept(n):
+                if not _accept(n, sentence, match):
                     continue
                 if design_key == "case_control" and re.search(r"\bcases\b", match.group(0), re.IGNORECASE) \
                         and not re.search(r"\bcontrols?\b", match.group(0), re.IGNORECASE):
@@ -674,7 +1022,7 @@ _VALUE_RE = re.compile(
     rf"(?P<val>{_NUMBER})\s*(?P<pct>%)?"
 )
 _CI_AFTER_RE = re.compile(
-    rf"^\s*(?:%|percentage\s+points?|points?|mg/dl|kg|months?|days?)?\s*[;,]?\s*[(\[]?\s*"
+    rf"^\s*(?:%|percentage\s+points?|points?|mg/dl|mmol/l|mmhg|mm|cm|kg/m2|kg|ml|months?|weeks?|days?|years?)?\s*[;,]?\s*[(\[]?\s*"
     rf"(?:(?P<lvl>\d{{2}})(?:\.\d)?\s*%\s*(?:CI|confidence\s+intervals?)(?:\s*\[CI\])?|CI)?\s*[,:=]?\s*[(\[]?\s*"
     rf"(?P<lo>{_NUMBER})\s*%?\s*(?:to|-|,)\s*(?P<hi>{_NUMBER})\s*%?\s*[)\]]?",
     re.IGNORECASE,
@@ -1674,7 +2022,11 @@ def _build_study_uncached(article: Dict[str, Any], query: str) -> Study:
 
     arms = extract_arms(art, randomized=design_key in ("rct", "clinical_trial"))
     events = extract_event_counts(art)
+    fill_arm_sizes_from_results(art, arms)
+    events.extend(extract_arm_labelled_event_counts(art, arms, events))
     population = extract_population(art, design_key, arms, events)
+    if population.n_total is None and population.n_planned is None and results_reported and design_key in _DESCRIPTIVE_KEYS:
+        _fallback_total_from_details(art, details, population, arms, events)
     pop_prov = (details.get("provenance") or {}).get("population") or {}
     population.description = details.get("patient_group") if details.get("patient_group") not in ("Belirtilmedi", "") else ""
     if population.description and pop_prov.get("source_sentence") and population.source.location == "none":
@@ -1726,12 +2078,15 @@ def _build_study_uncached(article: Dict[str, Any], query: str) -> Study:
         interventions = [i for i in interventions if i.source.verification_status == SOURCE_VERIFIED]
         comparators = [c for c in comparators if c.source.verification_status == SOURCE_VERIFIED]
 
-    estimates = extract_effect_estimates(art) if results_reported else []
+    estimates = (extract_effect_estimates(art) + extract_timepoint_proportions(art)) if results_reported else []
+    if results_reported:
+        estimates = reconcile_with_grounded_findings(art, estimates)
     outcomes: Dict[str, Outcome] = {}
     for est in estimates:
         name = est.outcome_name or ""
         kind = {
             "diagnostic": "diagnostic",
+            "proportion": "descriptive",
         }.get(est.family, "efficacy" if claim_type in CAUSAL_CLAIM_TYPES else "association")
         if re.search(r"adverse|toxicit|complication|side effect|safety|infection", name, re.IGNORECASE):
             kind = "safety"
@@ -1813,6 +2168,9 @@ def build_studies(articles: Iterable[Dict[str, Any]], query: str = "") -> Tuple[
 # ---------------------------------------------------------------------------
 
 _MEASURE_TR = {
+    "proportion": "Oran (yüzde)",
+    "unnamed": "Ölçüt adı özette yok (kaynak değer)",
+    "WIN": "Kazanma oranı (win ratio)",
     "HR": "HR (risk oranı)", "OR": "OR (olasılık oranı)", "RR": "RR (göreli risk/oran oranı)",
     "IRR": "IRR (insidans hızı oranı)", "RD": "Fark", "MD": "Ortalama fark", "SMD": "Standardize ortalama fark",
     "WMD": "Ağırlıklı ortalama fark", "DOR": "Tanısal olasılık oranı", "sensitivity": "Duyarlılık",
@@ -1857,12 +2215,16 @@ def format_estimate_tr(est: EffectEstimate) -> str:
     return f"{label}{sub}: {value} ({ci}{p}){flag}"
 
 
+_UNNAMED_LABELS = {"özette adlandırılmadı", "sonlanım özette adlandırılmadı", "değerlendirilemedi"}
+
+
 def outcome_label_tr(name: str) -> str:
     """Turkish outcome label. The source term is kept whenever translation could lose detail."""
     if not name:
         return "sonlanım özette adlandırılmadı"
     shown = rg._display_outcome_name(name)
-    if not shown or shown == rg.UNTRANSLATED_OUTCOME_LABEL:
+    # A named outcome is never shown as "not named": an untranslated term stays as written.
+    if not shown or shown == rg.UNTRANSLATED_OUTCOME_LABEL or shown.strip().casefold() in _UNNAMED_LABELS:
         return f"\"{name}\" (kaynak terim)"
     if shown.strip().lower() == name.strip().lower():
         return shown
@@ -1873,6 +2235,8 @@ def claim_sentence_tr(study: Study, est: EffectEstimate) -> str:
     """Neutral, design-appropriate Turkish wording for one estimate. No causal verbs."""
     outcome = outcome_label_tr(est.outcome_name)
     stat = format_estimate_tr(est)
+    if est.family == "proportion":
+        return f"{outcome} için {stat}. Grup içi oran tahminidir; karşılaştırmalı etki veya nedensellik değildir."
     if study.claim_type in ("causal_effect", "pooled_randomized"):
         lead = "Randomize karşılaştırmada"
         if study.report_role == "secondary_analysis" or est.subgroup:

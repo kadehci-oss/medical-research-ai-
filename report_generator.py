@@ -3748,10 +3748,95 @@ def format_finding_brief(item: Dict[str, Any]) -> str:
     return _sanitize_display_line(line)
 
 
-def study_effect_lines(abstract: str) -> List[str]:
-    """Structured effect lines for one abstract. Raw English slices are not returned."""
+# ---------------------------------------------------------------------------
+# Display findings from the shared Study object (evidence_model)
+# ---------------------------------------------------------------------------
+
+def _source_number_text(value, sentence: str, fallback: str = "") -> str:
+    """The number as written in the source sentence ("0.90", not "0.9")."""
+    if value is None:
+        return ""
+    # A hyphen right after a digit is a range separator ("0.69-0.90"), not a minus sign.
+    for token in re.findall(r"(?:(?<![\d.])[-−])?\d+(?:[.,]\d+)?", sentence or ""):
+        try:
+            if abs(float(token.replace("−", "-").replace(",", ".")) - float(value)) < 1e-9:
+                return token.replace("−", "-")
+        except ValueError:
+            continue
+    return fallback or (f"{value:g}" if isinstance(value, float) else str(value))
+
+
+def structured_findings(article: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """Findings for sections 5, 6 and 12, built from the shared Study object.
+
+    Same keys as extract_grounded_clinical_findings, so the Turkish display
+    rules stay the same while every number comes from one structured record.
+    Estimates the model rejected (CI does not contain the point, impossible
+    ratio) are kept with the source-inconsistency flag, as before.
+    """
+    import evidence_model
+    study = evidence_model.build_study(article)
+    findings: List[Dict[str, Any]] = []
+    for est in study.estimates:
+        if est.value is None:
+            continue
+        sentence = est.source.sentence or ""
+        value = est.value_text if est.family == "proportion" else _source_number_text(est.value, sentence, est.value_text)
+        if est.family != "proportion" and (est.value_text or "").strip().endswith("%") and not value.endswith("%"):
+            value += "%"
+        effect = f"oran {value}" if est.family == "proportion" else f"{est.measure_text or est.measure} {value}"
+        low = _source_number_text(est.ci_low, sentence) if est.ci_low is not None else ""
+        high = _source_number_text(est.ci_high, sentence) if est.ci_high is not None else ""
+        ci = f"{low} ile {high}" if low and high else "özette bildirilmedi"
+        item = _make_finding(est.outcome_name or _UNNAMED_OUTCOME_TR, effect, ci, est.p_value or "", sentence, low, high)
+        if not est.usable:
+            item["implausible"] = True
+        findings.append(item)
+    return findings
+
+
+_N_KIND_NOTE_TR = {
+    "pooled": " (dahil edilen çalışmaların toplamı)",
+    "arm_sum": " (kol sayılarının toplamı)",
+    "cases": " (olgu sayısı)",
+}
+
+
+def structured_sample_size(article: Dict[str, Any]):
+    """(display value, source sentence) for the total n, from the shared Study object."""
+    import evidence_model
+    population = evidence_model.build_study(article).population
+    if population.n_total:
+        return f"n = {population.n_total}{_N_KIND_NOTE_TR.get(population.n_kind, '')}", population.source.sentence or ""
+    return "özette bildirilmedi", ""
+
+
+def apply_structured_sample_size(details: Dict[str, Any], article: Dict[str, Any]) -> Dict[str, Any]:
+    """Replace the legacy sample size in ``details`` with the Study object's total n.
+
+    Sections 5 and 6, search cards and the API then show one number per study.
+    When the model found no total, the field says so; no other count is used.
+    """
+    value, sentence = structured_sample_size(article)
+    details["sample_size"] = value
+    provenance = details.setdefault("provenance", {})
+    provenance["sample_size"] = {
+        "value": value,
+        "source_sentence": sentence,
+        "source": "abstract" if sentence else "missing",
+    }
+    return details
+
+
+def study_effect_lines(abstract: str, article: Optional[Dict[str, Any]] = None) -> List[str]:
+    """Structured effect lines for one abstract. Raw English slices are not returned.
+
+    With ``article`` the values come from the shared Study object, so section 6,
+    the section 5 cell and exports show the same numbers.
+    """
     lines = []
-    for item in extract_grounded_clinical_findings(abstract):
+    items = structured_findings(article) if article is not None else extract_grounded_clinical_findings(abstract)
+    for item in items:
         if not _finding_is_displayable(item):
             continue
         lines.append(format_finding_brief(item))
@@ -4613,7 +4698,7 @@ def format_klinik_bulgular_cell(article: Dict[str, Any]) -> str:
     """
     pmid = str((article or {}).get("pmid") or "").strip() or "yok"
     abstract = (article or {}).get("abstract") or ""
-    findings = extract_grounded_clinical_findings(abstract)
+    findings = structured_findings(article) if abstract else []
     profile = extract_clinical_profile(abstract)
     if not findings and not profile:
         return f"{INSUFFICIENT_CLINICAL_DATA_TR} (PMID: {pmid})."
@@ -4633,6 +4718,18 @@ def format_klinik_bulgular_cell(article: Dict[str, Any]) -> str:
         buckets[sentence][kind].append(text)
 
     canonical, canonical_sentence = _canonical_patient_group(abstract, profile)
+    model_value, model_sentence = structured_sample_size(article) if abstract else ("özette bildirilmedi", "")
+    model_n = re.match(r"n = (\d+)", model_value)
+    if canonical and canonical != "özette bildirilmedi":
+        lead = re.match(r"^(\d+)\s+(?=(?:hasta|katılımcı|olgu|kişi|birey|çocuk|kadın|erkek)\b(?!\s*yaşında))", canonical)
+        if model_n and lead and lead.group(1) != model_n.group(1):
+            canonical = f"{model_n.group(1)} " + canonical[lead.end():]
+            canonical_sentence = model_sentence or canonical_sentence
+        elif not model_n and lead:
+            # The structured record found no total; the legacy count is not shown.
+            rest = canonical[lead.end():].lstrip()
+            rest = re.sub(r"^(?:hasta|katılımcı|olgu|kişi)\b[;,]?\s*", "", rest)
+            canonical = rest or "özette bildirilmedi"
     sample_added = False
     for item in profile:
         if item.get("category") == "sample":
@@ -5870,7 +5967,7 @@ def _format_cross_study_comparison(articles: List[Dict[str, Any]], pico: Optiona
             art.get("abstract", ""),
         )
         profile = extract_clinical_profile(art.get("abstract") or "")
-        findings = extract_grounded_clinical_findings(art.get("abstract") or "")
+        findings = structured_findings(art) if art.get("abstract") else []
         finding_bits = []
         seen_findings = set()
 
@@ -6101,13 +6198,13 @@ Lütfen arama terimlerini veya filtreleri genişleterek tekrar deneyiniz.
         )
         lim_str = format_methodological_limitation(art)
 
-        o_str_parts = study_effect_lines(art.get("abstract", ""))
+        o_str_parts = study_effect_lines(art.get("abstract", ""), art)
         if o_str_parts:
             o_str = "; ".join(o_str_parts)
         else:
             o_str = "Özette bağlı nicel sonlanım ölçütü bildirilmedi"
 
-        bound = _format_bound_claims(extract_article_clinical_details(art, query))
+        bound = _format_bound_claims(apply_structured_sample_size(extract_article_clinical_details(art, query), art))
         comp_lines.append(
             f"- **{first_author} ({year})** ({pmid_link}):\n"
             f"  - **Yöntem ve tasarım:** {cd['design']} | **Kanıt düzeyi:** {cd['level']}\n"
@@ -6163,7 +6260,7 @@ Lütfen arama terimlerini veya filtreleri genişleterek tekrar deneyiniz.
         metric_str_parts = []
         if metrics.get("n"):
             metric_str_parts.append(f"Hasta/Örneklem Sayısı (n): {metrics['n']}")
-        structured_bits = study_effect_lines(art.get("abstract", ""))
+        structured_bits = study_effect_lines(art.get("abstract", ""), art)
         if structured_bits:
             metric_str_parts.append("Etki ölçütleri: " + "; ".join(structured_bits))
 
@@ -6567,7 +6664,7 @@ def build_evidence_table(records):
         else:
             ci = "-"
         grade = (r.get("grade") or {}).get("final", "-")
-        rob = (r.get("rob2") or {}).get("overall", "N/A")
+        rob = (r.get("rob2") or {}).get("overall_tr") or "Değerlendirilmedi"
         des = r.get("study_design", "-")
         if isinstance(des, dict):
             des = des.get("design", "-")

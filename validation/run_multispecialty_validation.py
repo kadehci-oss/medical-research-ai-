@@ -458,6 +458,53 @@ def _headline(res: Dict[str, Any]) -> List[Tuple[str, str]]:
     ]
 
 
+EXTERNAL_FROZEN_PATH = os.path.join(HERE, "external_pr64_first_run_results.json")
+EXTERNAL_RESULTS_PATH = os.path.join(HERE, "external_pr64_results.json")
+
+
+def render_external_section() -> List[str]:
+    """Third, external check: PR #64's reference table, scored by run_external_reference_check.py."""
+    first = _load_frozen(EXTERNAL_FROZEN_PATH)
+    current = _load_frozen(EXTERNAL_RESULTS_PATH)
+    if not first:
+        return []
+
+    def _row(res):
+        if not res:
+            return ["—"] * 4
+        s = res["summary"]
+        scored = s["scored"] or 1
+        return [f"%{s['matched'] / scored * 100:.1f} ({s['matched']}/{s['scored']})",
+                f"%{s['wrong'] / scored * 100:.1f} ({s['wrong']}/{s['scored']})",
+                f"{s['missed']}/{s['scored']}",
+                f"{s['complete_cases']}/{s['cases']}"]
+
+    names = ["Doğru alan", "Yanlış alan", "Eksik alan", "Eksiksiz makale"]
+    f_row, c_row = _row(first), _row(current)
+    lines = [
+        "## Dış referans: PR #64'ün sekiz PubMed vakası",
+        "",
+        "Referans tablosu (`validation/reference_external_pr64.json`) PR #64'te başka bir yapay zekâ ajanı tarafından, bu motor",
+        "bu kayıtları görmeden yazıldı ve buraya değiştirilmeden kopyalandı. Sekiz branşın her birinden bir yayın içerir.",
+        "Puanlama `python validation/run_external_reference_check.py` ile yapılır ve yalnızca sayısal alanları kapsar",
+        "(tasarım, toplam n, kol n, etki tahmini, GA, p, olay sayısı); niteliksel alanlar ayrıca listelenir.",
+        "Ölçüt tanımları yukarıdaki kümelerden farklıdır; oranlar doğrudan karşılaştırılamaz.",
+        "",
+        "| Ölçüt | **İlk çalıştırma (bağımsız)** | Düzeltme sonrası (bağımsız değil) |",
+        "|---|---|---|",
+    ]
+    for name, a, b in zip(names, f_row, c_row):
+        lines.append(f"| {name} | **{a}** | {b} |")
+    lines += ["", "### Dış referans: ilk çalıştırmada bulunan hatalar", ""]
+    for case in first.get("cases") or []:
+        bad = [f for f in case["fields"] if f["status"] != "eşleşti"]
+        if bad:
+            lines.append(f"- **PMID {case['pmid']}** ({case['specialty']}, {case['design']}): " + "; ".join(
+                f"{f['status']} {f['field']} (beklenen {f['expected']}, bulunan {f['got']})" for f in bad))
+    lines.append("")
+    return lines
+
+
 def render_combined_markdown(all_res: Dict[str, Any]) -> str:
     dev = all_res["development"]
     columns = [
@@ -511,6 +558,7 @@ def render_combined_markdown(all_res: Dict[str, Any]) -> str:
             if details:
                 lines.append(f"- **PMID {pmid}:** " + "; ".join(details))
         lines.append("")
+    lines += render_external_section()
     lines.append(render_markdown(dev, title="## Geliştirme kümesi ayrıntıları", heading_level=3))
     lines.append(render_markdown(h1, title="## Ayrılmış küme 1, güncel çalıştırma ayrıntıları", heading_level=3))
     lines.append(render_markdown(h2, title="## Ayrılmış küme 2, güncel çalıştırma ayrıntıları", heading_level=3))
