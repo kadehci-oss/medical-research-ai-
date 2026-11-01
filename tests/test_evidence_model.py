@@ -55,6 +55,18 @@ class TestCountsAreSeparated(unittest.TestCase):
         self.assertEqual(study.population.n_total, 810)
         self.assertEqual(study.population.n_kind, "arm_sum")
         self.assertEqual(study.population.source.verification_status, em.SOURCE_DERIVED)
+        rendered = "\n".join(em.render_study_card_lines(study))
+        self.assertIn("(kol n değerlerinin toplamı; türetilmiş)", rendered)
+        self.assertIn("- alphamab: n = 400 — Kaynak cümle:", rendered)
+        self.assertIn("- placebo: n = 410 — Kaynak cümle:", rendered)
+        self.assertIn("**Müdahale:** alphamab — Kaynak cümle:", rendered)
+        self.assertIn("**Karşılaştırıcı:** placebo — Kaynak cümle:", rendered)
+
+    def test_article_cache_key_is_stable_sha256(self):
+        article = _art("5", "A cohort of 50 patients was enrolled.")
+        first = em._article_key(article)
+        self.assertEqual(first, em._article_key(article))
+        self.assertEqual(len(first), 64)
 
     def test_protocol_planned_sample_is_not_reported_as_enrolled(self):
         abstract = "This prospective observational study will include 800 patients with suspected stroke."
@@ -135,6 +147,33 @@ class TestEffectEstimates(unittest.TestCase):
         study = em.build_study(_art("17", abstract, title="A prospective cohort"))
         self.assertEqual(study.estimates[0].outcome_name, "epilepsy")
 
+    def test_explicit_follow_up_timepoint_is_structured_and_source_grounded(self):
+        abstract = ("During a median follow-up of 18 months, all-cause mortality was lower "
+                    "(hazard ratio, 0.75; 95% CI, 0.60 to 0.92).")
+        study = em.build_study(_art("18", abstract, pub_types=["Randomized Controlled Trial"]))
+        timepoint = study.estimates[0].follow_up_timepoint
+        self.assertIsNotNone(timepoint)
+        self.assertEqual((timepoint.value, timepoint.unit, timepoint.qualifier), (18.0, "month", "median"))
+        self.assertEqual(timepoint.source.sentence, study.estimates[0].source.sentence)
+        self.assertEqual(timepoint.source.verification_status, em.SOURCE_VERIFIED)
+        self.assertIn("medyan takip: 18 ay", em.format_estimate_tr(study.estimates[0]))
+
+    def test_follow_up_timepoint_stays_unknown_when_not_explicit(self):
+        abstract = "All-cause mortality was lower (hazard ratio, 0.75; 95% CI, 0.60 to 0.92)."
+        study = em.build_study(_art("19", abstract, pub_types=["Randomized Controlled Trial"]))
+        self.assertIsNone(study.estimates[0].follow_up_timepoint)
+
+    def test_distinct_follow_up_and_outcome_times_are_not_collapsed(self):
+        sentence = ("Median follow-up was 18 months and overall survival at 24 months was 80% "
+                    "(hazard ratio, 0.75; 95% CI, 0.60 to 0.92).")
+        source = em._source(_art("191", sentence), sentence)
+        self.assertIsNone(em.extract_follow_up_timepoint(sentence, source))
+
+    def test_ambiguous_thousands_separator_is_not_misread_as_decimal(self):
+        sentence = "Median follow-up was 1,200 days (hazard ratio, 0.75; 95% CI, 0.60 to 0.92)."
+        source = em._source(_art("192", sentence), sentence)
+        self.assertIsNone(em.extract_follow_up_timepoint(sentence, source))
+
 
 class TestInterventionsAndCoTreatments(unittest.TestCase):
     def setUp(self):
@@ -201,11 +240,14 @@ class TestStudyRelations(unittest.TestCase):
         studies, summary = em.build_studies(articles)
         by = {s.pmid: s for s in studies}
         self.assertEqual(by["36129693"].report_role, "secondary_analysis")
-        self.assertIn("34449189", {r.related_pmid for r in by["36129693"].relations})
+        # EMPEROR-Pooled combines multiple cohorts; the shared EMPEROR-Preserved
+        # name alone does not make it the same participant cohort as PMID 34449189.
+        self.assertNotIn("34449189", {r.related_pmid for r in by["36129693"].relations})
         self.assertEqual(by["39288781"].report_role, "updated_analysis")
         self.assertIn("37272513", {r.related_pmid for r in by["39288781"].relations})
         self.assertEqual(by["34694761"].report_role, "extended_follow_up")
-        self.assertEqual(by["34694761"].relations[0].confidence, "olasi")
+        # Title similarity without a shared explicit identity is not enough.
+        self.assertEqual(by["34694761"].relations, [])
         for derived in ("36129693", "39288781", "34694761", "36041474"):
             self.assertFalse(by[derived].counts_as_independent, derived)
         for primary in ("34449189", "37272513", "33017106"):
@@ -218,6 +260,40 @@ class TestStudyRelations(unittest.TestCase):
         study = em.build_study(_records()["39288781"])
         self.assertIn("NCT03425643", study.registry_ids)
         self.assertIn("KEYNOTE-671", study.trial_acronyms)
+
+    def test_shared_registry_or_acronym_alone_does_not_merge_primary_cohorts(self):
+        registry_articles = [
+            _art("70001", "A prospective cohort enrolled 100 adults. ClinicalTrials.gov number, NCT01234567.", title="Cohort A"),
+            _art("70002", "A prospective cohort enrolled 200 children. ClinicalTrials.gov number, NCT01234567.", title="Cohort B"),
+        ]
+        registry_studies, registry_summary = em.build_studies(registry_articles)
+        self.assertNotEqual(registry_studies[0].evidence_cluster, registry_studies[1].evidence_cluster)
+        self.assertEqual(registry_summary["independent_primary_units"], 2)
+        self.assertTrue(all(study.counts_as_independent for study in registry_studies))
+
+        acronym_articles = [
+            _art("70003", "A prospective cohort enrolled 100 adults.", title="Adults in a prospective cohort (SHARED-TRIAL)"),
+            _art("70004", "A prospective cohort enrolled 200 children.", title="Children in a prospective cohort (SHARED-TRIAL)"),
+        ]
+        acronym_studies, acronym_summary = em.build_studies(acronym_articles)
+        self.assertNotEqual(acronym_studies[0].evidence_cluster, acronym_studies[1].evidence_cluster)
+        self.assertEqual(acronym_summary["independent_primary_units"], 2)
+        self.assertTrue(all(study.counts_as_independent for study in acronym_studies))
+
+    def test_derived_report_with_two_candidate_parents_is_not_linked(self):
+        articles = [
+            _art("71001", "A prospective randomized trial enrolled 100 adults. NCT01234568.", title="Trial A"),
+            _art("71002", "A prospective randomized trial enrolled 200 adults. NCT01234568.", title="Trial B"),
+            _art("71003", "This secondary analysis of NCT01234568 reports an outcome.",
+                 title="Secondary analysis of NCT01234568"),
+        ]
+        studies, summary = em.build_studies(articles)
+        by = {study.pmid: study for study in studies}
+        self.assertEqual(by["71003"].report_role, "secondary_analysis")
+        self.assertEqual(by["71003"].relations, [])
+        self.assertEqual(len({study.evidence_cluster for study in studies}), 3)
+        self.assertFalse(by["71003"].counts_as_independent)
+        self.assertEqual(summary["independent_primary_units"], 2)
 
 
 class TestSingleSourceOfTruth(unittest.TestCase):
@@ -265,7 +341,8 @@ class TestCrossStudyComparisonUsesModel(unittest.TestCase):
             self.assertFalse({"34449189", "36129693"} <= set(item["articles"]))
         reasons = " ".join(item["reason"] for item in cross["non_comparable_studies"])
         self.assertIn("tasarım ailesi uyuşmazlığı", reasons)
-        self.assertIn("aynı çalışmanın farklı yayınları", reasons)
+        self.assertIn("Popülasyon uyuşmazlığı", reasons)
+        self.assertNotIn("aynı çalışmanın farklı yayınları", reasons)
 
 
 class TestReportVerification(unittest.TestCase):

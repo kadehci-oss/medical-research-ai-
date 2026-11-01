@@ -157,6 +157,11 @@ _THERAPY_HINT = re.compile(
     r"tedavi\w*|etkinli\w*|etkisi)\b",
     re.IGNORECASE,
 )
+_HEALTH_SERVICE_EVALUATION_RE = re.compile(
+    r"\b(?:cost[- ]effectiveness|cost[- ]effective|cost[- ]utility|cost[- ]benefit|economic\s+evaluation|"
+    r"maliyet[- ](?:etkil\w*|etkin\w*|fayd\w*|yarar\w*))\b",
+    re.IGNORECASE,
+)
 
 
 def classify_question_type(query: str) -> str:
@@ -200,6 +205,27 @@ def select_question_framework(query: str) -> Dict[str, Any]:
                 pico["outcome"] = lead.group("rest").strip()
             if qtype == "epidemiology" and lead.group("rest"):
                 pico["comparison"] = lead.group("rest").strip()
+    if qtype == "health_services":
+        evaluation = _HEALTH_SERVICE_EVALUATION_RE.search(query or "")
+        if evaluation:
+            pico["outcome"] = evaluation.group(0).strip()
+            intervention = pico.get("intervention") or ""
+            cleaned = re.sub(
+                r"^\s*" + re.escape(evaluation.group(0)) + r"\s+(?:of\s+)?",
+                "",
+                intervention,
+                flags=re.IGNORECASE,
+            ).strip()
+            if cleaned:
+                pico["intervention"] = cleaned
+        if not pico.get("intervention") or re.search(r"belirtilmedi|belirtilmemiş", pico.get("intervention") or "", re.IGNORECASE):
+            service = re.search(
+                r"\b(?P<service>(?:telemedicine|teleradiology|telehealth|teleradyoloji|teletıp)\s+hizmet\w*)",
+                query or "",
+                re.IGNORECASE,
+            )
+            if service:
+                pico["intervention"] = service.group("service")
     elements = []
     for key, label, source_key in spec["elements"]:
         raw = (pico.get(source_key) or "").strip()

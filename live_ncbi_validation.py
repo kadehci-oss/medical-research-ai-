@@ -2,7 +2,7 @@
 import json, sys, time, datetime, traceback
 from pathlib import Path
 import requests
-from xml.etree import ElementTree as ET
+from defusedxml import ElementTree as ET
 
 from pubmed_client import eutils_identity_params, ncbi_request_headers
 

@@ -24,6 +24,19 @@ class TestQuestionFramework(unittest.TestCase):
             self.assertEqual(selection["question_type"], qtype, query)
             self.assertTrue(selection["framework"].startswith(framework.split(" ")[0]), query)
 
+    def test_spice_preserves_explicit_cost_evaluation_measure(self):
+        english = qf.select_question_framework(
+            "Cost-effectiveness of teleradiology services in rural hospitals"
+        )
+        english_elements = {element["key"]: element["value"] for element in english["elements"]}
+        self.assertEqual(english_elements["E"], "Cost-effectiveness")
+        self.assertEqual(english_elements["I"], "teleradiology services")
+
+        turkish = qf.select_question_framework("Teleradyoloji hizmetlerinde maliyet-etkililik")
+        turkish_elements = {element["key"]: element["value"] for element in turkish["elements"]}
+        self.assertEqual(turkish_elements["E"], "maliyet-etkililik")
+        self.assertEqual(turkish_elements["I"], "Teleradyoloji hizmetlerinde")
+
     def test_unstated_elements_are_not_filled(self):
         selection = qf.select_question_framework("Diagnostic accuracy of MRCP versus ultrasonography in obstructive jaundice")
         elements = {e["key"]: e for e in selection["elements"]}

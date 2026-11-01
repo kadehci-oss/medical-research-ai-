@@ -121,6 +121,7 @@ def health_check():
 def api_search_pubmed(
     query: str = Query(..., min_length=1, max_length=2000, description="Clinical query or medical term"),
     max_results: int = Query(10, ge=1, le=50, description="Max results to return"),
+    retstart: int = Query(0, ge=0, le=9999, description="Zero-based PubMed result offset (single-query retrieval window: 10,000 IDs)"),
     sort: Literal["relevance", "pub_date"] = Query("relevance", description="Sort order: relevance or pub_date"),
     publication_type: Optional[str] = Query("Tümü", max_length=100, description="Filter by publication type"),
     start_year: Optional[int] = Query(None, ge=1800, le=2100, description="Start publication year"),
@@ -131,6 +132,7 @@ def api_search_pubmed(
     result = search_pubmed(
         query=query,
         max_results=max_results,
+        retstart=retstart,
         sort=sort,
         publication_type=publication_type,
         start_year=start_year,
@@ -179,16 +181,22 @@ def api_generate_report(req: ReportRequest):
         "search_date": req.search_date,
         "query": req.query
     }
-    report_md = generate_turkish_evidence_report(
-        query=req.query,
-        articles=articles,
-        api_key=req.api_key,
-        use_llm=req.use_llm,
-        allow_external_data_transfer=req.llm_data_transfer_confirmed,
-        model=req.model,
-        search_metadata=search_meta,
-        audit=audit,
-    )
+    try:
+        report_md = generate_turkish_evidence_report(
+            query=req.query,
+            articles=articles,
+            api_key=req.api_key,
+            use_llm=req.use_llm,
+            allow_external_data_transfer=req.llm_data_transfer_confirmed,
+            model=req.model,
+            search_metadata=search_meta,
+            audit=audit,
+        )
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail="Rapor oluşturulamadı. Lütfen daha sonra tekrar deneyin.",
+        ) from exc
     quality_qc = validate_clinical_report_quality(report_md)
     html_report = generate_html_report(req.query, articles, report_md, audit=audit)
     pico = extract_pico(req.query)
@@ -213,11 +221,12 @@ def api_generate_report(req: ReportRequest):
 def api_universal_engine_synthesize(req: ReportRequest):
     """
     PubMed-record and available-abstract based preliminary Turkish synthesis.
-    Matching and structured extraction are heuristic, not specialist validation.
+    Matching and structured extraction are heuristic, not specialist validation;
+    failed synthesis is returned as an HTTP error, not a successful empty report.
     """
     _require_llm_transfer_confirmation(req)
     articles, verification_results = _load_verified_articles(req.articles)
-    return generate_universal_evidence_synthesis(
+    result = generate_universal_evidence_synthesis(
         query=req.query,
         articles=articles,
         api_key=req.api_key,
@@ -227,3 +236,10 @@ def api_universal_engine_synthesize(req: ReportRequest):
         search_metadata={"search_date": req.search_date, "query": req.query},
         verification_results=verification_results,
     )
+    if not isinstance(result, dict) or result.get("status") != "success":
+        detail = result.get("error") if isinstance(result, dict) else None
+        raise HTTPException(
+            status_code=500,
+            detail=detail or "Sentez tamamlanamadı. Lütfen daha sonra tekrar deneyin.",
+        )
+    return result

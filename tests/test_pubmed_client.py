@@ -4,6 +4,7 @@ import requests
 from unittest.mock import patch, MagicMock
 from pubmed_client import (
     parse_pubmed_xml,
+    PubMedXMLParseError,
     search_pubmed,
     verify_pmid,
     verify_doi,
@@ -76,6 +77,19 @@ class TestPubMedClient(unittest.TestCase):
         self.assertIn("Javed Butler", art["authors"])
         self.assertIn("BACKGROUND: SGLT2 inhibitors", art["abstract"])
 
+    def test_parse_pubmed_xml_malformed_response_is_not_empty_result(self):
+        with self.assertRaises(PubMedXMLParseError):
+            parse_pubmed_xml("<PubmedArticleSet><PubmedArticle>")
+
+    def test_parse_pubmed_xml_rejects_entity_expansion(self):
+        unsafe_xml = (
+            '<!DOCTYPE PubmedArticleSet [<!ENTITY xxe SYSTEM "file:///dev/null">]>'
+            '<PubmedArticleSet><PubmedArticle><ArticleTitle>&xxe;</ArticleTitle>'
+            '</PubmedArticle></PubmedArticleSet>'
+        )
+        with self.assertRaises(PubMedXMLParseError):
+            parse_pubmed_xml(unsafe_xml)
+
     @patch("requests.get")
     def test_search_pubmed_success(self, mock_get):
         # Mock esearch response then efetch response
@@ -100,6 +114,95 @@ class TestPubMedClient(unittest.TestCase):
         self.assertEqual(res["articles"][0]["pmid"], "34449189")
         self.assertIn("search_date", res)
         self.assertIn("search_params", res)
+        self.assertTrue(res["pagination"]["complete_result_set"])
+
+    @patch("requests.get")
+    def test_search_pubmed_paginates_and_reports_remaining_results(self, mock_get):
+        def response():
+            item = MagicMock()
+            item.status_code = 200
+            item.headers = {}
+            item.raise_for_status.return_value = None
+            return item
+
+        def xml_for(pmids):
+            records = "".join(
+                f"<PubmedArticle><MedlineCitation><PMID>{pmid}</PMID><Article><ArticleTitle>Study {pmid}</ArticleTitle></Article></MedlineCitation></PubmedArticle>"
+                for pmid in pmids
+            )
+            return f"<PubmedArticleSet>{records}</PubmedArticleSet>"
+
+        first_search, first_fetch = response(), response()
+        first_search.json.return_value = {"esearchresult": {"count": "4", "idlist": ["10001", "10002"]}}
+        first_fetch.text = xml_for(["10001", "10002"])
+        second_search, second_fetch = response(), response()
+        second_search.json.return_value = {"esearchresult": {"count": "4", "idlist": ["10003", "10004"]}}
+        second_fetch.text = xml_for(["10003", "10004"])
+        mock_get.side_effect = [first_search, first_fetch, second_search, second_fetch]
+
+        first_page = search_pubmed("diabetes", max_results=2, retstart=0)
+        second_page = search_pubmed("diabetes", max_results=2, retstart=2)
+
+        self.assertEqual([a["pmid"] for a in first_page["articles"]], ["10001", "10002"])
+        self.assertEqual([a["pmid"] for a in second_page["articles"]], ["10003", "10004"])
+        self.assertEqual(first_page["total_count"], 4)
+        self.assertEqual(first_page["pagination"]["next_retstart"], 2)
+        self.assertTrue(first_page["pagination"]["has_more"])
+        self.assertTrue(first_page["pagination"]["truncated"])
+        self.assertTrue(first_page["pagination"]["limit_applied"])
+        self.assertFalse(second_page["pagination"]["has_more"])
+        self.assertFalse(second_page["pagination"]["truncated"])
+        self.assertIsNone(second_page["pagination"]["next_retstart"])
+        calls = mock_get.call_args_list
+        self.assertEqual(calls[0].kwargs["params"]["retstart"], 0)
+        self.assertEqual(calls[0].kwargs["params"]["retmax"], 2)
+        self.assertEqual(calls[2].kwargs["params"]["retstart"], 2)
+        self.assertEqual(calls[2].kwargs["params"]["retmax"], 2)
+        self.assertEqual(calls[3].kwargs["params"]["id"], "10003,10004")
+
+    @patch("requests.get")
+    def test_empty_id_page_with_positive_count_does_not_repeat_offset(self, mock_get):
+        esearch = MagicMock()
+        esearch.raise_for_status.return_value = None
+        esearch.json.return_value = {"esearchresult": {"count": "4", "idlist": []}}
+        mock_get.return_value = esearch
+
+        result = search_pubmed("diabetes", max_results=2, retstart=0)
+
+        self.assertEqual(result["total_count"], 4)
+        self.assertTrue(result["pagination"]["has_more"])
+        self.assertTrue(result["pagination"]["truncated"])
+        self.assertIsNone(result["pagination"]["next_retstart"])
+        self.assertEqual(mock_get.call_count, 1)
+
+    @patch("requests.get")
+    def test_search_pubmed_clamps_page_at_10000_id_window(self, mock_get):
+        esearch = MagicMock()
+        esearch.status_code = 200
+        esearch.headers = {}
+        esearch.raise_for_status.return_value = None
+        esearch.json.return_value = {"esearchresult": {"count": "20000", "idlist": ["99999"]}}
+        efetch = MagicMock()
+        efetch.status_code = 200
+        efetch.headers = {}
+        efetch.raise_for_status.return_value = None
+        efetch.text = "<PubmedArticleSet><PubmedArticle><MedlineCitation><PMID>99999</PMID><Article><ArticleTitle>Study</ArticleTitle></Article></MedlineCitation></PubmedArticle></PubmedArticleSet>"
+        mock_get.side_effect = [esearch, efetch]
+
+        result = search_pubmed("diabetes", max_results=50, retstart=9999)
+
+        self.assertEqual(mock_get.call_args_list[0].kwargs["params"]["retmax"], 1)
+        self.assertEqual(result["pagination"]["page_size"], 1)
+        self.assertTrue(result["pagination"]["limit_applied"])
+        self.assertTrue(result["pagination"]["retrieval_window_exhausted"])
+        self.assertTrue(result["pagination"]["has_more"])
+        self.assertIsNone(result["pagination"]["next_retstart"])
+
+    @patch("requests.get")
+    def test_search_pubmed_rejects_offset_past_retrieval_window(self, mock_get):
+        result = search_pubmed("diabetes", max_results=1, retstart=10_000)
+        self.assertIn("error", result)
+        self.assertEqual(mock_get.call_count, 0)
 
     @patch("requests.get")
     def test_search_pubmed_deduplication(self, mock_get):
@@ -296,6 +399,25 @@ class TestPubMedClient(unittest.TestCase):
         self.assertFalse(res["verified"])
         self.assertEqual(res["reason"], "doi_mismatch")
         self.assertIn("DOI uyuşmazlığı nedeniyle reddedildi", res["error"])
+
+    @patch("pubmed_client.verify_pmid")
+    def test_verify_citation_doi_missing_from_record_remains_unverified(self, mock_verify_pmid):
+        mock_verify_pmid.return_value = {
+            "valid": True,
+            "pmid": "34449189",
+            "title": "Empagliflozin in Heart Failure",
+            "doi": "",
+        }
+
+        result = verify_citation({
+            "pmid": "34449189",
+            "title": "Empagliflozin in Heart Failure",
+            "doi": "10.1056/NEJMoa2107038",
+        })
+
+        self.assertEqual(result["status"], "unverified")
+        self.assertFalse(result["verified"])
+        self.assertEqual(result["reason"], "doi_missing_from_pubmed_record")
 
     @patch("pubmed_client.verify_pmid")
     def test_verify_citation_api_failure_unverified(self, mock_verify_pmid):

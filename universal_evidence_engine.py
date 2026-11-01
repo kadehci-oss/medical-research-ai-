@@ -361,6 +361,7 @@ class UniversalEvidenceEngine:
             "evidence_ranking": evidence_ranking,
             "search_date": search_res.get("search_date"),
             "search_params": search_res.get("search_params"),
+            "pagination": search_res.get("pagination"),
             "total_count": search_res.get("total_count", 0),
             "articles": verified_articles,
             "verification_summaries": verification_summaries

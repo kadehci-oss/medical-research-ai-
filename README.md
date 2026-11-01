@@ -12,12 +12,12 @@ It searches live PubMed, checks citation identifiers and available title/DOI fie
 
 ## Key features
 
-1. **PubMed E-utilities search** (`esearch` + `efetch`): publication-type and year filters, relevance or date sort, and metadata (PMID, DOI, title, authors, journal, year, abstract).
+1. **PubMed E-utilities search** (`esearch` + `efetch`): publication-type and year filters, relevance or date sort, metadata (PMID, DOI, title, authors, journal, year, abstract), and offset pagination. `/api/search` accepts `max_results` (1–50) and zero-based `retstart`; responses expose `pagination.has_more`, `next_retstart`, and `truncated`. One ESearch request can retrieve at most 10,000 IDs; offsets beyond that window are not supported.
 2. **PMID and DOI verification:** PMID lookup on PubMed; DOI lookup on CrossRef with a PubMed cross-check. Citation checks re-fetch the PMID and compare the normalized title and DOI.
 3. **Turkish evidence report:** rule-based synthesis, with optional OpenAI synthesis only after explicit data-transfer confirmation. An API key alone does not enable external synthesis. Citations point at `https://pubmed.ncbi.nlm.nih.gov/<PMID>/`.
 4. **Two interfaces:** a Streamlit dashboard (`app.py`) and a FastAPI service (`api.py`) that also exposes the universal evidence engine (`universal_evidence_engine.py`).
 
-Search is a PubMed-based preliminary search, not a systematic review or a claim of comprehensive coverage. The report does not screen every retrieved record against a registered inclusion/exclusion protocol. Cross-study matching is heuristic and abstract-only; it is not evidence that studies are clinically equivalent.
+Search is a PubMed-based preliminary search, not a systematic review or a claim of comprehensive coverage. The report does not screen every retrieved record against a registered inclusion/exclusion protocol. Cross-study matching is abstract-only; family deduplication requires a derived-report cue, an explicit source-text link to one named parent, and a shared trial identity. A common acronym or registry number, or title similarity, alone does not merge records. This is not evidence that studies or cohorts are clinically equivalent.
 
 ## Product goal and current gap
 
@@ -48,7 +48,7 @@ The intended goal is a Turkish, expert-level report for clinical research questi
 ├── AGENTS.md                      # Contributor and agent conventions
 ├── statin_myopathy_report.md      # Example generated report
 ├── .github/workflows/
-│   ├── ci.yml                     # pytest on push and pull request (Python 3.12)
+│   ├── ci.yml                     # pytest on push and pull request (Python 3.11 and 3.12)
 │   └── live-ncbi-validation.yml   # Weekly and manual live NCBI check (Python 3.12)
 └── tests/
     ├── test_api.py
@@ -70,7 +70,7 @@ The intended goal is a Turkish, expert-level report for clinical research questi
 
 ### Prerequisites
 
-- Python 3.12 is what CI, the weekly NCBI workflow, and the pinned dependency set are checked with. Python 3.11+ is the declared dependency baseline, but 3.11 is not currently verified by CI. Streamlit 1.66 and pandas 3.1 require 3.11+.
+- Python 3.11 and 3.12 are tested in CI from the pinned dependency set. The weekly live NCBI validation workflow currently runs on Python 3.12. Streamlit 1.66 and pandas 3.1 require Python 3.11+.
 - Network access to NCBI E-utilities and the CrossRef API.
 
 ### Install
@@ -83,15 +83,15 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-`requirements.txt` lists the direct dependencies. `requirements.lock` is a full `pip freeze` from a clean Python 3.12 virtual environment created after `pip install -r requirements.txt`. Use the lock file when the install must be reproducible:
+`requirements.txt` lists the direct dependencies. `requirements.lock` is a full `pip freeze` from a clean Python 3.11 virtual environment created after `pip install -r requirements.txt`; Python 3.11 is the lowest supported interpreter, and CI verifies the same lock on 3.11 and 3.12. Use the lock file when the install must be reproducible:
 
 ```bash
 pip install -r requirements.lock
 ```
 
-Regenerate the lock file from a clean virtual environment whenever `requirements.txt` changes. Do not edit `requirements.lock` by hand.
+Regenerate the lock file from a clean Python 3.11 virtual environment whenever `requirements.txt` changes. Do not edit `requirements.lock` by hand.
 
-CI (`.github/workflows/ci.yml`) and the live NCBI workflow install from `requirements.lock` on Python 3.12 and run `pip check`. If the locked install fails, the job stops rather than silently testing with the looser `requirements.txt`; regenerate and review the lock file when dependencies change.
+CI (`.github/workflows/ci.yml`) installs from `requirements.lock`, runs `pip check` and the full pytest suite on Python 3.11 and 3.12. The live NCBI workflow remains on Python 3.12. If a locked install fails, the job stops rather than silently testing with the looser `requirements.txt`; regenerate and review the lock file when dependencies change.
 
 ---
 
@@ -194,12 +194,12 @@ result = audit_report_quality(report_markdown)
 
 Every PubMed record is turned into one `Study` object (`evidence_model.py`). Search cards in Streamlit, report sections 5 and 6, and the downloadable Markdown/HTML/JSON exports all read that same object, so a value cannot differ between views.
 
-- **Data model:** `Study`, `Population`, `StudyArm`, `Intervention`, `Comparator`, `CoTreatment`, `Outcome`, `EffectEstimate`, `EventCount`, `EvidenceSource`, `RiskOfBiasAssessment`, `CertaintyAssessment`, `StudyRelation`. Each extracted value carries PMID, DOI, the verbatim source sentence and a verification status (`kaynakta_dogrulandi`, `kaynaktan_hesaplandi`, `kaynakta_bulunamadi`).
+- **Data model:** `Study`, `Population`, `StudyArm`, `Intervention`, `Comparator`, `CoTreatment`, `Outcome`, `EffectEstimate`, `FollowUpTimepoint`, `EventCount`, `EvidenceSource`, `RiskOfBiasAssessment`, `CertaintyAssessment`, `StudyRelation`. A structured follow-up timepoint is attached to an effect estimate only when it is explicit, unambiguous, and copied from that estimate’s verified source sentence; absent or competing timepoints remain `null`.
 - **Counts kept apart:** total participants, arm sizes and event numerators are separate fields. An arm total that the abstract does not state is shown as "kol sayılarının toplamı".
 - **Effect estimates:** HR, OR, RR, IRR, RD, MD, SMD, WMD, DOR, sensitivity, specificity, AUC, PPV, NPV, LR and accuracy are parsed with their own CI (and CI level, e.g. 90%) and bound to the outcome named in the sentence. A missing point estimate stays missing. A CI that does not contain its estimate is rejected and left out of synthesis.
 - **Claim types:** causal wording only for randomized comparisons and pooled randomized evidence; observational results are shown as associations, diagnostic results as accuracy, case series as descriptive.
 - **RoB / GRADE:** the tool is chosen, but the status stays `not_assessed`; no rating is generated.
-- **Study relations:** secondary/post hoc analyses, later interim analyses, extended follow-up and meta-analyses are linked to the parent trial by shared registry number (NCT, ISRCTN, NTR, DRKS, …) or trial acronym. Derived reports and meta-analyses are not counted as independent evidence, so the same participants are not counted twice.
+- **Study relations:** a derived report is linked only when its role is explicit, its source text names one parent through a relation phrase, and the identity matches. A shared registry number or acronym alone, or similar titles, never merges cohorts. Ambiguous pooled analyses and derived reports without a verified parent are not promoted to independent primary units; this can undercount evidence and should be read as a conservative software rule, not a cohort adjudication.
 - **Question framework:** `question_framework.py` picks PICO, PIRD (diagnosis), PFO (prognosis), PEO/PECO (aetiology, harm), CoCoPop (epidemiology), screening-PICO or SPICE (health services). Values come only from the query.
 - **Report verification:** `report_verification.py` checks that every cited PMID is in the article set, every quoted source sentence is verbatim in that PMID's abstract, no RoB/GRADE rating is asserted and no causal wording is attached to a non-randomized study. Streamlit shows the status and version; exports carry it in a footer.
 
@@ -207,7 +207,7 @@ Every PubMed record is turned into one `Study` object (`evidence_model.py`). Sea
 
 Three test categories:
 
-1. **Software unit and integration tests:** `tests/test_evidence_model.py`, `tests/test_question_framework.py` (including report-verification tests), plus the existing suite.
+1. **Software unit and integration tests:** `tests/test_evidence_model.py`, `tests/test_pubmed_client.py`, `tests/test_api.py` (including two-page search endpoint coverage), `tests/test_question_framework.py` (including report-verification tests), plus the existing suite. CI runs the complete suite on Python 3.11 and 3.12.
 2. **Real PubMed source verification:** `tests/test_pubmed_source_verification.py`. The recorded PubMed records in `validation/` are checked offline; `RUN_LIVE_PUBMED=1 pytest tests/test_pubmed_source_verification.py` re-fetches every PMID from NCBI and compares title and DOI.
 3. **Independent clinical data validation:** `tests/test_clinical_reference_validation.py` compares engine output with pre-specified reference tables (68 real PubMed publications, 8 required specialties plus obstetrics: cardiology, oncology, neurology, infectious diseases, endocrinology, paediatrics, surgery, radiology; RCT, cohort, case-control, diagnostic accuracy, case series, systematic review, meta-analysis).
 
