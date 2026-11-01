@@ -491,12 +491,18 @@ def _trim_before_finite_verb(clause: str) -> str:
 def _raise_initial(text: str) -> str:
     """Uppercase a leading lowercase letter without rewriting the rest.
 
+    Applies Turkish capitalization rules (i -> İ, ı -> I).
     str.capitalize() would turn IIM into Iim. Acronyms stay as written.
     """
     cleaned = (text or "").strip()
     if not cleaned or not cleaned[0].islower():
         return cleaned
-    return cleaned[0].upper() + cleaned[1:]
+    first = cleaned[0]
+    if first == "i":
+        return "İ" + cleaned[1:]
+    if first == "ı":
+        return "I" + cleaned[1:]
+    return first.upper() + cleaned[1:]
 
 
 def _split_treatment_arms(text: str, start: int):
@@ -2049,14 +2055,13 @@ _ABBREV_IF_PRESENT = (
     (r"\bkawasaki\b", "KD", "Kawasaki hastalığı (KH)"),
     (r"\batopic dermatitis\b", "AD", "atopik dermatit"),
 )
-PICO_UNSTATED_TR = "özette açıkça bildirilmedi"
+PICO_UNSTATED_TR = "özette bildirilmedi"
 COMPARATOR_UNSTATED_TR = "bildirilmedi"
 _PICO_SENTINELS = {
     "belirtilmedi",
     "belirtilmemiş",
     "değerlendirilemedi",
     "özette bildirilmedi",
-    "özette açıkça bildirilmedi",
     "bildirilmedi",
 }
 _PICO_FUNCTION_WORDS = {
@@ -2512,8 +2517,23 @@ def _significance_from_findings(findings: List[Dict[str, Any]]) -> str:
         if item.get("implausible"):
             continue
         p_flag, ci_flag = _finding_significance_flags(item)
-        if p_flag and ci_flag and p_flag != ci_flag:
-            flag = "conflict"
+
+        p_text = item.get("p") or item.get("effect") or ""
+        p_match = re.search(r"p\s*([=<>])\s*(0?\.\d+|\d+(?:\.\d+)?)", p_text, re.IGNORECASE)
+        p_op = p_match.group(1) if p_match else ""
+        p_num = _to_float(p_match.group(2)) if p_match else None
+        is_borderline = (p_op == "=" and p_num is not None and abs(p_num - 0.05) < 1e-4)
+
+        has_usable_ci = bool(
+            item.get("ci_low")
+            and item.get("ci_high")
+            and item.get("ci") not in ("özette bildirilmedi", "değerlendirilemedi", "")
+        )
+
+        if is_borderline:
+            flag = "borderline"
+        elif p_flag and ci_flag and p_flag != ci_flag:
+            flag = "conflict" if has_usable_ci else p_flag
         elif p_flag:
             flag = p_flag
         elif ci_flag:
@@ -2526,6 +2546,8 @@ def _significance_from_findings(findings: List[Dict[str, Any]]) -> str:
             parts.append(f"{label} için anlamlı")
         elif flag == "nonsig":
             parts.append(f"{label} için anlamlı değil")
+        elif flag == "borderline":
+            parts.append(f"{label} için sınırda (p = 0.050); anlamlılık eşiğini aşmadı")
         else:
             parts.append(f"{label} için p değeri ile güven aralığı farklı yön gösteriyor")
     if not flags:
@@ -2580,18 +2602,37 @@ def extract_article_clinical_details(article: Dict[str, Any], query: str = "") -
             "source": source if stated else "missing",
         }
 
-    # 1. Sample Size — only a number that the abstract itself states
-    if metrics.get("n"):
-        sample_size_str = f"n = {metrics['n']}"
-        sample_sentence = metrics.get("n_source_sentence") or ""
-    else:
-        sample_size_str = "özette bildirilmedi"
-        sample_sentence = ""
-
     # 2–3. Population, intervention, and comparator come from the structured
     # extractor shared with sections 5 and 6. Word-by-word translation is not used.
     profile = extract_clinical_profile(abstract)
     patient_group, pop_sentence = _canonical_patient_group(abstract, profile, metrics)
+
+    # 1. Sample Size — only a number that the abstract itself states or already extracted in patient group
+    if metrics.get("n"):
+        sample_size_str = f"n = {metrics['n']}"
+        sample_sentence = metrics.get("n_source_sentence") or ""
+    else:
+        # Check if patient_group or profile has an extracted n
+        parsed_n = None
+        if patient_group and patient_group not in ("özette bildirilmedi", "Belirtilmedi", ""):
+            match_pg = re.match(r"^(?:n\s*=\s*)?(\d+)\s+(?:hasta|katılımcı|olgu|kişi|birey|çocuk|kadın|erkek)\b", patient_group, re.IGNORECASE)
+            if match_pg:
+                parsed_n = match_pg.group(1)
+        if not parsed_n:
+            for item in profile or []:
+                if item.get("category") == "sample":
+                    m_prof = re.search(r"\b(\d+)\s+(?:hasta|katılımcı|olgu|kişi|birey|çocuk|kadın|erkek)\b", item.get("line") or "", re.IGNORECASE)
+                    if m_prof:
+                        parsed_n = m_prof.group(1)
+                        pop_sentence = item.get("sentence") or pop_sentence
+                        break
+
+        if parsed_n:
+            sample_size_str = f"n = {parsed_n}"
+            sample_sentence = pop_sentence or ""
+        else:
+            sample_size_str = "özette bildirilmedi"
+            sample_sentence = ""
     if patient_group in ("özette bildirilmedi", "Belirtilmedi", ""):
         patient_group = "özette bildirilmedi"
         pop_sentence = ""
@@ -5940,7 +5981,7 @@ def _intervention_comparison_cell(
     comparator = _explicit_comparator(abstract)
     if drugs and comparator == "plasebo" and "plasebo" not in " ".join(drugs).casefold():
         return ", ".join(drugs) + " vs plasebo"
-    return ", ".join(drugs) if drugs else "Belirtilmedi"
+    return ", ".join(drugs) if drugs else "özette bildirilmedi"
 
 
 def _format_cross_study_comparison(articles: List[Dict[str, Any]], pico: Optional[Dict[str, str]] = None) -> str:

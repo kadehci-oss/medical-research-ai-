@@ -545,6 +545,7 @@ _LEFTOVER_ENGLISH = {
 _PASSTHROUGH_FIELDS = {
     "Belirtilmedi",
     "Özette bildirilmedi",
+    "özette bildirilmedi",
     "Özette nicel etki ölçütü bildirilmedi",
     "değerlendirilemedi",
 }
