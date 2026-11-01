@@ -275,6 +275,11 @@ def main():
                             f"`{display_bias_rating(rob['overall_rating'])}`"
                         )
                         st.caption(rob.get("rating_policy") or "Değerlendirme yapılmadan risk derecesi verilmez.")
+                        source_validation = evidence_model.validate_study(study, art)
+                        source_status = "Yapısal olarak uygun" if source_validation.get("valid") else "Kaynak incelemesi gerekli"
+                        st.caption(
+                            f"Kaynak alanı kontrolü: {source_status}; bu yapısal kontrol klinik doğrulama/GRADE değildir."
+                        )
                         for line in evidence_model.render_study_card_lines(study)[2:]:
                             st.markdown(line)
 
@@ -367,6 +372,12 @@ def main():
                 st.session_state.pop("generated_report_export", None)
 
             audit_res = perform_red_team_audit(query, articles)
+            model_studies, _ = evidence_model.build_studies(articles, query)
+            model_checks = [
+                evidence_model.validate_study(study, article)
+                for study, article in zip(model_studies, articles)
+            ]
+            structurally_valid = sum(1 for check in model_checks if check.get("valid"))
 
             # Audit Summary Cards
             col_a1, col_a2, col_a3, col_a4, col_a5 = st.columns(5)
@@ -381,6 +392,10 @@ def main():
             with col_a5:
                 st.metric("Uzman Hekim Değerlendirmesi", audit_res.get("expert_physician_review", "Yapılmadı"))
             st.caption("Eşleşme; PMID'nin yeniden alınmasını ve yalnızca sağlanmış başlık/DOI alanlarının kontrolünü ifade eder.")
+            st.caption(
+                f"Kaynak alanı yapısal kontrolü: {structurally_valid}/{len(articles)} uygun; "
+                "bu kontrol bağımsız klinik doğrulama veya GRADE değildir."
+            )
 
             st.markdown(
                 f"""<div class="grade-notice-card">
