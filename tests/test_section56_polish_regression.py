@@ -269,7 +269,7 @@ class TestSection6ComparisonCells(unittest.TestCase):
         self.assertIn("35 hasta Hispanik olmayan", patient)
         self.assertNotIn("self-identified", patient.lower())
         self.assertNotIn("hispanic versus", patient.lower())
-        self.assertEqual(intervention, "Belirtilmedi")
+        self.assertEqual(intervention, "özette bildirilmedi")
 
         series_patient, _series_design, series_intervention = self._cells("41010829")[1:4]
         self.assertIn("10 hasta", series_patient)
@@ -291,7 +291,7 @@ class TestSection6ComparisonCells(unittest.TestCase):
 
         missing_patient, _missing_design, missing_intervention = self._cells("33447390")[1:4]
         self.assertEqual(missing_patient, "özette bildirilmedi")
-        self.assertEqual(missing_intervention, "Belirtilmedi")
+        self.assertEqual(missing_intervention, "özette bildirilmedi")
         self.assertIn("dermatomiyozit benzeri deri bulguları", self._cells("33447390")[4])
 
         heart_intervention = self._cells("33795149")[3]
