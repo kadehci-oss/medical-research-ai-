@@ -1,5 +1,13 @@
 {
-  "generated_at_utc": "2026-11-01T07:10:59.571019+00:00",
+  "generated_at_utc": "2026-11-01T09:49:59.714606+00:00",
+  "run_provenance": {
+    "command": "python validation/run_pubmed_benchmark.py",
+    "python_version": "3.12.3",
+    "git_head_at_run": "2e26ee597988d08df36c9ddb80958032200daf2b",
+    "runner_sha256": "940603a093e9c0d7009743b06b354f65859274945724ff47f92e015b91e96510",
+    "reference_data_sha256": "246793d61354b5fcc5a724d733b2fcd76c5af1292d9c9a5611b497289ccb4fe3",
+    "live_source": "NCBI PubMed E-utilities through pubmed_client.verify_citation"
+  },
   "model_version": "1.0.0",
   "reference_dataset_version": "1.1",
   "pubmed_identity_validation": {
@@ -15,6 +23,7 @@
         "doi_expected": "10.1056/NEJMoa2107038",
         "doi_fetched": "10.1056/NEJMoa2107038",
         "title_fetched": "Empagliflozin in Heart Failure with a Preserved Ejection Fraction.",
+        "abstract_sha256": "98529755c1a756521e32fd0e111b397a46ef15a5dafa09dcfe134635b65ebc26",
         "pubmed_url": "https://pubmed.ncbi.nlm.nih.gov/34449189/"
       },
       {
@@ -25,6 +34,7 @@
         "doi_expected": "10.1016/j.eclinm.2024.102870",
         "doi_fetched": "10.1016/j.eclinm.2024.102870",
         "title_fetched": "Effectiveness of immune checkpoint inhibitors and other treatment modalities in patients with advanced mucosal melanomas: a systematic review and individual patient data meta-analysis.",
+        "abstract_sha256": "cdfcb67a0a725b82cc70e122176b89baa57c6b7546930343f0dbf2ab23e7e53d",
         "pubmed_url": "https://pubmed.ncbi.nlm.nih.gov/39416390/"
       },
       {
@@ -35,6 +45,7 @@
         "doi_expected": "10.1016/j.yebeh.2020.106969",
         "doi_fetched": "10.1016/j.yebeh.2020.106969",
         "title_fetched": "Course and prognosis of adult-onset epilepsy in Brazil: A cohort study.",
+        "abstract_sha256": "b54bcd34bb9cf54c24f9ed89da83ee61d8cffc932fa7927da03482f14d7d3962",
         "pubmed_url": "https://pubmed.ncbi.nlm.nih.gov/32113113/"
       },
       {
@@ -45,6 +56,7 @@
         "doi_expected": "10.1093/jac/dkm141",
         "doi_fetched": "10.1093/jac/dkm141",
         "title_fetched": "Prior antibiotics and risk of antibiotic-resistant community-acquired urinary tract infection: a case-control study.",
+        "abstract_sha256": "d29bdab79511e4eb79fdf1c9282f78dc77b48c92924c6d4c20f85971f3fcc22b",
         "pubmed_url": "https://pubmed.ncbi.nlm.nih.gov/17540675/"
       },
       {
@@ -55,6 +67,7 @@
         "doi_expected": "10.1001/archinte.159.7.658",
         "doi_fetched": "10.1001/archinte.159.7.658",
         "title_fetched": "Diagnosis of thyroid disease in hospitalized patients: a systematic review.",
+        "abstract_sha256": "122b08e8510782f74ee1e45f580a4a2b2e3553a8ddffe10048ecaafc81e002dc",
         "pubmed_url": "https://pubmed.ncbi.nlm.nih.gov/10218744/"
       },
       {
@@ -65,6 +78,7 @@
         "doi_expected": "10.1542/peds.2023-061188",
         "doi_fetched": "10.1542/peds.2023-061188",
         "title_fetched": "Diagnostic Accuracy of Primary Care Clinicians Across a Statewide System of Autism Evaluation.",
+        "abstract_sha256": "c48d14eed339b2d79b60622fbdf9a720ac1a65e2f691107906c40e9c4af7788d",
         "pubmed_url": "https://pubmed.ncbi.nlm.nih.gov/37461867/"
       },
       {
@@ -75,6 +89,7 @@
         "doi_expected": "10.1002/lio2.1289",
         "doi_fetched": "10.1002/lio2.1289",
         "title_fetched": "Eagle syndrome presentation and outcomes in a large surgical case series.",
+        "abstract_sha256": "b04f2dd24dd978ba67b92b2df71c4a990dd4cefb2140baafa8bfa113bfcb69c3",
         "pubmed_url": "https://pubmed.ncbi.nlm.nih.gov/39071203/"
       },
       {
@@ -85,6 +100,7 @@
         "doi_expected": "10.1016/j.otsr.2019.09.020",
         "doi_fetched": "10.1016/j.otsr.2019.09.020",
         "title_fetched": "Thoracic Outlet Syndrome: Diagnostic Accuracy of MRI.",
+        "abstract_sha256": "e301d9edecac3108502b5ddd922f8da71370682569f74da138bc009c28d37938",
         "pubmed_url": "https://pubmed.ncbi.nlm.nih.gov/31732398/"
       }
     ]
@@ -98,6 +114,8 @@
   },
   "reference_comparison": {
     "articles": 8,
+    "records_evaluated": 8,
+    "records_not_evaluated": 0,
     "complete_articles": 8,
     "expected_fields": 79,
     "matched_fields": 79,
@@ -105,19 +123,35 @@
     "complete_article_rate": 1.0,
     "field_gap_priorities": []
   },
+  "reference_quote_provenance": {
+    "status": "PASS",
+    "records_evaluated": 8,
+    "records_not_evaluated": 0,
+    "expected_quotes": 23,
+    "matched_quotes": 23
+  },
   "source_sentence_checks": {
     "claims_checked": 142,
     "matched_claims": 142,
-    "exact_match_rate": 1.0
+    "text_presence_rate": 1.0,
+    "records_evaluated": 8,
+    "records_not_evaluated": 0
   },
   "extraction_safety_checks": {
+    "status": "PASS",
+    "evaluated_records": 8,
+    "not_evaluated_records": 0,
     "unsupported_claims": 0,
     "unsupported_value_claims": 0,
     "unsupported_metric_type_claims": 0,
     "claim_denominator": 164,
     "unsupported_rate": 0.0,
-    "causal_guard_violations": 0,
-    "interpretation": "Software/source-string checks only; not independent clinical validation."
+    "causal_language_status": "PASS",
+    "rendered_causal_claims_checked": 30,
+    "unsupported_causal_language_claims": 0,
+    "causal_metadata_mismatches": 0,
+    "causal_language_violation_rate": 0.0,
+    "interpretation": "Software/source-string checks only. The causal phrase scan covers rendered canonical claim sentences; it is not semantic or independent clinical adjudication."
   },
   "independent_clinical_adjudication": {
     "status": "NOT_PERFORMED",
@@ -271,13 +305,32 @@
         }
       ],
       "complete_reference_extraction": true,
+      "reference_quote_checks": [
+        {
+          "field": "total_n_sentence",
+          "present_in_live_record": true,
+          "location": "abstract"
+        },
+        {
+          "field": "outcomes[0].source_sentence",
+          "present_in_live_record": true,
+          "location": "abstract"
+        },
+        {
+          "field": "outcomes[1].source_sentence",
+          "present_in_live_record": true,
+          "location": "abstract"
+        }
+      ],
       "source_claim_count": 27,
       "metric_type_check_count": 2,
       "source_sentence_matches": 27,
-      "source_sentence_exact_match_rate": 1.0,
+      "source_text_presence_rate": 1.0,
       "unsupported_value_claims": [],
       "unsupported_metric_type_claims": [],
-      "false_causal_claim_flag": false,
+      "rendered_claims_checked": 2,
+      "unsupported_causal_language_claims": [],
+      "causal_metadata_mismatch": false,
       "model_validation": {
         "valid": true,
         "status": "structurally_valid",
@@ -300,6 +353,7 @@
         "doi_expected": "10.1056/NEJMoa2107038",
         "doi_fetched": "10.1056/NEJMoa2107038",
         "title_fetched": "Empagliflozin in Heart Failure with a Preserved Ejection Fraction.",
+        "abstract_sha256": "98529755c1a756521e32fd0e111b397a46ef15a5dafa09dcfe134635b65ebc26",
         "pubmed_url": "https://pubmed.ncbi.nlm.nih.gov/34449189/"
       }
     },
@@ -424,13 +478,37 @@
         }
       ],
       "complete_reference_extraction": true,
+      "reference_quote_checks": [
+        {
+          "field": "total_n_sentence",
+          "present_in_live_record": true,
+          "location": "abstract"
+        },
+        {
+          "field": "outcomes[0].source_sentence",
+          "present_in_live_record": true,
+          "location": "abstract"
+        },
+        {
+          "field": "outcomes[1].source_sentence",
+          "present_in_live_record": true,
+          "location": "abstract"
+        },
+        {
+          "field": "outcomes[2].source_sentence",
+          "present_in_live_record": true,
+          "location": "abstract"
+        }
+      ],
       "source_claim_count": 70,
       "metric_type_check_count": 10,
       "source_sentence_matches": 70,
-      "source_sentence_exact_match_rate": 1.0,
+      "source_text_presence_rate": 1.0,
       "unsupported_value_claims": [],
       "unsupported_metric_type_claims": [],
-      "false_causal_claim_flag": false,
+      "rendered_claims_checked": 18,
+      "unsupported_causal_language_claims": [],
+      "causal_metadata_mismatch": false,
       "model_validation": {
         "valid": true,
         "status": "structurally_valid",
@@ -453,6 +531,7 @@
         "doi_expected": "10.1016/j.eclinm.2024.102870",
         "doi_fetched": "10.1016/j.eclinm.2024.102870",
         "title_fetched": "Effectiveness of immune checkpoint inhibitors and other treatment modalities in patients with advanced mucosal melanomas: a systematic review and individual patient data meta-analysis.",
+        "abstract_sha256": "cdfcb67a0a725b82cc70e122176b89baa57c6b7546930343f0dbf2ab23e7e53d",
         "pubmed_url": "https://pubmed.ncbi.nlm.nih.gov/39416390/"
       }
     },
@@ -543,13 +622,32 @@
         }
       ],
       "complete_reference_extraction": true,
+      "reference_quote_checks": [
+        {
+          "field": "total_n_sentence",
+          "present_in_live_record": true,
+          "location": "abstract"
+        },
+        {
+          "field": "outcomes[0].source_sentence",
+          "present_in_live_record": true,
+          "location": "abstract"
+        },
+        {
+          "field": "outcomes[1].source_sentence",
+          "present_in_live_record": true,
+          "location": "abstract"
+        }
+      ],
       "source_claim_count": 6,
       "metric_type_check_count": 0,
       "source_sentence_matches": 6,
-      "source_sentence_exact_match_rate": 1.0,
+      "source_text_presence_rate": 1.0,
       "unsupported_value_claims": [],
       "unsupported_metric_type_claims": [],
-      "false_causal_claim_flag": false,
+      "rendered_claims_checked": 0,
+      "unsupported_causal_language_claims": [],
+      "causal_metadata_mismatch": false,
       "model_validation": {
         "valid": true,
         "status": "structurally_valid",
@@ -572,6 +670,7 @@
         "doi_expected": "10.1016/j.yebeh.2020.106969",
         "doi_fetched": "10.1016/j.yebeh.2020.106969",
         "title_fetched": "Course and prognosis of adult-onset epilepsy in Brazil: A cohort study.",
+        "abstract_sha256": "b54bcd34bb9cf54c24f9ed89da83ee61d8cffc932fa7927da03482f14d7d3962",
         "pubmed_url": "https://pubmed.ncbi.nlm.nih.gov/32113113/"
       }
     },
@@ -665,13 +764,32 @@
         }
       ],
       "complete_reference_extraction": true,
+      "reference_quote_checks": [
+        {
+          "field": "total_n_sentence",
+          "present_in_live_record": true,
+          "location": "abstract"
+        },
+        {
+          "field": "outcomes[0].source_sentence",
+          "present_in_live_record": true,
+          "location": "abstract"
+        },
+        {
+          "field": "outcomes[1].source_sentence",
+          "present_in_live_record": true,
+          "location": "abstract"
+        }
+      ],
       "source_claim_count": 14,
       "metric_type_check_count": 3,
       "source_sentence_matches": 14,
-      "source_sentence_exact_match_rate": 1.0,
+      "source_text_presence_rate": 1.0,
       "unsupported_value_claims": [],
       "unsupported_metric_type_claims": [],
-      "false_causal_claim_flag": false,
+      "rendered_claims_checked": 3,
+      "unsupported_causal_language_claims": [],
+      "causal_metadata_mismatch": false,
       "model_validation": {
         "valid": true,
         "status": "structurally_valid",
@@ -694,6 +812,7 @@
         "doi_expected": "10.1093/jac/dkm141",
         "doi_fetched": "10.1093/jac/dkm141",
         "title_fetched": "Prior antibiotics and risk of antibiotic-resistant community-acquired urinary tract infection: a case-control study.",
+        "abstract_sha256": "d29bdab79511e4eb79fdf1c9282f78dc77b48c92924c6d4c20f85971f3fcc22b",
         "pubmed_url": "https://pubmed.ncbi.nlm.nih.gov/17540675/"
       }
     },
@@ -772,13 +891,27 @@
         }
       ],
       "complete_reference_extraction": true,
+      "reference_quote_checks": [
+        {
+          "field": "outcomes[0].source_sentence",
+          "present_in_live_record": true,
+          "location": "abstract"
+        },
+        {
+          "field": "outcomes[1].source_sentence",
+          "present_in_live_record": true,
+          "location": "abstract"
+        }
+      ],
       "source_claim_count": 4,
       "metric_type_check_count": 0,
       "source_sentence_matches": 4,
-      "source_sentence_exact_match_rate": 1.0,
+      "source_text_presence_rate": 1.0,
       "unsupported_value_claims": [],
       "unsupported_metric_type_claims": [],
-      "false_causal_claim_flag": false,
+      "rendered_claims_checked": 0,
+      "unsupported_causal_language_claims": [],
+      "causal_metadata_mismatch": false,
       "model_validation": {
         "valid": true,
         "status": "structurally_valid",
@@ -801,6 +934,7 @@
         "doi_expected": "10.1001/archinte.159.7.658",
         "doi_fetched": "10.1001/archinte.159.7.658",
         "title_fetched": "Diagnosis of thyroid disease in hospitalized patients: a systematic review.",
+        "abstract_sha256": "122b08e8510782f74ee1e45f580a4a2b2e3553a8ddffe10048ecaafc81e002dc",
         "pubmed_url": "https://pubmed.ncbi.nlm.nih.gov/10218744/"
       }
     },
@@ -884,13 +1018,32 @@
         }
       ],
       "complete_reference_extraction": true,
+      "reference_quote_checks": [
+        {
+          "field": "total_n_sentence",
+          "present_in_live_record": true,
+          "location": "abstract"
+        },
+        {
+          "field": "outcomes[0].source_sentence",
+          "present_in_live_record": true,
+          "location": "abstract"
+        },
+        {
+          "field": "outcomes[1].source_sentence",
+          "present_in_live_record": true,
+          "location": "abstract"
+        }
+      ],
       "source_claim_count": 6,
       "metric_type_check_count": 4,
       "source_sentence_matches": 6,
-      "source_sentence_exact_match_rate": 1.0,
+      "source_text_presence_rate": 1.0,
       "unsupported_value_claims": [],
       "unsupported_metric_type_claims": [],
-      "false_causal_claim_flag": false,
+      "rendered_claims_checked": 4,
+      "unsupported_causal_language_claims": [],
+      "causal_metadata_mismatch": false,
       "model_validation": {
         "valid": true,
         "status": "structurally_valid",
@@ -913,6 +1066,7 @@
         "doi_expected": "10.1542/peds.2023-061188",
         "doi_fetched": "10.1542/peds.2023-061188",
         "title_fetched": "Diagnostic Accuracy of Primary Care Clinicians Across a Statewide System of Autism Evaluation.",
+        "abstract_sha256": "c48d14eed339b2d79b60622fbdf9a720ac1a65e2f691107906c40e9c4af7788d",
         "pubmed_url": "https://pubmed.ncbi.nlm.nih.gov/37461867/"
       }
     },
@@ -976,13 +1130,27 @@
         }
       ],
       "complete_reference_extraction": true,
+      "reference_quote_checks": [
+        {
+          "field": "total_n_sentence",
+          "present_in_live_record": true,
+          "location": "abstract"
+        },
+        {
+          "field": "outcomes[0].source_sentence",
+          "present_in_live_record": true,
+          "location": "abstract"
+        }
+      ],
       "source_claim_count": 4,
       "metric_type_check_count": 0,
       "source_sentence_matches": 4,
-      "source_sentence_exact_match_rate": 1.0,
+      "source_text_presence_rate": 1.0,
       "unsupported_value_claims": [],
       "unsupported_metric_type_claims": [],
-      "false_causal_claim_flag": false,
+      "rendered_claims_checked": 0,
+      "unsupported_causal_language_claims": [],
+      "causal_metadata_mismatch": false,
       "model_validation": {
         "valid": true,
         "status": "structurally_valid",
@@ -1005,6 +1173,7 @@
         "doi_expected": "10.1002/lio2.1289",
         "doi_fetched": "10.1002/lio2.1289",
         "title_fetched": "Eagle syndrome presentation and outcomes in a large surgical case series.",
+        "abstract_sha256": "b04f2dd24dd978ba67b92b2df71c4a990dd4cefb2140baafa8bfa113bfcb69c3",
         "pubmed_url": "https://pubmed.ncbi.nlm.nih.gov/39071203/"
       }
     },
@@ -1099,13 +1268,32 @@
         }
       ],
       "complete_reference_extraction": true,
+      "reference_quote_checks": [
+        {
+          "field": "total_n_sentence",
+          "present_in_live_record": true,
+          "location": "abstract"
+        },
+        {
+          "field": "outcomes[0].source_sentence",
+          "present_in_live_record": true,
+          "location": "abstract"
+        },
+        {
+          "field": "outcomes[1].source_sentence",
+          "present_in_live_record": true,
+          "location": "abstract"
+        }
+      ],
       "source_claim_count": 11,
       "metric_type_check_count": 3,
       "source_sentence_matches": 11,
-      "source_sentence_exact_match_rate": 1.0,
+      "source_text_presence_rate": 1.0,
       "unsupported_value_claims": [],
       "unsupported_metric_type_claims": [],
-      "false_causal_claim_flag": false,
+      "rendered_claims_checked": 3,
+      "unsupported_causal_language_claims": [],
+      "causal_metadata_mismatch": false,
       "model_validation": {
         "valid": true,
         "status": "structurally_valid",
@@ -1128,9 +1316,10 @@
         "doi_expected": "10.1016/j.otsr.2019.09.020",
         "doi_fetched": "10.1016/j.otsr.2019.09.020",
         "title_fetched": "Thoracic Outlet Syndrome: Diagnostic Accuracy of MRI.",
+        "abstract_sha256": "e301d9edecac3108502b5ddd922f8da71370682569f74da138bc009c28d37938",
         "pubmed_url": "https://pubmed.ncbi.nlm.nih.gov/31732398/"
       }
     }
   ],
-  "report_markdown": "# Çok Branşlı PubMed Kaynaklı Alan Benchmark Raporu\n\nBu rapor, sekiz önceden belirlenmiş PubMed kaydında abstract düzeyindeki yazılım çıkarımını kaynak cümleleri ve referans alanlarıyla karşılaştırır. Bu çalışma bağımsız klinik adjudikasyon, tam metin incelemesi, GRADE veya yanlılık riski değerlendirmesi değildir.\n\n## Sonuç özeti\n\n- Yeniden alınarak PMID/başlık/DOI ile doğrulanan kayıt: **8/8**.\n- Önceden belirlenmiş referans alanı eşleşmesi: **79/79** (100.0%).\n- Eksiksiz referans alanı: **8/8**.\n- Bağlı kaynak cümlesi bulunan alan: **142/142** (100.0%); bu, klinik doğruluğu değil cümlenin kaynak abstract'ta bulunduğunu ölçer.\n- Desteklenmeyen kaynak/değer/metrik bayrağı: **0/164**.\n- Nedensellik koruma kuralı ihlali: **0**.\n\n## Referans alanı boşlukları\n\nAşağıdaki öncelik, yalnızca sınırlı benchmark referansındaki eşleşmeyen alan sayısını gösterir; klinik risk veya klinik adjudikasyon sıralaması değildir.\n- Bu sınırlı referans kümesinde eşleşmeyen alan yok.\n\n## Kayıt bazında sonuçlar\n\n| Branş | PMID | Tasarım (beklenen / model) | N (beklenen / model) | Alan eşleşmesi | Kaynak cümlesi | Model alan kontrolü |\n|---|---:|---|---:|---:|---:|---|\n| Kardiyoloji | 34449189 | rct / rct | 5988 / 5988 | 18/18 | 27/27 | structurally_valid |\n| Onkoloji | 39416390 | meta_analysis / systematic_review_and_meta_analysis | 2833 / 2833 | 14/14 | 70/70 | structurally_valid |\n| Nöroloji | 32113113 | cohort / cohort | 302 / 302 | 9/9 | 6/6 | structurally_valid |\n| Enfeksiyon hastalıkları | 17540675 | case_control / case_control | 903 / 903 | 10/10 | 14/14 | structurally_valid |\n| Endokrinoloji | 10218744 | systematic_review / systematic_review | — / belirtilmedi | 7/7 | 4/4 | structurally_valid |\n| Pediatri | 37461867 | diagnostic_accuracy / diagnostic_accuracy | 126 / 126 | 8/8 | 6/6 | structurally_valid |\n| Cerrahi | 39071203 | case_series / case_series | 56 / 56 | 5/5 | 4/4 | structurally_valid |\n| Radyoloji | 31732398 | diagnostic_accuracy / diagnostic_accuracy | 48 / 48 | 8/8 | 11/11 | structurally_valid |\n\n## Doğrulama sınırları\n\nPubMed kimlik kontrolü kaynak kaydının yeniden bulunması ve verilen kimlik alanlarının eşleşmesi içindir. Kaynak cümlesi kontrolü cümlenin abstract/başlıkta bulunmasına bakar; alanın klinik anlamda doğru yorumlandığını kanıtlamaz. Benchmark referans kümesi sınırlıdır ve bütün klinik çeşitliliği temsil etmez.\n\nBağımsız klinik doğrulama: **YAPILMADI**. GRADE ve yanlılık riski: **değerlendirilmedi**.\n\nKanonik model sürümü: `1.0.0`. Referans verisi: `pubmed_reference_cases.json` (sürüm 1.1).\n"
+  "report_markdown": "# Çok Branşlı PubMed Kaynaklı Alan Benchmark Raporu\n\nBu rapor, sekiz önceden belirlenmiş PubMed kaydında abstract düzeyindeki yazılım çıkarımını kaynak cümleleri ve referans alanlarıyla karşılaştırır. Bu çalışma bağımsız klinik adjudikasyon, tam metin incelemesi, GRADE veya yanlılık riski değerlendirmesi değildir.\n\n## Sonuç özeti\n\n- Yeniden alınarak PMID/başlık/DOI ile doğrulanan kayıt: **8/8**.\n- Önceden belirlenmiş referans alanı eşleşmesi: **79/79 (100.0%)**.\n- Eksiksiz referans alanı: **8/8**.\n- Önceden belirlenmiş kaynak alıntısı metninin canlı PubMed kaydında bulunması: **23/23**.\n- Model alanlarının kaynak metninin canlı abstract/başlık içinde bulunması: **142/142 (100.0%)**; bu tam cümle eşitliği veya klinik doğruluk değildir.\n- Desteklenmeyen değer/metrik kaynak dizesi kontrolleri: **0/164**.\n- Kanonik renderer’ın yapılandırılmış iddia cümlelerinde phrase-scan ile desteklenmeyen nedensel dil: **0/30**.\n\n## Referans alanı boşlukları\n\nAşağıdaki öncelik, yalnızca sınırlı benchmark referansındaki eşleşmeyen alan sayısını gösterir; klinik risk veya klinik adjudikasyon sıralaması değildir.\n- Bu sınırlı referans kümesinde eşleşmeyen alan yok.\n\n## Kayıt bazında sonuçlar\n\n| Branş | PMID | Tasarım (beklenen / model) | N (beklenen / model) | Alan eşleşmesi | Kaynak metni | Model alan kontrolü |\n|---|---:|---|---:|---:|---:|---|\n| Kardiyoloji | 34449189 | rct / rct | 5988 / 5988 | 18/18 | 27/27 | structurally_valid |\n| Onkoloji | 39416390 | meta_analysis / systematic_review_and_meta_analysis | 2833 / 2833 | 14/14 | 70/70 | structurally_valid |\n| Nöroloji | 32113113 | cohort / cohort | 302 / 302 | 9/9 | 6/6 | structurally_valid |\n| Enfeksiyon hastalıkları | 17540675 | case_control / case_control | 903 / 903 | 10/10 | 14/14 | structurally_valid |\n| Endokrinoloji | 10218744 | systematic_review / systematic_review | — / belirtilmedi | 7/7 | 4/4 | structurally_valid |\n| Pediatri | 37461867 | diagnostic_accuracy / diagnostic_accuracy | 126 / 126 | 8/8 | 6/6 | structurally_valid |\n| Cerrahi | 39071203 | case_series / case_series | 56 / 56 | 5/5 | 4/4 | structurally_valid |\n| Radyoloji | 31732398 | diagnostic_accuracy / diagnostic_accuracy | 48 / 48 | 8/8 | 11/11 | structurally_valid |\n\n## Doğrulama sınırları\n\nPubMed kimlik kontrolü kaynak kaydının yeniden bulunması ve verilen kimlik alanlarının eşleşmesi içindir. Kaynak metni kontrolü normalize edilmiş alıntı metninin canlı abstract/başlık içinde yer almasını denetler; tam cümle eşitliği veya alanın klinik anlamda doğru yorumlandığını kanıtlamaz. Nedensel dil phrase-scan’i yalnızca kanonik renderer’ın yapılandırılmış iddia cümlelerini tarar; semantik veya hekim değerlendirmesi değildir. Benchmark referans kümesi sınırlıdır ve bütün klinik çeşitliliği temsil etmez.\n\nBağımsız klinik doğrulama: **YAPILMADI**. GRADE ve yanlılık riski: **değerlendirilmedi**.\n\nKanonik model sürümü: `1.0.0`. Referans verisi: `pubmed_reference_cases.json` (sürüm 1.1).\n\n## Çalıştırma izi\n\nUTC zamanı: `2026-11-01T09:49:59.714606+00:00`; Python: `3.12.3`; çalıştırıcı SHA-256: `940603a093e9c0d7009743b06b354f65859274945724ff47f92e015b91e96510`; referans verisi SHA-256: `246793d61354b5fcc5a724d733b2fcd76c5af1292d9c9a5611b497289ccb4fe3`; çalıştırma anındaki Git HEAD: `2e26ee597988d08df36c9ddb80958032200daf2b`.\nCanlı abstract SHA-256 özeti her doğrulanan kayıt için JSON raporunda saklanır. Kimliği doğrulanamayan kayıtlar bu metriklerin paydasına dahil edilmez; değerlendirilmedikleri ayrıca sayılır.\n"
 }

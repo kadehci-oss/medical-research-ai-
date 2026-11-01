@@ -149,10 +149,10 @@ Puanlama `python validation/run_external_reference_check.py` ile yapılır ve ya
 | Branş | Durum | Alıntı kontrolü | Kümede olmayan PMID | RoB/GRADE derece iddiası |
 |---|---|---|---|---|
 | Kardiyoloji | Doğrulandı | 68/68 | 0 | 0 |
-| Onkoloji | Doğrulandı | 68/68 | 0 | 0 |
+| Onkoloji | Doğrulandı | 70/70 | 0 | 0 |
 | Nöroloji | Doğrulandı | 57/57 | 0 | 0 |
 | Enfeksiyon | Doğrulandı | 36/36 | 0 | 0 |
-| Endokrinoloji | Doğrulandı | 52/52 | 0 | 0 |
+| Endokrinoloji | Doğrulandı | 53/53 | 0 | 0 |
 | Pediatri | Doğrulandı | 43/43 | 0 | 0 |
 | Cerrahi | Doğrulandı | 42/42 | 0 | 0 |
 | Radyoloji | Doğrulandı | 34/34 | 0 | 0 |
@@ -356,7 +356,7 @@ Puanlama `python validation/run_external_reference_check.py` ile yapılır ve ya
 | Onkoloji | Doğrulandı | 20/20 | 0 | 0 |
 | Nöroloji | Doğrulandı | 7/7 | 0 | 0 |
 | Enfeksiyon | Doğrulandı | 5/5 | 0 | 0 |
-| Endokrinoloji | Doğrulandı | 39/39 | 0 | 0 |
+| Endokrinoloji | Doğrulandı | 40/40 | 0 | 0 |
 | Pediatri | Doğrulandı | 26/26 | 0 | 0 |
 | Cerrahi | Doğrulandı | 19/19 | 0 | 0 |
 | Radyoloji | Doğrulandı | 24/24 | 0 | 0 |
