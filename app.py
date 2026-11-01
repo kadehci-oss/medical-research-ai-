@@ -8,6 +8,10 @@ import evidence_model
 import report_verification
 from question_framework import select_question_framework
 from version import APP_VERSION, APP_VERSION_NOTE
+import datetime
+from report_generator import _is_turkish_query
+
+_CURRENT_YEAR = datetime.date.today().year
 from report_generator import (
     generate_turkish_evidence_report,
     generate_evidence_table_html,
@@ -207,12 +211,18 @@ def main():
             )
         with col_count:
             max_results = st.number_input("Sonuç Sayısı", min_value=1, max_value=50, value=10)
+        if search_query and _is_turkish_query(search_query):
+            st.info(
+                "Sorgu Türkçe görünüyor. PubMed İngilizce terimlerle arar; Türkçe sorgu az sonuç verebilir veya hiç "
+                "sonuç vermeyebilir. Arama terimlerini İngilizce yazın (örn. 'SGLT2 inhibitors heart failure mortality')."
+            )
 
         col_y1, col_y2, col_sort, col_btn = st.columns([1, 1, 1.5, 1])
         with col_y1:
-            start_year = st.number_input("Başlangıç Yılı", min_value=1950, max_value=2026, value=None, placeholder="Örn: 2018")
+            start_year = st.number_input("Başlangıç Yılı", min_value=1950, max_value=_CURRENT_YEAR, value=None, placeholder="Örn: 2018")
         with col_y2:
-            end_year = st.number_input("Bitiş Yılı", min_value=1950, max_value=2026, value=None, placeholder="Örn: 2026")
+            end_year = st.number_input("Bitiş Yılı", min_value=1950, max_value=_CURRENT_YEAR, value=None,
+                                       placeholder=f"Örn: {_CURRENT_YEAR}")
         with col_sort:
             sort_by = st.selectbox("Sıralama", ["relevance", "pub_date"])
         with col_btn:

@@ -1224,6 +1224,14 @@ def extract_pico_improved(query: str) -> Dict[str, str]:
         return _pico_defaults("", "", "", "")
 
     turkish = _is_turkish_query(q_clean)
+    # Sentence-form questions ("Does X reduce Y in Z?", "Z'de X Y'yi azaltır mı?") first.
+    import question_parser
+    parsed = question_parser.parse_question(q_clean)
+    if parsed and any(parsed.values()):
+        return _pico_defaults(parsed["population"], parsed["intervention"], parsed["comparison"],
+                              parsed["outcome"], turkish=turkish)
+    if not turkish:
+        q_clean = _collapse_ws(question_parser.strip_english_question(q_clean)) or q_clean
     outcome, working = _extract_outcome_span(q_clean)
     population = ""
     intervention = ""
@@ -1992,11 +2000,19 @@ def _exact_outcome_span(text: str) -> str:
     return ""
 
 
+_QUALIFIER_BEFORE_SPAN_RE = re.compile(
+    r"\b(?:isch(?:a)?emic|ha?emorrhagic|major|minor|fatal|non-?fatal|severe|serious|recurrent|symptomatic|"
+    r"asymptomatic|clinically\s+relevant|disabling|non-?disabling|in-hospital|perioperative|postoperative|"
+    r"\d+-(?:day|month|year))\s*$",
+    re.IGNORECASE,
+)
+
+
 def _display_outcome_name(outcome: str) -> str:
     """Turkish outcome label. Partial word-by-word translation is not used."""
     text = (outcome or "").strip()
-    if text.startswith("öngördürücü:"):
-        return text
+    if text.startswith("öngördürücü:") or text.endswith("(kaynak terim)") or " — analiz grubu: " in text:
+        return text  # already a display label (an untranslated source term stays as written)
     if text in (
         "değerlendirilemedi",
         "Primer Klinik Sonlanım / Özet İstatistiği",
@@ -2006,6 +2022,17 @@ def _display_outcome_name(outcome: str) -> str:
             return _UNNAMED_OUTCOME_TR
         return text
     span = _exact_outcome_span(text)
+    if span and span.lower() != text.strip(" .;:").lower():
+        at = text.lower().rfind(span.lower())
+        lead = re.sub(r"^\s*(?:the\s+|a\s+|an\s+)?(?:(?:primary\s+)?composite\s+(?:outcome\s+|end\s*point\s+)?of\s+)?(?:the\s+)?",
+                      "", text[: max(0, at)], flags=re.IGNORECASE)
+        dropped = f"{lead} {text[at + len(span):] if at >= 0 else ''}"
+        # "ischaemic stroke" must not become "inme", and "worsening heart failure or cardiovascular
+        # death" must not become "kardiyovasküler ölüm": a dropped qualifier or composite component
+        # changes the outcome, so the source term is shown instead.
+        if _QUALIFIER_BEFORE_SPAN_RE.search(text[: max(0, at)]) or re.search(
+                r"\b(?:or|and|composite|plus)\b", dropped, re.IGNORECASE):
+            return f"\"{text.strip()}\" (kaynak terim)"
     shown = translate_controlled_outcome(span) if span else ""
     if not shown or outcome_label_rejected(shown) or _orphan_outcome_label(shown):
         return _UNNAMED_OUTCOME_TR
@@ -2482,7 +2509,16 @@ def _deduped_lines(lines: List[str]) -> List[str]:
 
 def _finding_significance_flags(item: Dict[str, Any]) -> tuple:
     """Return (p_flag, ci_flag). Each is 'sig', 'nonsig', or ''."""
-    p_flag = _parse_p_significance(item.get("p") or "") or _parse_p_significance(item.get("effect") or "")
+    p_text = item.get("p") or ""
+    sentence = item.get("sentence") or ""
+    p_num = re.search(r"p\s*[=<>≤≥]\s*(0?\.\d+|\d+(?:\.\d+)?)", p_text, re.IGNORECASE)
+    if "non-inferiority" in p_text or "eşdeğerlik" in p_text or (p_num and re.search(
+            r"p\s*[=<>≤≥]\s*" + re.escape(p_num.group(1)) + r"\s*\)?\s*for\s+(?:non-?inferiority|equivalence)",
+            sentence, re.IGNORECASE)):
+        # A non-inferiority or equivalence p-value does not test for a difference.
+        p_flag = ""
+    else:
+        p_flag = _parse_p_significance(p_text) or _parse_p_significance(item.get("effect") or "")
     ci_flag = ""
     if item.get("ci_low") and item.get("ci_high"):
         ci_flag = _interval_significance(
@@ -2569,8 +2605,13 @@ def _author_limitation_label(sentence: str) -> str:
     return ""
 
 
-def extract_article_clinical_details(article: Dict[str, Any], query: str = "") -> Dict[str, Any]:
+def extract_article_clinical_details(article: Dict[str, Any], query: str = "", *, structured: bool = True) -> Dict[str, Any]:
     """
+    With ``structured=True`` (default) the sample size, effect estimates and the
+    narrative come from the shared ``evidence_model.Study`` object.
+    ``evidence_model`` itself calls this with ``structured=False`` to read the
+    legacy population, intervention and comparator text while it builds that object.
+
     Extracts individual PubMed article clinical details separately:
     - Hasta Grubu (Patient Group / Population)
     - Örneklem Büyüklüğü (Sample Size / n)
@@ -2696,7 +2737,8 @@ def extract_article_clinical_details(article: Dict[str, Any], query: str = "") -
     # 4. Outcomes stay tied to the abstract sentence that stated the statistic.
     # The displayed line uses the same structured effect as sections 5 and 6.
     grounded = [
-        item for item in extract_grounded_clinical_findings(abstract)
+        item for item in (structured_findings(article) if structured and abstract
+                          else extract_grounded_clinical_findings(abstract))
         if _finding_is_displayable(item)
     ]
     bound_outcomes = []
@@ -2750,7 +2792,12 @@ def extract_article_clinical_details(article: Dict[str, Any], query: str = "") -
         authors=article.get("authors") or [],
         year=article.get("pub_year") or "",
         pmid=pmid,
+        article=article if structured and abstract else None,
     )
+
+    if structured and abstract:
+        # Total n from the shared Study object (same number as sections 5 and 6 and the cards).
+        sample_size_str, sample_sentence = structured_sample_size(article)
 
     provenance = {
         "pmid": pmid,
@@ -2843,7 +2890,10 @@ def _format_bound_claims(details: Dict[str, Any], include_implausible: bool = Tr
         metric_text = _sanitize_display_line(metric_text)
         flag = f" {INCONSISTENT_SOURCE_FLAG}" if om.get("implausible") else ""
         sentence = om.get("source_sentence") or om.get("sentence") or ""
-        lead = _outcome_lead(om.get("outcome") or "")
+        # om["outcome"] is already the display label; translating it a second time would turn a
+        # Turkish name into "özette adlandırılmadı".
+        shown_outcome = om.get("outcome") or _UNNAMED_OUTCOME_TR
+        lead = ("Sonlanım/" + shown_outcome) if shown_outcome.startswith("öngördürücü:") else f"Sonlanım: {shown_outcome}"
         value_key = re.sub(r"\s+", " ", f"{lead}|{metric_text}|{sentence}").strip().lower()
         if value_key in seen_outcome:
             continue
@@ -3825,11 +3875,32 @@ def structured_findings(article: Dict[str, Any]) -> List[Dict[str, Any]]:
         value = est.value_text if est.family == "proportion" else _source_number_text(est.value, sentence, est.value_text)
         if est.family != "proportion" and (est.value_text or "").strip().endswith("%") and not value.endswith("%"):
             value += "%"
-        effect = f"oran {value}" if est.family == "proportion" else f"{est.measure_text or est.measure} {value}"
+        measure_word = est.measure_text or est.measure
+        if est.family == "diagnostic" or est.measure in evidence_model.DIAGNOSTIC_MEASURES:
+            # Diagnostic measures in Turkish, the same label as the study cards ("Duyarlılık", "Özgüllük").
+            label = evidence_model._MEASURE_TR.get(est.measure)
+            if label:
+                pooled = re.search(r"\b(?:pooled|summary)\b", est.measure_text or "", re.IGNORECASE)
+                measure_word = f"{'havuzlanmış ' if pooled else ''}{label.lower() if pooled else label}"
+        effect = f"oran {value}" if est.family == "proportion" else f"{measure_word} {value}"
+        if est.contrast_value is not None:
+            # Two-group comparison ("95.6% vs 92.3%"): both numbers, as written in the source.
+            contrast = _source_number_text(est.contrast_value, sentence)
+            if value.endswith("%") and not contrast.endswith("%"):
+                contrast += "%"
+            effect += f" karşı {contrast}"
         low = _source_number_text(est.ci_low, sentence) if est.ci_low is not None else ""
         high = _source_number_text(est.ci_high, sentence) if est.ci_high is not None else ""
         ci = f"{low} ile {high}" if low and high else "özette bildirilmedi"
-        item = _make_finding(est.outcome_name or _UNNAMED_OUTCOME_TR, effect, ci, est.p_value or "", sentence, low, high)
+        name = est.outcome_name or _UNNAMED_OUTCOME_TR
+        if est.outcome_name and _display_outcome_name(est.outcome_name) == _UNNAMED_OUTCOME_TR:
+            # The source names this outcome but no controlled translation exists: show the term, never "not named".
+            name = f"\"{est.outcome_name}\" (kaynak terim)"
+        if est.stratum:
+            # Two values for one outcome from different strata must be told apart.
+            shown_name = _display_outcome_name(name) if name != _UNNAMED_OUTCOME_TR else name
+            name = f"{shown_name} — analiz grubu: {est.stratum}"
+        item = _make_finding(name, effect, ci, est.p_value or "", sentence, low, high)
         if not est.usable:
             item["implausible"] = True
         findings.append(item)
@@ -5106,22 +5177,29 @@ def _translate_clinical_conclusion_to_turkish(
     authors: Optional[List[str]] = None,
     year: str = "",
     pmid: str = "",
+    article: Optional[Dict[str, Any]] = None,
 ) -> str:
     """
     Turkish result sentence. Significance comes from the parsed p-values and
     intervals, not from a default 'no difference' template. The English title
     is not used; the sentence names the author, year, and PMID.
+
+    When ``article`` is given, n and every estimate come from the shared Study
+    object, so this sentence shows the same numbers and outcome names as
+    sections 5 and 6.
     """
     del raw_conc, pico, title  # The title is not narrated. Query PICO is not this study.
     metrics = _metrics_for_synthesis(metrics, abstract)
     text_to_check = (abstract or "").lower()
-    findings = [
-        item for item in extract_grounded_clinical_findings(abstract or "")
-        if not item.get("implausible")
-    ]
+    source_findings = structured_findings(article) if article else extract_grounded_clinical_findings(abstract or "")
+    findings = [item for item in source_findings if not item.get("implausible")]
     display_findings = [item for item in findings if _finding_is_displayable(item)]
     stat_bits = []
-    if metrics.get("n"):
+    if article:
+        n_text, _n_sentence = structured_sample_size(article)
+        if n_text.startswith("n = "):
+            stat_bits.append(n_text)
+    elif metrics.get("n"):
         stat_bits.append(f"n = {metrics['n']}")
     stat_bits.extend(_deduped_lines([format_finding_brief(item) for item in display_findings]))
     # The sentence may claim significance only from values that are also shown.
@@ -5237,7 +5315,7 @@ def _synthesize_article_conclusion_tr(art: Dict[str, Any], query: str) -> str:
 
     summary_tr = _translate_clinical_conclusion_to_turkish(
         "", abstract, metrics, design_name, "", pico=pico,
-        authors=art.get("authors") or [], year=year, pmid=pmid,
+        authors=art.get("authors") or [], year=year, pmid=pmid, article=art,
     )
 
     is_review_type = _excluded_from_primary_pool(design_name)
@@ -5313,8 +5391,7 @@ def _generate_section_12_synthesis(query: str, articles: List[Dict[str, Any]], c
 
             quant_summaries.append(
                 f"**{authors_short} ({year})** ({pmid_link}): {details['real_findings']} "
-                f"(Tasarım: {study_design_label}, kanıt düzeyi: {details.get('evidence_level', UNASSIGNED_EVIDENCE_LEVEL)}, "
-                f"Örneklem: {details['sample_size']}, Sonlanım Ölçütleri: {details.get('synthesis_outcomes') or details['outcomes_summary']}). "
+                f"(Tasarım: {study_design_label}, kanıt düzeyi: {details.get('evidence_level', UNASSIGNED_EVIDENCE_LEVEL)}.) "
                 f"{_format_bound_claims(details, include_implausible=False)}"
             )
 
@@ -6137,16 +6214,18 @@ Lütfen arama terimlerini veya filtreleri genişleterek tekrar deneyiniz.
     # 1. Klinik Araştırma Sorusu
     report.append("## 1. Klinik Araştırma Sorusu")
     report.append(f"**Sorgu / Araştırma Konusu:** {query}")
-    report.append("### 📋 PICO Çerçevesi")
-    report.append(f"- **P (Hasta Grubu / Population):** {pico['population']}")
-    report.append(f"- **I (Müdahale / Intervention):** {pico['intervention']}")
-    report.append(f"- **C (Karşılaştırma / Comparison):** {pico['comparison']}")
-    report.append(f"- **O (Sonlanım / Outcome):** {pico['outcome']}\n")
+    # One framework block, chosen by question type (PIRD for diagnosis, PFO for prognosis, ...).
+    # The generic PICO list is only a fallback, so a non-therapy question is not forced into PICO.
     try:
         from question_framework import render_framework_markdown, select_question_framework
         report.append(render_framework_markdown(select_question_framework(query)))
     except Exception:
         logger.warning("Question framework selection failed", exc_info=True)
+        report.append("### 📋 PICO Çerçevesi")
+        report.append(f"- **P (Hasta Grubu / Population):** {pico['population']}")
+        report.append(f"- **I (Müdahale / Intervention):** {pico['intervention']}")
+        report.append(f"- **C (Karşılaştırma / Comparison):** {pico['comparison']}")
+        report.append(f"- **O (Sonlanım / Outcome):** {pico['outcome']}\n")
 
     import evidence_model
     studies, relation_summary = evidence_model.build_studies(articles, query)
@@ -6243,7 +6322,7 @@ Lütfen arama terimlerini veya filtreleri genişleterek tekrar deneyiniz.
 
         stat_summary = _translate_clinical_conclusion_to_turkish(
             "", art.get("abstract", ""), metrics, cd["design"], "", pico=pico,
-            authors=art.get("authors") or [], year=year, pmid=pmid,
+            authors=art.get("authors") or [], year=year, pmid=pmid, article=art,
         )
         lim_str = format_methodological_limitation(art)
 
@@ -6344,7 +6423,7 @@ Lütfen arama terimlerini veya filtreleri genişleterek tekrar deneyiniz.
 
         stat_summary = _translate_clinical_conclusion_to_turkish(
             "", abs_text, metrics, cd["design"], "", pico=pico,
-            authors=art.get("authors") or [], year=art.get("pub_year", ""), pmid=str(p or ""),
+            authors=art.get("authors") or [], year=art.get("pub_year", ""), pmid=str(p or ""), article=art,
         )
         efficacy_items.append(f"- **{t} ({art.get('pub_year', '')})** ({p_link}): {stat_summary}")
 

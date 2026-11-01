@@ -737,7 +737,9 @@ class TestReportGenerator(unittest.TestCase):
         # 4. Check display of patient count (n), effect metrics, and uncertainties
         self.assertIn("n = 500", section_12)
         self.assertIn("HR 0.65", section_12)
-        self.assertIn("Sonlanım Ölçütleri:", section_12)
+        # Values appear once in the narrative and once next to their source sentence, not a third time.
+        self.assertIn("Kaynağa bağlı öğeler", section_12)
+        self.assertNotIn("Sonlanım Ölçütleri:", section_12)
 
     def test_case_control_publication_type_without_title_or_abstract_cues(self):
         design = classify_study_design(

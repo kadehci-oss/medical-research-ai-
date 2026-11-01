@@ -36,6 +36,7 @@ The intended goal is a Turkish, expert-level report for clinical research questi
 ├── universal_evidence_engine.py   # PubMed/abstract-based preliminary search and synthesis
 ├── evidence_model.py              # Structured Study model shared by cards, sections 5/6 and exports
 ├── question_framework.py          # Question type -> PICO / PIRD / PFO / PECO / CoCoPop / SPICE
+├── question_parser.py             # P/I/C/O spans from questions written as sentences (English and Turkish)
 ├── report_verification.py         # Report audit: PMIDs, verbatim quotes, RoB/GRADE, causal wording
 ├── version.py                     # User-visible software version
 ├── validation/                    # Real PubMed records, reference tables, validation runner and report
@@ -50,18 +51,8 @@ The intended goal is a Turkish, expert-level report for clinical research questi
 ├── .github/workflows/
 │   ├── ci.yml                     # pytest on push and pull request (Python 3.11 and 3.12)
 │   └── live-ncbi-validation.yml   # Weekly and manual live NCBI check (Python 3.12)
-└── tests/
-    ├── test_api.py
-    ├── test_app.py
-    ├── test_heart_failure_regression.py
-    ├── test_infectious_disease_regression.py
-    ├── test_pubmed_client.py
-    ├── test_real_pubmed_e2e.py
-    ├── test_real_pubmed_regression.py
-    ├── test_report_generator.py
-    ├── test_statin_myopathy_e2e.py
-    ├── test_statin_myopathy_regression.py
-    └── test_universal_evidence_engine.py
+└── tests/                         # pytest suite: unit and integration tests, saved real-PubMed regressions,
+                                   # source-faithfulness checks and the validation-report consistency test
 ```
 
 ---
@@ -192,7 +183,7 @@ result = audit_report_quality(report_markdown)
 
 ## Structured evidence engine (v1.5.0)
 
-Every PubMed record is turned into one `Study` object (`evidence_model.py`). Search cards in Streamlit, report sections 5 and 6, and the downloadable Markdown/HTML/JSON exports all read that same object, so a value cannot differ between views.
+Every PubMed record is turned into one `Study` object (`evidence_model.py`). Search cards in Streamlit, report sections 5, 6, 7 and 12, the API detail endpoint and the downloadable Markdown/HTML/JSON exports all read the sample size and effect estimates from that same object, so a value cannot differ between views.
 
 - **Data model:** `Study`, `Population`, `StudyArm`, `Intervention`, `Comparator`, `CoTreatment`, `Outcome`, `EffectEstimate`, `FollowUpTimepoint`, `EventCount`, `EvidenceSource`, `RiskOfBiasAssessment`, `CertaintyAssessment`, `StudyRelation`. A structured follow-up timepoint is attached to an effect estimate only when it is explicit, unambiguous, and copied from that estimate’s verified source sentence; absent or competing timepoints remain `null`.
 - **Counts kept apart:** total participants, arm sizes and event numerators are separate fields. An arm total that the abstract does not state is shown as "kol sayılarının toplamı".
@@ -200,7 +191,8 @@ Every PubMed record is turned into one `Study` object (`evidence_model.py`). Sea
 - **Claim types:** causal wording only for randomized comparisons and pooled randomized evidence; observational results are shown as associations, diagnostic results as accuracy, case series as descriptive.
 - **RoB / GRADE:** the tool is chosen, but the status stays `not_assessed`; no rating is generated.
 - **Study relations:** a derived report is linked only when its role is explicit, its source text names one parent through a relation phrase, and the identity matches. A shared registry number or acronym alone, or similar titles, never merges cohorts. Ambiguous pooled analyses and derived reports without a verified parent are not promoted to independent primary units; this can undercount evidence and should be read as a conservative software rule, not a cohort adjudication.
-- **Question framework:** `question_framework.py` picks PICO, PIRD (diagnosis), PFO (prognosis), PEO/PECO (aetiology, harm), CoCoPop (epidemiology), screening-PICO or SPICE (health services). Values come only from the query.
+- **Question framework:** `question_framework.py` picks PICO, PIRD (diagnosis), PFO (prognosis), PEO/PECO (aetiology, harm), CoCoPop (epidemiology), screening-PICO or SPICE (health services). Values come only from the query. `question_parser.py` reads questions written as sentences ("Does X reduce Y in Z?", "Kalp yetersizliğinde SGLT2 inhibitörleri mortaliteyi azaltır mı?"); every value is a span of the query, nothing is translated. Abstracts are English, so a Turkish query term that does not appear in an abstract leaves that field "unknown" in cross-study matching instead of marking the studies as mismatched. PubMed itself is searched in English: write the search terms in English.
+- **Faithful estimates:** a non-inferiority or equivalence p-value is labelled as such and never read as a test for a difference; an analysis stratum named at the start of a sentence ("In the HBR stratum, …") is shown with each estimate; a number that is part of a compound word ("12-lead ECG") or the lower bound of a labelled interval ("95% CI for mean difference, 0.43-1.01") is not an estimate; a measure named once in a list ("ischaemic stroke (HR, 95% CI: 0.81, 0.68-0.96) and all-cause death (0.91, 0.86-0.96)") applies to each later group whose interval contains its value; an outcome qualifier ("ischaemic", "fatal", "major") is never dropped in translation, and an untranslated outcome is shown as the source term rather than as "not named".
 - **Report verification:** `report_verification.py` checks that every cited PMID is in the article set, every quoted source sentence is verbatim in that PMID's abstract, no RoB/GRADE rating is asserted and no causal wording is attached to a non-randomized study. Streamlit shows the status and version; exports carry it in a footer.
 
 ### Validation

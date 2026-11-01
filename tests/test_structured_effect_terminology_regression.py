@@ -154,8 +154,13 @@ class TestStructuredMatrixLines(unittest.TestCase):
                 ),
             ],
         )
-        visible = _outside_quotes(report.split("## 5.")[1].split("## 7.")[0])
-        self.assertIn("IgE kategori değişimi", visible)
+        section = report.split("## 5.")[1].split("## 7.")[0]
+        visible = _outside_quotes(section)
+        # "Including IgE category shift, the IRR for combined new/worsening allergies was reduced
+        # (IRR 0.46 ...)": the IRR belongs to combined new/worsening allergies; IgE category shift
+        # is what the analysis included, not the outcome.
+        self.assertIn("combined new/worsening allergies", section)
+        self.assertNotIn("IgE kategori değişimi", visible)
         self.assertIn("insidans hızı oranı (IRR) 0.46", visible)
         self.assertNotIn("insidans oranı oranı", visible)
         self.assertIn("atopik yürüyüş ilerlemesi", visible)
