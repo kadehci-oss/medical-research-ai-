@@ -1,5 +1,5 @@
 import unittest
-from report_generator import generate_rule_based_turkish_report
+from report_generator import _generate_section_12_synthesis, generate_rule_based_turkish_report
 
 
 class TestSection12StudyTypeWording(unittest.TestCase):
@@ -120,7 +120,61 @@ class TestSection12StudyTypeWording(unittest.TestCase):
         self.assertIn("bu bölümde 3 kayıt yer alıyor:", section_12)
         self.assertIn("2 Rastgele Kontrollü Çalışma (RCT)", section_12)
         self.assertIn("1 Kohort Çalışması (Gözlemsel)", section_12)
-        self.assertIn("Klinik verileri ve nicel etki ölçütlerini ortaya koymaktadır:", section_12)
+        self.assertIn("çalışmalar arasında ortak bir etki tahmini hesaplanmamıştır", section_12)
+
+    def test_neutral_abstract_does_not_assert_unsupported_heterogeneity(self):
+        articles = [
+            {
+                "pmid": "92001",
+                "title": "A randomized study of treatment outcomes",
+                "abstract": "This randomized study evaluated treatment outcomes in 120 participants.",
+                "publication_types": ["Randomized Controlled Trial"],
+                "pub_year": "2024",
+                "authors": ["Example A"],
+                "journal": "J Test",
+            }
+        ]
+
+        report = generate_rule_based_turkish_report("treatment outcomes", articles)
+        section_12 = report.split("## 12. Klinik Sonuç")[1].split("## 13. Doğrulanmış Kaynakça")[0]
+        section_6 = report.split("## 6. Önemli Çalışmaların Karşılaştırılması")[1].split("## 7. Tedavi Etkinliği ve Güvenlilik")[0]
+        section_9 = report.split("## 9. Çelişkili Bilimsel Bulgular")[1].split("## 10. Red Team Eleştirisi")[0]
+
+        self.assertIn("heterojenlik mevcut özetlerle değerlendirilemedi", section_12.lower())
+        self.assertNotIn("metodolojik heterojenlikler mevcuttur", section_12.lower())
+        self.assertNotIn("klinik verileri ve nicel etki ölçütlerini ortaya koymaktadır", section_12.lower())
+        self.assertIn("ortak bir etki tahmini hesaplanmamıştır", section_12.lower())
+        self.assertIn("metodolojik heterojenlik sistematik olarak ölçülmemiştir", section_6.lower())
+        self.assertNotIn("metodolojik açıdan heterojendir", section_6.lower())
+        self.assertIn("heterojenlik sistematik olarak ölçülmemiştir", section_9.lower())
+        self.assertIn("tutarlı olduğu anlamına gelmez", section_9.lower())
+        self.assertNotIn("heterojenlikler klinik bağlamda dikkate alınmalıdır", section_9.lower())
+
+    def test_abstract_heterogeneity_is_not_suppressed_by_cross_study_conflict(self):
+        articles = [
+            {
+                "pmid": "93001", "title": "Comparative treatment study",
+                "abstract": "The trial evaluated treatment outcomes in adults.",
+                "publication_types": ["Randomized Controlled Trial"], "pub_year": "2024",
+            },
+            {
+                "pmid": "93002", "title": "Heterogeneous results in treatment study",
+                "abstract": "Results were heterogeneous across the reported subgroups.",
+                "publication_types": ["Observational Study"], "pub_year": "2023",
+            },
+        ]
+        cross_comp = {
+            "conflicting_findings": [{
+                "details": "- Çalışmalar arasında farklı sonuçlar (PMID: 93001)",
+                "articles": ["93001"],
+            }]
+        }
+
+        section_12 = _generate_section_12_synthesis("treatment", articles, cross_comp)
+
+        self.assertIn("PMID: 93001", section_12)
+        self.assertIn("PMID: 93002", section_12)
+        self.assertIn("Çalışma özetinde veriler arasında heterojenlik", section_12)
 
 
 if __name__ == "__main__":

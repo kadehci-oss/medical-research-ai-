@@ -5452,7 +5452,8 @@ def _generate_section_12_synthesis(query: str, articles: List[Dict[str, Any]], c
         total_primary = len(primary_studies)
         sec_lines.append(
             f"**{query}** odağında bu bölümde {total_primary} kayıt yer alıyor: {breakdown_str}. "
-            "Klinik verileri ve nicel etki ölçütlerini ortaya koymaktadır:"
+            "Yayın özetlerinde bildirilen bulgular aşağıda kayıt bazında sunulmuştur; "
+            "çalışmalar arasında ortak bir etki tahmini hesaplanmamıştır:"
         )
         sec_lines.append("\n".join([f"- {s}" for s in quant_summaries]))
         sec_lines.append("")
@@ -5482,27 +5483,37 @@ def _generate_section_12_synthesis(query: str, articles: List[Dict[str, Any]], c
     # 2. Çelişkili Bulgular ve Heterojenlikler
     sec_lines.append("### ⚠️ Çelişkili Bulgular ve Heterojenlikler")
     conflicts = []
+    cross_conflict_pmids = set()
 
     if cross_comp and cross_comp.get("conflicting_findings"):
         for cf in cross_comp["conflicting_findings"]:
             conflicts.append(f"- {cf['details']}")
-    else:
-        for art in articles:
-            pmid = art.get("pmid", "")
-            p_url = art.get("pubmed_url", f"https://pubmed.ncbi.nlm.nih.gov/{pmid}/" if pmid else "#")
-            pmid_link = f"[PMID: {pmid}]({p_url})" if pmid else ""
-            authors_short = _format_authors_short(art.get("authors", []))
-            year = art.get("pub_year", "")
-            abs_text = (art.get("abstract") or "").lower()
+            cited_articles = cf.get("articles") or []
+            if isinstance(cited_articles, str):
+                cited_articles = [cited_articles]
+            cross_conflict_pmids.update(str(pmid) for pmid in cited_articles)
 
-            if any(phrase in abs_text for phrase in ["conflicting", "inconsistent", "discrepant", "mixed results", "heterogeneous", "controversial"]):
-                conflicts.append(f"- **{authors_short} ({year})** ({pmid_link}): Çalışma özetinde veriler arasında heterojenlik veya çelişkili klinik bulgular vurgulanmıştır.")
+    for art in articles:
+        pmid = str(art.get("pmid") or "")
+        if pmid and pmid in cross_conflict_pmids:
+            continue
+        p_url = art.get("pubmed_url", f"https://pubmed.ncbi.nlm.nih.gov/{pmid}/" if pmid else "#")
+        pmid_link = f"[PMID: {pmid}]({p_url})" if pmid else ""
+        authors_short = _format_authors_short(art.get("authors", []))
+        year = art.get("pub_year", "")
+        abs_text = (art.get("abstract") or "").lower()
+
+        if any(phrase in abs_text for phrase in ["conflicting", "inconsistent", "discrepant", "mixed results", "heterogeneous", "controversial"]):
+            conflicts.append(f"- **{authors_short} ({year})** ({pmid_link}): Çalışma özetinde veriler arasında heterojenlik veya çelişkili klinik bulgular vurgulanmıştır.")
 
     if conflicts:
         sec_lines.append("\n".join(conflicts))
     else:
-        pmid_links_all = [f"[PMID: {a.get('pmid')}]({a.get('pubmed_url', '#')})" for a in articles if a.get("pmid")]
-        sec_lines.append(f"İncelenen çalışmalarda ({', '.join(pmid_links_all)}) hasta seçim kriterleri, örneklem büyüklükleri ve takip sürelerindeki farklılıklara bağlı metodolojik heterojenlikler mevcuttur. Bireysel çalışmaların sonuçları klinik bağlamda ayrı ayrı değerlendirilmelidir.")
+        sec_lines.append(
+            "Taranan yayın özetlerinde açık çelişki veya heterojenlik ifadesi otomatik sözcük taramasında bulunmadı. "
+            "Bu, çalışmaların benzer veya tutarlı olduğunu göstermez; yöntemsel farklılıklar sistematik olarak "
+            "karşılaştırılmadığı için heterojenlik mevcut özetlerle değerlendirilemedi."
+        )
     sec_lines.append("")
 
     # 3. Klinik Önem ve Uygulanabilirlik
@@ -6408,7 +6419,7 @@ Lütfen arama terimlerini veya filtreleri genişleterek tekrar deneyiniz.
             c_lines.append(f"- **Sonlanım:** {cf['outcome']} | **Kaynaklar:** {cf['source_citations']}\n  - {cf['details']}")
         report.append("\n".join(c_lines) + "\n")
     else:
-        report.append("Doğrudan eşleşen PICO ve çalışma tasarımına sahip makaleler arasında tutarlı sonlanım çifti saptanmamıştır veya çalışmalar metodolojik açıdan heterojendir.\n")
+        report.append("Doğrudan eşleşen PICO ve çalışma tasarımına sahip makaleler arasında karşılaştırılabilir tutarlı bir sonlanım çifti gösterilemedi. Bu, klinik tutarlılık ya da eşdeğerlik kanıtı değildir; metodolojik heterojenlik sistematik olarak ölçülmemiştir.\n")
 
     report.append("### 🚫 Karşılaştırılamama Durumları ve Gerekçeleri")
     if cross_comp and cross_comp.get("non_comparable_studies"):
@@ -6507,7 +6518,7 @@ Lütfen arama terimlerini veya filtreleri genişleterek tekrar deneyiniz.
             conf_lines.append(f"- **Sonlanım:** {cf['outcome']} | **Kaynaklar:** {cf['source_citations']}\n  - {cf['details']}")
         report.append("\n".join(conf_lines) + "\n")
     else:
-        report.append("Doğrudan eşleşen PICO ve çalışma tasarımına sahip makaleler arasında zıt yönde istatistiksel çelişki tespit edilmemiştir. Bununla birlikte, farklı çalışmalar arasındaki örneklem büyüklükleri, alt grup özellikleri, tedavi protokolleri ve takip sürelerindeki heterojenlikler klinik bağlamda dikkate alınmalıdır.\n")
+        report.append("Otomatik karşılaştırmada doğrudan eşleşen çalışmalar arasında zıt yönde istatistiksel bulgu kaydedilmedi. Bu, bulguların tutarlı olduğu anlamına gelmez; heterojenlik sistematik olarak ölçülmemiştir ve örneklem, alt grup, tedavi protokolü veya takip süresi farkları ayrıca değerlendirilmemiştir.\n")
 
     # 10. Red Team Eleştirisi
     report.append("## 10. Red Team Eleştirisi")

@@ -1,7 +1,10 @@
 {
   "_meta": {
-    "description": "Önceden belirlenmiş referans veri tablosu. Her satır, validation/pubmed_records_multispecialty.json içindeki gerçek PubMed özetinden elle okunarak, motor çıktısına bakılmadan yazıldı.",
-    "curation": "Referans değerler yalnızca PubMed özet metninden alındı. Tam metin okunmadı. Bu tablo bir yapay zekâ asistanı tarafından hazırlandı; bağımsız uzman hekim tarafından henüz kontrol edilmedi.",
+    "description": "Önceden belirlenmiş referans veri tablosu. PubMed özeti bulunan satırlar mevcut özetten, özeti olmayanlar yalnızca bibliyografik metaveriden değerlendirildi; motor çıktısına bakılmadı.",
+    "curation": "Özet varsa referans değerler PubMed abstract metninden çıkarıldı; özet yoksa yalnızca bibliyografik metaveri kullanıldı ve klinik sonuç, örneklem veya parent ilişkisi çıkarılmadı. Tam metin okunmadı. Bu tablo bir yapay zekâ asistanı tarafından hazırlandı; bağımsız uzman hekim kontrolü yapılmadı.",
+    "relationship_notes": {
+      "34694761": "PubMed EFetch kaydında abstract yoktur; yayın türleri Letter ve Randomized Controlled Trial etiketlerini içerir. CommentsCorrections alanı PMID 35235739'u gösterir; başlıktan PMID 33017106 parent ilişkisi çıkarılmaz ve rol belirsiz bırakılır."
+    },
     "fields": {
       "design": "Kabul edilen tasarım sınıfları (rct, cohort, case_control, diagnostic_accuracy, case_series, systematic_review, meta_analysis, protocol, letter).",
       "sample_size": "Bu yayının kendi analizindeki katılımcı sayısı. null = özette toplam katılımcı sayısı bildirilmedi; motor değer atamamalı.",
@@ -10,8 +13,10 @@
       "effects": "Ana etki tahminleri. value=null ise özette nokta tahmini yoktur ve motor değer üretmemelidir.",
       "intervention_kw / comparator_kw": "Müdahale/karşılaştırıcı adı bu sözcüklerden birini içermelidir.",
       "background_kw": "Her iki kola verilen eşlik eden tedavi. Tek başına müdahale olarak gösterilmemelidir.",
-      "relation": "primary | secondary_analysis | updated_analysis | extended_follow_up | meta_analysis",
-      "causal_allowed": "Bu yayından nedensel tedavi etkisi dili kullanılabilir mi."
+      "relation": "primary | secondary_analysis | updated_analysis | extended_follow_up | meta_analysis | undetermined",
+      "parent": "Tek bir parent PMID ancak mevcut özet ilişkiyi açıkça destekliyorsa yazılır; birden fazla denemeyi havuzlayan veya özeti olmayan yayınlarda null bırakılır. PubMed'in ilişkili-kayıt bağlantısı tek başına parent kanıtı değildir.",
+      "includes": "Sentez özeti çalışmanın dahil edildiğini açıkça belirtmelidir; yalnızca anılması yeterli değildir. PubMed'in ilişkili-kayıt bağlantısı dahil edilme kanıtı sayılmaz.",
+      "causal_allowed": "Bu yayının mevcut kaynak metni nedensel tedavi etkisi dilini destekliyor mu; abstract olmayan kayıtlarda false."
     }
   },
   "studies": [
@@ -24,7 +29,7 @@
      "effects": [{"measure": "HR", "value": 0.81, "ci": [0.70, 0.94], "outcome_kw": ["macroalbuminuria"]},
                  {"measure": "HR", "value": 1.31, "ci": [1.07, 1.59], "outcome_kw": ["remission", "normoalbuminuria"]}],
      "intervention_kw": ["empagliflozin"], "comparator_kw": ["placebo"], "background_kw": [],
-     "relation": "secondary_analysis", "parent": "34449189", "causal_allowed": true},
+     "relation": "secondary_analysis", "parent": null, "causal_allowed": true},
     {"pmid": "36041474", "specialty": "Kardiyoloji", "design": ["meta_analysis"], "sample_size": 21947, "sample_size_accept": [12251], "forbidden_n": [],
      "effects": [{"measure": "HR", "value": 0.80, "ci": [0.73, 0.87], "outcome_kw": ["cardiovascular death", "hospitalisation"]}],
      "intervention_kw": ["sglt2", "sglt-2"], "comparator_kw": [], "background_kw": [],
@@ -149,7 +154,7 @@
      "relation": "primary", "parent": null, "causal_allowed": true},
     {"pmid": "34694761", "specialty": "Cerrahi", "design": ["letter", "rct"], "sample_size": null, "forbidden_n": [],
      "effects": [], "intervention_kw": [], "comparator_kw": [], "background_kw": [],
-     "relation": "extended_follow_up", "parent": "33017106", "causal_allowed": true, "results_reported": false},
+     "relation": "undetermined", "parent": null, "causal_allowed": false, "results_reported": false},
     {"pmid": "41488832", "specialty": "Cerrahi", "design": ["cohort"], "sample_size": 81, "forbidden_n": [51, 30],
      "effects": [{"measure": "OR", "value": 9.71, "ci": null, "outcome_kw": ["ph", "perineal hernia", "risk factor"]}],
      "intervention_kw": [], "comparator_kw": [], "background_kw": [],

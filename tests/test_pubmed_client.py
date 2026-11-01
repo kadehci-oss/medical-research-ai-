@@ -309,8 +309,12 @@ class TestPubMedClient(unittest.TestCase):
             params = call.kwargs["params"]
             headers = call.kwargs["headers"]
             self.assertEqual(params["tool"], ncbi_tool_name())
-            self.assertEqual(params["email"], ncbi_contact_email())
-            self.assertIn("mailto:", headers["User-Agent"])
+            if ncbi_contact_email():
+                self.assertEqual(params["email"], ncbi_contact_email())
+                self.assertIn(f"mailto:{ncbi_contact_email()}", headers["User-Agent"])
+            else:
+                self.assertNotIn("email", params)
+                self.assertNotIn("mailto:", headers["User-Agent"])
 
     @patch("requests.get")
     def test_verify_pmid_valid(self, mock_get):
@@ -529,10 +533,13 @@ class TestPubMedClient(unittest.TestCase):
             self.assertEqual(res["title"], "Empagliflozin Test Article")
             sent_headers = mock_get.call_args.kwargs["headers"]
             self.assertNotIn("api_key", sent_headers)
-            self.assertIn("mailto:", sent_headers["User-Agent"])
+            if ncbi_contact_email():
+                self.assertIn(f"mailto:{ncbi_contact_email()}", sent_headers["User-Agent"])
+            else:
+                self.assertNotIn("mailto:", sent_headers["User-Agent"])
 
     def test_eutils_identity_uses_env_and_omits_empty_api_key(self):
-        """NCBI tool, email, and api_key come from the environment."""
+        """Configured NCBI contact/key are sent; unset optional values are omitted."""
         with patch.dict(
             os.environ,
             {
@@ -554,9 +561,9 @@ class TestPubMedClient(unittest.TestCase):
         with patch.dict(os.environ, {"NCBI_TOOL": "", "NCBI_EMAIL": "", "NCBI_API_KEY": ""}, clear=False):
             params = eutils_identity_params()
             self.assertEqual(params["tool"], "MedicalResearchAI")
-            self.assertEqual(params["email"], "medical-research-ai@example.com")
+            self.assertNotIn("email", params)
             self.assertNotIn("api_key", params)
-            self.assertNotIn("medical_ai_app@example.com", ncbi_request_headers()["User-Agent"])
+            self.assertEqual(ncbi_request_headers()["User-Agent"], "MedicalResearchAI/1.0")
 
     @patch("requests.get")
     def test_search_pubmed_sends_tool_email_and_api_key(self, mock_get):

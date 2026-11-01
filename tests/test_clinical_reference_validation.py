@@ -1,7 +1,7 @@
-"""Category 3 — independent clinical data validation against the reference tables.
+"""Automated reference-table regression checks (not clinical adjudication).
 
 Runs the same comparison as validation/run_multispecialty_validation.py. Thresholds
-are regression guards; the honest accuracy estimate is the frozen first run on
+are software regression guards; the honest estimate is the frozen first run on
 the held-out set (validation/holdout_first_run_results.json), reported in
 validation/MULTISPECIALTY_VALIDATION_REPORT.md.
 """

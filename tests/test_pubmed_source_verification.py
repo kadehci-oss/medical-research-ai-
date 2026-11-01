@@ -1,9 +1,10 @@
 """Category 2 — real PubMed source verification.
 
-Offline checks run in CI: the recorded PubMed records are complete, well formed
-and cover every reference row. The live check re-fetches each PMID from NCBI
-E-utilities and compares title and DOI; it runs only with RUN_LIVE_PUBMED=1 so CI
-never depends on the network.
+The offline checks run in CI: the recorded PubMed records are complete, well formed
+and cover every reference row. The live check re-fetches every unique PMID from
+the development, two holdout, and PR #64 external datasets using NCBI E-utilities
+and compares title and DOI; it runs only with RUN_LIVE_PUBMED=1 so CI never
+depends on the network.
 """
 import json
 import os
@@ -18,6 +19,8 @@ SETS = [
     ("pubmed_records_holdout.json", "reference_dataset_holdout.json"),
     ("pubmed_records_holdout2.json", "reference_dataset_holdout2.json"),
 ]
+LIVE_RECORD_FILES = [name for name, _reference in SETS] + ["pubmed_records_external_pr64.json"]
+EXPECTED_UNIQUE_LIVE_PMIDS = 75
 
 
 REQUIRED_SPECIALTIES = {"Kardiyoloji", "Onkoloji", "Nöroloji", "Enfeksiyon", "Endokrinoloji",
@@ -86,16 +89,25 @@ class TestLivePubMedRecords(unittest.TestCase):
     def test_live_title_and_doi_match_recorded_records(self):
         from pubmed_client import normalize_doi, normalize_title, verify_pmid
         mismatches = []
-        for records_name, _ref in SETS:
-            for record in _load(records_name):
-                live = verify_pmid(record["pmid"])
-                if not live.get("valid"):
-                    mismatches.append(f"{record['pmid']}: not fetched ({live.get('error')})")
-                    continue
-                if normalize_title(live.get("title")) != normalize_title(record["title"]):
-                    mismatches.append(f"{record['pmid']}: title differs")
-                if record["doi"] and normalize_doi(live.get("doi")) != normalize_doi(record["doi"]):
-                    mismatches.append(f"{record['pmid']}: DOI differs")
+        records_by_pmid = {}
+        for records_name in LIVE_RECORD_FILES:
+            data = _load(records_name)
+            records = data.get("records", data) if isinstance(data, dict) else data
+            for record in records:
+                records_by_pmid.setdefault(record["pmid"], record)
+        self.assertEqual(len(records_by_pmid), EXPECTED_UNIQUE_LIVE_PMIDS)
+
+        for record in records_by_pmid.values():
+            live = verify_pmid(record["pmid"])
+            if not live.get("valid"):
+                mismatches.append(f"{record['pmid']}: not fetched ({live.get('error')})")
+                continue
+            if live.get("pmid") != record["pmid"]:
+                mismatches.append(f"{record['pmid']}: returned PMID differs ({live.get('pmid')})")
+            if normalize_title(live.get("title")) != normalize_title(record["title"]):
+                mismatches.append(f"{record['pmid']}: title differs")
+            if record.get("doi") and normalize_doi(live.get("doi")) != normalize_doi(record["doi"]):
+                mismatches.append(f"{record['pmid']}: DOI differs")
         self.assertEqual(mismatches, [])
 
 

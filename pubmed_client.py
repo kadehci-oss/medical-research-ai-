@@ -19,9 +19,8 @@ PUBMED_EFETCH_URL = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi"
 CROSSREF_API_URL = "https://api.crossref.org/works/"
 MAX_ESEARCH_RESULT_WINDOW = 10_000
 
-# Non-personal fallbacks. Operators should set NCBI_TOOL and NCBI_EMAIL.
+# Non-personal fallback for the tool name. Operators should set NCBI_EMAIL.
 DEFAULT_NCBI_TOOL = "MedicalResearchAI"
-DEFAULT_NCBI_EMAIL = "medical-research-ai@example.com"
 
 
 def ncbi_tool_name() -> str:
@@ -30,14 +29,10 @@ def ncbi_tool_name() -> str:
     return value or DEFAULT_NCBI_TOOL
 
 
-def ncbi_contact_email() -> str:
-    """Return the contact email from ``NCBI_EMAIL`` or a non-personal default.
-
-    No real personal address is hardcoded. Set ``NCBI_EMAIL`` to an address
-    NCBI can use if a script misbehaves.
-    """
+def ncbi_contact_email() -> Optional[str]:
+    """Return a configured NCBI contact, or ``None`` rather than a fake address."""
     value = os.environ.get("NCBI_EMAIL", "").strip()
-    return value or DEFAULT_NCBI_EMAIL
+    return value or None
 
 
 def ncbi_api_key() -> Optional[str]:
@@ -48,21 +43,23 @@ def ncbi_api_key() -> Optional[str]:
 
 def ncbi_request_headers() -> Dict[str, str]:
     """Build a User-Agent that identifies this client to NCBI and CrossRef."""
-    return {
-        "User-Agent": f"{ncbi_tool_name()}/1.0 (mailto:{ncbi_contact_email()})"
-    }
+    user_agent = f"{ncbi_tool_name()}/1.0"
+    email = ncbi_contact_email()
+    if email:
+        user_agent += f" (mailto:{email})"
+    return {"User-Agent": user_agent}
 
 
 def eutils_identity_params() -> Dict[str, str]:
     """Attach NCBI etiquette fields to an E-utilities query.
 
-    ``tool`` and ``email`` are always sent. ``api_key`` is included only when
-    ``NCBI_API_KEY`` is set.
+    ``tool`` is always sent; ``email`` and ``api_key`` are included only when
+    configured.
     """
-    params: Dict[str, str] = {
-        "tool": ncbi_tool_name(),
-        "email": ncbi_contact_email(),
-    }
+    params: Dict[str, str] = {"tool": ncbi_tool_name()}
+    email = ncbi_contact_email()
+    if email:
+        params["email"] = email
     api_key = ncbi_api_key()
     if api_key:
         params["api_key"] = api_key
@@ -89,9 +86,9 @@ def _get_with_retry(
     """
     GET with a short bounded backoff on transient network errors, HTTP 429, and 5xx.
 
-    Headers come from ``ncbi_request_headers`` (tool name and contact email).
-    E-utilities callers attach ``tool``, ``email``, and an optional ``api_key``
-    on ``params`` before calling this helper. Non-integer status codes (for
+    Headers come from ``ncbi_request_headers`` (tool name and configured contact email, if any).
+    E-utilities callers attach ``tool`` plus optional ``email`` and ``api_key``
+    values on ``params`` before calling this helper. Non-integer status codes (for
     example test doubles) are not retried. The final response is returned
     even if it is still retryable so callers keep their existing error handling.
     """
@@ -304,8 +301,9 @@ def search_pubmed(
     Searches PubMed using E-utilities esearch and efetch.
 
     Records the search date and parameters, and deduplicates articles by PMID
-    and DOI. Every E-utilities request includes ``tool`` and ``email`` from
-    ``NCBI_TOOL`` / ``NCBI_EMAIL``, and ``api_key`` when ``NCBI_API_KEY`` is set.
+    and DOI. Every E-utilities request includes ``tool`` from ``NCBI_TOOL`` or
+    the project default; ``email`` and ``api_key`` are included only when
+    ``NCBI_EMAIL`` and ``NCBI_API_KEY`` are configured, respectively.
     Returns a dict with ``articles``, ``total_count``, ``query``, ``search_date``,
     and ``search_params``.
     """
@@ -482,8 +480,8 @@ def search_pubmed(
 def verify_pmid(pmid: str) -> Dict[str, Any]:
     """Verify that a PMID exists and return its PubMed metadata.
 
-    The E-utilities request includes ``tool``, ``email``, and ``api_key`` when
-    ``NCBI_API_KEY`` is set.
+    The E-utilities request includes ``tool`` and adds ``email`` and ``api_key``
+    only when ``NCBI_EMAIL`` and ``NCBI_API_KEY`` are configured.
     """
     clean_pmid = pmid.strip().lower().replace("pmid:", "").strip()
     if not clean_pmid.isdigit():
