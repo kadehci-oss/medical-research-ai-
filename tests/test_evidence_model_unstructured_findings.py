@@ -42,6 +42,17 @@ def test_study_validator_accepts_the_unstructured_source_linked_findings():
     assert study.other_numeric_findings
 
 
+def test_unstructured_finding_renderer_includes_its_source_sentence():
+    em.clear_cache()
+    study = em.build_study(ARTICLE)
+
+    rendered = "\n".join(em.render_study_card_lines(study))
+
+    assert "**Özetteki diğer sayısal bulgular" in rendered
+    assert ARTICLE["abstract"].split(". ")[0] in rendered
+    assert "Kaynak cümle:" in rendered
+
+
 def test_case_control_total_accepts_explicit_in_n_patients_phrase():
     article = {
         "pmid": "17540675",

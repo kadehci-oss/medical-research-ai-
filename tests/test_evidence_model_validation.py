@@ -55,6 +55,17 @@ def test_validator_flags_population_description_number_not_in_its_source_sentenc
     assert "unsupported_numeric_text:population.description" in result["errors"]
 
 
+def test_validator_flags_outcome_value_not_in_its_source_sentence():
+    study = _study()
+    estimate = study.outcomes[0].estimates[0]
+    estimate.value = 0.99
+
+    result = em.validate_study(study, ARTICLE)
+
+    assert result["valid"] is False
+    assert "unsupported_numeric_value:outcomes[0].estimates[0].value" in result["errors"]
+
+
 def test_validator_flags_article_identity_mismatch():
     study = _study()
     changed_article = copy.deepcopy(ARTICLE)

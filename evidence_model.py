@@ -28,6 +28,7 @@ import hashlib
 import json
 import re
 from dataclasses import asdict, dataclass, field
+from decimal import Decimal, InvalidOperation
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 import report_generator as rg
@@ -2011,8 +2012,15 @@ def clear_cache() -> None:
 
 
 def _literal_numeric_tokens(text: Any) -> set[str]:
-    tokens = re.findall(r"(?<![\w.])(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?%?", str(text or ""))
-    return {token.replace(",", "").rstrip("%") for token in tokens}
+    tokens = re.findall(r"(?<![\w.])(?:\d{1,3}(?:,\d{3})+|\d+|\.\d+)(?:\.\d+)?%?", str(text or ""))
+    normalized = set()
+    for token in tokens:
+        raw = token.replace(",", "").rstrip("%")
+        try:
+            normalized.add(format(Decimal(raw).normalize(), "f"))
+        except (InvalidOperation, ValueError):
+            normalized.add(raw)
+    return normalized
 
 
 def extract_explicit_unstructured_numeric_findings(
@@ -2363,9 +2371,14 @@ def validate_study(study: Study, article: Optional[Dict[str, Any]] = None) -> Di
 
     valid_source_statuses = {SOURCE_VERIFIED, SOURCE_DERIVED}
     for path, value, source in iter_sourced_claims(study):
-        if path == "population.description" and source.verification_status != SOURCE_DERIVED:
-            if not _literal_numeric_tokens(value).issubset(_literal_numeric_tokens(source.sentence)):
-                errors.append("unsupported_numeric_text:population.description")
+        if source.verification_status != SOURCE_DERIVED:
+            value_numbers = _literal_numeric_tokens(value)
+            source_numbers = _literal_numeric_tokens(source.sentence)
+            if not value_numbers.issubset(source_numbers):
+                if path == "population.description":
+                    errors.append("unsupported_numeric_text:population.description")
+                else:
+                    errors.append(f"unsupported_numeric_value:{path}")
         if not source.pmid or source.pmid != pmid:
             missing_provenance.append(path)
             errors.append(f"source_pmid_mismatch:{path}")
@@ -2541,11 +2554,15 @@ def render_study_card_lines(study: Study) -> List[str]:
     else:
         lines.append(f"**Sonlanıma bağlı etki tahminleri:** sonuç bildirilmedi (PMID: {pmid})")
     if study.other_numeric_findings:
-        bits = []
+        lines.append("**Özetteki diğer sayısal bulgular (etki ölçütü olarak yapılandırılmadı):**")
         for item in study.other_numeric_findings:
-            bits.append(f"{item['outcome'] or 'sonlanım adı yok'} ({', '.join(item['metrics'])})")
-        lines.append("**Özetteki diğer sayısal bulgular (etki ölçütü olarak yapılandırılmadı):** " + "; ".join(bits) +
-                     f" (PMID: {pmid})")
+            detail = f"{item['outcome'] or 'sonlanım adı yok'} ({', '.join(item['metrics'])})"
+            source = item.get("source")
+            if isinstance(source, EvidenceSource) and source.sentence:
+                detail += f" — Kaynak cümle: \"{source.sentence}\" (PMID: {pmid})"
+            else:
+                detail += f" (PMID: {pmid}; kaynak cümlesi yok)"
+            lines.append(f"- {detail}")
     if rejected:
         lines.append(f"**Reddedilen eşleştirmeler:** {len(rejected)} (tutarsız güven aralığı veya geçersiz aralık; sentezde kullanılmadı)")
     tool = rg.display_bias_tool(study.risk_of_bias.tool) if study.risk_of_bias.tool else "araç seçilemedi"

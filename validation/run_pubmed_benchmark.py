@@ -9,8 +9,11 @@ assessment.
 """
 from __future__ import annotations
 
+import hashlib
 import json
+import platform
 import re
+import subprocess
 import sys
 import time
 from datetime import datetime, timezone
@@ -116,8 +119,65 @@ def numbers_equal(left: Any, right: Any) -> bool:
 
 
 def sentence_matches(expected: str, actual: str) -> bool:
+    """Normalized text containment for alignment; this is not sentence equality."""
     left, right = norm(expected), norm(actual)
     return bool(left and right and (left in right or right in left))
+
+
+def reference_quote_checks(case: Dict[str, Any], article: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """Check that each predeclared reference quote is present in the live record."""
+    quotes = []
+    if case.get("total_n_sentence"):
+        quotes.append(("total_n_sentence", case["total_n_sentence"]))
+    for index, outcome in enumerate(case.get("outcomes") or []):
+        if outcome.get("source_sentence"):
+            quotes.append((f"outcomes[{index}].source_sentence", outcome["source_sentence"]))
+
+    checks = []
+    for field, quote in quotes:
+        location, status = em.verify_sentence_in_source(
+            str(quote), article.get("abstract") or "", article.get("title") or ""
+        )
+        checks.append({
+            "field": field,
+            "present_in_live_record": status == em.SOURCE_VERIFIED,
+            "location": location,
+        })
+    return checks
+
+
+_UNSUPPORTED_CAUSAL_LANGUAGE_RE = re.compile(
+    r"\b(?:neden\s+ol\w*|sebep\s+ol\w*|yol\s+aç\w*|art(?:ır|tır)\w*|"
+    r"azalt\w*|azal\w*|önle\w*|sağla\w*|iyileştir\w*|düşür\w*|yükselt\w*|koru\w*)\b",
+    re.IGNORECASE,
+)
+
+
+def has_unsupported_causal_language(claim_text: str, causal_allowed: bool) -> bool:
+    """Phrase-scan a rendered claim; this is not clinical or semantic adjudication."""
+    return bool(not causal_allowed and _UNSUPPORTED_CAUSAL_LANGUAGE_RE.search(claim_text or ""))
+
+
+def _sha256_file(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def build_run_provenance() -> Dict[str, Any]:
+    try:
+        git_head = subprocess.run(
+            ["git", "rev-parse", "HEAD"], cwd=ROOT, check=True,
+            capture_output=True, text=True,
+        ).stdout.strip()
+    except (OSError, subprocess.CalledProcessError):
+        git_head = None
+    return {
+        "command": "python validation/run_pubmed_benchmark.py",
+        "python_version": platform.python_version(),
+        "git_head_at_run": git_head,
+        "runner_sha256": _sha256_file(Path(__file__).resolve()),
+        "reference_data_sha256": _sha256_file(REFERENCE_PATH),
+        "live_source": "NCBI PubMed E-utilities through pubmed_client.verify_citation",
+    }
 
 
 def metric_aliases(metric: str) -> List[str]:
@@ -286,6 +346,7 @@ def _event_values_for_sentence(study: em.Study, expected_sentence: str) -> List[
 
 def compare_case(case: Dict[str, Any], article: Dict[str, Any], study: em.Study) -> Dict[str, Any]:
     checks: List[Dict[str, Any]] = []
+    quote_checks = reference_quote_checks(case, article)
     expected_n = case.get("total_n")
     actual_n = study.population.n_total
     if expected_n is not None:
@@ -376,10 +437,21 @@ def compare_case(case: Dict[str, Any], article: Dict[str, Any], study: em.Study)
             if not _metric_occurs(estimate.measure, estimate.source.sentence):
                 unsupported_metric_types.append(f"outcomes[{outcome_index}].estimates[{estimate_index}]:{estimate.measure}")
 
-    false_causal_flag = bool(
-        study.causal_inference_allowed
-        and not (study.design_key in {"rct", "clinical_trial"} or study.claim_type == "pooled_randomized")
+    causal_allowed_by_design = (
+        study.claim_type == "pooled_randomized"
+        or (study.claim_type == "causal_effect" and study.design_key in {"rct", "clinical_trial"})
     )
+    rendered_claims = [
+        (f"outcomes[{outcome_index}].estimates[{estimate_index}]", em.claim_sentence_tr(study, estimate))
+        for outcome_index, outcome in enumerate(study.outcomes)
+        for estimate_index, estimate in enumerate(outcome.estimates)
+        if estimate.usable or estimate.validation == "eksik"
+    ]
+    unsupported_causal_language = [
+        path for path, text in rendered_claims
+        if has_unsupported_causal_language(text, causal_allowed_by_design)
+    ]
+    causal_metadata_mismatch = bool(study.causal_inference_allowed) != causal_allowed_by_design
     model_validation = em.validate_study(study, article)
     return {
         "specialty": case["specialty"],
@@ -397,16 +469,19 @@ def compare_case(case: Dict[str, Any], article: Dict[str, Any], study: em.Study)
         "reference_fields_expected": len(checks),
         "reference_field_checks": checks,
         "complete_reference_extraction": bool(checks) and all(check["matched"] for check in checks),
+        "reference_quote_checks": quote_checks,
         "source_claim_count": len(sourced_claims),
         "metric_type_check_count": sum(
             1 for outcome in study.outcomes for estimate in outcome.estimates
             if estimate.measure not in {"proportion", "unnamed"}
         ),
         "source_sentence_matches": source_sentence_matches,
-        "source_sentence_exact_match_rate": source_sentence_matches / len(sourced_claims) if sourced_claims else None,
+        "source_text_presence_rate": source_sentence_matches / len(sourced_claims) if sourced_claims else None,
         "unsupported_value_claims": sorted(set(unsupported_values)),
         "unsupported_metric_type_claims": unsupported_metric_types,
-        "false_causal_claim_flag": false_causal_flag,
+        "rendered_claims_checked": len(rendered_claims),
+        "unsupported_causal_language_claims": unsupported_causal_language,
+        "causal_metadata_mismatch": causal_metadata_mismatch,
         "model_validation": model_validation,
         "record_verification_status": study.citation_status,
         "study_relationship": study.report_role,
@@ -435,6 +510,43 @@ def summarize_field_gaps(cases: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     return sorted(gaps, key=lambda item: (0 if item["priority"].startswith("P1") else 1, -item["unmatched"], item["category"]))
 
 
+def summarize_safety_checks(cases: List[Dict[str, Any]]) -> Dict[str, Any]:
+    evaluated = [item for item in cases if item.get("record_verification_status") == "verified"]
+    source_claims = sum(item.get("source_claim_count", 0) for item in evaluated)
+    metric_checks = sum(item.get("metric_type_check_count", 0) for item in evaluated)
+    unsupported_values = sum(len(item.get("unsupported_value_claims") or []) for item in evaluated)
+    unsupported_metrics = sum(len(item.get("unsupported_metric_type_claims") or []) for item in evaluated)
+    claim_denominator = source_claims + metric_checks
+    causal_claims_checked = sum(item.get("rendered_claims_checked") or 0 for item in evaluated)
+    causal_violations = sum(len(item.get("unsupported_causal_language_claims") or []) for item in evaluated)
+    causal_metadata_mismatches = sum(bool(item.get("causal_metadata_mismatch")) for item in evaluated)
+    status = "NOT_EVALUATED" if not evaluated or not claim_denominator else (
+        "PASS" if unsupported_values + unsupported_metrics == 0 else "PARTIAL_OR_FAIL"
+    )
+    causal_status = "NOT_EVALUATED" if not causal_claims_checked else (
+        "PASS" if causal_violations == 0 and causal_metadata_mismatches == 0 else "PARTIAL_OR_FAIL"
+    )
+    return {
+        "status": status,
+        "evaluated_records": len(evaluated),
+        "not_evaluated_records": len(cases) - len(evaluated),
+        "unsupported_claims": unsupported_values + unsupported_metrics,
+        "unsupported_value_claims": unsupported_values,
+        "unsupported_metric_type_claims": unsupported_metrics,
+        "claim_denominator": claim_denominator,
+        "unsupported_rate": (unsupported_values + unsupported_metrics) / claim_denominator if claim_denominator else None,
+        "causal_language_status": causal_status,
+        "rendered_causal_claims_checked": causal_claims_checked,
+        "unsupported_causal_language_claims": causal_violations,
+        "causal_metadata_mismatches": causal_metadata_mismatches,
+        "causal_language_violation_rate": causal_violations / causal_claims_checked if causal_claims_checked else None,
+        "interpretation": (
+            "Software/source-string checks only. The causal phrase scan covers rendered canonical claim sentences; "
+            "it is not semantic or independent clinical adjudication."
+        ),
+    }
+
+
 def _empty_case_result(case: Dict[str, Any], status: str) -> Dict[str, Any]:
     return {
         "specialty": case["specialty"], "pmid": case["pmid"],
@@ -444,10 +556,12 @@ def _empty_case_result(case: Dict[str, Any], status: str) -> Dict[str, Any]:
         "non_arm_groups_not_scored": list(case.get("non_arm_groups") or []),
         "reference_fields_matched": 0, "reference_fields_expected": 0,
         "reference_field_checks": [], "complete_reference_extraction": False,
+        "reference_quote_checks": None,
         "source_claim_count": 0, "metric_type_check_count": 0,
-        "source_sentence_matches": 0, "source_sentence_exact_match_rate": None,
+        "source_sentence_matches": 0, "source_text_presence_rate": None,
         "unsupported_value_claims": [], "unsupported_metric_type_claims": [],
-        "false_causal_claim_flag": False, "model_validation": None,
+        "rendered_claims_checked": None, "unsupported_causal_language_claims": None,
+        "causal_metadata_mismatch": None, "model_validation": None,
         "record_verification_status": status, "study_relationship": None,
     }
 
@@ -457,6 +571,31 @@ def render_markdown(report: Dict[str, Any]) -> str:
     reference = report["reference_comparison"]
     sources = report["source_sentence_checks"]
     safety = report["extraction_safety_checks"]
+    quote_provenance = report["reference_quote_provenance"]
+    source_summary = (
+        f"{sources['matched_claims']}/{sources['claims_checked']} ({sources['text_presence_rate']:.1%})"
+        if sources["text_presence_rate"] is not None else "değerlendirilemedi"
+    )
+    unsupported_summary = (
+        f"{safety['unsupported_claims']}/{safety['claim_denominator']}"
+        if safety["claim_denominator"] else "değerlendirilemedi"
+    )
+    causal_summary = (
+        f"{safety['unsupported_causal_language_claims']}/{safety['rendered_causal_claims_checked']}"
+        if safety["rendered_causal_claims_checked"] else "değerlendirilemedi"
+    )
+    field_summary = (
+        f"{reference['matched_fields']}/{reference['expected_fields']} ({reference['field_match_rate']:.1%})"
+        if reference["field_match_rate"] is not None else "değerlendirilemedi"
+    )
+    complete_summary = (
+        f"{reference['complete_articles']}/{reference['records_evaluated']}"
+        if reference["records_evaluated"] else "değerlendirilemedi"
+    )
+    quote_summary = (
+        f"{quote_provenance['matched_quotes']}/{quote_provenance['expected_quotes']}"
+        if quote_provenance["expected_quotes"] else "değerlendirilemedi"
+    )
     lines = [
         "# Çok Branşlı PubMed Kaynaklı Alan Benchmark Raporu",
         "",
@@ -465,11 +604,12 @@ def render_markdown(report: Dict[str, Any]) -> str:
         "## Sonuç özeti",
         "",
         f"- Yeniden alınarak PMID/başlık/DOI ile doğrulanan kayıt: **{identity['verified_records']}/{identity['records_checked']}**.",
-        f"- Önceden belirlenmiş referans alanı eşleşmesi: **{reference['matched_fields']}/{reference['expected_fields']}** ({reference['field_match_rate']:.1%}).",
-        f"- Eksiksiz referans alanı: **{reference['complete_articles']}/{reference['articles']}**.",
-        f"- Bağlı kaynak cümlesi bulunan alan: **{sources['matched_claims']}/{sources['claims_checked']}** ({sources['exact_match_rate']:.1%}); bu, klinik doğruluğu değil cümlenin kaynak abstract'ta bulunduğunu ölçer.",
-        f"- Desteklenmeyen kaynak/değer/metrik bayrağı: **{safety['unsupported_claims']}/{safety['claim_denominator']}**.",
-        f"- Nedensellik koruma kuralı ihlali: **{safety['causal_guard_violations']}**.",
+        f"- Önceden belirlenmiş referans alanı eşleşmesi: **{field_summary}**.",
+        f"- Eksiksiz referans alanı: **{complete_summary}**.",
+        f"- Önceden belirlenmiş kaynak alıntısı metninin canlı PubMed kaydında bulunması: **{quote_summary}**.",
+        f"- Model alanlarının kaynak metninin canlı abstract/başlık içinde bulunması: **{source_summary}**; bu tam cümle eşitliği veya klinik doğruluk değildir.",
+        f"- Desteklenmeyen değer/metrik kaynak dizesi kontrolleri: **{unsupported_summary}**.",
+        f"- Kanonik renderer’ın yapılandırılmış iddia cümlelerinde phrase-scan ile desteklenmeyen nedensel dil: **{causal_summary}**.",
         "",
         "## Referans alanı boşlukları",
         "",
@@ -485,26 +625,35 @@ def render_markdown(report: Dict[str, Any]) -> str:
         "",
         "## Kayıt bazında sonuçlar",
         "",
-        "| Branş | PMID | Tasarım (beklenen / model) | N (beklenen / model) | Alan eşleşmesi | Kaynak cümlesi | Model alan kontrolü |",
+        "| Branş | PMID | Tasarım (beklenen / model) | N (beklenen / model) | Alan eşleşmesi | Kaynak metni | Model alan kontrolü |",
         "|---|---:|---|---:|---:|---:|---|",
     ])
     for case in report["cases"]:
         total = f"{case.get('expected_total_n')} / {case.get('actual_total_n')}" if case.get("expected_total_n") is not None else "— / belirtilmedi"
         model_status = (case.get("model_validation") or {}).get("status", "kayıt alınamadı")
+        source_text = (
+            f"{case.get('source_sentence_matches', 0)}/{case.get('source_claim_count', 0)}"
+            if case.get("record_verification_status") == "verified" else "değerlendirilmedi"
+        )
         lines.append(
             f"| {case['specialty']} | {case['pmid']} | {case.get('expected_design')} / {case.get('actual_design')} | {total} | "
             f"{case['reference_fields_matched']}/{case['reference_fields_expected']} | "
-            f"{case.get('source_sentence_matches', 0)}/{case.get('source_claim_count', 0)} | {model_status} |"
+            f"{source_text} | {model_status} |"
         )
     lines.extend([
         "",
         "## Doğrulama sınırları",
         "",
-        "PubMed kimlik kontrolü kaynak kaydının yeniden bulunması ve verilen kimlik alanlarının eşleşmesi içindir. Kaynak cümlesi kontrolü cümlenin abstract/başlıkta bulunmasına bakar; alanın klinik anlamda doğru yorumlandığını kanıtlamaz. Benchmark referans kümesi sınırlıdır ve bütün klinik çeşitliliği temsil etmez.",
+        "PubMed kimlik kontrolü kaynak kaydının yeniden bulunması ve verilen kimlik alanlarının eşleşmesi içindir. Kaynak metni kontrolü normalize edilmiş alıntı metninin canlı abstract/başlık içinde yer almasını denetler; tam cümle eşitliği veya alanın klinik anlamda doğru yorumlandığını kanıtlamaz. Nedensel dil phrase-scan’i yalnızca kanonik renderer’ın yapılandırılmış iddia cümlelerini tarar; semantik veya hekim değerlendirmesi değildir. Benchmark referans kümesi sınırlıdır ve bütün klinik çeşitliliği temsil etmez.",
         "",
         "Bağımsız klinik doğrulama: **YAPILMADI**. GRADE ve yanlılık riski: **değerlendirilmedi**.",
         f"",
         f"Kanonik model sürümü: `{report['model_version']}`. Referans verisi: `pubmed_reference_cases.json` (sürüm {report['reference_dataset_version']}).",
+        "",
+        "## Çalıştırma izi",
+        "",
+        f"UTC zamanı: `{report['generated_at_utc']}`; Python: `{report['run_provenance']['python_version']}`; çalıştırıcı SHA-256: `{report['run_provenance']['runner_sha256']}`; referans verisi SHA-256: `{report['run_provenance']['reference_data_sha256']}`; çalıştırma anındaki Git HEAD: `{report['run_provenance']['git_head_at_run'] or 'bilinmiyor'}`.",
+        f"Canlı abstract SHA-256 özeti her doğrulanan kayıt için JSON raporunda saklanır. Kimliği doğrulanamayan kayıtlar bu metriklerin paydasına dahil edilmez; değerlendirilmedikleri ayrıca sayılır.",
         "",
     ])
     return "\n".join(lines)
@@ -539,24 +688,32 @@ def run() -> Dict[str, Any]:
             "doi_expected": reference.get("doi"),
             "doi_fetched": fetched.get("doi"),
             "title_fetched": fetched.get("title"),
+            "abstract_sha256": hashlib.sha256(str(fetched.get("abstract") or "").encode("utf-8")).hexdigest()
+            if fetched.get("abstract") else None,
             "pubmed_url": reference.get("pubmed_url"),
         }
         results.append(case_result)
         pubmed_checks.append(case_result["pubmed_verification"])
         time.sleep(0.4)
 
-    expected_fields = sum(item["reference_fields_expected"] for item in results)
-    matched_fields = sum(item["reference_fields_matched"] for item in results)
-    claims_checked = sum(item["source_claim_count"] for item in results)
-    claims_matched = sum(item["source_sentence_matches"] for item in results)
-    unsupported_values = sum(len(item["unsupported_value_claims"]) for item in results)
-    unsupported_metrics = sum(len(item["unsupported_metric_type_claims"]) for item in results)
-    metric_checks = sum(item["metric_type_check_count"] for item in results)
-    unsupported = unsupported_values + unsupported_metrics
-    causal_violations = sum(bool(item["false_causal_claim_flag"]) for item in results)
-    valid_models = sum(bool((item.get("model_validation") or {}).get("valid")) for item in results)
+    verified_results = [item for item in results if item.get("record_verification_status") == "verified"]
+    expected_fields = sum(item["reference_fields_expected"] for item in verified_results)
+    matched_fields = sum(item["reference_fields_matched"] for item in verified_results)
+    claims_checked = sum(item["source_claim_count"] for item in verified_results)
+    claims_matched = sum(item["source_sentence_matches"] for item in verified_results)
+    quote_checks = [check for item in verified_results for check in (item.get("reference_quote_checks") or [])]
+    matched_quotes = sum(bool(check["present_in_live_record"]) for check in quote_checks)
+    valid_models = sum(bool((item.get("model_validation") or {}).get("valid")) for item in verified_results)
+    safety = summarize_safety_checks(results)
+    complete_articles = sum(bool(item["complete_reference_extraction"]) for item in verified_results)
+    field_match_rate = matched_fields / expected_fields if expected_fields else None
+    complete_article_rate = complete_articles / len(verified_results) if verified_results else None
+    quote_status = "NOT_EVALUATED" if not quote_checks else (
+        "PASS" if matched_quotes == len(quote_checks) else "PARTIAL_OR_FAIL"
+    )
     report = {
         "generated_at_utc": datetime.now(timezone.utc).isoformat(),
+        "run_provenance": build_run_provenance(),
         "model_version": em.EVIDENCE_MODEL_VERSION,
         "reference_dataset_version": references.get("dataset_version"),
         "pubmed_identity_validation": {
@@ -566,35 +723,40 @@ def run() -> Dict[str, Any]:
             "records": pubmed_checks,
         },
         "canonical_model_validation": {
-            "records_checked": len(results),
+            "records_checked": len(verified_results),
             "structurally_valid_records": valid_models,
-            "status": "PASS" if valid_models == len(results) else "PARTIAL_OR_FAIL",
+            "status": "NOT_EVALUATED" if not verified_results else (
+                "PASS" if valid_models == len(verified_results) else "PARTIAL_OR_FAIL"
+            ),
             "independent_clinical_validation": "NOT_PERFORMED",
             "formal_grade_status": "NOT_ASSESSED",
         },
         "reference_comparison": {
             "articles": len(results),
-            "complete_articles": sum(bool(item["complete_reference_extraction"]) for item in results),
+            "records_evaluated": len(verified_results),
+            "records_not_evaluated": len(results) - len(verified_results),
+            "complete_articles": complete_articles,
             "expected_fields": expected_fields,
             "matched_fields": matched_fields,
-            "field_match_rate": matched_fields / expected_fields if expected_fields else 0.0,
-            "complete_article_rate": sum(bool(item["complete_reference_extraction"]) for item in results) / len(results) if results else 0.0,
+            "field_match_rate": field_match_rate,
+            "complete_article_rate": complete_article_rate,
             "field_gap_priorities": summarize_field_gaps(results),
+        },
+        "reference_quote_provenance": {
+            "status": quote_status,
+            "records_evaluated": len(verified_results),
+            "records_not_evaluated": len(results) - len(verified_results),
+            "expected_quotes": len(quote_checks),
+            "matched_quotes": matched_quotes,
         },
         "source_sentence_checks": {
             "claims_checked": claims_checked,
             "matched_claims": claims_matched,
-            "exact_match_rate": claims_matched / claims_checked if claims_checked else 0.0,
+            "text_presence_rate": claims_matched / claims_checked if claims_checked else None,
+            "records_evaluated": len(verified_results),
+            "records_not_evaluated": len(results) - len(verified_results),
         },
-        "extraction_safety_checks": {
-            "unsupported_claims": unsupported,
-            "unsupported_value_claims": unsupported_values,
-            "unsupported_metric_type_claims": unsupported_metrics,
-            "claim_denominator": claims_checked + metric_checks,
-            "unsupported_rate": unsupported / (claims_checked + metric_checks) if claims_checked + metric_checks else 0.0,
-            "causal_guard_violations": causal_violations,
-            "interpretation": "Software/source-string checks only; not independent clinical validation.",
-        },
+        "extraction_safety_checks": safety,
         "independent_clinical_adjudication": {
             "status": "NOT_PERFORMED",
             "reason": "PMID/DOI/title and abstract source-sentence checks do not establish clinical correctness.",

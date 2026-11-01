@@ -213,6 +213,8 @@ Three test categories:
 
 `python validation/run_multispecialty_validation.py` regenerates [`validation/MULTISPECIALTY_VALIDATION_REPORT.md`](validation/MULTISPECIALTY_VALIDATION_REPORT.md). The development set was used while tuning, so its numbers are optimistic. The honest estimates are the **frozen first runs on two held-out sets** (reference written before the engine saw them; set 2 was built after fixing set 1's errors, to test whether the fixes generalize): complete extraction 77.9% and 78.8%, false extraction 8.6% and 11.9%, source-sentence match 100%, 0 false causal claims. The rule-based extractor plateaus around 78% completeness on unseen abstracts; fixes made on one set did not raise the first-run score on the next. All reference tables were prepared by an AI assistant from abstracts only; no independent physician has checked them.
 
+The fixed eight-record live PubMed benchmark is separate from offline pull-request CI and can be rerun with `python validation/run_pubmed_benchmark.py`. It re-fetches the records, checks the reference quote text against each current abstract/title, and writes JSON/Markdown reports with runner/reference hashes and a hash for each fetched abstract. Its source-text and rendered-claim phrase checks are software checks only; they are not independent clinical adjudication, GRADE, or proof of clinical accuracy. A fetch failure is reported as not evaluated rather than as a zero-violation result.
+
 ---
 
 ## Citation integrity
