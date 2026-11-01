@@ -901,6 +901,9 @@ def reconcile_with_grounded_findings(article: Dict[str, Any], estimates: List[Ef
         other_name = item.get("outcome") or ""
         named = bool(other_name) and other_name != rg._UNNAMED_OUTCOME_TR and '"' not in other_name and (
             _acceptable_predictor(other_name) if other_name.startswith("öngördürücü") else True)
+        if named and re.search(r"\b(?:patients|participants|those|individuals|women|men|children)\s+(?:with|who\s+had|who\s+developed)\s+"
+                               + re.escape(other_name), sentence, re.IGNORECASE):
+            named = False  # "in patients with tendon rupture than in controls (11.3 vs 11.8 mm)": a group, not the outcome
         low, high = _to_float(item.get("ci_low") or ""), _to_float(item.get("ci_high") or "")
         same = [e for e in by_sentence.get(sentence, []) if e.value is not None and abs(e.value - value) < 1e-9]
         if not same:
@@ -1468,7 +1471,8 @@ def study_diagnostic_target(article: Dict[str, Any]) -> Tuple[str, str]:
     candidates = [title] + sentences_of(article.get("abstract") or "")[:8]
     for pattern in _STUDY_TARGET_PATTERNS:
         for text in candidates:
-            match = pattern.search(text or "")
+            # "(IVIG)" inside the target must not end it: "intravenous immunoglobulin (IVIG) resistance".
+            match = pattern.search(re.sub(r"\s*\([A-Za-z][\w-]{0,10}\)", "", text or ""))
             if match:
                 target = _TARGET_CUT_RE.sub("", match.group("t")).strip(" ,;:")
                 if re.search(r"\band\s+(?:predict|detect|diagnos|identif)", target, re.IGNORECASE):
@@ -1798,10 +1802,12 @@ def extract_effect_estimates(article: Dict[str, Any]) -> List[EffectEstimate]:
         _reverse_order_estimates(article, sentence, estimates)
         _legend_estimates(article, sentence, estimates)
         _shared_measure_estimates(article, sentence, estimates)
+        _unlabeled_interval_estimates(article, sentence, estimates)
         _trailing_outcome_for_listed_exposures(sentence, estimates)
     estimates = _dedupe_estimates(estimates)
     _inherit_subgroup_outcomes(estimates)
     _bind_primary_outcome(article, estimates)
+    _expand_defined_acronyms(article, estimates)
     return estimates
 
 
@@ -2131,6 +2137,97 @@ def _trailing_outcome_for_listed_exposures(sentence: str, estimates: List[Effect
         basis = f"sonlanım cümle sonunda adlandırıldı; maruziyet/risk faktörü: {exposure}" if exposure else \
             "sonlanım cümle sonunda adlandırıldı"
         est.outcome_basis = "; ".join(b for b in (basis,) if b)
+
+
+_UNLABELED_GROUP_RE = re.compile(
+    r"\(\s*(?P<v>\d+(?:\.\d+)?)\s*[,;]\s*(?P<lo>\d+(?:\.\d+)?)\s*(?:-|–|to)\s*(?P<hi>\d+(?:\.\d+)?)"
+    r"\s*(?:[;,]\s*(?P<p>p\s*[=<>]\s*[\d.]+))?\s*\)",
+    re.IGNORECASE,
+)
+
+
+def _unlabeled_interval_estimates(article, sentence: str, estimates: List[EffectEstimate]) -> None:
+    """'The risk of the composite renal endpoint was also reduced (0.62, 0.43-0.90; p=0.013)': a value with its
+    interval but no measure name. Kept with the measure marked as not named, never guessed."""
+    if not re.search(r"\b(?:risk|odds|hazard|rate|reduced|increased|lower|higher|associated)\b", sentence, re.IGNORECASE):
+        return
+    known = {(e.value, e.ci_low, e.ci_high) for e in estimates if e.source.sentence == sentence}
+    for match in _UNLABELED_GROUP_RE.finditer(sentence):
+        value, low, high = float(match.group("v")), float(match.group("lo")), float(match.group("hi"))
+        if (value, low, high) in known or not (low <= value <= high) or low == high:
+            continue
+        if _MEASURE_RE.search(sentence[max(0, match.start() - 25):match.start()]):
+            continue  # a measure named just before belongs to the regular parser
+        mention = {"start": match.start(), "end": match.start(), "text": "", "code": "unnamed", "family": "unspecified"}
+        est = EffectEstimate(
+            measure="unnamed", measure_text="", family="unspecified", value=value, value_text=match.group("v"),
+            ci_low=low, ci_high=high, ci_level=None, p_value=(match.group("p") or "").replace("=", " = ").replace("  ", " "),
+            outcome_name=_resolve_outcome(sentence, mention, match.start()),
+            outcome_basis="ölçüt adı kaynak cümlede yazılmamış; değer ve aralık kaynaktan",
+            source=_source(article, sentence),
+        )
+        _validate_estimate(est)
+        estimates.append(est)
+        known.add((value, low, high))
+
+
+_STOP_INITIALS = {"of", "and", "or", "the", "in", "to", "for", "with", "a", "an"}
+
+
+def defined_acronyms(text: str) -> Dict[str, str]:
+    """{'AR': 'allergic rhinitis', 'NEC': 'necrotizing enterocolitis'} from definitions written in the text.
+
+    The phrase is the shortest run of words just before the bracket that starts with the acronym's
+    first letter and contains its letters in order. An acronym defined twice differently is dropped.
+    """
+    found: Dict[str, str] = {}
+    for match in re.finditer(r"([A-Za-z][\w\s'-]{2,80}?)\s*\((?P<a>[A-Z][A-Za-z0-9-]{1,8})\)", text or ""):
+        acronym = match.group("a")
+        words = re.findall(r"[A-Za-z][\w'-]*", match.group(1))
+        letters = acronym.replace("-", "").lower()
+
+        def _initials(ws):
+            return "".join(w[0].lower() for w in ws if w.lower() not in _STOP_INITIALS)
+
+        def _subsequence(ws):
+            blob, pos = " ".join(ws).lower(), 0
+            for ch in letters:
+                pos = blob.find(ch, pos)
+                if pos < 0:
+                    return False
+                pos += 1
+            return True
+
+        candidates = [words[-size:] for size in range(1, min(len(words), 7) + 1)]
+        candidates = [ws for ws in candidates if ws[0].lower() not in _STOP_INITIALS and ws[0][0].lower() == letters[0]]
+        # Word initials first ("stroke or systemic embolism" for SSE), then letters in order ("necrotizing enterocolitis").
+        chosen = next((ws for ws in candidates if _initials(ws) == letters), None) or \
+            next((ws for ws in candidates if _subsequence(ws)), None)
+        if not chosen:
+            continue
+        phrase = " ".join(chosen)
+        if acronym in found and found[acronym].lower() != phrase.lower():
+            found[acronym] = ""  # defined two different ways: do not expand
+        else:
+            found[acronym] = phrase
+    return {k: v for k, v in found.items() if v}
+
+
+def _expand_defined_acronyms(article: Dict[str, Any], estimates: List[EffectEstimate]) -> None:
+    """'LOS' -> 'late-onset sepsis (LOS)' when the same abstract defines it; 'individual AR' -> 'allergic rhinitis (AR)'."""
+    definitions = defined_acronyms(f"{article.get('title') or ''}. {article.get('abstract') or ''}")
+    if not definitions:
+        return
+    for est in estimates:
+        name = re.sub(r"^(?:individual|each|separate)\s+", "", est.outcome_name or "", flags=re.IGNORECASE)
+        tokens = name.split()
+        if not tokens or len(tokens) > 3:
+            continue
+        expanded = [f"{definitions[t]} ({t})" if t in definitions else t for t in tokens]
+        if expanded != tokens:
+            est.outcome_name = " ".join(expanded)
+        elif name != est.outcome_name:
+            est.outcome_name = name
 
 
 def _dedupe_estimates(estimates: List[EffectEstimate]) -> List[EffectEstimate]:

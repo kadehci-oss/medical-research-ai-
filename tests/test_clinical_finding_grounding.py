@@ -210,7 +210,8 @@ class TestKlinikBulgularCellIsSourceGrounded(unittest.TestCase):
     def test_unnamed_effect_with_ci_does_not_invent_a_measure_name(self):
         cell = format_klinik_bulgular_cell(self.by_pmid["40353578"])
         self.assertIn("PMID: 40353578", cell)
-        self.assertIn("Etki ölçütü: özette adlandırılmadı; kaynak değer: -20.2%", cell)
+        # The value is kept as written; the label says the measure name could not be parsed, not that it is absent.
+        self.assertIn("Etki ölçütü: değer (ölçüt adı ayrıştırılamadı): -20.2%", cell)
         self.assertIn("Güven aralığı: -21.4 ile -19.1", cell)
         self.assertIn("Sonlanım: ağırlık", cell)
         self.assertNotIn("Sonlanım: weight", cell)

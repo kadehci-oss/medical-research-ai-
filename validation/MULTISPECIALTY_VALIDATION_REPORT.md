@@ -17,10 +17,10 @@ Bu rapor `python validation/run_multispecialty_validation.py` ile üretilir; ell
 
 | Ölçüt | Geliştirme kümesi (ayarlı) | **Ayrılmış küme 1, ilk çalıştırma (bağımsız)** | **Ayrılmış küme 2, ilk çalıştırma (bağımsız)** | **Ayrılmış küme 3, ilk çalıştırma (bağımsız)** | Küme 1 / 2 / 3, düzeltme sonrası (bağımsız değil) |
 |---|---|---|---|---|---|
-| Eksiksiz çıkarım oranı | %98.7 (151/153) | **%77.9 (53/68)** | **%78.8 (52/66)** | **%74.3 (84/113)** | %100.0 (68/68) / %93.9 (62/66) / %98.2 (111/113) |
-| Yanlış çıkarım oranı | %0.0 (0/151) | **%8.6 (5/58)** | **%11.9 (7/59)** | **%16.8 (17/101)** | %0.0 (0/68) / %1.6 (1/63) / %1.8 (2/113) |
-| Kaynak eşleşme doğruluğu (cümle) | %100.0 (213/213) | **%100.0 (62/62)** | **%100.0 (73/73)** | **%100.0 (115/115)** | %100.0 (97/97) / %100.0 (86/86) / %100.0 (118/118) |
-| Kaynak eşleşme doğruluğu (sayısal değer) | %100.0 (154/154) | **%100.0 (52/52)** | **%100.0 (48/48)** | **%97.8 (90/92)** | %100.0 (67/67) / %100.0 (59/59) / %100.0 (85/85) |
+| Eksiksiz çıkarım oranı | %98.7 (151/153) | **%77.9 (53/68)** | **%78.8 (52/66)** | **%74.3 (84/113)** | %100.0 (68/68) / %93.9 (62/66) / %96.6 (113/117) |
+| Yanlış çıkarım oranı | %0.0 (0/151) | **%8.6 (5/58)** | **%11.9 (7/59)** | **%16.8 (17/101)** | %0.0 (0/68) / %1.6 (1/63) / %0.0 (0/113) |
+| Kaynak eşleşme doğruluğu (cümle) | %100.0 (213/213) | **%100.0 (62/62)** | **%100.0 (73/73)** | **%100.0 (115/115)** | %100.0 (98/98) / %100.0 (86/86) / %100.0 (118/118) |
+| Kaynak eşleşme doğruluğu (sayısal değer) | %100.0 (154/154) | **%100.0 (52/52)** | **%100.0 (48/48)** | **%97.8 (90/92)** | %100.0 (68/68) / %100.0 (59/59) / %100.0 (85/85) |
 | Yanlış nedensellik iddiası | 0 | **0** | **0** | **3** | 0 / 0 / 0 |
 | Soru çerçevesi seçimi | 18/18 | **9/10** | **8/8** | **8/8** | 10/10 / 8/8 / 8/8 |
 
@@ -78,8 +78,8 @@ Bu rapor `python validation/run_multispecialty_validation.py` ile üretilir; ell
 
 Dondurulmuş dosya değiştirilmedi. Aşağıdaki öğelerde hatalı olan referanstır, motor değil:
 
-- **PMID 42937536:** Referansta 'birincil' yazıldı; özet kendini NLST'nin ikincil analizi olarak tanımlıyor. Motorun 'ikincil analiz' kararı doğrudur. İlgili iki öğe (yayın rolü, bağımsızlık) motor hatası değildir.
-- **PMID 42963818:** Referansta 'birincil' yazıldı; özet kendini DOT Selfie RCT verisinin ikincil analizi olarak tanımlıyor. Motorun 'ikincil analiz' kararı doğrudur. İlgili iki öğe motor hatası değildir.
+- **PMID 42937536:** Referansta 'birincil' yazıldı; özet kendini NLST'nin ikincil analizi olarak tanımlıyor. Motorun 'ikincil analiz' kararı doğrudur. Dondurulmuş sonuçtaki ilgili iki öğe (yayın rolü, bağımsızlık) motor hatası değildir. Güncel çalıştırmalar için referans düzeltildi; ana çalışma sette olmadığından ebeveyn bağlantısı eksik sayılır.
+- **PMID 42963818:** Referansta 'birincil' yazıldı; özet kendini DOT Selfie RCT verisinin ikincil analizi olarak tanımlıyor. Motorun 'ikincil analiz' kararı doğrudur. Güncel çalıştırmalar için referans aynı şekilde düzeltildi.
 
 ## Dış referans: PR #64'ün sekiz PubMed vakası
 
@@ -174,7 +174,7 @@ Puanlama `python validation/run_external_reference_check.py` ile yapılır ve ya
 | Branş | Durum | Alıntı kontrolü | Kümede olmayan PMID | RoB/GRADE derece iddiası |
 |---|---|---|---|---|
 | Kardiyoloji | Doğrulandı | 83/83 | 0 | 0 |
-| Onkoloji | Doğrulandı | 79/79 | 0 | 0 |
+| Onkoloji | Doğrulandı | 81/81 | 0 | 0 |
 | Nöroloji | Doğrulandı | 68/68 | 0 | 0 |
 | Enfeksiyon | Doğrulandı | 49/49 | 0 | 0 |
 | Endokrinoloji | Doğrulandı | 57/57 | 0 | 0 |
@@ -239,8 +239,8 @@ Puanlama `python validation/run_external_reference_check.py` ile yapılır ve ya
 |---|---|
 | Eksiksiz çıkarım oranı | %100.0 (68/68) |
 | Yanlış çıkarım oranı | %0.0 (0/68) |
-| Kaynak eşleşme doğruluğu (cümle) | %100.0 (97/97) |
-| Kaynak eşleşme doğruluğu (sayısal değer) | %100.0 (67/67) |
+| Kaynak eşleşme doğruluğu (cümle) | %100.0 (98/98) |
+| Kaynak eşleşme doğruluğu (sayısal değer) | %100.0 (68/68) |
 | Yanlış nedensellik iddiası | 0 |
 | Örneklem yerine olay/kol sayısı | 0 |
 | Eşlik eden tedavinin müdahale sanılması | 0 |
@@ -281,9 +281,9 @@ Puanlama `python validation/run_external_reference_check.py` ile yapılır ve ya
 
 | Branş | Durum | Alıntı kontrolü | Kümede olmayan PMID | RoB/GRADE derece iddiası |
 |---|---|---|---|---|
-| Kardiyoloji | Doğrulandı | 30/30 | 0 | 0 |
+| Kardiyoloji | Doğrulandı | 33/33 | 0 | 0 |
 | Onkoloji | Doğrulandı | 31/31 | 0 | 0 |
-| Nöroloji | Doğrulandı | 32/32 | 0 | 0 |
+| Nöroloji | Doğrulandı | 36/36 | 0 | 0 |
 | Enfeksiyon | Doğrulandı | 57/57 | 0 | 0 |
 | Endokrinoloji | Doğrulandı | 11/11 | 0 | 0 |
 | Pediatri | Doğrulandı | 10/10 | 0 | 0 |
@@ -435,14 +435,14 @@ Puanlama `python validation/run_external_reference_check.py` ile yapılır ve ya
 
 | Ölçüt | Değer |
 |---|---|
-| Eksiksiz çıkarım oranı | %98.2 (111/113) |
-| Yanlış çıkarım oranı | %1.8 (2/113) |
+| Eksiksiz çıkarım oranı | %96.6 (113/117) |
+| Yanlış çıkarım oranı | %0.0 (0/113) |
 | Kaynak eşleşme doğruluğu (cümle) | %100.0 (118/118) |
 | Kaynak eşleşme doğruluğu (sayısal değer) | %100.0 (85/85) |
 | Yanlış nedensellik iddiası | 0 |
 | Örneklem yerine olay/kol sayısı | 0 |
 | Eşlik eden tedavinin müdahale sanılması | 0 |
-| Bağımsız kanıt sayımı hatası | 2 |
+| Bağımsız kanıt sayımı hatası | 0 |
 | Soru çerçevesi seçimi | 8/8 |
 | Sonlanım bağlama (doğru / adsız / yanlış) | 58 / 0 / 0 |
 
@@ -452,12 +452,12 @@ Puanlama `python validation/run_external_reference_check.py` ile yapılır ve ya
 |---|---|---|---|---|
 | Cerrahi | 3 | Olgu serisi, RCT, Vaka-kontrol | %100.0 (9/9) | %0.0 (0/9) |
 | Endokrinoloji | 2 | RCT, Vaka-kontrol | %100.0 (24/24) | %0.0 (0/24) |
-| Enfeksiyon | 2 | Kohort, Tanısal doğruluk | %100.0 (17/17) | %5.6 (1/18) |
+| Enfeksiyon | 2 | Kohort, Tanısal doğruluk | %94.7 (18/19) | %0.0 (0/18) |
 | Kardiyoloji | 2 | Kohort, RCT | %90.9 (10/11) | %0.0 (0/10) |
 | Nöroloji | 2 | RCT, Tanısal doğruluk | %90.9 (10/11) | %0.0 (0/10) |
 | Onkoloji | 2 | Meta-analiz | %100.0 (16/16) | %0.0 (0/16) |
 | Pediatri | 2 | Kohort, RCT | %100.0 (13/13) | %0.0 (0/13) |
-| Radyoloji | 2 | Kohort, Tanısal doğruluk | %100.0 (12/12) | %7.7 (1/13) |
+| Radyoloji | 2 | Kohort, Tanısal doğruluk | %92.9 (13/14) | %0.0 (0/13) |
 
 ### Araştırma türüne göre
 
@@ -465,7 +465,7 @@ Puanlama `python validation/run_external_reference_check.py` ile yapılır ve ya
 |---|---|---|---|
 | Vaka-kontrol | 2 | %100.0 (23/23) | %0.0 (0/23) |
 | Olgu serisi | 1 | %100.0 (2/2) | %0.0 (0/2) |
-| Kohort | 4 | %100.0 (25/25) | %7.4 (2/27) |
+| Kohort | 4 | %93.1 (27/29) | %0.0 (0/27) |
 | Tanısal doğruluk | 3 | %95.8 (23/24) | %0.0 (0/23) |
 | Meta-analiz | 2 | %100.0 (16/16) | %0.0 (0/16) |
 | RCT | 5 | %95.7 (22/23) | %0.0 (0/22) |
@@ -479,13 +479,13 @@ Puanlama `python validation/run_external_reference_check.py` ile yapılır ve ya
 | Branş | Durum | Alıntı kontrolü | Kümede olmayan PMID | RoB/GRADE derece iddiası |
 |---|---|---|---|---|
 | Kardiyoloji | Doğrulandı | 26/26 | 0 | 0 |
-| Radyoloji | Doğrulandı | 35/35 | 0 | 0 |
+| Radyoloji | Doğrulandı | 37/37 | 0 | 0 |
 | Onkoloji | Doğrulandı | 27/27 | 0 | 0 |
-| Nöroloji | Doğrulandı | 34/34 | 0 | 0 |
+| Nöroloji | Doğrulandı | 42/42 | 0 | 0 |
 | Enfeksiyon | Doğrulandı | 35/35 | 0 | 0 |
-| Endokrinoloji | Doğrulandı | 58/58 | 0 | 0 |
+| Endokrinoloji | Doğrulandı | 70/70 | 0 | 0 |
 | Cerrahi | Doğrulandı | 41/41 | 0 | 0 |
-| Pediatri | Doğrulandı | 26/26 | 0 | 0 |
+| Pediatri | Doğrulandı | 28/28 | 0 | 0 |
 
 ### Soru çerçevesi seçimi
 
@@ -503,9 +503,9 @@ Puanlama `python validation/run_external_reference_check.py` ile yapılır ve ya
 ### Eksik ve yanlış öğeler (çalışma bazında)
 
 - **PMID 42946676:** EKSİK: 42946676 örneklem None (beklenen 63)
-- **PMID 42937536:** YANLIŞ: 42937536 birincil çalışma yanlışlıkla 'secondary_analysis' sayıldı; BAĞIMSIZLIK: 42937536 bağımsız=False (beklenen True)
+- **PMID 42937536:** EKSİK: 42937536 ana çalışma bağlantısı [] (beklenen None)
 - **PMID 42957617:** EKSİK: 42957617 müdahale '' (beklenen ['tau', 'GFAP'])
-- **PMID 42963818:** YANLIŞ: 42963818 birincil çalışma yanlışlıkla 'secondary_analysis' sayıldı; BAĞIMSIZLIK: 42963818 bağımsız=False (beklenen True)
+- **PMID 42963818:** EKSİK: 42963818 ana çalışma bağlantısı [] (beklenen None)
 
 ### Test kategorileri
 

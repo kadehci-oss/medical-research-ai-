@@ -70,7 +70,8 @@
     "query": "magnetic resonance imaging AND Meta-Analysis[Publication Type] AND diagnostic"
    }
   ],
-  "questions": "Klinik sorular (queries) ve beklenen soru türleri de motor çalıştırılmadan yazıldı; beşi İngilizce, üçü Türkçe."
+  "questions": "Klinik sorular (queries) ve beklenen soru türleri de motor çalıştırılmadan yazıldı; beşi İngilizce, üçü Türkçe.",
+  "errata": "42937536 ve 42963818: 'primary' → 'secondary_analysis' (dondurmadan sonra). Ayrıntı: ilgili kayıtların 'note' alanı."
  },
  "studies": [
   {
@@ -233,10 +234,10 @@
    "intervention_kw": [],
    "comparator_kw": [],
    "background_kw": [],
-   "relation": "primary",
+   "relation": "secondary_analysis",
    "parent": null,
    "causal_allowed": false,
-   "note": "NLST'nin ikincil analizi; ana çalışma sette yok, bu yüzden ilişki 'primary' olarak puanlanır (bağlanacak ebeveyn yok). Maruziyet (vBMD) randomize değil: nedensel dil yasak."
+   "note": "NLST'nin ikincil analizi; ana çalışma sette yok, bu yüzden ilişki 'primary' olarak puanlanır (bağlanacak ebeveyn yok). Maruziyet (vBMD) randomize değil: nedensel dil yasak. DÜZELTME (dondurmadan sonra): özet kendini ikincil analiz olarak tanımlıyor; ilişki 'secondary_analysis' olarak düzeltildi. Ana çalışma sette olmadığı için ebeveyn bağlantısı (parent) beklenemez ve eksik sayılır. Dondurulmuş ilk çalıştırma eski referansla puanlandı ve değiştirilmedi."
   },
   {
    "pmid": "42965526",
@@ -451,10 +452,10 @@
    "intervention_kw": [],
    "comparator_kw": [],
    "background_kw": [],
-   "relation": "primary",
+   "relation": "secondary_analysis",
    "parent": null,
    "causal_allowed": false,
-   "note": "DOT Selfie RCT verisinin ikincil analizi; ana çalışma sette yok. Faktörler randomize değil: nedensel dil yasak. Özet XML bölüm etiketlerinden pubmed_client biçimine (ETİKET: metin) çevrildi."
+   "note": "DOT Selfie RCT verisinin ikincil analizi; ana çalışma sette yok. Faktörler randomize değil: nedensel dil yasak. Özet XML bölüm etiketlerinden pubmed_client biçimine (ETİKET: metin) çevrildi. DÜZELTME (dondurmadan sonra): özet kendini ikincil analiz olarak tanımlıyor; ilişki 'secondary_analysis' olarak düzeltildi. Ana çalışma sette olmadığı için ebeveyn bağlantısı (parent) beklenemez ve eksik sayılır. Dondurulmuş ilk çalıştırma eski referansla puanlandı ve değiştirilmedi."
   },
   {
    "pmid": "42945222",

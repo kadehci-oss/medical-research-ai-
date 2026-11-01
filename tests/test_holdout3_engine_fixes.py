@@ -51,7 +51,7 @@ class ListsBindEachValueToItsOwnName(unittest.TestCase):
     def test_exposures_before_a_sentence_final_outcome_42921063(self):
         by_value = _by_value(_study("42921063"))
         for value in (3.01, 3.72, 2.14, 16.6):
-            self.assertEqual(by_value[value].outcome_name, "GDM", value)
+            self.assertIn("(GDM)", by_value[value].outcome_name, value)
         self.assertIn("preconception body mass index", by_value[3.01].outcome_basis)
         self.assertEqual(by_value[2.92].outcome_name, "cesarean delivery")
         self.assertEqual(by_value[4.11].outcome_name, "need for induction of labor")
@@ -59,14 +59,14 @@ class ListsBindEachValueToItsOwnName(unittest.TestCase):
 
     def test_semicolon_list_with_for_after_each_value_42963493(self):
         by_value = _by_value(_study("42963493"))
-        self.assertEqual(by_value[0.49].outcome_name, "NEC")
-        self.assertEqual(by_value[0.87].outcome_name, "LOS")
+        self.assertEqual(by_value[0.49].outcome_name, "necrotizing enterocolitis (NEC)")
+        self.assertEqual(by_value[0.87].outcome_name, "late-onset sepsis (LOS)")
         self.assertEqual(by_value[0.67].outcome_name, "all-cause mortality")
 
     def test_crude_and_adjusted_irr_42963818(self):
         study = _study("42963818")
         self.assertEqual(len([e for e in study.estimates if e.measure == "IRR"]), 5)
-        self.assertTrue(all(e.outcome_name == "missed VDOT sessions" for e in study.estimates))
+        self.assertTrue(all("missed" in e.outcome_name and "VDOT" in e.outcome_name for e in study.estimates))
 
     def test_covariate_and_comparator_lists_are_not_outcomes(self):
         self.assertEqual(_by_value(_study("42959821"))[0.77].outcome_name.lower().count("body mass index"), 0)
@@ -79,7 +79,7 @@ class ListsBindEachValueToItsOwnName(unittest.TestCase):
 
     def test_risk_phrases_after_the_bracket_42965030(self):
         by_value = _by_value(_study("42965030"))
-        self.assertEqual(by_value[0.35].outcome_name, "SSE")
+        self.assertEqual(by_value[0.35].outcome_name, "stroke or systemic embolism (SSE)")
         self.assertEqual(by_value[0.43].outcome_name, "major bleeding")
 
 
@@ -130,6 +130,54 @@ class TargetsAndArms(unittest.TestCase):
             study = _study(pmid)
             self.assertTrue(study.interventions, pmid)
             self.assertEqual(study.interventions[0].source.verification_status, em.SOURCE_VERIFIED, pmid)
+
+
+class AcronymsDefinedInTheAbstract(unittest.TestCase):
+    def test_initials_win_over_letters_inside_words(self):
+        found = em.defined_acronyms("reducing stroke or systemic embolism (SSE), and necrotizing enterocolitis (NEC).")
+        self.assertEqual(found["SSE"], "stroke or systemic embolism")
+        self.assertEqual(found["NEC"], "necrotizing enterocolitis")
+
+    def test_an_acronym_defined_two_ways_is_not_expanded(self):
+        self.assertNotIn("BC", em.defined_acronyms("breast cancer (BC) and biliary cirrhosis (BC)."))
+
+
+class DisplayLabels(unittest.TestCase):
+    def test_diagnostic_rows_say_target_condition(self):
+        article = RECORDS["42965524"]
+        em.clear_cache()
+        cell = rg.format_klinik_bulgular_cell(article)
+        bound = rg._format_bound_claims(rg.extract_article_clinical_details(article))
+        self.assertIn("Hedef durum: obstrüktif darlık", cell)
+        self.assertIn("Hedef durum: obstrüktif darlık", bound)
+        self.assertNotIn("Sonlanım: obstrüktif darlık", bound)
+
+    def test_unbound_value_pairs_send_the_reader_to_the_sentence(self):
+        em.clear_cache()
+        text = rg.extract_article_clinical_details(RECORDS["42944929"])["outcomes_summary"]
+        self.assertIn("sonlanım bağlanamadı (kaynak cümleye bakın)", text)
+        self.assertIn("grup değerleri: 10.0% karşı 30.0%", text)
+        self.assertNotIn("kaynak değer:", text)
+        bound = rg._format_bound_claims(rg.extract_article_clinical_details(RECORDS["42944929"]))
+        self.assertNotIn("Sonlanım: sonlanım bağlanamadı", bound)
+
+    def test_value_without_a_measure_name_is_labelled_not_coded(self):
+        em.clear_cache()
+        article = {"pmid": "2", "title": "A meta-analysis", "publication_types": ["Meta-Analysis"],
+                   "abstract": "The risk of the composite renal endpoint was also reduced (0.62, 0.43-0.90; p=0.013)."}
+        cell = rg.format_klinik_bulgular_cell(article)
+        self.assertIn("0.62", cell)
+        self.assertIn("ölçüt adı ayrıştırılamadı", cell)
+        self.assertNotIn("unnamed", cell)
+
+    def test_frequent_outcomes_have_controlled_turkish_names(self):
+        for source, turkish in (("ocular tuberculosis", "oküler tüberküloz"), ("bleeding", "kanama"),
+                                ("epilepsy", "epilepsi"), ("amyloid pathology", "amiloid patolojisi"),
+                                ("major adverse cardiac or cerebral events", "majör advers kardiyak veya serebral olaylar")):
+            self.assertEqual(rg._display_outcome_name(source), turkish)
+
+    def test_acronyms_are_not_translated(self):
+        self.assertNotEqual(rg._display_outcome_name("BC"), "meme kanseri")
 
 
 if __name__ == "__main__":

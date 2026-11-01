@@ -254,7 +254,7 @@
    "Onkoloji": {
     "status": "Doğrulandı",
     "unknown_pmids": [],
-    "quotes_checked": 79,
+    "quotes_checked": 81,
     "quotes_failed": 0,
     "rob_rating_claims": 0,
     "grade_rating_claims": 0
@@ -675,11 +675,11 @@
    "overlap_notes": []
   },
   "source_match": {
-   "sources_total": 97,
-   "sources_verified": 97,
+   "sources_total": 98,
+   "sources_verified": 98,
    "source_match_accuracy": 1.0,
-   "values_checked": 67,
-   "values_in_source": 67,
+   "values_checked": 68,
+   "values_in_source": 68,
    "value_match_accuracy": 1.0,
    "failures": []
   },
@@ -690,7 +690,7 @@
    "Kardiyoloji": {
     "status": "Doğrulandı",
     "unknown_pmids": [],
-    "quotes_checked": 30,
+    "quotes_checked": 33,
     "quotes_failed": 0,
     "rob_rating_claims": 0,
     "grade_rating_claims": 0
@@ -706,7 +706,7 @@
    "Nöroloji": {
     "status": "Doğrulandı",
     "unknown_pmids": [],
-    "quotes_checked": 32,
+    "quotes_checked": 36,
     "quotes_failed": 0,
     "rob_rating_claims": 0,
     "grade_rating_claims": 0
@@ -1853,12 +1853,12 @@
   "n_studies": 17,
   "n_specialties": 8,
   "overall": {
-   "reference_items": 113,
-   "complete": 111,
-   "complete_rate": 0.9823,
+   "reference_items": 117,
+   "complete": 113,
+   "complete_rate": 0.9658,
    "extracted": 113,
-   "false": 2,
-   "false_rate": 0.0177
+   "false": 0,
+   "false_rate": 0.0
   },
   "per_specialty": {
    "Cerrahi": {
@@ -1889,12 +1889,12 @@
     ]
    },
    "Enfeksiyon": {
-    "reference_items": 17,
-    "complete": 17,
-    "complete_rate": 1.0,
+    "reference_items": 19,
+    "complete": 18,
+    "complete_rate": 0.9474,
     "extracted": 18,
-    "false": 1,
-    "false_rate": 0.0556,
+    "false": 0,
+    "false_rate": 0.0,
     "studies": 2,
     "designs": [
      "Kohort",
@@ -1953,12 +1953,12 @@
     ]
    },
    "Radyoloji": {
-    "reference_items": 12,
-    "complete": 12,
-    "complete_rate": 1.0,
+    "reference_items": 14,
+    "complete": 13,
+    "complete_rate": 0.9286,
     "extracted": 13,
-    "false": 1,
-    "false_rate": 0.0769,
+    "false": 0,
+    "false_rate": 0.0,
     "studies": 2,
     "designs": [
      "Kohort",
@@ -1986,12 +1986,12 @@
     "studies": 1
    },
    "Kohort": {
-    "reference_items": 25,
-    "complete": 25,
-    "complete_rate": 1.0,
+    "reference_items": 29,
+    "complete": 27,
+    "complete_rate": 0.931,
     "extracted": 27,
-    "false": 2,
-    "false_rate": 0.0741,
+    "false": 0,
+    "false_rate": 0.0,
     "studies": 4
    },
    "Tanısal doğruluk": {
@@ -2029,10 +2029,7 @@
   },
   "sample_size_confused_with_event_or_arm_count": [],
   "background_therapy_reported_as_intervention": 0,
-  "independence_errors": [
-   "42937536",
-   "42963818"
-  ],
+  "independence_errors": [],
   "relations_summary": {
    "independent_primary_units": 13,
    "clusters_with_multiple_reports": {},
@@ -2062,7 +2059,7 @@
    "Radyoloji": {
     "status": "Doğrulandı",
     "unknown_pmids": [],
-    "quotes_checked": 35,
+    "quotes_checked": 37,
     "quotes_failed": 0,
     "rob_rating_claims": 0,
     "grade_rating_claims": 0
@@ -2078,7 +2075,7 @@
    "Nöroloji": {
     "status": "Doğrulandı",
     "unknown_pmids": [],
-    "quotes_checked": 34,
+    "quotes_checked": 42,
     "quotes_failed": 0,
     "rob_rating_claims": 0,
     "grade_rating_claims": 0
@@ -2094,7 +2091,7 @@
    "Endokrinoloji": {
     "status": "Doğrulandı",
     "unknown_pmids": [],
-    "quotes_checked": 58,
+    "quotes_checked": 70,
     "quotes_failed": 0,
     "rob_rating_claims": 0,
     "grade_rating_claims": 0
@@ -2110,7 +2107,7 @@
    "Pediatri": {
     "status": "Doğrulandı",
     "unknown_pmids": [],
-    "quotes_checked": 26,
+    "quotes_checked": 28,
     "quotes_failed": 0,
     "rob_rating_claims": 0,
     "grade_rating_claims": 0
@@ -2184,8 +2181,7 @@
    ],
    "42965030": [],
    "42937536": [
-    "YANLIŞ: 42937536 birincil çalışma yanlışlıkla 'secondary_analysis' sayıldı",
-    "BAĞIMSIZLIK: 42937536 bağımsız=False (beklenen True)"
+    "EKSİK: 42937536 ana çalışma bağlantısı [] (beklenen None)"
    ],
    "42965526": [],
    "42961600": [],
@@ -2193,8 +2189,7 @@
     "EKSİK: 42957617 müdahale '' (beklenen ['tau', 'GFAP'])"
    ],
    "42963818": [
-    "YANLIŞ: 42963818 birincil çalışma yanlışlıkla 'secondary_analysis' sayıldı",
-    "BAĞIMSIZLIK: 42963818 bağımsız=False (beklenen True)"
+    "EKSİK: 42963818 ana çalışma bağlantısı [] (beklenen None)"
    ],
    "42945222": [],
    "42964043": [],

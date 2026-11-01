@@ -431,9 +431,10 @@ HOLDOUT3_FROZEN_PATH = os.path.join(HERE, "holdout3_first_run_results.json")
 # the report shows these items next to it so a reader can judge both numbers.
 HOLDOUT3_REFERENCE_ERRATA = [
     ("42937536", "Referansta 'birincil' yazıldı; özet kendini NLST'nin ikincil analizi olarak tanımlıyor. Motorun 'ikincil analiz' "
-                 "kararı doğrudur. İlgili iki öğe (yayın rolü, bağımsızlık) motor hatası değildir."),
+                 "kararı doğrudur. Dondurulmuş sonuçtaki ilgili iki öğe (yayın rolü, bağımsızlık) motor hatası değildir. Güncel "
+                 "çalıştırmalar için referans düzeltildi; ana çalışma sette olmadığından ebeveyn bağlantısı eksik sayılır."),
     ("42963818", "Referansta 'birincil' yazıldı; özet kendini DOT Selfie RCT verisinin ikincil analizi olarak tanımlıyor. Motorun "
-                 "'ikincil analiz' kararı doğrudur. İlgili iki öğe motor hatası değildir."),
+                 "'ikincil analiz' kararı doğrudur. Güncel çalıştırmalar için referans aynı şekilde düzeltildi."),
 ]
 
 
