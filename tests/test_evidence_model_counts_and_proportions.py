@@ -166,5 +166,21 @@ class ConfidenceLevelIsNotAnEstimate(unittest.TestCase):
         self.assertNotIn(95.0, {e.value for e in study.estimates})
 
 
+class NumbersAsWrittenInTheSource(unittest.TestCase):
+    def test_hyphenated_ci_keeps_trailing_zero(self):
+        import report_generator as rg
+        em.clear_cache()
+        article = {"pmid": "2", "title": "Empagliflozin in acute heart failure", "publication_types": ["Randomized Controlled Trial"],
+                   "abstract": ("We randomly assigned 530 patients to empagliflozin or placebo. Heart failure hospitalization was "
+                                "lower with empagliflozin than with placebo (HR 0.79, 95% CI 0.69-0.90).")}
+        finding = [f for f in rg.structured_findings(article) if "0.79" in f["effect"]][0]
+        self.assertEqual(finding["ci"], "0.69 ile 0.90")
+
+    def test_negative_bounds_are_kept(self):
+        import report_generator as rg
+        sentence = "MD -1.20 (95% CI -2.40 to -0.10)"
+        self.assertEqual([rg._source_number_text(v, sentence) for v in (-1.2, -2.4, -0.1)], ["-1.20", "-2.40", "-0.10"])
+
+
 if __name__ == "__main__":
     unittest.main()

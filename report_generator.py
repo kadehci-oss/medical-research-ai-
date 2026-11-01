@@ -3756,7 +3756,8 @@ def _source_number_text(value, sentence: str, fallback: str = "") -> str:
     """The number as written in the source sentence ("0.90", not "0.9")."""
     if value is None:
         return ""
-    for token in re.findall(r"[-−]?\d+(?:[.,]\d+)?", sentence or ""):
+    # A hyphen right after a digit is a range separator ("0.69-0.90"), not a minus sign.
+    for token in re.findall(r"(?:(?<![\d.])[-−])?\d+(?:[.,]\d+)?", sentence or ""):
         try:
             if abs(float(token.replace("−", "-").replace(",", ".")) - float(value)) < 1e-9:
                 return token.replace("−", "-")
