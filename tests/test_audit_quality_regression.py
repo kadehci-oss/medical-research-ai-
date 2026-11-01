@@ -141,7 +141,7 @@ class TestOutcomeNamesAndDecimals(unittest.TestCase):
         self.assertNotIn("(HMGCR) antikorlar", names)
         self.assertIn("daha kısa hastalık süresi", names)
         self.assertIn("deri bulguları", names)
-        self.assertIn("nekrotizan IM", names)
+        self.assertIn("nekrotizan inflamatuvar miyopati (IM)", names)
         self.assertIn("herhangi bir otoantikor", names)
         self.assertIn("rituksimab", names)
         self.assertIn("antimetabolitler", names)
