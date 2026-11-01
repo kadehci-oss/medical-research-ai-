@@ -9,6 +9,8 @@ try:
 except ImportError:
     OpenAI = None
 
+from llm_provider import get_provider_config, resolve_api_key
+
 from display_turkish import (
     UNTRANSLATED_OUTCOME_LABEL,
     display_study_field,
@@ -6274,11 +6276,14 @@ def generate_llm_turkish_report(
     search_metadata: Optional[Dict[str, Any]] = None,
     audit: Optional[Dict[str, Any]] = None,
     allow_external_data_transfer: bool = False,
+    llm_provider: Optional[str] = None,
 ) -> str:
     """Generates a Turkish evidence report using LLM with 13 required sections and strict anti-hallucination constraints."""
+    provider = get_provider_config(llm_provider)
+    destination = provider.destination_dative
     if not allow_external_data_transfer:
         rule_report = generate_rule_based_turkish_report(query, articles, search_metadata=search_metadata, audit=audit)
-        return "*(OpenAI'ye veri aktarımı için açık onay verilmedi; bu rapor yerel kural tabanlı yöntemle üretildi.)*\n\n" + rule_report
+        return f"*({destination} veri aktarımı için açık onay verilmedi; bu rapor yerel kural tabanlı yöntemle üretildi.)*\n\n" + rule_report
     if not OpenAI:
         return generate_rule_based_turkish_report(query, articles, search_metadata=search_metadata, audit=audit)
 
@@ -6333,7 +6338,7 @@ def generate_llm_turkish_report(
         "   - Derleme/kılavuz/uzman görüşü niteliğindeki yayınlardan kesin tedavi etkinliği KESİNLİKLE ÇIKARMA!\n"
         "   - Çalışmaların hasta sayılarını (n), etki ölçütlerini (HR, OR, RR, IRR, SMD, MD, %95 GA, p) ve belirsizlikleri/sınırlılıkları [PMID: xxx] kaynaklarıyla göster.\n"
         "   - PICO eşleştirmeleri sezgisel ön taramadır; klinik eşdeğerlik veya sistematik derleme iddiası kurma.\n"
-        "10. Rapor sonunda sorgu, makale üstverisi ve PubMed özetlerinin bu LLM sentezi için OpenAI'ye gönderildiğini açıkça bildir.\n"
+        f"10. Rapor sonunda sorgu, makale üstverisi ve PubMed özetlerinin bu LLM sentezi için {destination} gönderildiğini açıkça bildir.\n"
         "11. Sağlanan kayıt ve özetlerde bulunmayan tıbbi bilgi, doz, kılavuz önerisi veya klinik sonuç ekleme; modelin genel bilgisini kaynak gibi kullanma.\n"
         "12. 4. bölümde klinik arka planı ve 8. bölümde kılavuzları yalnızca sağlanan kaynaklar açıkça destekliyorsa anlat; aksi halde mevcut kaynakların bunu değerlendirmeye yetmediğini belirt.\n"
         "13. Kanıt desteklemiyorsa tedavi önerisi, klinik eşdeğerlik veya kesin neden-sonuç çıkarımı verme.\n"
@@ -6346,7 +6351,10 @@ def generate_llm_turkish_report(
     )
 
     try:
-        client = OpenAI(api_key=api_key)
+        client_kwargs = {"api_key": api_key}
+        if provider.base_url:
+            client_kwargs["base_url"] = provider.base_url
+        client = OpenAI(**client_kwargs)
         response = client.chat.completions.create(
             model=model,
             messages=[
@@ -6380,17 +6388,17 @@ def generate_llm_turkish_report(
 
         data_note = (
             "\n\n---\n\n**LLM veri aktarımı:** Bu rapor oluşturulurken sorgu, makale üstverisi ve PubMed özetleri "
-            "OpenAI'ye gönderildi. Bu akışa hasta kimliği veya özel sağlık verisi eklenmemelidir."
+            f"{destination} gönderildi. Bu akışa hasta kimliği veya özel sağlık verisi eklenmemelidir."
         )
         return llm_report + data_note
     except Exception as exc:
         logger.warning("LLM report generation failed (%s)", type(exc).__name__)
         rule_report = generate_rule_based_turkish_report(query, articles, search_metadata=search_metadata, audit=audit)
         transmission_note = (
-            "\n\n---\n\n**LLM veri aktarımı:** OpenAI sentezi etkinleştirildi. İstek başarısız olduğundan, "
-            "sorgu ve makale bilgilerinin OpenAI'ye aktarılıp aktarılmadığı bu rapordan doğrulanamaz."
+            f"\n\n---\n\n**LLM veri aktarımı:** {provider.label} sentezi etkinleştirildi. İstek başarısız olduğundan, "
+            f"sorgu ve makale bilgilerinin {destination} aktarılıp aktarılmadığı bu rapordan doğrulanamaz."
         )
-        return "*(OpenAI sentezi üretilemedi; kural tabanlı rapor kullanıldı.)*\n\n" + rule_report + transmission_note
+        return f"*({provider.label} sentezi üretilemedi; kural tabanlı rapor kullanıldı.)*\n\n" + rule_report + transmission_note
 
 
 def generate_turkish_evidence_report(
@@ -6402,17 +6410,20 @@ def generate_turkish_evidence_report(
     search_metadata: Optional[Dict[str, Any]] = None,
     audit: Optional[Dict[str, Any]] = None,
     allow_external_data_transfer: bool = False,
+    llm_provider: Optional[str] = None,
 ) -> str:
     """Main entry point to generate Turkish evidence reports."""
-    if use_llm and api_key and api_key.strip():
+    resolved_key = resolve_api_key(get_provider_config(llm_provider), api_key) if use_llm else None
+    if use_llm and resolved_key:
         report = generate_llm_turkish_report(
             query,
             articles,
-            api_key.strip(),
+            resolved_key,
             model=model,
             search_metadata=search_metadata,
             audit=audit,
             allow_external_data_transfer=allow_external_data_transfer,
+            llm_provider=llm_provider,
         )
     else:
         report = generate_rule_based_turkish_report(query, articles, search_metadata=search_metadata, audit=audit)

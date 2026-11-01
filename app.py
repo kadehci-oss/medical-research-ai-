@@ -4,6 +4,7 @@ import streamlit as st
 import pandas as pd
 from pubmed_client import verify_pmid, verify_doi, verify_citation
 from universal_evidence_engine import UniversalEvidenceEngine
+from llm_provider import SUPPORTED_PROVIDERS, get_provider_config, normalize_provider
 from report_generator import (
     generate_turkish_evidence_report,
     generate_evidence_table_html,
@@ -125,34 +126,59 @@ def main():
     # Sidebar Configuration
     st.sidebar.title("⚙️ Ayarlar & Yapılandırma")
 
-    openai_api_key_env = os.environ.get("OPENAI_API_KEY", "")
+    provider_options = list(SUPPORTED_PROVIDERS)
+    try:
+        default_provider = normalize_provider(None)
+    except ValueError:
+        default_provider = "openai"
+    llm_provider = st.sidebar.selectbox(
+        "LLM Sağlayıcısı",
+        provider_options,
+        index=provider_options.index(default_provider),
+        format_func=lambda p: "OpenAI" if p == "openai" else "OmniRoute (kendi barındırılan AI ağ geçidi)",
+        help="OmniRoute, OpenAI uyumlu tek bir uç nokta üzerinden birden çok sağlayıcıya yönlendirme yapar. "
+             "Adres sunucuda OMNIROUTE_BASE_URL ile ayarlanır.",
+    )
+    provider_cfg = get_provider_config(llm_provider)
+
+    openai_api_key_env = os.environ.get(provider_cfg.api_key_env, "")
     openai_api_key = st.sidebar.text_input(
-        "OpenAI API Key (Opsiyonel)",
+        f"{provider_cfg.label} API Key (Opsiyonel)",
         value=openai_api_key_env,
         type="password",
         help="LLM destekli rapor sentezi için API anahtarı. Girilmezse yerel kural tabanlı ön rapor üretilir."
     )
+    if provider_cfg.base_url:
+        st.sidebar.caption(f"OmniRoute uç noktası: {provider_cfg.base_url}")
 
     use_llm_synth = st.sidebar.checkbox(
-        "OpenAI Sentez Motorunu Kullan",
+        f"{provider_cfg.label} Sentez Motorunu Kullan",
         value=False,
-        help="İşaretlenirse sorgunuz, makale başlıkları ve PubMed özetleri seçtiğiniz OpenAI modeline gönderilir. Tanımlanabilir hasta bilgisi girmeyin."
+        help=f"İşaretlenirse sorgunuz, makale başlıkları ve PubMed özetleri {provider_cfg.destination_dative} gönderilir. Tanımlanabilir hasta bilgisi girmeyin."
     )
     llm_data_transfer_confirmed = False
     if use_llm_synth:
-        st.sidebar.warning("LLM veri aktarımı: sorgu ve PubMed makale bilgileri/özetleri OpenAI'ye gönderilir. Hasta kimliği veya gizli sağlık verisi eklemeyin.")
+        st.sidebar.warning(f"LLM veri aktarımı: sorgu ve PubMed makale bilgileri/özetleri {provider_cfg.destination_dative} gönderilir. Hasta kimliği veya gizli sağlık verisi eklemeyin.")
         llm_data_transfer_confirmed = st.sidebar.checkbox(
-            "Sorgu ve kaynakların hasta kimliği/gizli sağlık verisi içermediğini ve OpenAI'ye gönderilmesini onaylıyorum.",
+            f"Sorgu ve kaynakların hasta kimliği/gizli sağlık verisi içermediğini ve {provider_cfg.destination_dative} gönderilmesini onaylıyorum.",
             value=False,
         )
         if not llm_data_transfer_confirmed:
             st.sidebar.info("Açık onay verilmezse rapor yalnızca yerel kural tabanlı yöntemle oluşturulur.")
 
-    llm_model = st.sidebar.selectbox(
-        "Model Seçimi",
-        ["gpt-4o-mini", "gpt-4o", "gpt-3.5-turbo"],
-        index=0
-    )
+    if provider_cfg.provider == "omniroute":
+        llm_model = st.sidebar.text_input(
+            "Model / Combo (OmniRoute)",
+            value=provider_cfg.default_model or "gpt-4o-mini",
+            max_chars=64,
+            help="OmniRoute panelinde tanımlı model kimliği veya combo adı. Varsayılan OMNIROUTE_MODEL ortam değişkeninden alınır.",
+        ).strip() or "gpt-4o-mini"
+    else:
+        llm_model = st.sidebar.selectbox(
+            "Model Seçimi",
+            ["gpt-4o-mini", "gpt-4o", "gpt-3.5-turbo"],
+            index=0
+        )
 
     st.sidebar.markdown("---")
     st.sidebar.info(
@@ -416,6 +442,7 @@ def main():
                         use_llm=use_llm_synth,
                         model=llm_model,
                         allow_external_data_transfer=llm_data_transfer_confirmed,
+                        llm_provider=llm_provider,
                     )
                     synth_res = engine.generate_synthesis_report(
                         query=query,

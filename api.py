@@ -5,6 +5,7 @@ from pydantic import BaseModel, Field
 from pubmed_client import search_pubmed, verify_pmid, verify_doi, verify_citation
 from evidence_guards import retraction_status  # [mrai-fixes]
 from universal_evidence_engine import UniversalEvidenceEngine, run_universal_evidence_search, generate_universal_evidence_synthesis
+from llm_provider import get_provider_config, resolve_api_key
 from report_generator import (
     generate_turkish_evidence_report,
     perform_red_team_audit,
@@ -44,15 +45,26 @@ class ReportRequest(BaseModel):
         False,
         description="Confirm that the query contains no patient-identifying or confidential health data and may be sent with PubMed metadata/abstracts to OpenAI.",
     )
-    model: str = Field("gpt-4o-mini", max_length=64, description="OpenAI model to use if use_llm is True")
+    llm_provider: Optional[Literal["openai", "omniroute"]] = Field(
+        None,
+        description=(
+            "LLM backend for synthesis: 'openai' or 'omniroute' (self-hosted OmniRoute gateway). "
+            "Defaults to the server's LLM_PROVIDER. The gateway URL is set only by the server's OMNIROUTE_BASE_URL."
+        ),
+    )
+    model: str = Field("gpt-4o-mini", max_length=64, description="Model id to use if use_llm is True (OpenAI model or OmniRoute model/combo)")
     search_date: Optional[str] = Field(None, max_length=10, description="Date the source search was run, YYYY-MM-DD")
 
 
 def _require_llm_transfer_confirmation(req: ReportRequest) -> None:
-    if req.use_llm and req.api_key and req.api_key.strip() and not req.llm_data_transfer_confirmed:
+    provider = get_provider_config(req.llm_provider)
+    if req.use_llm and resolve_api_key(provider, req.api_key) and not req.llm_data_transfer_confirmed:
         raise HTTPException(
             status_code=422,
-            detail="OpenAI sentezi için sorgu ve PubMed verilerinin OpenAI'ye gönderileceğini ve hasta kimliği/gizli sağlık verisi içermediğini açıkça onaylayın.",
+            detail=(
+                f"{provider.label} sentezi için sorgu ve PubMed verilerinin {provider.destination_dative} "
+                "gönderileceğini ve hasta kimliği/gizli sağlık verisi içermediğini açıkça onaylayın."
+            ),
         )
 
 
@@ -184,6 +196,7 @@ def api_generate_report(req: ReportRequest):
         api_key=req.api_key,
         use_llm=req.use_llm,
         allow_external_data_transfer=req.llm_data_transfer_confirmed,
+        llm_provider=req.llm_provider,
         model=req.model,
         search_metadata=search_meta,
         audit=audit,
@@ -220,6 +233,7 @@ def api_universal_engine_synthesize(req: ReportRequest):
         api_key=req.api_key,
         use_llm=req.use_llm,
         allow_external_data_transfer=req.llm_data_transfer_confirmed,
+        llm_provider=req.llm_provider,
         model=req.model,
         search_metadata={"search_date": req.search_date, "query": req.query},
         verification_results=verification_results,

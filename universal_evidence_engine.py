@@ -160,11 +160,13 @@ class UniversalEvidenceEngine:
         use_llm: bool = False,
         model: str = "gpt-4o-mini",
         allow_external_data_transfer: bool = False,
+        llm_provider: Optional[str] = None,
     ):
         self.api_key = api_key
         self.use_llm = use_llm
         self.model = model
         self.allow_external_data_transfer = allow_external_data_transfer
+        self.llm_provider = llm_provider
 
     def search_and_verify(
         self,
@@ -687,6 +689,7 @@ class UniversalEvidenceEngine:
                 model=self.model,
                 search_metadata=search_metadata,
                 audit=audit_res,
+                llm_provider=self.llm_provider,
             )
 
             html_report = report_generator.generate_html_report(query, articles, report_md, audit=audit_res)
@@ -731,12 +734,14 @@ def generate_universal_evidence_synthesis(
     search_metadata: Optional[Dict[str, Any]] = None,
     verification_results: Optional[List[Dict[str, Any]]] = None,
     allow_external_data_transfer: bool = False,
+    llm_provider: Optional[str] = None,
 ) -> Dict[str, Any]:
     engine = UniversalEvidenceEngine(
         api_key=api_key,
         use_llm=use_llm,
         model=model,
         allow_external_data_transfer=allow_external_data_transfer,
+        llm_provider=llm_provider,
     )
     return engine.generate_synthesis_report(
         query, articles, search_metadata=search_metadata, verification_results=verification_results

@@ -98,6 +98,10 @@ CI (`.github/workflows/ci.yml`) and the live NCBI workflow install from `require
 | `NCBI_EMAIL` | No | Contact email sent as `email` on every E-utilities request and in the User-Agent. Default: `medical-research-ai@example.com` (not a personal address). Set this to a monitored mailbox before sustained use so NCBI can reach you. |
 | `NCBI_API_KEY` | No | When set, sent as `api_key` on E-utilities requests only (not to CrossRef). Raises the NCBI rate limit. Omit it to leave the parameter off the request. |
 | `OPENAI_API_KEY` | No | Credential for optional LLM report synthesis. Synthesis remains off until the user explicitly confirms data transfer. Once confirmed, the query, article metadata, and PubMed abstracts are sent to OpenAI. Do not include patient-identifying or confidential health information. |
+| `LLM_PROVIDER` | No | Default LLM backend: `openai` (default) or `omniroute`. Can be overridden per request (`llm_provider`) or in the Streamlit sidebar. |
+| `OMNIROUTE_BASE_URL` | No | OpenAI-compatible endpoint of a self-hosted [OmniRoute](https://github.com/diegosouzapw/OmniRoute) gateway. Default: `http://localhost:20128/v1`. Server-side only; API clients cannot change it. |
+| `OMNIROUTE_API_KEY` | No | OmniRoute API key (created in the OmniRoute dashboard). Used when the provider is `omniroute` and no key is sent with the request. |
+| `OMNIROUTE_MODEL` | No | Default OmniRoute model id or combo name shown in the Streamlit sidebar. |
 
 ```bash
 export NCBI_TOOL="MedicalResearchAI"
@@ -109,6 +113,22 @@ export OPENAI_API_KEY="your-openai-api-key"
 No personal email is hardcoded. `live_ncbi_validation.py` sends the same `tool`, `email`, and optional `api_key` values as `pubmed_client.py`.
 
 The weekly workflow reads `NCBI_EMAIL`, `NCBI_API_KEY`, and `NCBI_TOOL` from GitHub Actions secrets. **Set the repository secret `NCBI_EMAIL` under Settings > Secrets and variables > Actions.** `NCBI_API_KEY` and `NCBI_TOOL` are optional; an empty `NCBI_API_KEY` is left off the request. If `NCBI_EMAIL` is missing, the job prints a `::warning::` and continues with the non-personal default above. This repository is public, so the monitored contact address belongs in that secret.
+
+---
+
+### OmniRoute gateway (optional)
+
+[OmniRoute](https://github.com/diegosouzapw/OmniRoute) is a self-hosted AI gateway with one OpenAI-compatible `/v1` endpoint in front of many providers, with routing and automatic fallback. The LLM synthesis step can use it instead of calling OpenAI directly:
+
+```bash
+docker run -p 127.0.0.1:20128:20128 diegosouzapw/omniroute   # or: npm install -g omniroute && omniroute
+export LLM_PROVIDER=omniroute
+export OMNIROUTE_BASE_URL="http://localhost:20128/v1"
+export OMNIROUTE_API_KEY="your-omniroute-key"
+export OMNIROUTE_MODEL="gpt-4o-mini"   # any model id or combo configured in OmniRoute
+```
+
+The same consent gate applies: synthesis stays off until data transfer is confirmed. With OmniRoute, the query, article metadata, and PubMed abstracts go to the gateway **and to whichever upstream provider it routes to**, so review the providers enabled in OmniRoute before use. The anti-hallucination checks (required sections, disclosures, PMID whitelist) and the rule-based fallback are unchanged.
 
 ---
 
@@ -137,7 +157,7 @@ uvicorn api:app --host 127.0.0.1 --port 8000
 
 The report endpoints accept citation identifiers (PMID, with optional title/DOI for matching), fetch the authoritative article record from PubMed, and synthesize from that fetched record rather than trusting client-supplied abstracts or authors. At most 50 citations are accepted per report request.
 
-LLM synthesis is off by default. For API requests, setting `use_llm: true` with an OpenAI key also requires `llm_data_transfer_confirmed: true`; this confirms that the query and PubMed metadata/abstracts may be sent to OpenAI and contain no patient-identifying or confidential health data. Without that confirmation, the API rejects the request before fetching citations. In Streamlit, OpenAI also starts disabled and the user must explicitly confirm the data transfer; otherwise the report stays local and rule-based.
+LLM synthesis is off by default. For API requests, setting `use_llm: true` with an OpenAI or OmniRoute key (or a server-side `OMNIROUTE_API_KEY` when `llm_provider` is `omniroute`) also requires `llm_data_transfer_confirmed: true`; this confirms that the query and PubMed metadata/abstracts may be sent to OpenAI and contain no patient-identifying or confidential health data. Without that confirmation, the API rejects the request before fetching citations. In Streamlit, OpenAI also starts disabled and the user must explicitly confirm the data transfer; otherwise the report stays local and rule-based.
 
 The API does not provide user authentication or request-rate limiting. The documented Uvicorn command binds to `127.0.0.1`; do not expose the service directly to the public internet. A public deployment must add authentication, rate/body limits, TLS, and appropriate proxy configuration.
 
