@@ -4,6 +4,10 @@ import streamlit as st
 import pandas as pd
 from pubmed_client import verify_pmid, verify_doi, verify_citation
 from universal_evidence_engine import UniversalEvidenceEngine
+import evidence_model
+import report_verification
+from question_framework import select_question_framework
+from version import APP_VERSION, APP_VERSION_NOTE
 from report_generator import (
     generate_turkish_evidence_report,
     generate_evidence_table_html,
@@ -163,7 +167,7 @@ def main():
     )
     # Canlı Streamlit Sürüm ve Commit Doğrulama Bilgisi
     import subprocess
-    app_version = "v1.4.1"
+    app_version = APP_VERSION
     git_commit_hash = os.environ.get("GIT_COMMIT", "").strip()
     if not git_commit_hash:
         try:
@@ -175,6 +179,12 @@ def main():
 
     st.sidebar.markdown("---")
     st.sidebar.caption(f"📌 **Sürüm:** `{app_version}` | **Commit:** `{git_commit_hash}`")
+    st.sidebar.caption(
+        f"🧬 **Kanıt veri modeli:** `{evidence_model.EVIDENCE_MODEL_VERSION}` — {APP_VERSION_NOTE}"
+    )
+    last_check = st.session_state.get("generated_report_verification")
+    if last_check:
+        st.sidebar.caption(f"🔐 **Son rapor doğrulama durumu:** {last_check.get('status')}")
 
     # Main Tabs
     tab1, tab2, tab3 = st.tabs([
@@ -214,6 +224,9 @@ def main():
             st.session_state.pop("generated_html_report", None)
             st.session_state.pop("generated_report_query", None)
             st.session_state.pop("generated_cross_comp", None)
+            st.session_state.pop("generated_report_verification", None)
+            st.session_state.pop("generated_structured_json", None)
+            st.session_state.pop("generated_report_export", None)
             start_yr = int(start_year) if start_year and not pd.isna(start_year) else None
             end_yr = int(end_year) if end_year and not pd.isna(end_year) else None
             with st.spinner("PubMed veritabanı sorgulanıyor (Evrensel Kanıt Motoru)..."):
@@ -242,55 +255,28 @@ def main():
             else:
                 st.markdown(f"**Bulunan Toplam Kayıt:** {total_count} | **Gösterilen:** {len(articles)}")
                 _render_specialty_caption(res)
-                for idx, art in enumerate(articles, 1):
-                    cd = classify_study_design(art.get("publication_types", []), art.get("title", ""), art.get("abstract", ""))
-                    rob = assess_risk_of_bias(art)
-                    art_details = extract_article_clinical_details(art, search_query if 'search_query' in locals() else "")
-                    with st.expander(f"{idx}. {art['title']} ({art['pub_year']}) - {cd['design']}", expanded=(idx <= 3)):
+                active_query = st.session_state.get("active_query", "")
+                framework = select_question_framework(active_query)
+                st.caption(
+                    f"Soru türü: {framework['question_type_tr']} — çerçeve: {framework['framework']}. "
+                    "Kartlar, rapor bölüm 5/6 ve dışa aktarılan raporla aynı yapılandırılmış veri nesnesinden üretilir."
+                )
+                studies, relation_summary = evidence_model.build_studies(articles, active_query)
+                for idx, (art, study) in enumerate(zip(articles, studies), 1):
+                    rob = study.legacy["rob"]
+                    with st.expander(f"{idx}. {art['title']} ({art['pub_year']}) - {study.design_label}", expanded=(idx <= 3)):
                         st.markdown(f"**Yazarlar:** {', '.join(art['authors']) if art['authors'] else 'Bilinmiyor'}")
                         st.markdown(f"**Dergi:** {art['journal']} ({art['pub_year']})")
-                        st.markdown(f"**Çalışma Tasarımı:** `{cd['design']}`")
-                        st.markdown(f"**Kanıt düzeyi:** `{cd['level']}`")
-                        st.caption(cd.get("evidence_level_note") or "")
+                        st.markdown(f"**Çalışma Tasarımı:** `{study.design_label}`")
+                        st.markdown(f"**Kanıt düzeyi:** `{study.evidence_level}`")
+                        st.caption(study.evidence_level_note or "")
                         st.markdown(
-                            f"**Yanlılık aracı ({display_bias_tool(rob['tool'])}):** "
+                            f"**Yanlılık aracı ({display_bias_tool(study.risk_of_bias.tool)}):** "
                             f"`{display_bias_rating(rob['overall_rating'])}`"
                         )
                         st.caption(rob.get("rating_policy") or "Değerlendirme yapılmadan risk derecesi verilmez.")
-
-                        st.markdown(f"**Hasta Grubu:** {art_details['patient_group']} | **Örneklem (n):** {art_details['sample_size']}")
-                        st.markdown(f"**Müdahale:** {art_details['intervention']} | **Karşılaştırma:** {art_details['comparison']}")
-                        st.markdown(f"**Sonlanımlar ve metrikler:** {art_details['outcomes_summary']}")
-                        provenance = art_details.get("provenance") or {}
-                        if provenance:
-                            st.markdown("**Kaynak cümleleri ve PMID**")
-                            seen_quotes = set()
-                            for label, key in (
-                                ("Hasta grubu", "population"),
-                                ("Örneklem", "sample_size"),
-                                ("Müdahale", "intervention"),
-                                ("Karşılaştırıcı", "comparison"),
-                            ):
-                                item = provenance.get(key) or {}
-                                sentence = re.sub(r"\s+", " ", item.get("source_sentence") or "").strip()
-                                if item.get("source") == "title":
-                                    note = "Kaynak: makale başlığı"
-                                elif sentence and sentence.casefold() in seen_quotes:
-                                    note = "Kaynak cümle: yukarıdaki ile aynı"
-                                elif sentence:
-                                    seen_quotes.add(sentence.casefold())
-                                    note = f'Kaynak cümle: "{sentence}"'
-                                else:
-                                    note = "Kaynak cümle yok"
-                                st.caption(
-                                    f"{label}: {item.get('value') or 'değerlendirilemedi'} — {note} "
-                                    f"(PMID: {provenance.get('pmid') or art.get('pmid') or 'yok'})"
-                                )
-                            for om in provenance.get("outcomes") or []:
-                                st.caption(
-                                    f"Sonlanım {om.get('outcome')}: {', '.join(om.get('metrics') or []) or 'değerlendirilemedi'} — "
-                                    f"{om.get('source_sentence') or 'değerlendirilemedi'} (PMID: {om.get('pmid') or art.get('pmid') or 'yok'})"
-                                )
+                        for line in evidence_model.render_study_card_lines(study)[2:]:
+                            st.markdown(line)
 
                         badges_text = []
                         if art.get('pmid'):
@@ -376,6 +362,9 @@ def main():
                 st.session_state.pop("generated_report", None)
                 st.session_state.pop("generated_html_report", None)
                 st.session_state.pop("generated_cross_comp", None)
+                st.session_state.pop("generated_report_verification", None)
+                st.session_state.pop("generated_structured_json", None)
+                st.session_state.pop("generated_report_export", None)
 
             audit_res = perform_red_team_audit(query, articles)
 
@@ -406,6 +395,9 @@ def main():
                 st.session_state.pop("generated_report", None)
                 st.session_state.pop("generated_html_report", None)
                 st.session_state.pop("generated_cross_comp", None)
+                st.session_state.pop("generated_report_verification", None)
+                st.session_state.pop("generated_structured_json", None)
+                st.session_state.pop("generated_report_export", None)
                 with st.spinner("PubMed tabanlı ön rapor, kural tabanlı denetim ve tablolar hazırlanıyor..."):
                     search_meta = {
                         "search_date": st.session_state["search_results"].get("search_date"),
@@ -424,6 +416,9 @@ def main():
                         verification_results=audit_res.get("verification_results", []),
                     )
                     report_md = synth_res.get("report_markdown", "")
+                    st.session_state["generated_report_verification"] = synth_res.get("report_verification") or {}
+                    st.session_state["generated_structured_json"] = synth_res.get("structured_evidence_json") or ""
+                    st.session_state["generated_report_export"] = synth_res.get("report_markdown_export") or report_md
                     html_report = synth_res.get("report_html", "")
                     cross_comp = synth_res.get("cross_comparison", {})
                     st.session_state["generated_report"] = report_md
@@ -433,6 +428,22 @@ def main():
 
             if "generated_report" in st.session_state:
                 st.markdown("---")
+                verification = st.session_state.get("generated_report_verification") or {}
+                if verification:
+                    v_status = verification.get("status", "")
+                    v_text = (
+                        f"🔐 Rapor doğrulama durumu: **{v_status}** — sürüm `{APP_VERSION}`, kanıt veri modeli "
+                        f"`{verification.get('evidence_model_version', evidence_model.EVIDENCE_MODEL_VERSION)}`. "
+                        f"Alıntı kontrolü: {verification.get('quotes_checked', 0)} alıntı, "
+                        f"{len(verification.get('quotes_failed') or [])} başarısız; yapılandırılmış kaynak: "
+                        f"{verification.get('structured_sources_verified', 0)}/{verification.get('structured_sources', 0)}."
+                    )
+                    if v_status == report_verification.STATUS_OK:
+                        st.success(v_text)
+                    elif v_status == report_verification.STATUS_WARN:
+                        st.warning(v_text + " " + "; ".join(verification.get("warnings") or []))
+                    else:
+                        st.error(v_text + " " + "; ".join(verification.get("problems") or []))
                 quality_qc = validate_clinical_report_quality(st.session_state["generated_report"])
                 if not quality_qc.get("valid"):
                     problems = []
@@ -569,11 +580,11 @@ def main():
                     st.json(audit_res)
 
                 st.markdown("---")
-                col_dl1, col_dl2 = st.columns(2)
+                col_dl1, col_dl2, col_dl3 = st.columns(3)
                 with col_dl1:
                     st.download_button(
                         label="📥 Kanıt Raporunu İndir (.md)",
-                        data=st.session_state["generated_report"],
+                        data=st.session_state.get("generated_report_export") or st.session_state["generated_report"],
                         file_name=f"turkce_kanit_raporu_{query.replace(' ', '_')}.md",
                         mime="text/markdown",
                         use_container_width=True
@@ -584,6 +595,14 @@ def main():
                         data=st.session_state["generated_html_report"],
                         file_name=f"turkce_kanit_raporu_{query.replace(' ', '_')}.html",
                         mime="text/html",
+                        use_container_width=True
+                    )
+                with col_dl3:
+                    st.download_button(
+                        label="🧬 Yapılandırılmış Kanıt Verisi (.json)",
+                        data=st.session_state.get("generated_structured_json") or "{}",
+                        file_name=f"yapilandirilmis_kanit_{query.replace(' ', '_')}.json",
+                        mime="application/json",
                         use_container_width=True
                     )
         else:

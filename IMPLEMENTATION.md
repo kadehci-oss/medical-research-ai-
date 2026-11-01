@@ -262,3 +262,29 @@ Depo kök dizinindeki `all_specialty_matrix.json`, 88 uzmanlık etiketi ve anaht
 
 ---
 *Doküman Sonu - Medical Research AI Sistem Mimarisi*
+
+
+---
+
+## 8. Yapılandırılmış Kanıt Motoru (v1.5.0)
+
+`evidence_model.py` her PubMed kaydı için tek bir `Study` nesnesi üretir. Arama kartları, rapor bölüm 5 ve 6, Markdown/HTML indirmeleri ve JSON dışa aktarımı bu nesneyi okur; aynı değer farklı görünümlerde farklı yazılamaz. Nesneler PMID + özet karması ile önbelleğe alınır.
+
+| Sınıf | İçerik |
+|---|---|
+| `Population` | Toplam katılımcı (`n_total`), türü (kayıt / havuzlanmış / kol toplamı / olgu), vaka sayısı, planlanan örneklem |
+| `StudyArm` | Kol adı, kol sayısı, rolü |
+| `Intervention` / `Comparator` / `CoTreatment` | Müdahale veya maruziyet, karşılaştırıcı, eşlik eden tedavi (müdahale sayılmaz) |
+| `EventCount` | Olay sayısı / payda / yüzde — örneklemle karışmaz |
+| `EffectEstimate` | Ölçüt, nokta tahmini, GA ve düzeyi, p, sonlanım, alt grup, doğrulama durumu |
+| `EvidenceSource` | PMID, DOI, birebir kaynak cümle, doğrulama durumu |
+| `RiskOfBiasAssessment` / `CertaintyAssessment` | Araç seçilir; değerlendirme yapılmadıkça `not_assessed` |
+| `StudyRelation` | İkincil analiz, ara/güncel analiz, uzatılmış takip, meta-analizin içerdiği çalışma |
+
+Kurallar: eksik değer atanmaz; güven aralığı nokta tahminini içermiyorsa tahmin reddedilir; nedensel dil yalnızca randomize karşılaştırmalarda kullanılır; aynı kayıt numarasını veya çalışma kısaltmasını paylaşan yayınlar tek kanıt birimi sayılır.
+
+`question_framework.py` soru türünü (tedavi, tanı, prognoz, tarama, etiyoloji, epidemiyoloji, cerrahi, güvenlilik, sağlık hizmetleri) belirler ve uygun çerçeveyi (PICO, PIRD, PFO, PECO, CoCoPop, SPICE) yalnızca sorgu metninden doldurur.
+
+`report_verification.py` raporu üretildiği nesnelerle karşılaştırır; durum Streamlit'te sürüm bilgisiyle birlikte gösterilir ve indirilen raporların sonuna eklenir.
+
+Çok branşlı doğrulama: `validation/MULTISPECIALTY_VALIDATION_REPORT.md`.

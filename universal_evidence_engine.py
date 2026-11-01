@@ -533,6 +533,24 @@ class UniversalEvidenceEngine:
         n_prim = len(primary_studies)
         compared_pairs = set()
 
+        # Shared Study objects decide design family and trial identity, so a
+        # randomized comparison is not pooled with an observational association
+        # and two reports of one trial are not counted as two agreeing studies.
+        import evidence_model
+        model_studies, _relations = evidence_model.build_studies(articles, query)
+        model_by_pmid = {s.pmid: s for s in model_studies}
+
+        def _family(study) -> str:
+            if study is None:
+                return ""
+            if study.causal_inference_allowed:
+                return "randomize karşılaştırma"
+            if study.claim_type in ("diagnostic_accuracy", "pooled_diagnostic"):
+                return "tanısal doğruluk"
+            if study.claim_type == "descriptive":
+                return "tanımlayıcı olgu verisi"
+            return "gözlemsel ilişki"
+
         for i in range(n_prim):
             p1 = primary_studies[i]
             pmid1 = p1.get("pmid") or f"study_{i+1}"
@@ -547,6 +565,27 @@ class UniversalEvidenceEngine:
                 if pair_key in compared_pairs:
                     continue
                 compared_pairs.add(pair_key)
+
+                s1, s2 = model_by_pmid.get(str(p1.get("pmid") or "")), model_by_pmid.get(str(p2.get("pmid") or ""))
+                model_reason = ""
+                if s1 is not None and s2 is not None and s1.evidence_cluster and s1.evidence_cluster == s2.evidence_cluster:
+                    model_reason = "aynı çalışmanın farklı yayınları (ortak kayıt numarası veya çalışma adı); aynı katılımcılar iki kez sayılmaz"
+                elif _family(s1) and _family(s2) and _family(s1) != _family(s2):
+                    model_reason = (
+                        f"tasarım ailesi uyuşmazlığı ({_family(s1)} ile {_family(s2)}); "
+                        "bu bulgular tutarlılık veya çelişki olarak birleştirilmez"
+                    )
+                if model_reason:
+                    non_comparable.append({
+                        "articles": [p1.get("pmid"), p2.get("pmid")],
+                        "source_citations": f"{pmid1_link} ve {pmid2_link}",
+                        "reason": (
+                            f"**{p1['authors_short']} ({p1['pub_year']})** {pmid1_link} ve "
+                            f"**{p2['authors_short']} ({p2['pub_year']})** {pmid2_link} arasında "
+                            f"doğrudan karşılaştırma yapılamamıştır. Gerekçe: {model_reason}."
+                        ),
+                    })
+                    continue
 
                 eval_res = self._evaluate_pico_compatibility(p1, p2)
 
@@ -689,7 +728,17 @@ class UniversalEvidenceEngine:
                 audit=audit_res,
             )
 
-            html_report = report_generator.generate_html_report(query, articles, report_md, audit=audit_res)
+            import evidence_model
+            import question_framework
+            import report_verification
+            from version import APP_VERSION
+
+            studies, relation_summary = evidence_model.build_studies(articles, query)
+            report_check = report_verification.verify_report(report_md, studies)
+            # The on-screen report stays as generated; downloads carry the verification footer.
+            report_md_export = report_md + report_verification.render_verification_footer(report_check, APP_VERSION)
+
+            html_report = report_generator.generate_html_report(query, articles, report_md_export, audit=audit_res)
             pico = report_generator.extract_pico(query)
             cross_comp = self.compare_cross_article_findings(articles, query)
             quality_qc = report_generator.validate_clinical_report_quality(report_md)
@@ -703,6 +752,11 @@ class UniversalEvidenceEngine:
                 "report_html": html_report,
                 "audit": audit_res,
                 "quality_control": quality_qc,
+                "report_markdown_export": report_md_export,
+                "report_verification": report_check,
+                "question_framework": question_framework.select_question_framework(query),
+                "structured_evidence_json": evidence_model.export_studies_json(studies, relation_summary),
+                "app_version": APP_VERSION,
             }
         except Exception as e:
             logger.error("Universal evidence synthesis failed (%s)", type(e).__name__)
