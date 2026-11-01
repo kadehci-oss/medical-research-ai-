@@ -1,6 +1,6 @@
 {
  "development": {
-  "generated": "2026-10-31",
+  "generated": "2026-11-01",
   "app_version": "v1.5.0",
   "evidence_model_version": "1.0.0",
   "n_studies": 35,
@@ -486,7 +486,7 @@
   }
  },
  "holdout_current": {
-  "generated": "2026-10-31",
+  "generated": "2026-11-01",
   "app_version": "v1.5.0",
   "evidence_model_version": "1.0.0",
   "n_studies": 16,
@@ -1180,25 +1180,25 @@
   "_note": "Ayrılmış kümenin İLK ve ayarsız çalıştırması. Motor bu sonuçlardan sonra değiştirildiği için bu dosya donduruldu; sonraki çalıştırmalar ayrılmış küme sayılmaz."
  },
  "holdout2_current": {
-  "generated": "2026-10-31",
+  "generated": "2026-11-01",
   "app_version": "v1.5.0",
   "evidence_model_version": "1.0.0",
   "n_studies": 17,
   "n_specialties": 9,
   "overall": {
    "reference_items": 66,
-   "complete": 61,
-   "complete_rate": 0.9242,
-   "extracted": 62,
+   "complete": 62,
+   "complete_rate": 0.9394,
+   "extracted": 63,
    "false": 1,
-   "false_rate": 0.0161
+   "false_rate": 0.0159
   },
   "per_specialty": {
    "Cerrahi": {
     "reference_items": 6,
-    "complete": 5,
-    "complete_rate": 0.8333,
-    "extracted": 5,
+    "complete": 6,
+    "complete_rate": 1.0,
+    "extracted": 6,
     "false": 0,
     "false_rate": 0.0,
     "studies": 2,
@@ -1309,9 +1309,9 @@
   "per_design": {
    "Vaka-kontrol": {
     "reference_items": 6,
-    "complete": 5,
-    "complete_rate": 0.8333,
-    "extracted": 5,
+    "complete": 6,
+    "complete_rate": 1.0,
+    "extracted": 6,
     "false": 0,
     "false_rate": 0.0,
     "studies": 2
@@ -1367,11 +1367,11 @@
    "overlap_notes": []
   },
   "source_match": {
-   "sources_total": 78,
-   "sources_verified": 78,
+   "sources_total": 79,
+   "sources_verified": 79,
    "source_match_accuracy": 1.0,
-   "values_checked": 54,
-   "values_in_source": 54,
+   "values_checked": 55,
+   "values_in_source": 55,
    "value_match_accuracy": 1.0,
    "failures": []
   },
@@ -1430,7 +1430,7 @@
    "Cerrahi": {
     "status": "Doğrulandı",
     "unknown_pmids": [],
-    "quotes_checked": 17,
+    "quotes_checked": 18,
     "quotes_failed": 0,
     "rob_rating_claims": 0,
     "grade_rating_claims": 0
@@ -1533,9 +1533,7 @@
    ],
    "41051743": [],
    "41552219": [],
-   "41167592": [
-    "EKSİK: 41167592 örneklem None (beklenen 198)"
-   ],
+   "41167592": [],
    "41410574": [],
    "41410570": [],
    "41354041": [
