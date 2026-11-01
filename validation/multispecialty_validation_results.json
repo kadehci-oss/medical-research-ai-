@@ -6,18 +6,18 @@
   "n_studies": 35,
   "n_specialties": 8,
   "overall": {
-   "reference_items": 153,
+   "reference_items": 151,
    "complete": 151,
-   "complete_rate": 0.9869,
+   "complete_rate": 1.0,
    "extracted": 151,
    "false": 0,
    "false_rate": 0.0
   },
   "per_specialty": {
    "Cerrahi": {
-    "reference_items": 15,
+    "reference_items": 14,
     "complete": 14,
-    "complete_rate": 0.9333,
+    "complete_rate": 1.0,
     "extracted": 14,
     "false": 0,
     "false_rate": 0.0,
@@ -57,9 +57,9 @@
     ]
    },
    "Kardiyoloji": {
-    "reference_items": 30,
+    "reference_items": 29,
     "complete": 29,
-    "complete_rate": 0.9667,
+    "complete_rate": 1.0,
     "extracted": 29,
     "false": 0,
     "false_rate": 0.0,
@@ -164,9 +164,9 @@
     "studies": 3
    },
    "Mektup (özet yok)": {
-    "reference_items": 3,
+    "reference_items": 2,
     "complete": 2,
-    "complete_rate": 0.6667,
+    "complete_rate": 1.0,
     "extracted": 2,
     "false": 0,
     "false_rate": 0.0,
@@ -191,9 +191,9 @@
     "studies": 1
    },
    "RCT": {
-    "reference_items": 66,
+    "reference_items": 65,
     "complete": 65,
-    "complete_rate": 0.9848,
+    "complete_rate": 1.0,
     "extracted": 65,
     "false": 0,
     "false_rate": 0.0,
@@ -442,9 +442,7 @@
   },
   "study_details": {
    "34449189": [],
-   "36129693": [
-    "EKSİK: 36129693 ana çalışma bağlantısı [] (beklenen 34449189)"
-   ],
+   "36129693": [],
    "36041474": [],
    "42952754": [],
    "36035905": [],
@@ -472,9 +470,7 @@
    "39826968": [],
    "31589251": [],
    "33017106": [],
-   "34694761": [
-    "EKSİK: 34694761 ana çalışma bağlantısı [] (beklenen 33017106)"
-   ],
+   "34694761": [],
    "41488832": [],
    "41420164": [],
    "41613714": [],

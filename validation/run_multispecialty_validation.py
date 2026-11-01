@@ -238,7 +238,13 @@ def evaluate_study(ref: Dict[str, Any], study: em.Study) -> Dict[str, Any]:
     else:
         role_ok = role == ref_rel or (role in LATER_REPORT and ref_rel in LATER_REPORT)
         t.item(True, role != "primary", role_ok, f"{pmid} yayın rolü {role} (beklenen {ref_rel})")
-        t.item(True, bool(parents), ref.get("parent") in parents, f"{pmid} ana çalışma bağlantısı {sorted(parents)} (beklenen {ref.get('parent')})")
+        expected_parent = ref.get("parent")
+        if expected_parent:
+            t.item(True, bool(parents), expected_parent in parents,
+                   f"{pmid} abstract-temelli ana çalışma bağlantısı {sorted(parents)} (beklenen {expected_parent})")
+        elif parents:
+            t.item(False, True, False,
+                   f"{pmid} abstract metniyle desteklenmeyen ana çalışma bağlantısı {sorted(parents)}")
     expected_independent = ref_rel == "primary" and ref.get("results_reported", True)
     independence_error = study.counts_as_independent != expected_independent
     if independence_error:
@@ -546,7 +552,9 @@ def render_combined_markdown(all_res: Dict[str, Any]) -> str:
         f"- Yayın sayısı: geliştirme {dev['n_studies']}, ayrılmış küme 1 {h1['n_studies']}, ayrılmış küme 2 {h2['n_studies']}; "
         f"toplam **{total} gerçek PubMed yayını**.",
         "- **Sınırlılık:** Referans tabloları bir yapay zekâ asistanı hazırladı; bağımsız uzman hekim kontrolü yapılmadı. "
-        "Yalnızca özetler kullanıldı. Kümeler küçük olduğu için oranların belirsizliği yüksektir.",
+        "PubMed özetleri varsa kullanıldı; özeti olmayan kayıtlar yalnızca bibliyografik metaveriyle sınırlı kaldı. Tam metin okunmadı. "
+        "Parent/çalışma ilişkileri başlık, açık çalışma adı veya kayıt numarası ifadelerinden kürate edildi; PubMed'in ilişkili-kayıt "
+        "bağlantıları ayrıca doğrulanmadı. Kümeler küçük olduğu için oranların belirsizliği yüksektir.",
         "",
     ]
     for label, key in (("Ayrılmış küme 1", "holdout_first_run"), ("Ayrılmış küme 2", "holdout2_first_run")):
@@ -574,9 +582,10 @@ def render_markdown(res: Dict[str, Any], title: str = "# Çok Branşlı Doğrula
         f"{'#' * heading_level} Kapsam ve yöntem",
         "",
         f"- **{res['n_studies']} gerçek PubMed yayını**, **{res['n_specialties']} branş**: {', '.join(res['per_specialty'])}.",
-        "- Kayıtlar PubMed'den alındı (PMID, DOI, başlık, özet, yayın türü) ve `validation/` altındaki JSON dosyalarında değiştirilmeden saklandı.",
-        "- Referans tablo özetler elle okunarak, motor çıktısına bakılmadan yazıldı.",
-        "- **Sınırlılık:** Referans tabloyu bir yapay zekâ asistanı hazırladı. Bağımsız uzman hekim kontrolü henüz yapılmadı. Yalnızca özetler kullanıldı; tam metin okunmadı.",
+        "- Kayıtlar PubMed'den alındı (PMID, DOI, başlık, varsa özet, yayın türü) ve `validation/` altındaki JSON dosyalarında değiştirilmeden saklandı.",
+        "- Referans tablo motor çıktısına bakılmadan hazırlandı; PubMed özeti olan kayıtlar özetten, özeti olmayan kayıtlar yalnızca bibliyografik metaveriden değerlendirildi.",
+        "- Parent/çalışma ilişkileri başlık, açık çalışma adı veya kayıt numarası ifadelerinden kürate edildi; bunlar PubMed'in ilişkili-kayıt bağlantısı olarak doğrulanmadı.",
+        "- **Sınırlılık:** Referans tabloyu bir yapay zekâ asistanı hazırladı; bağımsız uzman hekim kontrolü yapılmadı. Abstract olmayan kayıtlarda içerik çıkarımı yapılmadı. Tam metin okunmadı.",
         "",
         f"{'#' * heading_level} Ölçüt tanımları",
         "",
@@ -642,7 +651,7 @@ def render_markdown(res: Dict[str, Any], title: str = "# Çok Branşlı Doğrula
     lines += ["", f"{'#' * heading_level} Test kategorileri", "",
               "1. **Yazılım birim ve entegrasyon testleri:** `tests/test_evidence_model.py` (rapor doğrulama testleri dahil), `tests/test_question_framework.py` ve mevcut test paketi.",
               "2. **Gerçek PubMed kaynak doğrulaması:** `tests/test_pubmed_source_verification.py` (kayıtlı PubMed kayıtlarının bütünlüğü; `RUN_LIVE_PUBMED=1` ile canlı NCBI karşılaştırması).",
-              "3. **Bağımsız klinik veri doğrulaması:** `tests/test_clinical_reference_validation.py` (bu raporun ölçütleri; eşik altına düşerse test başarısız olur).",
+              "3. **Referans vakalarına karşı otomatik yazılım karşılaştırması (klinik adjudikasyon değildir):** `tests/test_clinical_reference_validation.py` (bu raporun ölçütleri; eşik altına düşerse test başarısız olur).",
               ""]
     return "\n".join(lines) + "\n"
 

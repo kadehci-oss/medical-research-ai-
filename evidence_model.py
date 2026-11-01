@@ -203,7 +203,7 @@ class Study:
     certainty: CertaintyAssessment = field(default_factory=CertaintyAssessment)
     registry_ids: List[str] = field(default_factory=list)
     trial_acronyms: List[str] = field(default_factory=list)
-    report_role: str = "primary"  # primary | secondary_analysis | updated_analysis | extended_follow_up | pooled_analysis | evidence_synthesis
+    report_role: str = "primary"  # primary | secondary_analysis | updated_analysis | extended_follow_up | pooled_analysis | evidence_synthesis | undetermined
     relations: List[StudyRelation] = field(default_factory=list)
     evidence_cluster: str = ""
     counts_as_independent: bool = True
@@ -2067,7 +2067,18 @@ _TITLE_ROLE_CUES = [
 
 
 def detect_report_role(article: Dict[str, Any], design_key: str) -> str:
-    """Primary report, or a report derived from an earlier trial publication."""
+    """Classify publication role without treating no-abstract letters as trial reports."""
+    abstract_marker = re.sub(
+        r"[\W_]+", " ", normalize_text(article.get("abstract") or "").casefold()
+    ).strip()
+    no_abstract = abstract_marker in {
+        "", "abstract not available", "abstract unavailable", "no abstract", "no abstract available"
+    }
+    publication_types = {
+        str(value).strip().casefold() for value in (article.get("publication_types") or [])
+    }
+    if no_abstract and publication_types.intersection({"letter", "comment", "editorial"}):
+        return "undetermined"
     if design_key in _SYNTHESIS_KEYS:
         return "evidence_synthesis"
     title = normalize_text(article.get("title") or "")
@@ -2097,6 +2108,43 @@ def _explicit_parent_identity_reference(derived: Study, identity: str) -> bool:
     return any(re.search(pattern, text, re.IGNORECASE) for pattern in patterns)
 
 
+def _explicit_synthesis_inclusion_reference(synthesis: Study, identity: str) -> bool:
+    """Require a nearby, positive inclusion phrase before linking a cited trial."""
+    token = re.escape(identity)
+    abstract = normalize_text(synthesis.legacy.get("abstract", ""))
+    inclusion_patterns = (
+        rf"\bmeta[- ]analys(?:is|es)\s+of\s+(?:the\s+)?{token}\b",
+        rf"\bmeta[- ]analys(?:is|es)\s+of\s+[^.;!?]{{0,50}}\b(?:and|including)\s+"
+        rf"(?:the\s+)?(?:trial|study)?\s*{token}\b",
+        rf"\b(?:including|included)\s+(?:the\s+)?(?:trial|study)?\s*{token}\b",
+        rf"\b{token}\b[^.;!?]{{0,60}}\b(?:was|were|is|are|has been|have been)?\s*"
+        rf"(?:included|pooled)\s+(?:in|as part of)\s+(?:the\s+)?"
+        rf"(?:meta[- ]analysis|pooled analysis|systematic review|analysis|review)\b",
+        rf"\b{token}\b[^.;!?]{{0,60}}\b(?:was|were|has been|have been)\s+"
+        rf"(?:meta[- ]analy[sz]ed|analysed|analyzed)\b",
+    )
+    excluded_reference = re.compile(
+        rf"\b(?:not|never|exclude(?:d|s|ing)?|ineligible)\b[^.;!?]{{0,80}}\b{token}\b"
+        rf"|\b{token}\b[^.;!?]{{0,80}}\b(?:was|were|is|are|has been|have been)?\s*"
+        rf"(?:not included|not pooled|excluded|ineligible)\b",
+        re.IGNORECASE,
+    )
+    uncertain_reference = re.compile(
+        rf"\b(?:may|might|could|possibly|potentially|perhaps)\b[^.;!?]{{0,80}}\b{token}\b"
+        rf"|\b{token}\b[^.;!?]{{0,80}}\b(?:may|might|could)\s+have\s+"
+        rf"(?:been\s+)?(?:included|pooled|meta[- ]analy[sz]ed|analysed|analyzed)\b",
+        re.IGNORECASE,
+    )
+    for sentence in re.split(r"(?<=[.;!?])\s+", abstract):
+        if not re.search(rf"\b{token}\b", sentence, re.IGNORECASE):
+            continue
+        if excluded_reference.search(sentence) or uncertain_reference.search(sentence):
+            continue
+        if any(re.search(pattern, sentence, re.IGNORECASE) for pattern in inclusion_patterns):
+            return True
+    return False
+
+
 def link_studies(studies: List[Study]) -> Dict[str, Any]:
     """Link derived reports to their parent trial and mark independent evidence units.
 
@@ -2116,12 +2164,14 @@ def link_studies(studies: List[Study]) -> Dict[str, Any]:
         if ra != rb:
             parent[rb] = ra
 
-    primaries = [s for s in studies if s.report_role != "evidence_synthesis"]
+    linkable_reports = [
+        s for s in studies if s.report_role not in {"evidence_synthesis", "undetermined"}
+    ]
     # 1) Link a derived report only when its own source text explicitly names one
     # unique primary parent. Shared identifiers/acronyms alone are insufficient.
-    for derived in (s for s in primaries if s.report_role != "primary"):
+    for derived in (s for s in linkable_reports if s.report_role != "primary"):
         candidates = []
-        for base in (s for s in primaries if s.report_role == "primary"):
+        for base in (s for s in linkable_reports if s.report_role == "primary"):
             shared_ids = set(derived.registry_ids) & set(base.registry_ids)
             base_acronyms = {x.casefold() for x in base.trial_acronyms}
             shared_acronyms = [x for x in derived.trial_acronyms if x.casefold() in base_acronyms]
@@ -2143,13 +2193,15 @@ def link_studies(studies: List[Study]) -> Dict[str, Any]:
         noted_roots = set()
         if synth.report_role != "evidence_synthesis":
             continue
-        text = normalize_text(synth.legacy.get("abstract", "")).lower()
-        for other in primaries:
+        for other in linkable_reports:
             names = [x for x in other.trial_acronyms if len(x) >= 4]
             ids = other.registry_ids
-            if any(re.search(rf"\b{re.escape(n.lower())}\b", text) for n in names) or any(i.lower() in text for i in ids):
+            explicit = [identity for identity in [*names, *ids]
+                        if _explicit_synthesis_inclusion_reference(synth, identity)]
+            if explicit:
                 synth.relations.append(StudyRelation("includes_trial", other.pmid,
-                                                     "meta-analiz özeti çalışmanın adını veriyor", "kesin"))
+                                                     f"meta-analiz özeti {explicit[0]} çalışmasını açıkça içerdiğini belirtiyor",
+                                                     "kesin"))
                 root = find(other.pmid)
                 if root in noted_roots:
                     continue
@@ -2474,11 +2526,13 @@ def _build_study_uncached(article: Dict[str, Any], query: str) -> Study:
 
 def build_studies(articles: Iterable[Dict[str, Any]], query: str = "") -> Tuple[List[Study], Dict[str, Any]]:
     """Build (or fetch cached) Study objects and link them across the set."""
-    studies = [build_study(a, query) for a in articles or []]
-    for s in studies:
-        s.relations = []
-        s.counts_as_independent = True
-        s.report_role = detect_report_role({"title": s.title, "abstract": s.legacy.get("abstract", "")}, s.design_key)
+    studies = []
+    for article in articles or []:
+        study = build_study(article, query)
+        study.relations = []
+        study.counts_as_independent = True
+        study.report_role = detect_report_role(article, study.design_key)
+        studies.append(study)
     summary = link_studies(studies)
     return studies, summary
 
@@ -2668,6 +2722,7 @@ _MEASURE_TR = {
 
 _ROLE_TR = {
     "primary": "Ana çalışma raporu",
+    "undetermined": "Yayın rolü belirlenemedi (özet yok)",
     "secondary_analysis": "İkincil / post hoc / alt grup analizi",
     "pooled_analysis": "Havuzlanmış analiz",
     "updated_analysis": "Aynı çalışmanın güncellenmiş / ara analizi",

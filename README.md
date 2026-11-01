@@ -91,20 +91,19 @@ CI (`.github/workflows/ci.yml`) installs from `requirements.lock`, runs `pip che
 | Variable | Required | Purpose |
 |---|---|---|
 | `NCBI_TOOL` | No | Tool name sent as `tool` on every E-utilities request and used in the User-Agent. Default: `MedicalResearchAI`. |
-| `NCBI_EMAIL` | No | Contact email sent as `email` on every E-utilities request and in the User-Agent. Default: `medical-research-ai@example.com` (not a personal address). Set this to a monitored mailbox before sustained use so NCBI can reach you. |
+| `NCBI_EMAIL` | No | Monitored contact sent as `email` on E-utilities requests and in the User-Agent when configured. No placeholder address is sent when unset; configure a monitored mailbox for NCBI to contact the operator. |
 | `NCBI_API_KEY` | No | When set, sent as `api_key` on E-utilities requests only (not to CrossRef). Raises the NCBI rate limit. Omit it to leave the parameter off the request. |
 | `OPENAI_API_KEY` | No | Credential for optional LLM report synthesis. Synthesis remains off until the user explicitly confirms data transfer. Once confirmed, the query, article metadata, and PubMed abstracts are sent to OpenAI. Do not include patient-identifying or confidential health information. |
 
 ```bash
 export NCBI_TOOL="MedicalResearchAI"
-export NCBI_EMAIL="you@example.com"
 export NCBI_API_KEY="your-ncbi-api-key"
 export OPENAI_API_KEY="your-openai-api-key"
 ```
 
-No personal email is hardcoded. `live_ncbi_validation.py` sends the same `tool`, `email`, and optional `api_key` values as `pubmed_client.py`.
+`NCBI_EMAIL` is optional; only set it to a real, monitored contact address. Do not copy a placeholder address into the environment. No personal or placeholder email is hardcoded. `live_ncbi_validation.py` sends the same `tool` value and any configured `email` and optional `api_key` as `pubmed_client.py`; unset optional values are omitted.
 
-The weekly workflow reads `NCBI_EMAIL`, `NCBI_API_KEY`, and `NCBI_TOOL` from GitHub Actions secrets. **Set the repository secret `NCBI_EMAIL` under Settings > Secrets and variables > Actions.** `NCBI_API_KEY` and `NCBI_TOOL` are optional; an empty `NCBI_API_KEY` is left off the request. If `NCBI_EMAIL` is missing, the job prints a `::warning::` and continues with the non-personal default above. This repository is public, so the monitored contact address belongs in that secret.
+The weekly workflow reads `NCBI_EMAIL`, `NCBI_API_KEY`, and `NCBI_TOOL` from GitHub Actions secrets. **Set the repository secret `NCBI_EMAIL` under Settings > Secrets and variables > Actions.** `NCBI_API_KEY` and `NCBI_TOOL` are optional; an empty value is left off the request. If `NCBI_EMAIL` is missing, the job prints a `::warning::` and continues without an email parameter rather than sending a non-routable placeholder. This repository is public, so the monitored contact address belongs in that secret.
 
 ---
 
@@ -201,9 +200,9 @@ Three test categories:
 
 1. **Software unit and integration tests:** `tests/test_evidence_model.py`, `tests/test_pubmed_client.py`, `tests/test_api.py` (including two-page search endpoint coverage), `tests/test_question_framework.py` (including report-verification tests), plus the existing suite. CI runs the complete suite on Python 3.11 and 3.12.
 2. **Real PubMed source verification:** `tests/test_pubmed_source_verification.py`. The recorded PubMed records in `validation/` are checked offline; `RUN_LIVE_PUBMED=1 pytest tests/test_pubmed_source_verification.py` re-fetches every PMID from NCBI and compares title and DOI.
-3. **Independent clinical data validation:** `tests/test_clinical_reference_validation.py` compares engine output with pre-specified reference tables (68 real PubMed publications, 8 required specialties plus obstetrics: cardiology, oncology, neurology, infectious diseases, endocrinology, paediatrics, surgery, radiology; RCT, cohort, case-control, diagnostic accuracy, case series, systematic review, meta-analysis).
+3. **Automated software comparison with reference cases (not clinical adjudication):** `tests/test_clinical_reference_validation.py` compares engine output with pre-specified reference tables (68 real PubMed publications, 8 required specialties plus obstetrics: cardiology, oncology, neurology, infectious diseases, endocrinology, paediatrics, surgery, radiology; RCT, cohort, case-control, diagnostic accuracy, case series, systematic review, meta-analysis). It checks abstract-derived fields when an abstract is available and bibliographic metadata for records without abstracts; it does not establish clinical correctness.
 
-`python validation/run_multispecialty_validation.py` regenerates [`validation/MULTISPECIALTY_VALIDATION_REPORT.md`](validation/MULTISPECIALTY_VALIDATION_REPORT.md). The development set was used while tuning, so its numbers are optimistic. The honest estimates are the **frozen first runs on two held-out sets** (reference written before the engine saw them; set 2 was built after fixing set 1's errors, to test whether the fixes generalize): complete extraction 77.9% and 78.8%, false extraction 8.6% and 11.9%, source-sentence match 100%, 0 false causal claims. The rule-based extractor plateaus around 78% completeness on unseen abstracts; fixes made on one set did not raise the first-run score on the next. All reference tables were prepared by an AI assistant from abstracts only; no independent physician has checked them.
+`python validation/run_multispecialty_validation.py` regenerates [`validation/MULTISPECIALTY_VALIDATION_REPORT.md`](validation/MULTISPECIALTY_VALIDATION_REPORT.md). The development set was used while tuning, so its numbers are optimistic. The honest estimates are the **frozen first runs on two held-out sets** (reference written before the engine saw them; set 2 was built after fixing set 1's errors, to test whether the fixes generalize): complete extraction 77.9% and 78.8%, false extraction 8.6% and 11.9%, source-sentence match 100%, 0 false causal claims. The rule-based extractor plateaus around 78% completeness on unseen abstracts; fixes made on one set did not raise the first-run score on the next. Reference tables were prepared by an AI assistant; PubMed abstracts were used where available, and records without abstracts were limited to bibliographic metadata. No full text was read, and no independent physician has reviewed the tables.
 
 The fixed eight-record live PubMed benchmark is separate from offline pull-request CI and can be rerun with `python validation/run_pubmed_benchmark.py`. It re-fetches the records, checks the reference quote text against each current abstract/title, and writes JSON/Markdown reports with runner/reference hashes and a hash for each fetched abstract. Its source-text and rendered-claim phrase checks are software checks only; they are not independent clinical adjudication, GRADE, or proof of clinical accuracy. A fetch failure is reported as not evaluated rather than as a zero-violation result.
 

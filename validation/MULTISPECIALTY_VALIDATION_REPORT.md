@@ -15,7 +15,7 @@ Bu rapor `python validation/run_multispecialty_validation.py` ile üretilir; ell
 
 | Ölçüt | Geliştirme kümesi (ayarlı) | **Ayrılmış küme 1, ilk çalıştırma (bağımsız)** | **Ayrılmış küme 2, ilk çalıştırma (bağımsız)** | Küme 1 + 2, düzeltme sonrası (bağımsız değil) |
 |---|---|---|---|---|
-| Eksiksiz çıkarım oranı | %98.7 (151/153) | **%77.9 (53/68)** | **%78.8 (52/66)** | %100.0 (68/68) / %93.9 (62/66) |
+| Eksiksiz çıkarım oranı | %100.0 (151/151) | **%77.9 (53/68)** | **%78.8 (52/66)** | %100.0 (68/68) / %93.9 (62/66) |
 | Yanlış çıkarım oranı | %0.0 (0/151) | **%8.6 (5/58)** | **%11.9 (7/59)** | %0.0 (0/68) / %1.6 (1/63) |
 | Kaynak eşleşme doğruluğu (cümle) | %100.0 (205/205) | **%100.0 (62/62)** | **%100.0 (73/73)** | %100.0 (94/94) / %100.0 (84/84) |
 | Kaynak eşleşme doğruluğu (sayısal değer) | %100.0 (155/155) | **%100.0 (52/52)** | **%100.0 (48/48)** | %100.0 (69/69) / %100.0 (60/60) |
@@ -23,7 +23,7 @@ Bu rapor `python validation/run_multispecialty_validation.py` ile üretilir; ell
 | Soru çerçevesi seçimi | 18/18 | **9/10** | **8/8** | 10/10 / 8/8 |
 
 - Yayın sayısı: geliştirme 35, ayrılmış küme 1 16, ayrılmış küme 2 17; toplam **68 gerçek PubMed yayını**.
-- **Sınırlılık:** Referans tabloları bir yapay zekâ asistanı hazırladı; bağımsız uzman hekim kontrolü yapılmadı. Yalnızca özetler kullanıldı. Kümeler küçük olduğu için oranların belirsizliği yüksektir.
+- **Sınırlılık:** Referans tabloları bir yapay zekâ asistanı hazırladı; bağımsız uzman hekim kontrolü yapılmadı. PubMed özetleri varsa kullanıldı; özeti olmayan kayıtlar yalnızca bibliyografik metaveriyle sınırlı kaldı. Tam metin okunmadı. Parent/çalışma ilişkileri başlık, açık çalışma adı veya kayıt numarası ifadelerinden kürate edildi; PubMed'in ilişkili-kayıt bağlantıları ayrıca doğrulanmadı. Kümeler küçük olduğu için oranların belirsizliği yüksektir.
 
 ### Ayrılmış küme 1: ilk çalıştırmada bulunan hatalar
 
@@ -83,9 +83,10 @@ Puanlama `python validation/run_external_reference_check.py` ile yapılır ve ya
 ### Kapsam ve yöntem
 
 - **35 gerçek PubMed yayını**, **8 branş**: Cerrahi, Endokrinoloji, Enfeksiyon, Kardiyoloji, Nöroloji, Onkoloji, Pediatri, Radyoloji.
-- Kayıtlar PubMed'den alındı (PMID, DOI, başlık, özet, yayın türü) ve `validation/` altındaki JSON dosyalarında değiştirilmeden saklandı.
-- Referans tablo özetler elle okunarak, motor çıktısına bakılmadan yazıldı.
-- **Sınırlılık:** Referans tabloyu bir yapay zekâ asistanı hazırladı. Bağımsız uzman hekim kontrolü henüz yapılmadı. Yalnızca özetler kullanıldı; tam metin okunmadı.
+- Kayıtlar PubMed'den alındı (PMID, DOI, başlık, varsa özet, yayın türü) ve `validation/` altındaki JSON dosyalarında değiştirilmeden saklandı.
+- Referans tablo motor çıktısına bakılmadan hazırlandı; PubMed özeti olan kayıtlar özetten, özeti olmayan kayıtlar yalnızca bibliyografik metaveriden değerlendirildi.
+- Parent/çalışma ilişkileri başlık, açık çalışma adı veya kayıt numarası ifadelerinden kürate edildi; bunlar PubMed'in ilişkili-kayıt bağlantısı olarak doğrulanmadı.
+- **Sınırlılık:** Referans tabloyu bir yapay zekâ asistanı hazırladı; bağımsız uzman hekim kontrolü yapılmadı. Abstract olmayan kayıtlarda içerik çıkarımı yapılmadı. Tam metin okunmadı.
 
 ### Ölçüt tanımları
 
@@ -98,7 +99,7 @@ Puanlama `python validation/run_external_reference_check.py` ile yapılır ve ya
 
 | Ölçüt | Değer |
 |---|---|
-| Eksiksiz çıkarım oranı | %98.7 (151/153) |
+| Eksiksiz çıkarım oranı | %100.0 (151/151) |
 | Yanlış çıkarım oranı | %0.0 (0/151) |
 | Kaynak eşleşme doğruluğu (cümle) | %100.0 (205/205) |
 | Kaynak eşleşme doğruluğu (sayısal değer) | %100.0 (155/155) |
@@ -113,10 +114,10 @@ Puanlama `python validation/run_external_reference_check.py` ile yapılır ve ya
 
 | Branş | Yayın | Tasarımlar | Eksiksiz çıkarım | Yanlış çıkarım |
 |---|---|---|---|---|
-| Cerrahi | 4 | Kohort, Mektup (özet yok), RCT | %93.3 (14/15) | %0.0 (0/14) |
+| Cerrahi | 4 | Kohort, Mektup (özet yok), RCT | %100.0 (14/14) | %0.0 (0/14) |
 | Endokrinoloji | 4 | Kohort, Meta-analiz, RCT | %100.0 (16/16) | %0.0 (0/16) |
 | Enfeksiyon | 5 | Olgu serisi, RCT, Tanısal doğruluk | %100.0 (16/16) | %0.0 (0/16) |
-| Kardiyoloji | 5 | Meta-analiz, RCT, Sistematik derleme | %96.7 (29/30) | %0.0 (0/29) |
+| Kardiyoloji | 5 | Meta-analiz, RCT, Sistematik derleme | %100.0 (29/29) | %0.0 (0/29) |
 | Nöroloji | 5 | Kohort, Meta-analiz, Protokol (sonuç yok), RCT | %100.0 (21/21) | %0.0 (0/21) |
 | Onkoloji | 6 | Olgu serisi, RCT, Vaka-kontrol | %100.0 (25/25) | %0.0 (0/25) |
 | Pediatri | 3 | Kohort, RCT | %100.0 (15/15) | %0.0 (0/15) |
@@ -130,10 +131,10 @@ Puanlama `python validation/run_external_reference_check.py` ile yapılır ve ya
 | Olgu serisi | 4 | %100.0 (8/8) | %0.0 (0/8) |
 | Kohort | 7 | %100.0 (22/22) | %0.0 (0/22) |
 | Tanısal doğruluk | 3 | %100.0 (11/11) | %0.0 (0/11) |
-| Mektup (özet yok) | 1 | %66.7 (2/3) | %0.0 (0/2) |
+| Mektup (özet yok) | 1 | %100.0 (2/2) | %0.0 (0/2) |
 | Meta-analiz | 6 | %100.0 (32/32) | %0.0 (0/32) |
 | Protokol (sonuç yok) | 1 | %100.0 (1/1) | %0.0 (0/1) |
-| RCT | 10 | %98.5 (65/66) | %0.0 (0/65) |
+| RCT | 10 | %100.0 (65/65) | %0.0 (0/65) |
 | Sistematik derleme | 1 | %100.0 (5/5) | %0.0 (0/5) |
 
 ### Çalışma ilişkileri (mükerrer kanıt kontrolü)
@@ -181,14 +182,12 @@ Puanlama `python validation/run_external_reference_check.py` ile yapılır ve ya
 
 ### Eksik ve yanlış öğeler (çalışma bazında)
 
-- **PMID 36129693:** EKSİK: 36129693 ana çalışma bağlantısı [] (beklenen 34449189)
-- **PMID 34694761:** EKSİK: 34694761 ana çalışma bağlantısı [] (beklenen 33017106)
 
 ### Test kategorileri
 
 1. **Yazılım birim ve entegrasyon testleri:** `tests/test_evidence_model.py` (rapor doğrulama testleri dahil), `tests/test_question_framework.py` ve mevcut test paketi.
 2. **Gerçek PubMed kaynak doğrulaması:** `tests/test_pubmed_source_verification.py` (kayıtlı PubMed kayıtlarının bütünlüğü; `RUN_LIVE_PUBMED=1` ile canlı NCBI karşılaştırması).
-3. **Bağımsız klinik veri doğrulaması:** `tests/test_clinical_reference_validation.py` (bu raporun ölçütleri; eşik altına düşerse test başarısız olur).
+3. **Referans vakalarına karşı otomatik yazılım karşılaştırması (klinik adjudikasyon değildir):** `tests/test_clinical_reference_validation.py` (bu raporun ölçütleri; eşik altına düşerse test başarısız olur).
 
 
 ## Ayrılmış küme 1, güncel çalıştırma ayrıntıları
@@ -196,9 +195,10 @@ Puanlama `python validation/run_external_reference_check.py` ile yapılır ve ya
 ### Kapsam ve yöntem
 
 - **16 gerçek PubMed yayını**, **8 branş**: Cerrahi, Endokrinoloji, Enfeksiyon, Kardiyoloji, Nöroloji, Onkoloji, Pediatri, Radyoloji.
-- Kayıtlar PubMed'den alındı (PMID, DOI, başlık, özet, yayın türü) ve `validation/` altındaki JSON dosyalarında değiştirilmeden saklandı.
-- Referans tablo özetler elle okunarak, motor çıktısına bakılmadan yazıldı.
-- **Sınırlılık:** Referans tabloyu bir yapay zekâ asistanı hazırladı. Bağımsız uzman hekim kontrolü henüz yapılmadı. Yalnızca özetler kullanıldı; tam metin okunmadı.
+- Kayıtlar PubMed'den alındı (PMID, DOI, başlık, varsa özet, yayın türü) ve `validation/` altındaki JSON dosyalarında değiştirilmeden saklandı.
+- Referans tablo motor çıktısına bakılmadan hazırlandı; PubMed özeti olan kayıtlar özetten, özeti olmayan kayıtlar yalnızca bibliyografik metaveriden değerlendirildi.
+- Parent/çalışma ilişkileri başlık, açık çalışma adı veya kayıt numarası ifadelerinden kürate edildi; bunlar PubMed'in ilişkili-kayıt bağlantısı olarak doğrulanmadı.
+- **Sınırlılık:** Referans tabloyu bir yapay zekâ asistanı hazırladı; bağımsız uzman hekim kontrolü yapılmadı. Abstract olmayan kayıtlarda içerik çıkarımı yapılmadı. Tam metin okunmadı.
 
 ### Ölçüt tanımları
 
@@ -287,7 +287,7 @@ Puanlama `python validation/run_external_reference_check.py` ile yapılır ve ya
 
 1. **Yazılım birim ve entegrasyon testleri:** `tests/test_evidence_model.py` (rapor doğrulama testleri dahil), `tests/test_question_framework.py` ve mevcut test paketi.
 2. **Gerçek PubMed kaynak doğrulaması:** `tests/test_pubmed_source_verification.py` (kayıtlı PubMed kayıtlarının bütünlüğü; `RUN_LIVE_PUBMED=1` ile canlı NCBI karşılaştırması).
-3. **Bağımsız klinik veri doğrulaması:** `tests/test_clinical_reference_validation.py` (bu raporun ölçütleri; eşik altına düşerse test başarısız olur).
+3. **Referans vakalarına karşı otomatik yazılım karşılaştırması (klinik adjudikasyon değildir):** `tests/test_clinical_reference_validation.py` (bu raporun ölçütleri; eşik altına düşerse test başarısız olur).
 
 
 ## Ayrılmış küme 2, güncel çalıştırma ayrıntıları
@@ -295,9 +295,10 @@ Puanlama `python validation/run_external_reference_check.py` ile yapılır ve ya
 ### Kapsam ve yöntem
 
 - **17 gerçek PubMed yayını**, **9 branş**: Cerrahi, Endokrinoloji, Enfeksiyon, Kadın Hastalıkları ve Doğum, Kardiyoloji, Nöroloji, Onkoloji, Pediatri, Radyoloji.
-- Kayıtlar PubMed'den alındı (PMID, DOI, başlık, özet, yayın türü) ve `validation/` altındaki JSON dosyalarında değiştirilmeden saklandı.
-- Referans tablo özetler elle okunarak, motor çıktısına bakılmadan yazıldı.
-- **Sınırlılık:** Referans tabloyu bir yapay zekâ asistanı hazırladı. Bağımsız uzman hekim kontrolü henüz yapılmadı. Yalnızca özetler kullanıldı; tam metin okunmadı.
+- Kayıtlar PubMed'den alındı (PMID, DOI, başlık, varsa özet, yayın türü) ve `validation/` altındaki JSON dosyalarında değiştirilmeden saklandı.
+- Referans tablo motor çıktısına bakılmadan hazırlandı; PubMed özeti olan kayıtlar özetten, özeti olmayan kayıtlar yalnızca bibliyografik metaveriden değerlendirildi.
+- Parent/çalışma ilişkileri başlık, açık çalışma adı veya kayıt numarası ifadelerinden kürate edildi; bunlar PubMed'in ilişkili-kayıt bağlantısı olarak doğrulanmadı.
+- **Sınırlılık:** Referans tabloyu bir yapay zekâ asistanı hazırladı; bağımsız uzman hekim kontrolü yapılmadı. Abstract olmayan kayıtlarda içerik çıkarımı yapılmadı. Tam metin okunmadı.
 
 ### Ölçüt tanımları
 
@@ -386,6 +387,6 @@ Puanlama `python validation/run_external_reference_check.py` ile yapılır ve ya
 
 1. **Yazılım birim ve entegrasyon testleri:** `tests/test_evidence_model.py` (rapor doğrulama testleri dahil), `tests/test_question_framework.py` ve mevcut test paketi.
 2. **Gerçek PubMed kaynak doğrulaması:** `tests/test_pubmed_source_verification.py` (kayıtlı PubMed kayıtlarının bütünlüğü; `RUN_LIVE_PUBMED=1` ile canlı NCBI karşılaştırması).
-3. **Bağımsız klinik veri doğrulaması:** `tests/test_clinical_reference_validation.py` (bu raporun ölçütleri; eşik altına düşerse test başarısız olur).
+3. **Referans vakalarına karşı otomatik yazılım karşılaştırması (klinik adjudikasyon değildir):** `tests/test_clinical_reference_validation.py` (bu raporun ölçütleri; eşik altına düşerse test başarısız olur).
 
 

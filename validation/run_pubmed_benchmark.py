@@ -410,8 +410,14 @@ def compare_case(case: Dict[str, Any], article: Dict[str, Any], study: em.Study)
 
     sourced_claims = list(em.iter_sourced_claims(study))
     source_sentence_matches = 0
+    source_value_checks_count = 0
+    derived_value_checks_skipped = 0
     unsupported_values: List[str] = []
     for path, value, source in sourced_claims:
+        if source.verification_status == em.SOURCE_DERIVED:
+            derived_value_checks_skipped += 1
+        else:
+            source_value_checks_count += 1
         sentence = source.sentence or ""
         in_article = em.verify_sentence_in_source(sentence, article.get("abstract") or "", article.get("title") or "")[1] == em.SOURCE_VERIFIED
         if sentence and in_article:
@@ -471,6 +477,8 @@ def compare_case(case: Dict[str, Any], article: Dict[str, Any], study: em.Study)
         "complete_reference_extraction": bool(checks) and all(check["matched"] for check in checks),
         "reference_quote_checks": quote_checks,
         "source_claim_count": len(sourced_claims),
+        "source_value_checks_count": source_value_checks_count,
+        "derived_value_checks_skipped": derived_value_checks_skipped,
         "metric_type_check_count": sum(
             1 for outcome in study.outcomes for estimate in outcome.estimates
             if estimate.measure not in {"proportion", "unnamed"}
@@ -513,10 +521,12 @@ def summarize_field_gaps(cases: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
 def summarize_safety_checks(cases: List[Dict[str, Any]]) -> Dict[str, Any]:
     evaluated = [item for item in cases if item.get("record_verification_status") == "verified"]
     source_claims = sum(item.get("source_claim_count", 0) for item in evaluated)
+    source_value_checks = sum(item.get("source_value_checks_count", 0) for item in evaluated)
+    derived_value_checks_skipped = sum(item.get("derived_value_checks_skipped", 0) for item in evaluated)
     metric_checks = sum(item.get("metric_type_check_count", 0) for item in evaluated)
     unsupported_values = sum(len(item.get("unsupported_value_claims") or []) for item in evaluated)
     unsupported_metrics = sum(len(item.get("unsupported_metric_type_claims") or []) for item in evaluated)
-    claim_denominator = source_claims + metric_checks
+    claim_denominator = source_value_checks + metric_checks
     causal_claims_checked = sum(item.get("rendered_claims_checked") or 0 for item in evaluated)
     causal_violations = sum(len(item.get("unsupported_causal_language_claims") or []) for item in evaluated)
     causal_metadata_mismatches = sum(bool(item.get("causal_metadata_mismatch")) for item in evaluated)
@@ -533,6 +543,8 @@ def summarize_safety_checks(cases: List[Dict[str, Any]]) -> Dict[str, Any]:
         "unsupported_claims": unsupported_values + unsupported_metrics,
         "unsupported_value_claims": unsupported_values,
         "unsupported_metric_type_claims": unsupported_metrics,
+        "source_value_checks": source_value_checks,
+        "derived_value_checks_skipped": derived_value_checks_skipped,
         "claim_denominator": claim_denominator,
         "unsupported_rate": (unsupported_values + unsupported_metrics) / claim_denominator if claim_denominator else None,
         "causal_language_status": causal_status,
@@ -558,6 +570,7 @@ def _empty_case_result(case: Dict[str, Any], status: str) -> Dict[str, Any]:
         "reference_field_checks": [], "complete_reference_extraction": False,
         "reference_quote_checks": None,
         "source_claim_count": 0, "metric_type_check_count": 0,
+        "source_value_checks_count": 0, "derived_value_checks_skipped": 0,
         "source_sentence_matches": 0, "source_text_presence_rate": None,
         "unsupported_value_claims": [], "unsupported_metric_type_claims": [],
         "rendered_claims_checked": None, "unsupported_causal_language_claims": None,
@@ -608,7 +621,8 @@ def render_markdown(report: Dict[str, Any]) -> str:
         f"- Eksiksiz referans alanı: **{complete_summary}**.",
         f"- Önceden belirlenmiş kaynak alıntısı metninin canlı PubMed kaydında bulunması: **{quote_summary}**.",
         f"- Model alanlarının kaynak metninin canlı abstract/başlık içinde bulunması: **{source_summary}**; bu tam cümle eşitliği veya klinik doğruluk değildir.",
-        f"- Desteklenmeyen değer/metrik kaynak dizesi kontrolleri: **{unsupported_summary}**.",
+        f"- Desteklenmeyen literal değer/ölçüt kaynak dizesi kontrolleri: **{unsupported_summary}**; "
+        f"kaynaktan türetilmiş değerlerde literal sayı kontrolü yapılmayan kaynak: **{safety['derived_value_checks_skipped']}**.",
         f"- Kanonik renderer’ın yapılandırılmış iddia cümlelerinde phrase-scan ile desteklenmeyen nedensel dil: **{causal_summary}**.",
         "",
         "## Referans alanı boşlukları",

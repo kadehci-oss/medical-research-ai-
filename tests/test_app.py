@@ -88,7 +88,7 @@ class TestAppRegression(unittest.TestCase):
 
     @patch("app.perform_red_team_audit")
     @patch("app.UniversalEvidenceEngine.generate_synthesis_report")
-    @patch("app.UniversalEvidenceEngine.search_and_verify")
+    @patch("pubmed_client.search_pubmed")
     def test_synthesis_error_is_not_saved_as_downloadable_report(
         self, mock_search, mock_synthesize, mock_audit
     ):
@@ -151,7 +151,7 @@ class TestAppRegression(unittest.TestCase):
         llm_toggle = next(item for item in at.sidebar.checkbox if item.label == "OpenAI Sentez Motorunu Kullan")
         self.assertFalse(llm_toggle.value)
 
-    @patch("app.UniversalEvidenceEngine.search_and_verify")
+    @patch("pubmed_client.search_pubmed")
     def test_article_identifiers_are_rendered_as_plain_text(self, mock_search):
         malicious_doi = '<img src=x onerror="alert(1)">'
         mock_search.return_value = {

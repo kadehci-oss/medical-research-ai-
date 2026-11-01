@@ -29,7 +29,7 @@ jobs:
         run: |
           email="${NCBI_EMAIL//[[:space:]]/}"
           if [ -z "$email" ]; then
-            echo "::warning title=Missing NCBI_EMAIL::Repository secret NCBI_EMAIL is not set. Add it under Settings > Secrets and variables > Actions so NCBI E-utilities requests include a monitored contact email. This job continues with the non-personal default contact."
+            echo "::warning title=Missing NCBI_EMAIL::Repository secret NCBI_EMAIL is not set. Add a monitored contact under Settings > Secrets and variables > Actions. This job continues without sending a placeholder email address."
           fi
       - name: Query real NCBI ESearch and EFetch
         run: python live_ncbi_validation.py

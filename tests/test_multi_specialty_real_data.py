@@ -4,8 +4,11 @@ Sample size is read with the strict extractor. Abstracts that would only match
 the loosened "N patients" pattern state n explicitly instead.
 """
 import unittest
+import json
+from pathlib import Path
 from unittest.mock import patch
 
+import evidence_model as em
 from report_generator import (
     assess_risk_of_bias,
     classify_study_design,
@@ -14,9 +17,52 @@ from report_generator import (
     extract_study_metrics,
 )
 from universal_evidence_engine import UniversalEvidenceEngine
+from validation.run_multispecialty_validation import evaluate_study
 
 
 class TestMultiSpecialtyFixtures(unittest.TestCase):
+    def test_pooled_secondary_analysis_reference_does_not_claim_single_parent(self):
+        root = Path(__file__).resolve().parents[1]
+        records = {row["pmid"]: row for row in json.loads(
+            (root / "validation/pubmed_records_multispecialty.json").read_text(encoding="utf-8")
+        )}
+        reference = json.loads(
+            (root / "validation/reference_dataset.json").read_text(encoding="utf-8")
+        )
+        expected = next(row for row in reference["studies"] if row["pmid"] == "36129693")
+        studies, _ = em.build_studies([records["34449189"], records["36129693"]])
+        secondary = next(study for study in studies if study.pmid == "36129693")
+
+        result = evaluate_study(expected, secondary)
+
+        self.assertIsNone(expected["parent"])
+        self.assertEqual(secondary.report_role, "secondary_analysis")
+        self.assertNotIn("34449189", {relation.related_pmid for relation in secondary.relations})
+        self.assertFalse(any("ana çalışma bağlantısı" in detail for detail in result["tally"].details))
+
+    def test_no_abstract_letter_role_is_undetermined_without_a_parent_link(self):
+        root = Path(__file__).resolve().parents[1]
+        records = {row["pmid"]: row for row in json.loads(
+            (root / "validation/pubmed_records_multispecialty.json").read_text(encoding="utf-8")
+        )}
+        reference = json.loads(
+            (root / "validation/reference_dataset.json").read_text(encoding="utf-8")
+        )
+        expected = next(row for row in reference["studies"] if row["pmid"] == "34694761")
+        studies, _ = em.build_studies([records["34694761"]])
+        study = studies[0]
+
+        result = evaluate_study(expected, study)
+
+        self.assertEqual(expected["relation"], "undetermined")
+        self.assertIsNone(expected["parent"])
+        self.assertEqual(study.report_role, "undetermined")
+        self.assertEqual(study.relations, [])
+        self.assertFalse(study.counts_as_independent)
+        self.assertFalse(study.causal_inference_allowed)
+        self.assertFalse(result["independence_error"])
+        self.assertFalse(any("ana çalışma bağlantısı" in detail for detail in result["tally"].details))
+
     def test_cardiology_rct_sample_size_and_effect(self):
         query = "Empagliflozin in patients with heart failure with preserved ejection fraction"
         art_rct = {
