@@ -55,6 +55,18 @@ class TestCountsAreSeparated(unittest.TestCase):
         self.assertEqual(study.population.n_total, 810)
         self.assertEqual(study.population.n_kind, "arm_sum")
         self.assertEqual(study.population.source.verification_status, em.SOURCE_DERIVED)
+        rendered = "\n".join(em.render_study_card_lines(study))
+        self.assertIn("(kol n değerlerinin toplamı; türetilmiş)", rendered)
+        self.assertIn("- alphamab: n = 400 — Kaynak cümle:", rendered)
+        self.assertIn("- placebo: n = 410 — Kaynak cümle:", rendered)
+        self.assertIn("**Müdahale:** alphamab — Kaynak cümle:", rendered)
+        self.assertIn("**Karşılaştırıcı:** placebo — Kaynak cümle:", rendered)
+
+    def test_article_cache_key_is_stable_sha256(self):
+        article = _art("5", "A cohort of 50 patients was enrolled.")
+        first = em._article_key(article)
+        self.assertEqual(first, em._article_key(article))
+        self.assertEqual(len(first), 64)
 
     def test_protocol_planned_sample_is_not_reported_as_enrolled(self):
         abstract = "This prospective observational study will include 800 patients with suspected stroke."

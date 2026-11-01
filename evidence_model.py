@@ -1991,7 +1991,7 @@ def _article_key(article: Dict[str, Any]) -> str:
          list(article.get("publication_types") or []), article.get("_citation_status")],
         ensure_ascii=False, default=str,
     )
-    return hashlib.sha1(payload.encode("utf-8")).hexdigest()
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
 
 def build_study(article: Dict[str, Any], query: str = "") -> Study:
@@ -2505,6 +2505,12 @@ def claim_sentence_tr(study: Study, est: EffectEstimate) -> str:
     return f"{outcome} için {stat}. Kontrolsüz veri; nedensel çıkarım yapılmaz."
 
 
+def _source_note_tr(source: EvidenceSource, pmid: str) -> str:
+    if source.sentence:
+        return f' — Kaynak cümle: "{source.sentence}" (PMID: {pmid})'
+    return f" — Kaynak cümlesi yok (PMID: {pmid})"
+
+
 def render_study_card_lines(study: Study) -> List[str]:
     """Markdown lines used by Streamlit cards, section 6 and exported reports."""
     pmid = study.pmid or "yok"
@@ -2515,28 +2521,43 @@ def render_study_card_lines(study: Study) -> List[str]:
     pop = study.population
     if pop.n_total:
         n_note = {
-            "pooled": " (dahil edilen çalışmaların toplamı)",
-            "arm_sum": " (kol sayılarının toplamı)",
+            "enrolled": " (kayıt edilen örneklem)",
+            "randomized": " (randomize edilen örneklem)",
+            "analyzed": " (analiz edilen örneklem)",
+            "cohort": " (kohort örneklemi)",
+            "pooled": " (havuzlanmış çalışmaların toplamı)",
+            "arm_sum": " (kol n değerlerinin toplamı; türetilmiş)",
             "cases": " (olgu sayısı)",
         }.get(pop.n_kind, "")
-        lines.append(f"**Katılımcı (n):** {pop.n_total:,}".replace(",", ".") + n_note +
-                     f" — Kaynak: \"{pop.source.sentence}\" (PMID: {pmid})")
+        lines.append(
+            f"**Katılımcı (n):** {pop.n_total:,}".replace(",", ".")
+            + n_note + _source_note_tr(pop.source, pmid)
+        )
     elif pop.n_planned:
-        lines.append(f"**Katılımcı (n):** sonuç yok; planlanan örneklem {pop.n_planned} (PMID: {pmid})")
+        lines.append(
+            f"**Katılımcı (n):** sonuç yok; planlanan örneklem {pop.n_planned}"
+            + _source_note_tr(pop.source, pmid)
+        )
     else:
         lines.append(f"**Katılımcı (n):** {NOT_REPORTED_TR} (değer atanmadı; PMID: {pmid})")
     if pop.n_cases:
         lines.append(f"**Olgu sayısı (vaka-kontrol):** {pop.n_cases} — toplam katılımcı özette bildirilmedi")
     if study.arms:
-        arm_text = "; ".join(f"{a.label}: n = {a.n}" for a in study.arms)
-        lines.append(f"**Çalışma kolları:** {arm_text}")
+        lines.append("**Çalışma kolları:**")
+        for arm in study.arms:
+            arm_n = arm.n if arm.n is not None else "özette bildirilmedi"
+            lines.append(f"- {arm.label}: n = {arm_n}" + _source_note_tr(arm.source, pmid))
     for intervention in study.interventions:
-        lines.append(f"**{intervention.role_label}:** {intervention.name} (PMID: {pmid})")
+        lines.append(
+            f"**{intervention.role_label}:** {intervention.name}"
+            + _source_note_tr(intervention.source, pmid)
+        )
     for comparator in study.comparators:
-        lines.append(f"**Karşılaştırıcı:** {comparator.name} (PMID: {pmid})")
+        lines.append(f"**Karşılaştırıcı:** {comparator.name}" + _source_note_tr(comparator.source, pmid))
     if study.co_treatments:
-        lines.append("**Eşlik eden / arka plan tedavi (müdahale sayılmadı):** " +
-                     "; ".join(c.name for c in study.co_treatments))
+        lines.append("**Eşlik eden / arka plan tedavi (müdahale sayılmadı):**")
+        for co_treatment in study.co_treatments:
+            lines.append(f"- {co_treatment.name}" + _source_note_tr(co_treatment.source, pmid))
     usable = [e for e in study.estimates if e.usable or e.validation == "eksik"]
     rejected = [e for e in study.estimates if e.validation == "tutarsiz"]
     if usable:
