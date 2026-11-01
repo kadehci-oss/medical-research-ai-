@@ -721,10 +721,20 @@ def _case_evidence_key(title: str, abstract: str) -> Optional[str]:
     return None
 
 
+# "IPW was applied ... to emulate a RCT", "target trial emulation": an observational design
+# borrowing trial language. The phrase is not the study's own design.
+_TRIAL_EMULATION_RE = re.compile(
+    r"\b(?:emulat\w*|mimic\w*)\s+(?:an?\s+|the\s+)?(?:target\s+)?(?:pragmatic\s+)?"
+    r"(?:randomi[sz]ed\s+(?:controlled\s+|clinical\s+)?trials?|RCTs?)\b"
+    r"|\btarget[- ]trial\s+emulation\b",
+    re.IGNORECASE,
+)
+
+
 def _text_design_key(title: str, abstract: str) -> Optional[str]:
     """Read the study's own design from the title, then from the abstract."""
-    title = title or ""
-    abstract = abstract or ""
+    title = _TRIAL_EMULATION_RE.sub(" ", title or "")
+    abstract = _TRIAL_EMULATION_RE.sub(" ", abstract or "")
     for blob, allow_follow in ((title, False), (abstract, True)):
         meta = _own_design_match(blob, _META_RE)
         systematic = _own_design_match(blob, _SR_RE)
