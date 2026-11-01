@@ -5259,6 +5259,7 @@ def _generate_section_12_synthesis(query: str, articles: List[Dict[str, Any]], c
     if primary_studies:
         primary_citations = []
         quant_summaries = []
+        design_counts: Dict[str, int] = {}
         for art in primary_studies:
             pmid = art.get("pmid", "")
             pubmed_url = art.get("pubmed_url", f"https://pubmed.ncbi.nlm.nih.gov/{pmid}/" if pmid else "#")
@@ -5266,15 +5267,22 @@ def _generate_section_12_synthesis(query: str, articles: List[Dict[str, Any]], c
             authors_short = _format_authors_short(art.get("authors", []))
             year = art.get("pub_year", "")
             details = extract_article_clinical_details(art, query)
+            study_design_label = details['study_design']
+            design_counts[study_design_label] = design_counts.get(study_design_label, 0) + 1
 
             quant_summaries.append(
                 f"**{authors_short} ({year})** ({pmid_link}): {details['real_findings']} "
-                f"(Tasarım: {details['study_design']}, kanıt düzeyi: {details.get('evidence_level', UNASSIGNED_EVIDENCE_LEVEL)}, "
+                f"(Tasarım: {study_design_label}, kanıt düzeyi: {details.get('evidence_level', UNASSIGNED_EVIDENCE_LEVEL)}, "
                 f"Örneklem: {details['sample_size']}, Sonlanım Ölçütleri: {details.get('synthesis_outcomes') or details['outcomes_summary']}). "
                 f"{_format_bound_claims(details, include_implausible=False)}"
             )
 
-        sec_lines.append(f"**{query}** odağında incelenen ampirik primer araştırmalar klinik verileri ve nicel etki ölçütlerini ortaya koymaktadır:")
+        breakdown_str = ", ".join(f"{count} {design}" for design, count in design_counts.items())
+        total_primary = len(primary_studies)
+        sec_lines.append(
+            f"**{query}** odağında bu bölümde {total_primary} kayıt yer alıyor: {breakdown_str}. "
+            "Klinik verileri ve nicel etki ölçütlerini ortaya koymaktadır:"
+        )
         sec_lines.append("\n".join([f"- {s}" for s in quant_summaries]))
         sec_lines.append("")
 
