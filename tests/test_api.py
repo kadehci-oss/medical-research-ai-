@@ -177,6 +177,19 @@ class TestFastAPIApp(unittest.TestCase):
         self.assertEqual(mock_generate.call_args.kwargs["articles"][0]["title"], "Canonical PubMed title")
         self.assertEqual(mock_generate.call_args.kwargs["articles"][0]["abstract"], "Canonical abstract from PubMed")
 
+    @patch("api.perform_red_team_audit", return_value={})
+    @patch("api._load_verified_articles", return_value=([], []))
+    @patch("api.generate_turkish_evidence_report", side_effect=RuntimeError("internal-sensitive-error"))
+    def test_api_generate_report_masks_generator_failure(self, _mock_generate, _mock_load, _mock_audit):
+        response = client.post(
+            "/api/report",
+            json={"query": "diabetes", "articles": [{"pmid": "12345"}]},
+        )
+
+        self.assertEqual(response.status_code, 500)
+        self.assertIn("Rapor oluşturulamadı", response.json()["detail"])
+        self.assertNotIn("internal-sensitive-error", response.text)
+
     @patch("api.verify_citation")
     @patch("api.generate_turkish_evidence_report")
     def test_api_report_rejects_mismatched_citation_before_synthesis(self, mock_generate, mock_verify_citation):

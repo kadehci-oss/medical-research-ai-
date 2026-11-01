@@ -179,16 +179,22 @@ def api_generate_report(req: ReportRequest):
         "search_date": req.search_date,
         "query": req.query
     }
-    report_md = generate_turkish_evidence_report(
-        query=req.query,
-        articles=articles,
-        api_key=req.api_key,
-        use_llm=req.use_llm,
-        allow_external_data_transfer=req.llm_data_transfer_confirmed,
-        model=req.model,
-        search_metadata=search_meta,
-        audit=audit,
-    )
+    try:
+        report_md = generate_turkish_evidence_report(
+            query=req.query,
+            articles=articles,
+            api_key=req.api_key,
+            use_llm=req.use_llm,
+            allow_external_data_transfer=req.llm_data_transfer_confirmed,
+            model=req.model,
+            search_metadata=search_meta,
+            audit=audit,
+        )
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail="Rapor oluşturulamadı. Lütfen daha sonra tekrar deneyin.",
+        ) from exc
     quality_qc = validate_clinical_report_quality(report_md)
     html_report = generate_html_report(req.query, articles, report_md, audit=audit)
     pico = extract_pico(req.query)
