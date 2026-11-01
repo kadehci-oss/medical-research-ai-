@@ -261,7 +261,7 @@
    "Onkoloji": {
     "status": "Doğrulandı",
     "unknown_pmids": [],
-    "quotes_checked": 68,
+    "quotes_checked": 70,
     "quotes_failed": 0,
     "rob_rating_claims": 0,
     "grade_rating_claims": 0
@@ -285,7 +285,7 @@
    "Endokrinoloji": {
     "status": "Doğrulandı",
     "unknown_pmids": [],
-    "quotes_checked": 52,
+    "quotes_checked": 53,
     "quotes_failed": 0,
     "rob_rating_claims": 0,
     "grade_rating_claims": 0
@@ -1414,7 +1414,7 @@
    "Endokrinoloji": {
     "status": "Doğrulandı",
     "unknown_pmids": [],
-    "quotes_checked": 39,
+    "quotes_checked": 40,
     "quotes_failed": 0,
     "rob_rating_claims": 0,
     "grade_rating_claims": 0

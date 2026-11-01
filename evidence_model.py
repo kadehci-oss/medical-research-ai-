@@ -28,6 +28,7 @@ import hashlib
 import json
 import re
 from dataclasses import asdict, dataclass, field
+from decimal import Decimal, InvalidOperation
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 import report_generator as rg
@@ -923,6 +924,15 @@ def extract_population(article: Dict[str, Any], design_key: str, arms: List[Stud
                     location="abstract", verification_status=SOURCE_DERIVED,
                     note=f"{cases} olgu + {controls} kontrol; toplam hesaplandı.",
                 )
+                return population
+    if design_key == "case_control":
+        for sentence in sentences:
+            match = re.search(rf"\b(?:in|among)\s+(?P<n>{_DIGIT_NUM_RE})\s+{_FILLER_SHORT}{_PEOPLE}\b", sentence, re.IGNORECASE)
+            n = parse_count(match.group("n")) if match else None
+            if match and _accept(n, sentence, match):
+                population.n_total = n
+                population.n_kind = "enrolled"
+                population.source = _source(article, sentence)
                 return population
     patterns = list(_TOTAL_PATTERNS)
     if design_key in _DESCRIPTIVE_KEYS:
@@ -2001,6 +2011,76 @@ def clear_cache() -> None:
     _CACHE.clear()
 
 
+def _literal_numeric_tokens(text: Any) -> set[str]:
+    tokens = re.findall(r"(?<![\w.])(?:\d{1,3}(?:,\d{3})+|\d+|\.\d+)(?:\.\d+)?%?", str(text or ""))
+    normalized = set()
+    for token in tokens:
+        raw = token.replace(",", "").rstrip("%")
+        try:
+            normalized.add(format(Decimal(raw).normalize(), "f"))
+        except (InvalidOperation, ValueError):
+            normalized.add(raw)
+    return normalized
+
+
+def extract_explicit_unstructured_numeric_findings(
+    article: Dict[str, Any], excluded_sentences: Iterable[str] = (),
+) -> List[Dict[str, Any]]:
+    """Keep explicit abstract findings visible when no typed effect estimate fits.
+
+    These remain text-backed, unstructured findings; this helper does not
+    convert them into an effect measure or make a clinical interpretation.
+    """
+    excluded = {_collapse(sentence) for sentence in excluded_sentences if sentence}
+    findings: List[Dict[str, Any]] = []
+    abstract = article.get("abstract") or ""
+    for sentence in sentences_of(abstract):
+        clean_sentence = _collapse(sentence)
+        if not clean_sentence or clean_sentence in excluded:
+            continue
+        finding: Optional[Tuple[str, str]] = None
+
+        prevalence = re.search(
+            r"\bprevalence\s+of\s+(?P<outcome>.+?)\s+(?:is|was|were)\s+"
+            r"(?P<value>(?:(?:approximately|about|around)\s+)?\d+(?:\.\d+)?%\s*(?:to|[-–])\s*\d+(?:\.\d+)?%)",
+            clean_sentence, re.IGNORECASE,
+        )
+        if prevalence:
+            finding = (f"Prevalence of {prevalence.group('outcome').strip()}", prevalence.group("value").strip())
+
+        if finding is None and re.search(r"\b(?:positive|negative)\s+likelihood ratio\b", clean_sentence, re.IGNORECASE):
+            lr = re.search(
+                r"(?P<value>(?:positive|negative)\s+likelihood ratio\b[^.;]*?\b(?:about|approximately|around)\s+"
+                r"\d+(?:\.\d+)?[^.;]*?\b(?:compared with|versus|vs\.?)\s+(?:(?:about|approximately|around)\s+)?\d+(?:\.\d+)?)",
+                clean_sentence, re.IGNORECASE,
+            )
+            if lr:
+                finding = ("Likelihood-ratio finding", lr.group("value").strip())
+
+        if finding is None:
+            qualitative = re.search(
+                r"\b(?P<value>(?:two|three|four|five|\d+(?:\.\d+)?)\s+times?\s+more likely\s+to\s+[^.;]+)",
+                clean_sentence, re.IGNORECASE,
+            )
+            if qualitative:
+                finding = ("Qualitative association", qualitative.group("value").strip())
+
+        if finding is None and re.search(r"\b100\s*%(?!\d)", clean_sentence) \
+                and re.search(r"\b(?:patient|respondent)s?\b", clean_sentence, re.IGNORECASE) \
+                and re.search(r"\b(?:symptom|condition)s?\b", clean_sentence, re.IGNORECASE) \
+                and re.search(r"\b(?:resolved|improved|relieved)\b", clean_sentence, re.IGNORECASE):
+            finding = ("Patient-reported symptom response", "100%")
+
+        if finding:
+            findings.append({
+                "outcome": finding[0],
+                "metrics": [finding[1]],
+                "source": _source(article, clean_sentence),
+            })
+            excluded.add(clean_sentence)
+    return findings
+
+
 def _build_study_uncached(article: Dict[str, Any], query: str) -> Study:
     title = article.get("title") or ""
     abstract = (article.get("abstract") or "").replace("\xa0", " ")
@@ -2031,6 +2111,15 @@ def _build_study_uncached(article: Dict[str, Any], query: str) -> Study:
     population.description = details.get("patient_group") if details.get("patient_group") not in ("Belirtilmedi", "") else ""
     if population.description and pop_prov.get("source_sentence") and population.source.location == "none":
         population.source = _source(art, pop_prov.get("source_sentence"))
+    if population.description and population.source.verification_status != SOURCE_DERIVED:
+        description_numbers = _literal_numeric_tokens(population.description)
+        source_numbers = _literal_numeric_tokens(population.source.sentence)
+        if not description_numbers.issubset(source_numbers):
+            total_token = _literal_numeric_tokens(population.n_total)
+            if population.n_total is not None and total_token and total_token.issubset(source_numbers):
+                population.description = f"{population.n_total} katılımcı"
+            else:
+                population.description = ""
 
     claim_type = classify_claim_type(design_key, title, abstract, results_reported)
     if claim_type == "diagnostic_accuracy" and design_key in (
@@ -2114,6 +2203,12 @@ def _build_study_uncached(article: Dict[str, Any], query: str) -> Study:
             "metrics": list(om.get("metrics") or []),
             "source": _source(art, sentence),
         })
+    other_numeric.extend(
+        extract_explicit_unstructured_numeric_findings(
+            art,
+            covered | {item["source"].sentence for item in other_numeric if item.get("source")},
+        )
+    )
 
     study = Study(
         pmid=pmid,
@@ -2161,6 +2256,166 @@ def build_studies(articles: Iterable[Dict[str, Any]], query: str = "") -> Tuple[
         s.report_role = detect_report_role({"title": s.title, "abstract": s.legacy.get("abstract", "")}, s.design_key)
     summary = link_studies(studies)
     return studies, summary
+
+
+def iter_sourced_claims(study: Study) -> Iterable[Tuple[str, Any, EvidenceSource]]:
+    """Yield reported clinical fields with their canonical source object.
+
+    This deliberately walks the typed ``Study`` API rather than accepting the
+    parallel dict schema used by earlier experimental implementations.
+    """
+    def include(path: str, value: Any, source: EvidenceSource):
+        if value is None or (isinstance(value, str) and not value.strip()):
+            return None
+        if isinstance(value, (list, tuple, dict)) and not value:
+            return None
+        if isinstance(value, str) and value.strip().casefold() in {
+            "özette bildirilmedi", "değerlendirilemedi", "belirtilmedi", "not reported", "unknown",
+        }:
+            return None
+        return path, value, source
+
+    pop = study.population
+    for path, value, source in (
+        ("population.description", pop.description, pop.source),
+        ("population.n_total", pop.n_total, pop.source),
+        ("population.n_cases", pop.n_cases, pop.source),
+        ("population.n_planned", pop.n_planned, pop.source),
+    ):
+        claim = include(path, value, source)
+        if claim:
+            yield claim
+
+    for index, arm in enumerate(study.arms):
+        for suffix, value in (("label", arm.label), ("n", arm.n)):
+            claim = include(f"arms[{index}].{suffix}", value, arm.source)
+            if claim:
+                yield claim
+    for collection_name, collection in (
+        ("interventions", study.interventions),
+        ("comparators", study.comparators),
+        ("co_treatments", study.co_treatments),
+    ):
+        for index, item in enumerate(collection):
+            claim = include(f"{collection_name}[{index}].name", item.name, item.source)
+            if claim:
+                yield claim
+
+    for index, event in enumerate(study.event_counts):
+        for suffix, value in (("events", event.events), ("total", event.total), ("percent", event.percent)):
+            claim = include(f"event_counts[{index}].{suffix}", value, event.source)
+            if claim:
+                yield claim
+
+    for outcome_index, outcome in enumerate(study.outcomes):
+        claim = include(f"outcomes[{outcome_index}].name", outcome.name, outcome.source)
+        if claim:
+            yield claim
+        for estimate_index, estimate in enumerate(outcome.estimates):
+            prefix = f"outcomes[{outcome_index}].estimates[{estimate_index}]"
+            for suffix, value in (
+                ("value", estimate.value),
+                ("ci_low", estimate.ci_low),
+                ("ci_high", estimate.ci_high),
+                ("p_value", estimate.p_value),
+                ("contrast_value", estimate.contrast_value),
+            ):
+                claim = include(f"{prefix}.{suffix}", value, estimate.source)
+                if claim:
+                    yield claim
+
+    for index, finding in enumerate(study.other_numeric_findings):
+        source = finding.get("source")
+        if not isinstance(source, EvidenceSource):
+            continue
+        for suffix, value in (("outcome", finding.get("outcome")), ("metrics", finding.get("metrics"))):
+            claim = include(f"other_numeric_findings[{index}].{suffix}", value, source)
+            if claim:
+                yield claim
+
+
+def validate_study(study: Study, article: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    """Check Study identity and field-level source binding, not clinical truth.
+
+    When the fetched article is supplied, every attached sentence is rechecked
+    against its title/abstract. A passing result is structural provenance only;
+    it is not independent clinical adjudication or a GRADE assessment.
+    """
+    errors: List[str] = []
+    warnings: List[str] = []
+    missing_provenance: List[str] = []
+    if not isinstance(study, Study):
+        return {
+            "valid": False,
+            "status": "needs_source_review",
+            "errors": ["unsupported_model_type"],
+            "warnings": [],
+            "source_provenance_complete": False,
+            "missing_provenance_fields": [],
+            "model_version": EVIDENCE_MODEL_VERSION,
+            "clinical_claim_validation": "not_independently_clinically_validated",
+            "formal_grade_status": "not_assessed",
+        }
+
+    pmid = str(study.pmid or "")
+    if not pmid.isdigit():
+        errors.append("missing_or_invalid_pmid")
+    if article is not None:
+        article_pmid = str(article.get("pmid") or "")
+        if article_pmid and article_pmid != pmid:
+            errors.append("study_article_pmid_mismatch")
+        article_doi = str(article.get("doi") or "").strip().casefold()
+        study_doi = str(study.doi or "").strip().casefold()
+        if article_doi and study_doi and article_doi != study_doi:
+            errors.append("study_article_doi_mismatch")
+
+    valid_source_statuses = {SOURCE_VERIFIED, SOURCE_DERIVED}
+    for path, value, source in iter_sourced_claims(study):
+        if source.verification_status != SOURCE_DERIVED:
+            value_numbers = _literal_numeric_tokens(value)
+            source_numbers = _literal_numeric_tokens(source.sentence)
+            if not value_numbers.issubset(source_numbers):
+                if path == "population.description":
+                    errors.append("unsupported_numeric_text:population.description")
+                else:
+                    errors.append(f"unsupported_numeric_value:{path}")
+        if not source.pmid or source.pmid != pmid:
+            missing_provenance.append(path)
+            errors.append(f"source_pmid_mismatch:{path}")
+        if not source.sentence:
+            missing_provenance.append(path)
+            errors.append(f"missing_source_sentence:{path}")
+            continue
+        if source.verification_status not in valid_source_statuses:
+            errors.append(f"unverified_source_sentence:{path}")
+        if article is not None:
+            location, status = verify_sentence_in_source(
+                source.sentence, article.get("abstract") or "", article.get("title") or ""
+            )
+            if status != SOURCE_VERIFIED:
+                errors.append(f"source_sentence_not_in_article:{path}")
+            elif source.location not in {"abstract", "title"}:
+                warnings.append(f"source_location_metadata_mismatch:{path}:{location}")
+
+    for outcome_index, outcome in enumerate(study.outcomes):
+        for estimate_index, estimate in enumerate(outcome.estimates):
+            if estimate.validation == "tutarsiz":
+                warnings.append(
+                    f"rejected_inconsistent_estimate:outcomes[{outcome_index}].estimates[{estimate_index}]"
+                )
+
+    return {
+        "valid": not errors,
+        "status": "structurally_valid" if not errors else "needs_source_review",
+        "errors": errors,
+        "warnings": warnings,
+        "source_provenance_complete": not missing_provenance,
+        "missing_provenance_fields": sorted(set(missing_provenance)),
+        "record_verification_status": study.citation_status,
+        "model_version": EVIDENCE_MODEL_VERSION,
+        "clinical_claim_validation": "not_independently_clinically_validated",
+        "formal_grade_status": "not_assessed",
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -2299,11 +2554,15 @@ def render_study_card_lines(study: Study) -> List[str]:
     else:
         lines.append(f"**Sonlanıma bağlı etki tahminleri:** sonuç bildirilmedi (PMID: {pmid})")
     if study.other_numeric_findings:
-        bits = []
+        lines.append("**Özetteki diğer sayısal bulgular (etki ölçütü olarak yapılandırılmadı):**")
         for item in study.other_numeric_findings:
-            bits.append(f"{item['outcome'] or 'sonlanım adı yok'} ({', '.join(item['metrics'])})")
-        lines.append("**Özetteki diğer sayısal bulgular (etki ölçütü olarak yapılandırılmadı):** " + "; ".join(bits) +
-                     f" (PMID: {pmid})")
+            detail = f"{item['outcome'] or 'sonlanım adı yok'} ({', '.join(item['metrics'])})"
+            source = item.get("source")
+            if isinstance(source, EvidenceSource) and source.sentence:
+                detail += f" — Kaynak cümle: \"{source.sentence}\" (PMID: {pmid})"
+            else:
+                detail += f" (PMID: {pmid}; kaynak cümlesi yok)"
+            lines.append(f"- {detail}")
     if rejected:
         lines.append(f"**Reddedilen eşleştirmeler:** {len(rejected)} (tutarsız güven aralığı veya geçersiz aralık; sentezde kullanılmadı)")
     tool = rg.display_bias_tool(study.risk_of_bias.tool) if study.risk_of_bias.tool else "araç seçilemedi"
