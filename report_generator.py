@@ -6616,6 +6616,48 @@ def generate_html_report(
 
     # Escape untrusted Markdown before introducing the small set of HTML tags below.
     content_html = html.escape(str(markdown_content or ""), quote=False)
+
+    def _table_cells(line: str) -> List[str]:
+        row = line.strip()
+        if row.startswith("|"):
+            row = row[1:]
+        if row.endswith("|") and not row.endswith(r"\|"):
+            row = row[:-1]
+        return [cell.strip().replace(r"\|", "|") for cell in re.split(r"(?<!\\)\|", row)]
+
+    source_lines = content_html.splitlines()
+    rendered_lines: List[str] = []
+    index = 0
+    while index < len(source_lines):
+        if index + 1 < len(source_lines):
+            headers = _table_cells(source_lines[index])
+            separators = _table_cells(source_lines[index + 1])
+            is_separator = (
+                len(headers) > 0
+                and len(headers) == len(separators)
+                and all(re.fullmatch(r":?-{3,}:?", cell) for cell in separators)
+            )
+            if is_separator:
+                table_rows: List[List[str]] = []
+                index += 2
+                while index < len(source_lines) and source_lines[index].strip() and "|" in source_lines[index]:
+                    cells = _table_cells(source_lines[index])
+                    cells = (cells + [""] * len(headers))[:len(headers)]
+                    table_rows.append(cells)
+                    index += 1
+                head = "".join(f"<th>{cell}</th>" for cell in headers)
+                body = "".join(
+                    "<tr>" + "".join(f"<td>{cell}</td>" for cell in row) + "</tr>"
+                    for row in table_rows
+                )
+                rendered_lines.append(
+                    f'<table class="report-table"><thead><tr>{head}</tr></thead><tbody>{body}</tbody></table>'
+                )
+                continue
+        rendered_lines.append(source_lines[index])
+        index += 1
+    content_html = "\n".join(rendered_lines)
+
     content_html = re.sub(r"^# (.*)$", r'<h1 style="color: #1E3A8A; border-bottom: 2px solid #1E3A8A; padding-bottom: 8px;">\1</h1>', content_html, flags=re.MULTILINE)
     content_html = re.sub(r"^## (.*)$", r'<h2 style="color: #1E40AF; margin-top: 24px;">\1</h2>', content_html, flags=re.MULTILINE)
     content_html = re.sub(r"^### (.*)$", r'<h3 style="color: #1F2937;">\1</h3>', content_html, flags=re.MULTILINE)
@@ -6652,6 +6694,9 @@ def generate_html_report(
             padding: 30px;
             background-color: #FFFFFF;
         }}
+        .report-table {{ border-collapse: collapse; width: 100%; margin: 16px 0; }}
+        .report-table th, .report-table td {{ border: 1px solid #D1D5DB; padding: 8px 10px; text-align: left; vertical-align: top; }}
+        .report-table th {{ background: #EFF6FF; color: #1E3A8A; }}
         .header-box {{
             background-color: #F0F9FF;
             border: 1px solid #BAE6FD;

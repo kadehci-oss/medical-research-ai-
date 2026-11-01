@@ -359,6 +359,27 @@ class TestReportGenerator(unittest.TestCase):
         self.assertNotIn("0% (Sıfır)", html_rep)
         self.assertNotIn("SIFIR HALÜSİNASYON", html_rep)
 
+    def test_generate_html_report_renders_escaped_markdown_tables(self):
+        audit = {
+            "status": "DENETLEME TAMAMLANDI",
+            "grade_rating_policy": {"grade_status": "GRADE Değerlendirilmedi"},
+        }
+        markdown = (
+            "| Alan | Kaynak |\n"
+            "| --- | --- |\n"
+            "| **Müdahale** | [PMID](https://pubmed.ncbi.nlm.nih.gov/12345/) |\n"
+            "| <script> | metin |"
+        )
+
+        html_rep = generate_html_report("test query", [], markdown, audit=audit)
+
+        self.assertIn('<table class="report-table">', html_rep)
+        self.assertIn("<th>Alan</th>", html_rep)
+        self.assertIn("<td><strong>Müdahale</strong></td>", html_rep)
+        self.assertIn('href="https://pubmed.ncbi.nlm.nih.gov/12345/"', html_rep)
+        self.assertIn("&lt;script&gt;", html_rep)
+        self.assertNotIn("<td><script>", html_rep)
+
     def test_generate_html_report_escapes_untrusted_content_and_blocks_unsafe_links(self):
         audit = {
             "status": "DENETLEME TAMAMLANDI",
