@@ -366,6 +366,13 @@ def summarize_field_gaps(cases: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     return sorted(gaps, key=lambda item: (0 if item["priority"].startswith("P1") else 1, -item["unmatched"], item["category"]))
 
 
+def build_model_from_verified_record(article: Dict[str, Any], query: str = "") -> Dict[str, Any]:
+    """Carry PubMed identity verification into provenance without implying clinical validation."""
+    verified_article = dict(article or {})
+    verified_article["verification_status"] = "verified"
+    return build_study_model(verified_article, query=query)
+
+
 def render_markdown(report: Dict[str, Any]) -> str:
     pubmed = report["test_categories"]["real_pubmed_source_validation"]
     software = report["test_categories"]["software_unit_integration_tests"]
@@ -459,7 +466,7 @@ def run() -> Dict[str, Any]:
         is_verified = result.get("status") == "verified"
         if is_verified:
             verified += 1
-            model = build_study_model(fetched, query=reference["specialty"])
+            model = build_model_from_verified_record(fetched, query=reference["specialty"])
             case_result = compare_case(reference, fetched, model)
         else:
             case_result = {

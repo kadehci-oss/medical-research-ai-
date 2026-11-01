@@ -1,4 +1,5 @@
 from validation.run_pubmed_benchmark import (
+    build_model_from_verified_record,
     compare_case,
     expected_outcome_match,
     number_tokens,
@@ -202,3 +203,16 @@ def test_field_gap_summary_reports_matched_and_unmatched_counts():
     assert by_category["arm_participant_n"]["unmatched"] == 1
     assert by_category["outcome_metric"]["unmatched"] == 1
     assert by_category["outcome_metric"]["priority"].startswith("P1")
+
+
+def test_verified_pubmed_record_propagates_identity_only_status_not_clinical_validation():
+    model = build_model_from_verified_record({
+        "pmid": "12345678",
+        "doi": "10.1000/example",
+        "title": "Example study",
+        "publication_types": ["Journal Article"],
+        "abstract": "This study included 120 adults.",
+    })
+
+    assert model["source"]["verification_status"] == "pubmed_record_found_identity_only"
+    assert model["extraction_validation"]["clinical_claim_validation"] == "not_independently_clinically_validated"

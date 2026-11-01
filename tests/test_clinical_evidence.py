@@ -2,6 +2,7 @@ import unittest
 
 from clinical_evidence import (
     build_study_model,
+    ensure_study_model,
     legacy_details_from_study,
     select_research_question_framework,
     validate_study_model,
@@ -68,6 +69,37 @@ class TestCanonicalEvidenceModel(unittest.TestCase):
         self.assertTrue(validate_study_model(model)["valid"])
         self.assertEqual(model["risk_of_bias"]["status"], "not_assessed")
         self.assertEqual(model["risk_of_bias"]["assessed"], False)
+
+    def test_cached_model_with_different_pmid_is_rebuilt_even_when_doi_matches(self):
+        cached = build_study_model(article(pmid="11111111"))
+        record = article(pmid="22222222")
+        record["evidence_model"] = cached
+
+        model = ensure_study_model(record, query="treatment efficacy")
+
+        self.assertIsNot(model, cached)
+        self.assertEqual(model["pmid"], "22222222")
+        self.assertEqual(model["source"]["pmid"], "22222222")
+
+    def test_cached_model_can_match_by_normalized_doi_when_record_has_no_pmid(self):
+        cached = build_study_model(article(pmid="11111111"))
+        record = article(pmid="")
+        record["doi"] = "https://doi.org/10.1000/example"
+        record["evidence_model"] = cached
+
+        model = ensure_study_model(record)
+
+        self.assertIs(model, cached)
+
+    def test_cached_model_with_unknown_version_is_rebuilt(self):
+        cached = build_study_model(article())
+        cached["model_version"] = "legacy"
+        record = article(evidence_model=cached)
+
+        model = ensure_study_model(record)
+
+        self.assertIsNot(model, cached)
+        self.assertEqual(model["model_version"], "1.1")
 
     def test_observational_drug_use_is_a_sourced_exposure_not_an_intervention(self):
         record = article(

@@ -1136,9 +1136,52 @@ def build_study_model(
     return result
 
 
+def _normalized_study_identity(record: Dict[str, Any]) -> tuple[str, str]:
+    pmid = re.sub(r"^\s*pmid\s*:\s*", "", str(record.get("pmid") or ""), flags=re.IGNORECASE).strip()
+    pmid = pmid if pmid.isdigit() else ""
+    doi = str(record.get("doi") or "").strip()
+    doi = re.sub(r"^(?:https?://(?:dx\.)?doi\.org/|doi\s*:\s*)", "", doi, flags=re.IGNORECASE)
+    return pmid, doi.strip().casefold()
+
+
+def _study_model_matches_article(article: Dict[str, Any], model: Dict[str, Any]) -> bool:
+    article_pmid, article_doi = _normalized_study_identity(article)
+    model_pmid, model_doi = _normalized_study_identity(model)
+    if article_pmid and model_pmid and article_pmid != model_pmid:
+        return False
+    if article_doi and model_doi and article_doi != model_doi:
+        return False
+    return bool(
+        (article_pmid and article_pmid == model_pmid)
+        or (article_doi and article_doi == model_doi)
+    )
+
+
+def _is_reusable_study_model(article: Dict[str, Any], model: Any) -> bool:
+    if not isinstance(model, dict) or model.get("model_version") != MODEL_VERSION:
+        return False
+    mapping_fields = (
+        "research_question", "population", "risk_of_bias", "source",
+        "relationship", "compatibility_view",
+    )
+    list_fields = ("arms", "outcomes", "clinical_findings", "methodological_limitations")
+    if any(not isinstance(model.get(key), dict) for key in mapping_fields):
+        return False
+    if any(not isinstance(model.get(key), list) for key in list_fields):
+        return False
+    if any(not isinstance(item, dict) for key in list_fields for item in model[key]):
+        return False
+    if not _study_model_matches_article(article, model):
+        return False
+    try:
+        return validate_study_model(model).get("valid") is True
+    except (AttributeError, KeyError, TypeError, ValueError):
+        return False
+
+
 def ensure_study_model(article: Dict[str, Any], query: str = "") -> Dict[str, Any]:
     existing = article.get("evidence_model")
-    if isinstance(existing, dict) and existing.get("model_version"):
+    if _is_reusable_study_model(article, existing):
         return existing
     return build_study_model(article, query=query)
 
