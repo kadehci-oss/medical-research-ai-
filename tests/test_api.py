@@ -1,5 +1,5 @@
 import unittest
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 from fastapi.testclient import TestClient
 from api import app
 
@@ -41,6 +41,75 @@ class TestFastAPIApp(unittest.TestCase):
         self.assertEqual(len(data["articles"]), 1)
         self.assertEqual(data["articles"][0]["pmid"], "12345")
 
+    @patch("requests.get")
+    def test_api_search_pagination_end_to_end(self, mock_get):
+        def response():
+            item = MagicMock()
+            item.status_code = 200
+            item.headers = {}
+            item.raise_for_status.return_value = None
+            return item
+
+        def xml_for(pmids):
+            records = "".join(
+                f"<PubmedArticle><MedlineCitation><PMID>{pmid}</PMID><Article><ArticleTitle>Study {pmid}</ArticleTitle></Article></MedlineCitation></PubmedArticle>"
+                for pmid in pmids
+            )
+            return f"<PubmedArticleSet>{records}</PubmedArticleSet>"
+
+        search_first, fetch_first = response(), response()
+        search_first.json.return_value = {"esearchresult": {"count": "4", "idlist": ["20001", "20002"]}}
+        fetch_first.text = xml_for(["20001", "20002"])
+        search_second, fetch_second = response(), response()
+        search_second.json.return_value = {"esearchresult": {"count": "4", "idlist": ["20003", "20004"]}}
+        fetch_second.text = xml_for(["20003", "20004"])
+        mock_get.side_effect = [search_first, fetch_first, search_second, fetch_second]
+
+        first = client.get("/api/search?query=diabetes&max_results=2&retstart=0")
+        second = client.get("/api/search?query=diabetes&max_results=2&retstart=2")
+
+        self.assertEqual(first.status_code, 200)
+        self.assertEqual(second.status_code, 200)
+        self.assertEqual([item["pmid"] for item in first.json()["articles"]], ["20001", "20002"])
+        self.assertEqual([item["pmid"] for item in second.json()["articles"]], ["20003", "20004"])
+        self.assertEqual(first.json()["pagination"]["retstart"], 0)
+        self.assertEqual(first.json()["pagination"]["next_retstart"], 2)
+        self.assertTrue(first.json()["pagination"]["truncated"])
+        self.assertFalse(second.json()["pagination"]["has_more"])
+        self.assertEqual(mock_get.call_args_list[0].kwargs["params"]["retstart"], 0)
+        self.assertEqual(mock_get.call_args_list[0].kwargs["params"]["retmax"], 2)
+        self.assertEqual(mock_get.call_args_list[2].kwargs["params"]["retstart"], 2)
+
+    @patch("requests.get")
+    def test_api_search_last_offset_clamps_page_and_reports_unreachable_more(self, mock_get):
+        esearch = MagicMock()
+        esearch.status_code = 200
+        esearch.headers = {}
+        esearch.raise_for_status.return_value = None
+        esearch.json.return_value = {"esearchresult": {"count": "20000", "idlist": ["30001"]}}
+        efetch = MagicMock()
+        efetch.status_code = 200
+        efetch.headers = {}
+        efetch.raise_for_status.return_value = None
+        efetch.text = (
+            "<PubmedArticleSet><PubmedArticle><MedlineCitation><PMID>30001</PMID>"
+            "<Article><ArticleTitle>Study 30001</ArticleTitle></Article></MedlineCitation></PubmedArticle></PubmedArticleSet>"
+        )
+        mock_get.side_effect = [esearch, efetch]
+
+        response = client.get("/api/search?query=diabetes&max_results=50&retstart=9999")
+
+        self.assertEqual(response.status_code, 200)
+        pagination = response.json()["pagination"]
+        self.assertEqual(pagination["retstart"], 9999)
+        self.assertEqual(pagination["page_size"], 1)
+        self.assertTrue(pagination["limit_applied"])
+        self.assertTrue(pagination["has_more"])
+        self.assertTrue(pagination["retrieval_window_exhausted"])
+        self.assertIsNone(pagination["next_retstart"])
+        self.assertEqual(mock_get.call_args_list[0].kwargs["params"]["retstart"], 9999)
+        self.assertEqual(mock_get.call_args_list[0].kwargs["params"]["retmax"], 1)
+
     @patch("api.search_pubmed")
     def test_api_search_masks_upstream_error_details(self, mock_search):
         mock_search.return_value = {
@@ -58,9 +127,11 @@ class TestFastAPIApp(unittest.TestCase):
         bad_sort = client.get("/api/search?query=diabetes&sort=arbitrary")
         reversed_years = client.get("/api/search?query=diabetes&start_year=2024&end_year=2020")
         too_long_query = client.get(f"/api/search?query={'x' * 2001}")
+        invalid_offset = client.get("/api/search?query=diabetes&retstart=10000")
         self.assertEqual(bad_sort.status_code, 422)
         self.assertEqual(reversed_years.status_code, 422)
         self.assertEqual(too_long_query.status_code, 422)
+        self.assertEqual(invalid_offset.status_code, 422)
         mock_search.assert_not_called()
 
     @patch("api.verify_pmid")

@@ -1,6 +1,6 @@
 # Çok Branşlı Doğrulama Raporu
 
-Oluşturulma: 2026-11-01 · Yazılım: `v1.5.0` · Kanıt veri modeli: `1.0.0`
+Oluşturulma: 2026-11-01 · Yazılım: `v1.5.0` · Kanıt veri modeli: `1.1.0`
 
 Bu rapor `python validation/run_multispecialty_validation.py` ile üretilir; elle düzenlenmez.
 
@@ -15,8 +15,8 @@ Bu rapor `python validation/run_multispecialty_validation.py` ile üretilir; ell
 
 | Ölçüt | Geliştirme kümesi (ayarlı) | **Ayrılmış küme 1, ilk çalıştırma (bağımsız)** | **Ayrılmış küme 2, ilk çalıştırma (bağımsız)** | Küme 1 + 2, düzeltme sonrası (bağımsız değil) |
 |---|---|---|---|---|
-| Eksiksiz çıkarım oranı | %100.0 (153/153) | **%77.9 (53/68)** | **%78.8 (52/66)** | %100.0 (68/68) / %93.9 (62/66) |
-| Yanlış çıkarım oranı | %0.0 (0/153) | **%8.6 (5/58)** | **%11.9 (7/59)** | %0.0 (0/68) / %1.6 (1/63) |
+| Eksiksiz çıkarım oranı | %98.7 (151/153) | **%77.9 (53/68)** | **%78.8 (52/66)** | %100.0 (68/68) / %93.9 (62/66) |
+| Yanlış çıkarım oranı | %0.0 (0/151) | **%8.6 (5/58)** | **%11.9 (7/59)** | %0.0 (0/68) / %1.6 (1/63) |
 | Kaynak eşleşme doğruluğu (cümle) | %100.0 (210/210) | **%100.0 (62/62)** | **%100.0 (73/73)** | %100.0 (92/92) / %100.0 (87/87) |
 | Kaynak eşleşme doğruluğu (sayısal değer) | %100.0 (160/160) | **%100.0 (52/52)** | **%100.0 (48/48)** | %100.0 (67/67) / %100.0 (63/63) |
 | Yanlış nedensellik iddiası | 0 | **0** | **0** | 0 / 0 |
@@ -98,8 +98,8 @@ Puanlama `python validation/run_external_reference_check.py` ile yapılır ve ya
 
 | Ölçüt | Değer |
 |---|---|
-| Eksiksiz çıkarım oranı | %100.0 (153/153) |
-| Yanlış çıkarım oranı | %0.0 (0/153) |
+| Eksiksiz çıkarım oranı | %98.7 (151/153) |
+| Yanlış çıkarım oranı | %0.0 (0/151) |
 | Kaynak eşleşme doğruluğu (cümle) | %100.0 (210/210) |
 | Kaynak eşleşme doğruluğu (sayısal değer) | %100.0 (160/160) |
 | Yanlış nedensellik iddiası | 0 |
@@ -113,10 +113,10 @@ Puanlama `python validation/run_external_reference_check.py` ile yapılır ve ya
 
 | Branş | Yayın | Tasarımlar | Eksiksiz çıkarım | Yanlış çıkarım |
 |---|---|---|---|---|
-| Cerrahi | 4 | Kohort, Mektup (özet yok), RCT | %100.0 (15/15) | %0.0 (0/15) |
+| Cerrahi | 4 | Kohort, Mektup (özet yok), RCT | %93.3 (14/15) | %0.0 (0/14) |
 | Endokrinoloji | 4 | Kohort, Meta-analiz, RCT | %100.0 (16/16) | %0.0 (0/16) |
 | Enfeksiyon | 5 | Olgu serisi, RCT, Tanısal doğruluk | %100.0 (16/16) | %0.0 (0/16) |
-| Kardiyoloji | 5 | Meta-analiz, RCT, Sistematik derleme | %100.0 (30/30) | %0.0 (0/30) |
+| Kardiyoloji | 5 | Meta-analiz, RCT, Sistematik derleme | %96.7 (29/30) | %0.0 (0/29) |
 | Nöroloji | 5 | Kohort, Meta-analiz, Protokol (sonuç yok), RCT | %100.0 (21/21) | %0.0 (0/21) |
 | Onkoloji | 6 | Olgu serisi, RCT, Vaka-kontrol | %100.0 (25/25) | %0.0 (0/25) |
 | Pediatri | 3 | Kohort, RCT | %100.0 (15/15) | %0.0 (0/15) |
@@ -130,19 +130,18 @@ Puanlama `python validation/run_external_reference_check.py` ile yapılır ve ya
 | Olgu serisi | 4 | %100.0 (8/8) | %0.0 (0/8) |
 | Kohort | 7 | %100.0 (22/22) | %0.0 (0/22) |
 | Tanısal doğruluk | 3 | %100.0 (11/11) | %0.0 (0/11) |
-| Mektup (özet yok) | 1 | %100.0 (3/3) | %0.0 (0/3) |
+| Mektup (özet yok) | 1 | %66.7 (2/3) | %0.0 (0/2) |
 | Meta-analiz | 6 | %100.0 (32/32) | %0.0 (0/32) |
 | Protokol (sonuç yok) | 1 | %100.0 (1/1) | %0.0 (0/1) |
-| RCT | 10 | %100.0 (66/66) | %0.0 (0/66) |
+| RCT | 10 | %98.5 (65/66) | %0.0 (0/65) |
 | Sistematik derleme | 1 | %100.0 (5/5) | %0.0 (0/5) |
 
 ### Çalışma ilişkileri (mükerrer kanıt kontrolü)
 
 - Bağımsız birincil kanıt birimi: 24
-- Aynı çalışma kümesi: PMID 34449189, 36129693
 - Aynı çalışma kümesi: PMID 37272513, 39288781
-- Aynı çalışma kümesi: PMID 33017106, 34694761
-- PMID 36041474 (kanıt sentezi), PMID 34449189, 36129693 ile aynı katılımcıları içeriyor; bu katılımcılar bağımsız kanıt toplamına iki kez eklenmedi.
+- PMID 36041474 (kanıt sentezi), PMID 34449189 ile aynı katılımcıları içeriyor; bu katılımcılar bağımsız kanıt toplamına iki kez eklenmedi.
+- PMID 36041474 (kanıt sentezi), PMID 36129693 ile aynı katılımcıları içeriyor; bu katılımcılar bağımsız kanıt toplamına iki kez eklenmedi.
 
 ### Rapor doğrulama durumu (branş başına tam Türkçe rapor)
 
@@ -182,6 +181,8 @@ Puanlama `python validation/run_external_reference_check.py` ile yapılır ve ya
 
 ### Eksik ve yanlış öğeler (çalışma bazında)
 
+- **PMID 36129693:** EKSİK: 36129693 ana çalışma bağlantısı [] (beklenen 34449189)
+- **PMID 34694761:** EKSİK: 34694761 ana çalışma bağlantısı [] (beklenen 33017106)
 
 ### Test kategorileri
 

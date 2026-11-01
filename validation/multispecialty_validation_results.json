@@ -2,23 +2,23 @@
  "development": {
   "generated": "2026-11-01",
   "app_version": "v1.5.0",
-  "evidence_model_version": "1.0.0",
+  "evidence_model_version": "1.1.0",
   "n_studies": 35,
   "n_specialties": 8,
   "overall": {
    "reference_items": 153,
-   "complete": 153,
-   "complete_rate": 1.0,
-   "extracted": 153,
+   "complete": 151,
+   "complete_rate": 0.9869,
+   "extracted": 151,
    "false": 0,
    "false_rate": 0.0
   },
   "per_specialty": {
    "Cerrahi": {
     "reference_items": 15,
-    "complete": 15,
-    "complete_rate": 1.0,
-    "extracted": 15,
+    "complete": 14,
+    "complete_rate": 0.9333,
+    "extracted": 14,
     "false": 0,
     "false_rate": 0.0,
     "studies": 4,
@@ -58,9 +58,9 @@
    },
    "Kardiyoloji": {
     "reference_items": 30,
-    "complete": 30,
-    "complete_rate": 1.0,
-    "extracted": 30,
+    "complete": 29,
+    "complete_rate": 0.9667,
+    "extracted": 29,
     "false": 0,
     "false_rate": 0.0,
     "studies": 5,
@@ -165,9 +165,9 @@
    },
    "Mektup (özet yok)": {
     "reference_items": 3,
-    "complete": 3,
-    "complete_rate": 1.0,
-    "extracted": 3,
+    "complete": 2,
+    "complete_rate": 0.6667,
+    "extracted": 2,
     "false": 0,
     "false_rate": 0.0,
     "studies": 1
@@ -192,9 +192,9 @@
    },
    "RCT": {
     "reference_items": 66,
-    "complete": 66,
-    "complete_rate": 1.0,
-    "extracted": 66,
+    "complete": 65,
+    "complete_rate": 0.9848,
+    "extracted": 65,
     "false": 0,
     "false_rate": 0.0,
     "studies": 10
@@ -220,21 +220,14 @@
   "relations_summary": {
    "independent_primary_units": 24,
    "clusters_with_multiple_reports": {
-    "34449189": [
-     "34449189",
-     "36129693"
-    ],
-    "37272513": [
+    "39288781": [
      "37272513",
      "39288781"
-    ],
-    "33017106": [
-     "33017106",
-     "34694761"
     ]
    },
    "overlap_notes": [
-    "PMID 36041474 (kanıt sentezi), PMID 34449189, 36129693 ile aynı katılımcıları içeriyor; bu katılımcılar bağımsız kanıt toplamına iki kez eklenmedi."
+    "PMID 36041474 (kanıt sentezi), PMID 34449189 ile aynı katılımcıları içeriyor; bu katılımcılar bağımsız kanıt toplamına iki kez eklenmedi.",
+    "PMID 36041474 (kanıt sentezi), PMID 36129693 ile aynı katılımcıları içeriyor; bu katılımcılar bağımsız kanıt toplamına iki kez eklenmedi."
    ]
   },
   "source_match": {
@@ -449,7 +442,9 @@
   },
   "study_details": {
    "34449189": [],
-   "36129693": [],
+   "36129693": [
+    "EKSİK: 36129693 ana çalışma bağlantısı [] (beklenen 34449189)"
+   ],
    "36041474": [],
    "42952754": [],
    "36035905": [],
@@ -477,7 +472,9 @@
    "39826968": [],
    "31589251": [],
    "33017106": [],
-   "34694761": [],
+   "34694761": [
+    "EKSİK: 34694761 ana çalışma bağlantısı [] (beklenen 33017106)"
+   ],
    "41488832": [],
    "41420164": [],
    "41613714": [],
@@ -488,7 +485,7 @@
  "holdout_current": {
   "generated": "2026-11-01",
   "app_version": "v1.5.0",
-  "evidence_model_version": "1.0.0",
+  "evidence_model_version": "1.1.0",
   "n_studies": 16,
   "n_specialties": 8,
   "overall": {
@@ -1182,7 +1179,7 @@
  "holdout2_current": {
   "generated": "2026-11-01",
   "app_version": "v1.5.0",
-  "evidence_model_version": "1.0.0",
+  "evidence_model_version": "1.1.0",
   "n_studies": 17,
   "n_specialties": 9,
   "overall": {

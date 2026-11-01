@@ -1,4 +1,4 @@
-# Direct dependencies pinned together on Python 3.12 (2026-11-01).
+# Direct dependencies pinned together for Python 3.11 and 3.12 (2026-11-01).
 # streamlit 1.66.1 and pandas 3.1.0 require Python >= 3.11.
 requests==2.34.2
 streamlit==1.66.1

@@ -17,6 +17,7 @@ _RETRY_DELAYS_SECONDS = (1.0, 2.0, 4.0)
 PUBMED_ESEARCH_URL = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi"
 PUBMED_EFETCH_URL = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi"
 CROSSREF_API_URL = "https://api.crossref.org/works/"
+MAX_ESEARCH_RESULT_WINDOW = 10_000
 
 # Non-personal fallbacks. Operators should set NCBI_TOOL and NCBI_EMAIL.
 DEFAULT_NCBI_TOOL = "MedicalResearchAI"
@@ -261,6 +262,35 @@ def parse_pubmed_xml(xml_content: str) -> List[Dict[str, Any]]:
     return articles
 
 
+def _pagination_metadata(
+    retstart: int,
+    requested_page_size: int,
+    page_size: int,
+    total_count: int,
+    id_count: int = 0,
+    returned_count: int = 0,
+    result_available: bool = True,
+) -> Dict[str, Any]:
+    next_offset = retstart + id_count
+    has_more = next_offset < total_count
+    return {
+        "retstart": retstart,
+        "requested_page_size": requested_page_size,
+        "page_size": page_size,
+        "id_count": id_count,
+        "returned_count": returned_count,
+        "total_count": total_count,
+        "has_more": has_more,
+        "truncated": has_more,
+        "complete_result_set": result_available and retstart == 0 and not has_more,
+        "next_retstart": (next_offset if id_count > 0 and has_more
+                          and next_offset < MAX_ESEARCH_RESULT_WINDOW else None),
+        "limit_applied": page_size < requested_page_size or has_more,
+        "max_retrievable_ids": MAX_ESEARCH_RESULT_WINDOW,
+        "retrieval_window_exhausted": next_offset >= MAX_ESEARCH_RESULT_WINDOW and total_count > MAX_ESEARCH_RESULT_WINDOW,
+    }
+
+
 def search_pubmed(
     query: str,
     max_results: int = 10,
@@ -282,9 +312,23 @@ def search_pubmed(
     import datetime
     search_date_str = datetime.date.today().strftime("%Y-%m-%d")
 
+    requested_page_size = int(max_results)
+    requested_retstart = int(retstart)
+    if requested_page_size < 1 or requested_retstart < 0 or requested_retstart >= MAX_ESEARCH_RESULT_WINDOW:
+        return {
+            "articles": [], "total_count": 0, "query": query, "search_date": search_date_str,
+            "search_params": {"max_results": max_results, "retstart": retstart, "sort": sort,
+                              "publication_type": publication_type, "start_year": start_year, "end_year": end_year},
+            "error": f"Sayfalama sınırları geçersiz; retstart 0–{MAX_ESEARCH_RESULT_WINDOW - 1} ve max_results en az 1 olmalıdır.",
+            "pagination": _pagination_metadata(max(0, requested_retstart), max(0, requested_page_size), 0, 0,
+                                               result_available=False),
+        }
+    effective_page_size = min(requested_page_size, MAX_ESEARCH_RESULT_WINDOW - requested_retstart)
+
     search_params_summary = {
-        "max_results": max_results,
-        "retstart": retstart,
+        "max_results": requested_page_size,
+        "effective_max_results": effective_page_size,
+        "retstart": requested_retstart,
         "sort": sort,
         "publication_type": publication_type,
         "start_year": start_year,
@@ -297,7 +341,8 @@ def search_pubmed(
             "total_count": 0,
             "query": query,
             "search_date": search_date_str,
-            "search_params": search_params_summary
+            "search_params": search_params_summary,
+            "pagination": _pagination_metadata(requested_retstart, requested_page_size, effective_page_size, 0)
         }
 
     term = query.strip()
@@ -307,8 +352,8 @@ def search_pubmed(
     esearch_params = {
         "db": "pubmed",
         "term": term,
-        "retmax": max_results,
-        "retstart": retstart,
+        "retmax": effective_page_size,
+        "retstart": requested_retstart,
         "retmode": "json",
         "sort": sort,
     }
@@ -323,6 +368,8 @@ def search_pubmed(
             "query": query,
             "search_date": search_date_str,
             "search_params": search_params_summary,
+            "pagination": _pagination_metadata(requested_retstart, requested_page_size, effective_page_size, 0,
+                                               result_available=False),
             "error": str(exc)
         }
     if _date_range:
@@ -344,6 +391,8 @@ def search_pubmed(
                 "query": query,
                 "search_date": search_date_str,
                 "search_params": search_params_summary,
+                "pagination": _pagination_metadata(requested_retstart, requested_page_size, effective_page_size, 0,
+                                                   result_available=False),
                 "error": "PubMed arama isteği işlenemedi. Sorgu biçimini kontrol edin veya daha sonra tekrar deneyin."
             }
         if "errorlist" in esearch_result:
@@ -353,6 +402,8 @@ def search_pubmed(
                 "query": query,
                 "search_date": search_date_str,
                 "search_params": search_params_summary,
+                "pagination": _pagination_metadata(requested_retstart, requested_page_size, effective_page_size, 0,
+                                                   result_available=False),
                 "error": "PubMed arama isteği işlenemedi. Sorgu biçimini kontrol edin veya daha sonra tekrar deneyin."
             }
 
@@ -362,10 +413,12 @@ def search_pubmed(
         if not id_list:
             return {
                 "articles": [],
-                "total_count": 0,
+                "total_count": total_count,
                 "query": query,
                 "search_date": search_date_str,
-                "search_params": search_params_summary
+                "search_params": search_params_summary,
+                "pagination": _pagination_metadata(requested_retstart, requested_page_size,
+                                                   effective_page_size, total_count)
             }
 
         # Fetch article metadata using efetch
@@ -406,7 +459,10 @@ def search_pubmed(
             "total_count": total_count,
             "query": query,
             "search_date": search_date_str,
-            "search_params": search_params_summary
+            "search_params": search_params_summary,
+            "pagination": _pagination_metadata(requested_retstart, requested_page_size,
+                                               effective_page_size, total_count, len(id_list),
+                                               len(deduped_articles))
         }
 
     except Exception as e:
@@ -417,6 +473,8 @@ def search_pubmed(
             "query": query,
             "search_date": search_date_str,
             "search_params": search_params_summary,
+            "pagination": _pagination_metadata(requested_retstart, requested_page_size, effective_page_size, 0,
+                                               result_available=False),
             "error": "PubMed'e erişim sırasında geçici bir hata oluştu."
         }
 

@@ -121,6 +121,7 @@ def health_check():
 def api_search_pubmed(
     query: str = Query(..., min_length=1, max_length=2000, description="Clinical query or medical term"),
     max_results: int = Query(10, ge=1, le=50, description="Max results to return"),
+    retstart: int = Query(0, ge=0, le=9999, description="Zero-based PubMed result offset (single-query retrieval window: 10,000 IDs)"),
     sort: Literal["relevance", "pub_date"] = Query("relevance", description="Sort order: relevance or pub_date"),
     publication_type: Optional[str] = Query("Tümü", max_length=100, description="Filter by publication type"),
     start_year: Optional[int] = Query(None, ge=1800, le=2100, description="Start publication year"),
@@ -131,6 +132,7 @@ def api_search_pubmed(
     result = search_pubmed(
         query=query,
         max_results=max_results,
+        retstart=retstart,
         sort=sort,
         publication_type=publication_type,
         start_year=start_year,

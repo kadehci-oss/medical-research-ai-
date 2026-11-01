@@ -33,7 +33,7 @@ from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 import report_generator as rg
 
-EVIDENCE_MODEL_VERSION = "1.0.0"
+EVIDENCE_MODEL_VERSION = "1.1.0"
 
 NOT_REPORTED_TR = "özette bildirilmedi"
 NOT_ASSESSED_TR = "Değerlendirilmedi"
@@ -59,6 +59,16 @@ class EvidenceSource:
     verification_status: str = SOURCE_MISSING
     citation_status: str = "not_checked"  # verified | rejected | unverified | not_checked
     note: str = ""
+
+
+@dataclass
+class FollowUpTimepoint:
+    """Explicit outcome follow-up time copied from a verified source sentence."""
+    value: float
+    unit: str  # day | week | month | year
+    qualifier: str  # median | mean | follow_up | outcome_timepoint
+    raw_text: str
+    source: EvidenceSource
 
 
 @dataclass
@@ -125,6 +135,7 @@ class EffectEstimate:
     validation: str = "gecerli"
     validation_note: str = ""
     source: EvidenceSource = field(default_factory=EvidenceSource)
+    follow_up_timepoint: Optional[FollowUpTimepoint] = None
 
     @property
     def usable(self) -> bool:
@@ -282,6 +293,60 @@ def _source(article: Dict[str, Any], sentence: str, note: str = "") -> EvidenceS
         citation_status=str(article.get("_citation_status") or "not_checked"),
         note=note,
     )
+
+
+_FOLLOW_UP_PATTERNS = [
+    ("median", re.compile(
+        r"\bmedian\s+follow[- ]?up\b[^.;]{0,60}?\b(?:was|of|:)\s*"
+        r"(?P<value>\d+(?:[.,]\d+)?)\s*(?P<unit>days?|weeks?|months?|years?)\b", re.IGNORECASE)),
+    ("mean", re.compile(
+        r"\bmean\s+follow[- ]?up\b[^.;]{0,60}?\b(?:was|of|:)\s*"
+        r"(?P<value>\d+(?:[.,]\d+)?)\s*(?P<unit>days?|weeks?|months?|years?)\b", re.IGNORECASE)),
+    ("follow_up", re.compile(
+        r"\bfollow[- ]?up(?:\s+(?:duration|period))?\b[^.;]{0,24}?\b(?:of|was|for|:)\s*"
+        r"(?P<value>\d+(?:[.,]\d+)?)\s*(?P<unit>days?|weeks?|months?|years?)\b", re.IGNORECASE)),
+    ("follow_up", re.compile(
+        r"\b(?P<value>\d+(?:[.,]\d+)?)\s*[- ](?P<unit>days?|weeks?|months?|years?)\s+follow[- ]?up\b", re.IGNORECASE)),
+    ("follow_up", re.compile(
+        r"\b(?:at|by|through)\s+(?P<value>\d+(?:[.,]\d+)?)\s*(?P<unit>days?|weeks?|months?|years?)(?:['’]s)?\s+follow[- ]?up\b", re.IGNORECASE)),
+    ("outcome_timepoint", re.compile(
+        r"\b(?:survival|mortality|event[- ]free|progression[- ]free|recurrence|relapse|response|"
+        r"death|outcomes?|readmission|hospitali[sz]ation)\b[^.;]{0,60}?\b(?:at|by|through)\s+"
+        r"(?P<value>\d+(?:[.,]\d+)?)\s*(?P<unit>days?|weeks?|months?|years?)\b", re.IGNORECASE)),
+    ("outcome_timepoint", re.compile(
+        r"\b(?P<value>\d+(?:[.,]\d+)?)\s*[- ](?P<unit>days?|weeks?|months?|years?)\s+"
+        r"(?:(?:overall|event[- ]free|progression[- ]free)\s+)?(?:survival|mortality|outcomes?|response)\b", re.IGNORECASE)),
+]
+
+
+def extract_follow_up_timepoint(sentence: str, source: EvidenceSource) -> Optional[FollowUpTimepoint]:
+    """Extract one unambiguous explicit timepoint from its verified source sentence.
+
+    Multiple distinct periods in the same sentence are deliberately left unknown;
+    this avoids attaching a study-level follow-up duration to a different outcome
+    assessment time.
+    """
+    if not sentence or source.verification_status != SOURCE_VERIFIED:
+        return None
+    candidates = []
+    unit_names = {"days": "day", "weeks": "week", "months": "month", "years": "year"}
+    for qualifier, pattern in _FOLLOW_UP_PATTERNS:
+        for match in pattern.finditer(normalize_text(sentence)):
+            raw_value = match.group("value")
+            # In English abstracts a comma before three digits is commonly a
+            # thousands separator (e.g. 1,200 days), not a decimal mark.
+            # Leave that ambiguous notation unstructured rather than misstate it.
+            if "," in raw_value and len(raw_value.rsplit(",", 1)[1]) == 3:
+                continue
+            value = float(raw_value.replace(",", "."))
+            unit = unit_names.get(match.group("unit").casefold().rstrip("s"), match.group("unit").casefold().rstrip("s"))
+            candidates.append((value, unit, qualifier, match.group(0)))
+    identities = {(value, unit) for value, unit, _qualifier, _raw in candidates}
+    if len(identities) != 1:
+        return None
+    value, unit = next(iter(identities))
+    chosen = next(item for item in candidates if item[0] == value and item[1] == unit)
+    return FollowUpTimepoint(value=value, unit=unit, qualifier=chosen[2], raw_text=chosen[3], source=source)
 
 
 _WORD_NUMBERS = {
@@ -1793,11 +1858,6 @@ _RELATION_CUES = [
         r"open-label\s+extension|\d+-year\s+(?:follow-up|outcomes|results))\b", re.IGNORECASE)),
     ("updated_analysis", re.compile(r"\b(?:second|third|final)\s+interim\s+analysis\b|\bupdated\s+(?:analysis|results)\b|\bat\s+the\s+first\s+interim\s+analysis\b[^.]*\bwe\s+report\b", re.IGNORECASE)),
 ]
-_TITLE_STOP = {
-    "a", "an", "the", "of", "in", "for", "with", "and", "or", "to", "on", "versus", "vs", "trial", "study",
-    "randomized", "randomised", "comparing", "patients", "analysis", "effect", "effects", "outcomes", "longer", "term",
-    "long", "results", "clinical", "from", "by", "at",
-}
 
 
 def extract_registry_ids(article: Dict[str, Any]) -> List[str]:
@@ -1860,14 +1920,20 @@ def detect_report_role(article: Dict[str, Any], design_key: str) -> str:
     return "primary"
 
 
-def _title_tokens(title: str) -> set:
-    words = re.findall(r"[a-z]+", (title or "").lower())
-    tokens = set()
-    for word in words:
-        if word in _TITLE_STOP or len(word) < 4:
-            continue
-        tokens.add(word[:8])  # crude stem: appendectomy / appendicectomy differ, antibiotics/antibiotic agree
-    return tokens
+def _explicit_parent_identity_reference(derived: Study, identity: str) -> bool:
+    """Require a source-text relation phrase that names the proposed parent."""
+    token = re.escape(identity)
+    text = normalize_text(f"{derived.title}. {derived.legacy.get('abstract', '')}")
+    patterns = (
+        rf"\b(?:secondary|post[- ]?hoc|exploratory|ancillary|prespecified|pre-specified|subgroup)\s+"
+        rf"(?:subgroup\s+)?analys[ie]s\s+(?:of|from)\s+(?:the\s+)?{token}\b",
+        rf"\b(?:first|second|third|final)\s+interim\s+analys[ie]s\s+(?:of|from)\s+(?:the\s+)?{token}\b",
+        rf"\b(?:updated|long[- ]term|extended)\s+(?:analys[ie]s|results|outcomes|follow[- ]?up)\s+"
+        rf"(?:of|from)\s+(?:the\s+)?{token}\b",
+        rf"\b(?:follow[- ]?up|extension)\s+(?:report|analysis|outcomes|results)?\s*(?:of|from)\s+(?:the\s+)?{token}\b",
+        rf"\b(?:analysis|results|outcomes)\s+(?:of|from)\s+(?:the\s+)?{token}\s+(?:trial|study)\b",
+    )
+    return any(re.search(pattern, text, re.IGNORECASE) for pattern in patterns)
 
 
 def link_studies(studies: List[Study]) -> Dict[str, Any]:
@@ -1890,43 +1956,27 @@ def link_studies(studies: List[Study]) -> Dict[str, Any]:
             parent[rb] = ra
 
     primaries = [s for s in studies if s.report_role != "evidence_synthesis"]
-    # 1) Shared registry numbers or trial acronyms -> same trial.
-    for i, a in enumerate(primaries):
-        for b in primaries[i + 1:]:
-            shared_ids = set(a.registry_ids) & set(b.registry_ids)
-            shared_acr = {x.lower() for x in a.trial_acronyms} & {x.lower() for x in b.trial_acronyms}
-            if shared_ids or shared_acr:
-                union(a.pmid, b.pmid)
-                basis = "ortak kayıt numarası: " + ", ".join(sorted(shared_ids)) if shared_ids else \
-                    "ortak çalışma kısaltması: " + ", ".join(sorted(shared_acr))
-                derived, base = (a, b) if a.report_role != "primary" and b.report_role == "primary" else (b, a)
-                if derived.report_role == "primary" and base.report_role == "primary":
-                    # Two "primary" reports of one trial: the later one is a further report.
-                    derived, base = sorted((a, b), key=lambda s: (s.year or "", s.pmid))[::-1]
-                    derived.report_role = "updated_analysis"
-                derived.relations.append(StudyRelation(derived.report_role, base.pmid, basis, "kesin"))
-    # 2) Derived reports without an identifier: conservative title similarity.
-    for study in primaries:
-        if study.report_role == "primary" or study.relations:
+    # 1) Link a derived report only when its own source text explicitly names one
+    # unique primary parent. Shared identifiers/acronyms alone are insufficient.
+    for derived in (s for s in primaries if s.report_role != "primary"):
+        candidates = []
+        for base in (s for s in primaries if s.report_role == "primary"):
+            shared_ids = set(derived.registry_ids) & set(base.registry_ids)
+            base_acronyms = {x.casefold() for x in base.trial_acronyms}
+            shared_acronyms = [x for x in derived.trial_acronyms if x.casefold() in base_acronyms]
+            identities = sorted(shared_ids) + sorted(shared_acronyms, key=str.casefold)
+            explicit = [identity for identity in identities if _explicit_parent_identity_reference(derived, identity)]
+            if explicit:
+                candidates.append((base, explicit))
+        # Multiple plausible parents (for example, an analysis pooling trials)
+        # are ambiguous, so do not collapse their cohorts into one evidence unit.
+        if len(candidates) != 1:
             continue
-        mine = _title_tokens(study.title)
-        best, best_score = None, 0.0
-        for other in primaries:
-            if other.pmid == study.pmid or other.report_role != "primary":
-                continue
-            theirs = _title_tokens(other.title)
-            if not mine or not theirs:
-                continue
-            score = len(mine & theirs) / len(mine | theirs)
-            if score > best_score:
-                best, best_score = other, score
-        if best is not None and best_score >= 0.3 and best.journal and best.journal == study.journal:
-            study.relations.append(StudyRelation(
-                study.report_role, best.pmid,
-                f"başlık benzerliği {best_score:.2f} ve aynı dergi; kayıt numarası yok", "olasi",
-            ))
-            union(best.pmid, study.pmid)
-    # 3) Evidence syntheses that name a trial present in the set.
+        base, explicit = candidates[0]
+        union(derived.pmid, base.pmid)
+        basis = "açık ilişki ifadesiyle adı geçen çalışma kimliği: " + ", ".join(explicit)
+        derived.relations.append(StudyRelation(derived.report_role, base.pmid, basis, "kesin"))
+    # 2) Evidence syntheses that name a trial present in the set.
     overlap_notes = []
     for synth in studies:
         noted_roots = set()
@@ -1962,7 +2012,13 @@ def link_studies(studies: List[Study]) -> Dict[str, Any]:
         if members_studies[0].report_role == "evidence_synthesis" and len(members_studies) == 1:
             members_studies[0].counts_as_independent = False
             continue
-        anchor = primary_members[0] if primary_members else sorted(members_studies, key=lambda s: (s.year or "", s.pmid))[0]
+        if not primary_members:
+            # An unlinked secondary/updated report has no verified independent
+            # parent and is not silently promoted to a primary evidence unit.
+            for s in members_studies:
+                s.counts_as_independent = False
+            continue
+        anchor = primary_members[0]
         for s in members_studies:
             s.counts_as_independent = s is anchor and s.results_reported
         if anchor.results_reported:
@@ -2170,6 +2226,10 @@ def _build_study_uncached(article: Dict[str, Any], query: str) -> Study:
     estimates = (extract_effect_estimates(art) + extract_timepoint_proportions(art)) if results_reported else []
     if results_reported:
         estimates = reconcile_with_grounded_findings(art, estimates)
+    for estimate in estimates:
+        estimate.follow_up_timepoint = extract_follow_up_timepoint(
+            estimate.source.sentence, estimate.source
+        )
     outcomes: Dict[str, Outcome] = {}
     for est in estimates:
         name = est.outcome_name or ""
@@ -2323,6 +2383,13 @@ def iter_sourced_claims(study: Study) -> Iterable[Tuple[str, Any, EvidenceSource
                 claim = include(f"{prefix}.{suffix}", value, estimate.source)
                 if claim:
                     yield claim
+            timepoint = estimate.follow_up_timepoint
+            if timepoint is not None:
+                for suffix, value in (("value", timepoint.value), ("unit", timepoint.unit),
+                                      ("raw_text", timepoint.raw_text)):
+                    claim = include(f"{prefix}.follow_up_timepoint.{suffix}", value, timepoint.source)
+                    if claim:
+                        yield claim
 
     for index, finding in enumerate(study.other_numeric_findings):
         source = finding.get("source")
@@ -2465,6 +2532,16 @@ def format_estimate_tr(est: EffectEstimate) -> str:
     else:
         ci = "GA özette bildirilmedi"
     p = f"; {est.p_value}" if est.p_value else ""
+    timepoint = est.follow_up_timepoint
+    if timepoint is not None:
+        unit_tr = {"day": "gün", "week": "hafta", "month": "ay", "year": "yıl"}.get(timepoint.unit, timepoint.unit)
+        qualifier_tr = {
+            "median": "medyan takip",
+            "mean": "ortalama takip",
+            "follow_up": "takip",
+            "outcome_timepoint": "sonlanım zaman noktası",
+        }.get(timepoint.qualifier, "takip")
+        p += f"; {qualifier_tr}: {_fmt_num(timepoint.value)} {unit_tr}"
     flag = "" if est.usable else f" ⚠️ {est.validation_note}"
     sub = " (alt grup)" if est.subgroup else ""
     return f"{label}{sub}: {value} ({ci}{p}){flag}"
