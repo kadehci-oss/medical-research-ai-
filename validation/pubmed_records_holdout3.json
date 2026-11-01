@@ -1,0 +1,324 @@
+[
+ {
+  "pmid": "42946676",
+  "title": "Home-based nurse-led self-management support for heart failure: a randomized controlled trial.",
+  "authors": [
+   "Hakan Çelik",
+   "Betül Özen"
+  ],
+  "journal": "Primary health care research & development",
+  "pub_year": "2026",
+  "publication_types": [
+   "Journal Article",
+   "Randomized Controlled Trial"
+  ],
+  "doi": "10.1017/S1463423626102059",
+  "abstract": "To evaluate the effect of a nurse-led, stage-tailored home-based self-management and follow-up programme on self-care behaviour in people with heart failure.\n\nPeople with heart failure require ongoing education, symptom monitoring, and self-management support after specialist assessment. However, access to structured centre-based cardiac rehabilitation may be limited. A nurse-led home-based model may help bridge the gap between specialist cardiology care and community-based long-term support, particularly where rehabilitation services are unavailable.\n\nIn this parallel-group randomized controlled trial, adults aged 40-75 years with New York Heart Association class I-III heart failure and ejection fraction >30% were allocated to a 12-week home-based programme or usual care. The intervention was delivered through nurse-led home visits and telephone follow-up for clinically stable patients who could not access structured centre-based rehabilitation. The intervention group received home visits and telephone follow-up (= 32), while the control group received usual care (= 31). The primary outcome was self-care behaviour. Secondary outcomes were quality of life, self-efficacy, and physical capacity. Exploratory clinical outcomes were body composition, ejection fraction, and HbA1c level.\n\nAt 12 weeks, the intervention group had better self-care scores than the control group (17.78 ± 2.93 vs 40.00 ± 6.49). Secondary outcomes also favoured the intervention group, with better quality of life scores, higher self-efficacy scores, and greater 6-minute walk distance. Exploratory clinical outcomes showed changes in some parameters, including ejection fraction and body-fluid values. Most intervention participants reached the Transtheoretical Model action stage, and New York Heart Association class improved significantly. This primary health care-relevant home-based model was associated with improved self-care behaviour and may support continuity of care for people with heart failure after specialist cardiology assessment when centre-based rehabilitation is unavailable.\n\nThe programme improved self-care in people with heart failure and showed potential to support home-based self-management when centre-based cardiac rehabilitation was unavailable.",
+  "pubmed_url": "https://pubmed.ncbi.nlm.nih.gov/42946676/",
+  "doi_url": "https://doi.org/10.1017/S1463423626102059"
+ },
+ {
+  "pmid": "42965030",
+  "title": "Real-world comparative effectiveness and safety of direct oral anticoagulants versus warfarin in patients with atrial fibrillation.",
+  "authors": [
+   "Sureerat Suwatcharangkoon",
+   "Sasivimol Rattanasiri",
+   "Nattawut Unwanatham"
+  ],
+  "journal": "International journal of cardiology. Cardiovascular risk and prevention",
+  "pub_year": "2026",
+  "publication_types": [
+   "Journal Article"
+  ],
+  "doi": "10.1016/j.ijcrp.2026.200719",
+  "abstract": "Long-term oral anticoagulants (OACs), either vitamin K antagonists or direct oral anticoagulants (DOACs), are essential for stroke prevention in atrial fibrillation (AF). However, comparative real-world evidence among DOACs in upper-middle-income settings remains inconsistent. This study compared the effectiveness and safety of DOACs with warfarin in reducing stroke or systemic embolism (SSE), major bleeding, and all-cause mortality in patients with AF.\n\nWe conducted a retrospective cohort study of patients with non-valvular AF newly prescribed OACs between 2010 and 2021 using the Ramathibodi Hospital database. Inverse probability weighting (IPW) was applied to balance baseline covariates and emulate a RCT. Hazard ratios (HRs) and 95% confidence intervals (CIs) were estimated using IPW-adjusted Cox proportional hazards models.\n\nAmong 5580 patients, 4237 received warfarin, 414 dabigatran, 428 rivaroxaban, 413 apixaban, and 88 edoxaban. Compared with warfarin, apixaban (HR 0.35; 95% CI 0.18, 0.67) was associated with significantly lower risks of SSE. Dabigatran (HR 0.43; 95% CI 0.23, 0.81) and rivaroxaban (HR 0.47; 95% CI 0.25, 0.90) significantly reduced the major bleeding risk. No DOAC was associated with reduced all-cause mortality. Sensitivity analyses confirmed the robustness of the findings.\n\nApixaban showed the most favorable profile with significant reductions in SSE and trend toward lower major bleeding compared with warfarin, supporting its preferential use for stroke prevention in this setting.",
+  "pubmed_url": "https://pubmed.ncbi.nlm.nih.gov/42965030/",
+  "doi_url": "https://doi.org/10.1016/j.ijcrp.2026.200719"
+ },
+ {
+  "pmid": "42937536",
+  "title": "Automated Opportunistic Bone Mineral Density Assessment at Low-Dose CT Lung Cancer Screening: Incident Vertebral Fractures and Mortality.",
+  "authors": [
+   "Maximilian T Löffler",
+   "Sebastian Rühling",
+   "Nico Sollmann"
+  ],
+  "journal": "Radiology",
+  "pub_year": "2026",
+  "publication_types": [
+   "Clinical Trial, Phase III",
+   "Comparative Study",
+   "Journal Article",
+   "Multicenter Study",
+   "Randomized Controlled Trial"
+  ],
+  "doi": "10.1148/radiol.260323",
+  "abstract": "Background Low-dose CT (LDCT) for lung cancer screening enables opportunistic volumetric bone mineral density (vBMD) assessment, but its prognostic value is unclear. Purpose To evaluate fully automated LDCT-derived vBMD for predicting vertebral fractures and its association with mortality in individuals who heavily smoke. Materials and Methods This secondary analysis included 55-74-year-old individuals who heavily smoked (≥30 pack-years) from the CT arm of the National Lung Screening Trial (NLST), a multicenter randomized controlled trial of LDCT versus radiography (participants recruited August 2002 to April 2004). Automated SpineQ software (Bonescreen) was used to measure thoracic and lumbar vBMD (normal, ≥120 mg/cm; low bone mass [osteopenia], 80 to <120 mg/cm; osteoporosis, <80 mg/cm) and vertebral fractures (Genant scale). The outcomes included 1- and 2-year incident vertebral fractures and 6-year mortality (active follow-up to 2009). Poisson and Cox models were adjusted for demographic variables, available comorbidities, and baseline vertebral fractures. Results The NLST included 26 722 participants in the CT arm, with 21 856 included in the present analysis (mean age, 61 years ± 5 [SD]; 12 854 male participants). The 2-year vertebral fracture incidence (= 18 211 participants with 2-year LDCT) was 0.9% for those with normal bone mass, 2.0% for those with low bone mass (adjusted relative risk, 2.07 [95% CI: 1.70, 2.53]), and 5.9% for those with osteoporosis (adjusted relative risk, 3.40 [95% CI: 2.69, 4.30]). Mortality risk (= 21 447 participants with completed follow-up [median, 6.65 years]) was associated with osteoporotic vBMD in men (adjusted hazard ratio, 1.24 [95% CI: 1.02, 1.50]). Conclusion Fully automated opportunistic assessment of spinal vBMD predicted vertebral fracture risk and was associated with mortality in men after adjustment. Individuals with osteoporotic vBMD who heavily smoked had a 2-year fracture incidence above the 5% treatment threshold according to current osteoporosis guidelines. Clinical trial registration no. NCT00047385 © RSNA, 2026See also the editorial by Bredella in this issue.",
+  "pubmed_url": "https://pubmed.ncbi.nlm.nih.gov/42937536/",
+  "doi_url": "https://doi.org/10.1148/radiol.260323"
+ },
+ {
+  "pmid": "42965526",
+  "title": "Local ablative treatment for oligoprogression during immunotherapy in metastatic non-small-cell lung cancer: a systematic review and meta-analysis.",
+  "authors": [
+   "Ismaell Massalha",
+   "Adham Hijab",
+   "Reem Zabit"
+  ],
+  "journal": "Oncoimmunology",
+  "pub_year": "2026",
+  "publication_types": [
+   "Systematic Review",
+   "Journal Article",
+   "Meta-Analysis",
+   "Review"
+  ],
+  "doi": "10.1080/2162402X.2026.2756061",
+  "abstract": "Some patients with metastatic non-small-cell lung cancer (NSCLC) receiving anti-PD-1 or anti-PD-L1 immune checkpoint inhibitors (ICIs) progress at a few sites while disease elsewhere stays controlled, a pattern consistent with focal, oligo-acquired immune escape rather than systemic treatment failure. Ablating the escaping focus may eliminate the resistant clone and preserve an otherwise effective immunotherapy line. We performed a PRISMA 2020-compliant, PROSPERO-registered systematic review and meta-analysis of local ablative treatment (LAT) for oligoprogressive or oligo-resistant metastatic NSCLC during active ICI therapy, with continuation of the same immunotherapy line after LAT. MEDLINE, PubMed, Web of Science, Scopus, and the Cochrane Library were searched from inception to March 8, 2026. From 1270 records, 22 studies were included in the qualitative synthesis. Four studies, one randomized subgroup, and three retrospective cohorts contributed to each primary analysis. LAT-oriented management was associated with improved progression-free survival (PFS; pooled hazard ratio [HR] 0.45, 95% CI 0.33-0.62; 95% prediction interval [PI] 0.28-0.74; I = 0%) and overall survival (OS; pooled HR 0.41, 95% CI 0.27-0.63; 95% PI 0.24-0.69; I = 0%). PFS and OS estimates were consistent across sensitivity analyses, including the exclusion of the one PFS estimate measured to a second progression. The evidence is predominantly observational and of low certainty, reflecting the current absence of NSCLC-specific randomized trials. On this evidence, LAT, delivered predominantly as stereotactic body radiotherapy, may be considered a continuation-enabling option for carefully selected patients with focal progression on otherwise effective immunotherapy, pending ongoing randomized trials.",
+  "pubmed_url": "https://pubmed.ncbi.nlm.nih.gov/42965526/",
+  "doi_url": "https://doi.org/10.1080/2162402X.2026.2756061"
+ },
+ {
+  "pmid": "42961600",
+  "title": "The effect of acupuncture-rehabilitation therapy on brain functional plasticity in motor aphasia after ischemic stroke: a randomized clinical neuroimaging trial.",
+  "authors": [
+   "Tian-Tian Liu",
+   "Meng Ren",
+   "Jiening Wang"
+  ],
+  "journal": "Brain imaging and behavior",
+  "pub_year": "2026",
+  "publication_types": [
+   "Journal Article",
+   "Randomized Controlled Trial"
+  ],
+  "doi": "10.1007/s11682-026-01155-5",
+  "abstract": "Motor aphasia is the most prevalent type of aphasia following ischemic stroke (IS). This study aims to evaluate the therapeutic efficacy and underlying neural mechanisms of acupuncture-rehabilitation (A-R) therapy on motor aphasia after IS. Twenty-six patients with post-IS motor aphasia were randomly assigned to either the A-R group or the Conventional Rehabilitation (CR) group in a 1:1 ratio, and matched by age and gender with 26 healthy controls (HCs). The CR group received standard treatment and language training, while the A-R group additionally underwent scalp acupoint cluster acupuncture. Behavioral assessments and Blood Oxygenation Level Dependent functional Magnetic Resonance Imaging (BOLD-fMRI) scans were conducted before and after the four-week intervention to evaluate therapeutic outcomes and underlying mechanisms. Compared to HCs, patients exhibited decreased Amplitude of Low Frequency Fluctuations (ALFF) in the right precuneus (p < 0.05) and reduced Regional Homogeneity (ReHo) in the left precuneus/postcentral gyrus (p < 0.05). Enhanced functional connectivity (FC) was observed in regions including the left Broca's area and right superior temporal gyrus, left Broca's area and right inferior frontal orbitalis gyrus, left Broca's area and right precentral gyrus, left Broca's area and right postcentral gyrus (p < 0.05). After intervention, significant improvements were observed in Aphasia Quotient (AQ) scores and sub-item performance in both patient groups (p < 0.05), with the A-R group showing greater gains in AQ and spontaneous speech scores compared to the CR group (p < 0.05). FMRI results indicated a significant increase in mean ALFF (mALFF) in the left inferior temporal gyrus after A-R treatment (p < 0.05) compared to before, and higher szReHo in the left anterior central gyrus compared to the CR group (p < 0.05). FC between the left Broca's area and right precentral gyrus decreased in the A-R group (p < 0.05). Additionally, a negative correlation was observed between the right anterior central gyrus and listening comprehension (r = -0.574, p = 0.020). The findings suggest that both A-R and CR therapies enhance language function in patients with motor aphasia post-IS, with A-R therapy demonstrating superior efficacy. The therapeutic mechanism of A-R likely involves activating left hemisphere brain regions, suppressing right hemisphere activity, and restoring hemispheric balance to facilitate functional recovery.",
+  "pubmed_url": "https://pubmed.ncbi.nlm.nih.gov/42961600/",
+  "doi_url": "https://doi.org/10.1007/s11682-026-01155-5"
+ },
+ {
+  "pmid": "42957617",
+  "title": "Improving the Diagnostic Accuracy of Plasma Alzheimer's Disease Biomarkers With Objective and Subjective Cognitive Screening.",
+  "authors": [
+   "Maryam Abdolmaleki",
+   "Leslie S Gaynor",
+   "Dandan Liu"
+  ],
+  "journal": "Annals of clinical and translational neurology",
+  "pub_year": "2026",
+  "publication_types": [
+   "Journal Article"
+  ],
+  "doi": "10.1002/acn3.70565",
+  "abstract": "Blood-based biomarkers are increasingly used to identify Alzheimer's disease (AD) pathology and may play an important role in early disease screening and participant selection for clinical trials. However, their performance across stages of cognitive impairment remains unclear. This study examined whether plasma biomarkers differ in their ability to predict amyloid pathology by performance on cognitive screening measures.\n\nParticipants were older adults from the community-based Vanderbilt Memory and Aging Project (N = 154; mean age = 72 ± 6 years; 37% MCI). Plasma phosphorylated tau (p-tau)and glial fibrillary acidic protein (GFAP) were measured using Quanterix Simoa technology. Amyloid positivity was defined by cerebrospinal fluid β-amyloid 42/40 ratio < 0.072. Objective cognitive impairment was defined as ≤ 26 on the Montreal Cognitive Assessment; cognitive complaints were assessed by a single-item self-report. Logistic regression and stratified ROC analyses evaluated associations between biomarkers and amyloid status, with area under the ROC curve (AUC) values compared using DeLong's test.\n\nForty-seven percent of participants were amyloid positive. Higher plasma p-tauwas associated with increased odds of amyloid positivity (OR = 1.18, p < 0.001; AUC = 0.73). Discriminative accuracy was significantly higher among individuals without subjective cognitive concerns (AUC = 0.85) than among those individuals with concerns (AUC = 0.67; p = 0.02). Plasma GFAP was also associated with amyloid positivity (OR = 1.01, p < 0.001; AUC = 0.75) and showed greater accuracy among participants with objective cognitive impairment (AUC = 0.82) compared to unimpaired individuals (AUC = 0.63; p = 0.03).\n\nPlasma p-tauand GFAP were associated with amyloid pathology, but their diagnostic accuracy varied by cognitive screening results, highlighting the value of integrating brief cognitive assessments when interpreting blood-based biomarkers.",
+  "pubmed_url": "https://pubmed.ncbi.nlm.nih.gov/42957617/",
+  "doi_url": "https://doi.org/10.1002/acn3.70565"
+ },
+ {
+  "pmid": "42963818",
+  "title": "Factors associated with missed video directly observed therapy sessions among persons with TB.",
+  "authors": [
+   "K Bwambale",
+   "D Nakkonde",
+   "P Kaggwa"
+  ],
+  "journal": "The international journal of tuberculosis and lung disease : the official journal of the International Union against Tuberculosis and Lung Disease",
+  "pub_year": "2026",
+  "publication_types": [
+   "Journal Article",
+   "Randomized Controlled Trial"
+  ],
+  "doi": "10.5588/ijtld.26.0194",
+  "abstract": "BACKGROUND: Advanced digital technologies, such as video directly observed therapy (VDOT), are increasingly used to support TB treatment adherence monitoring. However, missed VDOT sessions remain a challenge, particularly in low-resource settings. This study aimed to determine the factors associated with the number of missed VDOT submissions among patients using VDOT.\n\nMETHODS: We conducted a secondary analysis of data from the DOT Selfie randomised controlled trial implemented in Uganda. The outcome of interest was the number of missed VDOT sessions throughout treatment. A negative binomial regression model was used to examine factors associated with the outcome. Incidence rate ratios (IRRs) and 95% confidence intervals were reported.\n\nRESULTS: Among the 71 patients included in the analysis, 32% were HIV positive. HIV co-infection (cIRR = 2.2; 1.2-4.0), age >30 years (cIRR = 2.0; 1.1-3.6), alcohol consumption (aIRR = 2.3; 1.1-5.1), being married (aIRR = 2.2; 1.1-4.1), and having ≤4 household members (aIRR = 1.9; 1.1-3.3) were associated with a higher incidence rate of missed VDOT sessions.\n\nCONCLUSION: In this study, alcohol use and HIV co-infection independently affected missed video sessions. However, after adjusting for confounding, marital status and household size remained important factors that should be further studied.",
+  "pubmed_url": "https://pubmed.ncbi.nlm.nih.gov/42963818/",
+  "doi_url": "https://doi.org/10.5588/ijtld.26.0194"
+ },
+ {
+  "pmid": "42945222",
+  "title": "Validation of the Collaborative Ocular Tuberculosis Study (COTS) Calculator for the Diagnosis of Ocular Tuberculosis in Thai Patients.",
+  "authors": [
+   "Chanon Kulthongkam",
+   "Narumon Keorochana",
+   "Yanisiri Ngathaweesuk"
+  ],
+  "journal": "Ocular immunology and inflammation",
+  "pub_year": "2026",
+  "publication_types": [
+   "Journal Article"
+  ],
+  "doi": "10.1080/09273948.2026.2736174",
+  "abstract": "To evaluate the diagnostic accuracy of the Collaborative Ocular Tuberculosis Study (COTS) calculator in predicting ocular tuberculosis (OTB) and compare its performance with ophthalmologists' clinical judgment among Thai patients.\n\nThis retrospective study included patients with suspected OTB. Demographic, clinical, laboratory, and imaging data were scored using the COTS calculator (scores 1-5). Clinician judgment combined with treatment success served as the reference standard. Diagnostic accuracy was assessed at two thresholds: COTS ≥ 4 and COTS = 5. Sensitivity, specificity, positive predictive value (PPV), negative predictive value (NPV) and area under the ROC curve (AUC) were calculated.\n\nSixty-two patients were included (42.8 ± 16.5 years). OTB was diagnosed in 45 (72.6%). The COTS calculator demonstrated moderate overall diagnostic accuracy, with AUC of 0.675 (95%CI:0.544-0.788, = 0.0304). COTS = 5 showed the highest specificity (76.5%;95%CI,52.7-90.4) but low sensitivity (35.6%;95%CI,23.2-50.2). Clinician judgment had the highest sensitivity (100.0%;95%CI,92.1-100.0) with low specificity(29.4%;95%CI,13.3-53.1%). COTS ≥ 4 provided the best balance (sensitivity 68.9%;95%CI,54.3-80.5, specificity 70.6%,95%CI,46.9-86.7), with PPV/NPV of 86.1%/46.2% (vs. 80.0%/31.0% for COTS = 5). Clinician judgment showed the highest screening performance (PPV 78.9%,NPV 100.0%). The overall accuracy for all locations, using COTS ≥ 4, was 69.35%, while the specific accuracies for choroiditis, panuveitis, and retinal vasculitis were 80.00%, 73.08%, and 63.16% respectively.\n\nThe COTS calculator demonstrates a balanced diagnostic performance within this cohort at a cutoff score of, making it a valuable clinical adjunct. While ophthalmologists' clinical judgment provided superior sensitivity and overall accuracy. These findings support the COTS calculator as a useful adjunct, showing high accuracy specifically for choroiditis and panuveitis in diagnosing OTB.",
+  "pubmed_url": "https://pubmed.ncbi.nlm.nih.gov/42945222/",
+  "doi_url": "https://doi.org/10.1080/09273948.2026.2736174"
+ },
+ {
+  "pmid": "42964043",
+  "title": "Effects of morning versus evening exercise on vascular function in older adults with type 2 diabetes: a randomised controlled trial.",
+  "authors": [
+   "Zhiying Ma",
+   "Yanyu Lin",
+   "Zheng Zhu"
+  ],
+  "journal": "Frontiers in endocrinology",
+  "pub_year": "2026",
+  "publication_types": [
+   "Journal Article",
+   "Randomized Controlled Trial",
+   "Clinical Trial"
+  ],
+  "doi": "10.3389/fendo.2026.1976870",
+  "abstract": "Cardiovascular disease is a common complication of type 2 diabetes mellitus (T2DM), with increased risk closely associated with vascular dysfunction. Exercise is an effective strategy for improving vascular health, but whether exercise timing influences long-term vascular adaptations in patients with T2DM remains unclear. In this study, we investigated the effects of morning versus evening exercise on vascular function in older adults with T2DM.\n\nSixty-six older adults with T2DM were randomised to morning exercise, evening exercise, or control (n = 22 each). The exercise groups received 12 weeks of online moderate-intensity aerobic and resistance exercises, three times per week. The morning group exercised from 9:00 to 10:10, and the evening group from 19:00 to 20:10. The control group maintained their usual lifestyle and attended weekly health education sessions without structured exercise. Blood pressure, brachial-ankle pulse wave velocity (baPWV), flow-mediated vasodilation (FMD) and plasma nitric oxide (NO) levels were assessed at baseline and post-intervention. Outcomes were analysed using two-way repeated-measures analysis of variance, with exploratory analyses directly comparing the two exercise groups.\n\nFifty-eight participants were included in the final analysis (morning, n = 20; evening, n = 19; control, n = 19). Significant group × time interactions were observed for FMD, baPWV, systolic blood pressure (SBP), mean arterial pressure (MAP), and plasma NO (all p < 0.05). Both exercise groups increased FMD and reduced SBP, MAP, and baPWV from baseline (all p < 0.05). Plasma NO increased significantly following the evening exercise (p = 0.003), whereas no significant changes were observed following the morning exercise (p = 0.722). At post-intervention, the evening group exhibited lower MAP (p = 0.012) and higher FMD (p = 0.019) and NO levels (p = 0.012) than controls. Exploratory analyses showed a greater baPWV reduction with evening exercise (group × time interaction, p = 0.034). The increase in plasma NO was numerically greater with evening exercise, although the interaction was not statistically significant (p = 0.051).\n\nExercise timing may influence vascular adaptations in older adults with T2DM, with evening exercise potentially offering additional benefits, particularly for arterial stiffness.\n\nhttps://www.chictr.org.cn/showproj.html?proj=200163, identifier ChiCTR2300073737.",
+  "pubmed_url": "https://pubmed.ncbi.nlm.nih.gov/42964043/",
+  "doi_url": "https://doi.org/10.3389/fendo.2026.1976870"
+ },
+ {
+  "pmid": "42959821",
+  "title": "Postoperative residual patellar bone thickness and patellar height in patients with quadriceps tendon rupture after total knee arthroplasty: A retrospective case-control study.",
+  "authors": [
+   "Davide Pellicanò",
+   "Mirco Lo Presti",
+   "Maria Pia Neri"
+  ],
+  "journal": "Journal of experimental orthopaedics",
+  "pub_year": "2026",
+  "publication_types": [
+   "Journal Article"
+  ],
+  "doi": "10.1002/jeo2.70966",
+  "abstract": "Quadriceps tendon rupture following total knee arthroplasty is a rare but serious complication. This study aimed to compare postoperative residual patellar bone thickness and patellar height between patients who developed quadriceps tendon rupture after primary total knee arthroplasty and matched controls.\n\nA retrospective case-control study included 17 patients who developed quadriceps tendon rupture within 6 months after primary total knee arthroplasty and 100 controls without extensor mechanism complications. Controls were selected using group-level frequency matching for age, sex and body mass index. All patients underwent patellar resurfacing. Patellar height was assessed preoperatively and postoperatively using the Insall-Salvati index, while postoperative residual patellar bone thickness was measured on immediate postoperative lateral radiographs. Group comparisons were performed using the Wilcoxon rank-sum and Fisher's exact tests. Logistic regression was used to evaluate the association between residual patellar bone thickness and tendon rupture, with adjustment for age, sex and body mass index.\n\nNo significant differences were observed between groups in age, sex, body mass index or diabetes mellitus. Median postoperative residual patellar bone thickness was numerically lower in patients with tendon rupture than in controls (11.3 vs. 11.8 mm), but the between-group difference was not statistically significant. Residual patellar bone thickness was also not significantly associated with tendon rupture after adjustment for age, sex and body mass index (adjusted odds ratio 0.77, 95% confidence interval 0.55-1.08; = 0.127). No significant differences were observed in preoperative or postoperative Insall-Salvati index or changes in patellar height.\n\nNo significant association was identified between postoperative residual patellar bone thickness, patellar height parameters and quadriceps tendon rupture in this cohort. Given the limited number of rupture cases, smaller or moderate associations cannot be excluded.\n\nLevel III.",
+  "pubmed_url": "https://pubmed.ncbi.nlm.nih.gov/42959821/",
+  "doi_url": "https://doi.org/10.1002/jeo2.70966"
+ },
+ {
+  "pmid": "42966369",
+  "title": "Supervised physiotherapeutic scoliosis-specific exercises provide limited additional benefit at 24 months in braced adolescents with idiopathic scoliosis: a randomized trial.",
+  "authors": [
+   "Xiaohui Zhang",
+   "Meihua Liang",
+   "Yingzi Huang"
+  ],
+  "journal": "The bone & joint journal",
+  "pub_year": "2026",
+  "publication_types": [
+   "Journal Article",
+   "Randomized Controlled Trial"
+  ],
+  "doi": "10.1302/0301-620X.108B11.BJJ-2026-0416.R2",
+  "abstract": "Physiotherapeutic scoliosis-specific exercises (PSSE) are used as an adjunct to bracing in adolescent idiopathic scoliosis (AIS), although evidence for their long-term benefit remains limited. This randomized trial assessed whether supervised PSSE provide clinically important radiological and patient-reported benefits compared with self-directed exercise in patients with AIS undergoing brace treatment.\n\nPatients with AIS (major Cobb angle 25° to 45°; Risser grade 0 to 2) were recruited from a tertiary scoliosis centre between December 2018 and December 2022. Patients were randomized to supervised Schroth-based PSSE, consisting of physiotherapist-led sessions plus daily home exercises, or to self-directed general exercise. The co-primary outcomes were change in major Cobb angle and change in health-related quality of life measured using the Chinese Brace Questionnaire-34. A 5° between-group difference in Cobb angle was prespecified as the minimal clinically important difference (MCID). To provide a clinically anchored interpretation, 24-month radiological outcomes were classified as improved (> 5° decrease), stable (-5° to +5°), or worsened (> 5° increase), and compared using adjusted ordinal logistic regression in intention-to-treat (ITT) and per-protocol (PP) analyses.\n\nSupervised PSSE resulted in a greater reduction in major Cobb angle than self-directed exercise at 24 months (adjusted between-group difference -3.23° (95% CI -3.51 to -2.96); p < 0.001); however, this did not reach the prespecified MCID. There was no clinically meaningful difference in quality of life. Using the 5° threshold, radiological status was similar between groups. In the intention-to-treat analysis, the adjusted odds ratio (OR) for improved/stable/worsened status was 1.08 (95% CI 0.58 to 2.03; p = 0.805); per-protocol findings were similar (OR 1.48 (95% CI 0.75 to 2.92); p = 0.263).\n\nSupervised PSSE provided a statistically significant but clinically modest radiological benefit over self-directed exercise. This did not translate into a higher likelihood of clinically meaningful radiological improvement. No sustained clinically meaningful quality-of-life benefit was shown.",
+  "pubmed_url": "https://pubmed.ncbi.nlm.nih.gov/42966369/",
+  "doi_url": "https://doi.org/10.1302/0301-620X.108B11.BJJ-2026-0416.R2"
+ },
+ {
+  "pmid": "42963493",
+  "title": "Clinical effects of multi-strain probiotics in extremely preterm infants: a multicenter pre-post implementation study in the Netherlands.",
+  "authors": [
+   "A J van Wesemael",
+   "R R de Kroon",
+   "L M H E van Eijk"
+  ],
+  "journal": "European journal of pediatrics",
+  "pub_year": "2026",
+  "publication_types": [
+   "Journal Article",
+   "Multicenter Study"
+  ],
+  "doi": "10.1007/s00431-026-07560-8",
+  "abstract": "Probiotics may reduce the risk of necrotizing enterocolitis (NEC), late-onset sepsis (LOS), and mortality in preterm infants. However, their efficacy in extremely preterm infants (gestational age < 28 weeks) is still regularly questioned due to limited data and safety concerns. In Dutch Neonatal Intensive Care Units (NICUs), a three-strain probiotic product (ProPrems®; Bifidobacterium infantis Bb-02, Bifidobacterium lactis BB-12, and Streptococcus thermophilus TH-4) was implemented as standard of care from 2021 onwards. This study evaluates the clinical effects of these probiotics in extremely preterm infants. Pre- and postimplementation cohorts of extremely preterm infants from 6 Dutch NICUs (2018-2023) were compared. Clinical data from the first 29 days of life were collected. Incidence of NEC (modified Bell's stage ≥ IIA), LOS, and mortality were compared with logistic regression; growth velocity with linear regression; and time to full enteral feeds (tFEF) with survival analyses. In total, 481 extremely preterm infants (212 pre-, 269 post-implementation) were included. After implementation, the adjusted odds ratio was 0.49 (0.25-0.99; p = 0.049) for NEC; 0.87 (0.59-1.28; p = 0.49) for LOS; and 0.67 (0.35-1.27; p = 0.22) for all-cause mortality. Furthermore, tFEF decreased by 2 days (p < 0.001) and probiotic use was associated with an increase in growth velocity of 1.8 g/kg/day (p < 0.001). One infant (0.4%) developed probiotic-associated sepsis.\n\n This multicenter pre-postimplementation study showed that multi-strain probiotic administration was associated with lower NEC incidence, shorter tFEF, and greater growth velocity in extremely preterm infants during the first four weeks of life. Probiotic-associated sepsis was rare. These results support continued use of probiotics in this vulnerable population.\n\n• Certain probiotic strains effectively reduce incidence of necrotizing enterocolitis (NEC) in preterm infants, but the efficacy and safety for extremely preterm infants (GA < 28 weeks) remain under debate.\n\n• This study shows that a multi-strain probiotic supplement was associated with lower NEC incidence, shorter time to full enteral feeds, and greater early postnatal growth in a Dutch multicenter cohort of extremely preterm infants. • The incidence of probiotic-associated sepsis in extremely preterm infants was very low in our cohort with just 1 case (0.4%), consistent with the rare occurrence reported previously.",
+  "pubmed_url": "https://pubmed.ncbi.nlm.nih.gov/42963493/",
+  "doi_url": "https://doi.org/10.1007/s00431-026-07560-8"
+ },
+ {
+  "pmid": "42944929",
+  "title": "Comparison of laparoscopic and open gastrectomy in gastric cancer: a randomized clinical trial on sufficiency of lymph node dissection and perioperative outcomes.",
+  "authors": [
+   "Babak Mohajeri",
+   "Nasser Malekpour Alamdari",
+   "Maryam Abbasi"
+  ],
+  "journal": "Langenbeck's archives of surgery",
+  "pub_year": "2026",
+  "publication_types": [
+   "Journal Article",
+   "Randomized Controlled Trial",
+   "Comparative Study"
+  ],
+  "doi": "10.1007/s00423-026-04134-y",
+  "abstract": "To evaluate the oncological sufficiency and perioperative outcomes of laparoscopic versus open gastrectomy in patients with gastric adenocarcinoma, focusing on the sufficiency of lymph node dissection and short-term clinical results.\n\nThis single-center, single-blind, randomized clinical trial included 40 patients with gastric adenocarcinoma, allocated equally to undergo either open or laparoscopic gastrectomy with standard D2 lymphadenectomy. The primary outcome was the total number of dissected lymph nodes. Secondary outcomes included operative time, intraoperative blood loss, postoperative complications, and length of hospital stay.\n\nBoth groups were comparable in demographic and baseline clinical characteristics. The mean number of dissected lymph nodes was similar between open (25.5 ± 1.67) and laparoscopic (24.75 ± 2.12) groups (p = 0.222), meeting oncologic adequacy criteria. Laparoscopic surgery resulted in significantly less blood loss (90.00 ± 13.82 mL vs. 128.00 ± 23.96 mL, p < 0.001) and shorter hospital stay (3.95 ± 0.68 days vs. 6.65 ± 0.93 days, p < 0.001), but required longer operative time (198.75 ± 26.25 min vs. 114.00 ± 18.93 min, p < 0.001). Postoperative complication rates were lower in the laparoscopic group (10.0% vs. 30.0%), though the difference was not statistically significant (p = 0.235).\n\nLaparoscopic gastrectomy is a safe and effective alternative to open surgery for gastric cancer, achieving comparable lymphadenectomy with advantages in blood loss and recovery time. These findings support the oncological safety and perioperative benefits of the minimally invasive approach when performed by experienced surgeons.",
+  "pubmed_url": "https://pubmed.ncbi.nlm.nih.gov/42944929/",
+  "doi_url": "https://doi.org/10.1007/s00423-026-04134-y"
+ },
+ {
+  "pmid": "42966793",
+  "title": "Innovation in microsurgical nasal alar reconstruction: application of the free helical rim flap using a lateral circumflex femoral artery vascular graft.",
+  "authors": [
+   "Carmen Páez Ordoño",
+   "Jorge Iglesias Huerga",
+   "Miguel Ángel Marino García"
+  ],
+  "journal": "European archives of oto-rhino-laryngology",
+  "pub_year": "2026",
+  "publication_types": [
+   "Journal Article"
+  ],
+  "doi": "10.1007/s00405-026-10776-x",
+  "abstract": "Nasal alar reconstruction remains a major surgical challenge because of the functional, aesthetic, and structural complexity of the alar subunit. The free helical rim flap is a well-established reconstructive option for full-thickness defects; however, its principal limitation is the short vascular pedicle. We present a technical modification consisting of the use of the descending branch of the lateral circumflex femoral artery (LCFA) as an interposition vascular graft to increase pedicle length and facilitate microvascular anastomosis. A prospective case series of five patients is presented, including postoperative outcomes, complications, and functional and aesthetic results. Complete flap survival (100%) was achieved, with manageable complications and satisfactory functional and aesthetic outcomes. This technical modification expands the reconstructive possibilities of the free helical rim flap for complex nasal alar defects.",
+  "pubmed_url": "https://pubmed.ncbi.nlm.nih.gov/42966793/",
+  "doi_url": "https://doi.org/10.1007/s00405-026-10776-x"
+ },
+ {
+  "pmid": "42965524",
+  "title": "5.0 T Coronary Magnetic Resonance Angiography in Calcified Coronary Arteries: Diagnostic Performance Compared With Computed Tomography Using Invasive Angiography as Reference.",
+  "authors": [
+   "Tingyi Du",
+   "Lan Lan",
+   "Zhe Dong"
+  ],
+  "journal": "Journal of magnetic resonance imaging : JMRI",
+  "pub_year": "2026",
+  "publication_types": [
+   "Journal Article"
+  ],
+  "doi": "10.1002/jmri.70605",
+  "abstract": "Coronary computed tomography angiography (CCTA) often overestimates stenosis in calcified plaques due to blooming artifacts. The performance of 5.0 T Coronary MR angiography (CMRA) in calcified arteries remains unclear.\n\nTo assess plaque effects on 5.0 T CMRA image quality and compare diagnostic performance with CCTA.\n\nProspective.\n\nForty-six patients with suspected coronary artery disease.\n\n5.0 T; free-breathing, non-contrast 3D gradient-echo sequence, Dixon water-fat separation, artificial intelligence-assisted compressed sensing.\n\nThree blinded radiologists with 6, 8, and 12 years' experience independently evaluated all datasets. Obstructive stenosis was defined as ≥ 50%; CMRA and CCTA image quality used a 4-point scale; quantitative CMRA measures included vessel edge sharpness (VES), signal-to-noise ratio (SNR), and contrast-to-noise ratio (CNR). CCTA assessed plaque composition, calcium burden, and calcification length. Invasive angiography was the reference.\n\nDiagnostic metrics and generalized estimating equations evaluated performance and plaque-image-quality associations. Wilcoxon tests compared visual scores. Agreements used Cohen's κ, Fleiss' κ, and intraclass correlation coefficients.\n\n5.0 T CMRA showed higher specificity (90.1% vs. 77.7%, p < 0.001) and accuracy (89.4% vs. 82.8%, p = 0.006) than CCTA, with similar sensitivity (88.7% vs. 87.7%, p = 0.740). For CMRA, VES was lower in segments containing mixed plaques than in noncalcified or calcified plaques (16.0 ± 0.8 vs. 18.2 ± 0.8 and 18.3 ± 1.0; p < 0.001). Visual scores differed across calcium-burden categories (3.35 ± 0.07, 3.16 ± 0.09, 2.96 ± 0.09, and 2.79 ± 0.09; p < 0.001). Greater calcification length was associated with lower VES (B = -0.152, p = 0.008) and visual scores (B = -0.019, p = 0.019).\n\nIn this cohort, 5.0 T CMRA showed higher specificity and accuracy than CCTA, with similar sensitivity. Plaque characteristics were associated with selected CMRA image-quality measures.\n\n2.\n\nStage 2.",
+  "pubmed_url": "https://pubmed.ncbi.nlm.nih.gov/42965524/",
+  "doi_url": "https://doi.org/10.1002/jmri.70605"
+ },
+ {
+  "pmid": "42961418",
+  "title": "Survival After Risk-Reducing Mastectomy in Patients With Pathogenic Variants in BRCA1 and BRCA2: A Network Meta-Analysis.",
+  "authors": [
+   "Isabel Beshar",
+   "David Viveros-Carreño",
+   "Nuria Agusti"
+  ],
+  "journal": "JAMA network open",
+  "pub_year": "2026",
+  "publication_types": [
+   "Journal Article",
+   "Network Meta-Analysis"
+  ],
+  "doi": "10.1001/jamanetworkopen.2026.41231",
+  "abstract": "The independent survival benefit of risk-reducing mastectomy (RRM), separate from risk-reducing salpingo-oophorectomy (RRSO), remains uncertain among patients with pathogenic variants (PVs) in BRCA1 and BRCA2 genes.\n\nTo evaluate the association of RRM, magnetic resonance imaging (MRI)-based screening, and mammography alone with all-cause and breast cancer-specific mortality using RRSO-adjusted estimates.\n\nMEDLINE, Embase, and Web of Science were searched from January 1, 1990, to May 28, 2026. Search structures, subject headings, and keywords were tailored to each database.\n\nInclusion criteria were English-language prospective and retrospective observational studies of adult female patients with PV or likely PV in BRCA1 and BRCA2 who underwent RRM or breast cancer screening (MRI-based with or without mammography, or mammography alone), with RRSO excluded by design or adjusted for in multivariable analysis. Studies including females with prior breast or ovarian cancer were excluded.\n\nStudy reporting followed Preferred Reporting Items for Systematic Reviews and Meta-Analyses 2020 network meta-analysis extension. Two authors independently performed study selection, data extraction, and bias assessment using a risk-of-bias assessment tool (ROBINS-I V2) and a grading approach (Grading of Recommendations Assessment, Development, and Evaluation [GRADE]). Frequentist random-effects network meta-analysis was performed with surface under the cumulative ranking curve (SUCRA) estimation. Sensitivity analysis was conducted for the BRCA1 cohort.\n\nPrimary outcome was all-cause mortality. Secondary outcome was breast cancer-specific mortality. All outcomes were analyzed and reported as hazard ratios (HRs) with corresponding 95% CIs.\n\nFive observational studies with 7937 female patients (median [range] age, 35.9 [unreported] years to 43.4 [32.0-55.7] years) met the inclusion criteria. RRM was associated with lower all-cause mortality compared with MRI-based screening (HR, 0.37; 95% CI, 0.22-0.63) and mammography alone (HR, 0.16; 95% CI, 0.08-0.32). RRM was also associated with lower breast cancer-specific mortality compared with mammography alone (HR, 0.07; 95% CI, 0.01-0.44) but did not have significantly lower mortality than MRI-based screening (HR, 0.26; 95% CI, 0.05-1.35). In BRCA1-only analyses, RRM was associated with lower breast cancer-specific mortality compared with MRI-based screening (HR, 0.13; 95% CI, 0.03-0.66) and mammography alone (HR, 0.03; 95% CI, 0.00-0.15). SUCRA rankings indicated RRM had the highest likelihood of association with the lowest all-cause mortality (SUCRA value, 99.9%). Risk of bias was critical for 4 studies, and certainty of evidence was rated as very low for all 5 studies.\n\nIn this systematic review and network meta-analysis of RRSO-adjusted analyses, RRM was associated with lower all-cause mortality compared with breast cancer screening among females with PVs in BRCA1 and BRCA2, with the greatest magnitude of association for breast cancer-specific mortality observed in BRCA1 PV carriers. These findings provide less confounded survival estimates to support individualized shared decision-making for RRM.",
+  "pubmed_url": "https://pubmed.ncbi.nlm.nih.gov/42961418/",
+  "doi_url": "https://doi.org/10.1001/jamanetworkopen.2026.41231"
+ },
+ {
+  "pmid": "42921063",
+  "title": "Preconceptional Risk Factors Associated With Gestational Diabetes Mellitus and Pregnancy Outcomes: A Case-Control Study.",
+  "authors": [
+   "Dharitri Swain",
+   "Priyadarshini T",
+   "Tania Mishra"
+  ],
+  "journal": "Cureus",
+  "pub_year": "2026",
+  "publication_types": [
+   "Journal Article"
+  ],
+  "doi": "10.7759/cureus.116764",
+  "abstract": "Gestational diabetes mellitus (GDM) is a major endocrine problem complicating pregnancy worldwide, and pregnancies complicated by GDM are associated with adverse birth outcomes. This study aimed to identify preconceptional risk factors and birth outcomes associated with GDM.\n\nA hospital-based case-control study was conducted among antenatal mothers seeking routine antenatal care at selected maternity hospitals in Khurdha district, Odisha, India. The study comprised 143 women with GDM and 143 gestational age-matched controls. Data were collected using a structured questionnaire and interviews. Data were entered and analyzed using SPSS, version 21 (IBM Corp., Armonk, NY).\n\nThe point prevalence of GDM in the study population was 9.9%. The preconceptional risk factors, such as preconception body mass index (BMI) (odds ratio (OR) = 3.01, 95% confidence interval (CI): 1.78-5.09,< 0.001), sedentary lifestyle (OR = 2.79, 95% CI: 1.33-5.88,= 0.00), previous history of diabetes (OR = 3.72, 95% CI: 1.33-10.39,= 0.00), family history of diabetes (OR = 1.94, 95% CI: 1.16-3.24,= 0.01), and domestic violence (OR = 2.14, 95% CI: 1.13-4.06,= 0.02) had significantly higher odds of developing GDM compared with non-GDM women. In relation to the obstetrical risk factors, early age at menarche (≤12 years) (OR = 2.79, 95% CI: 1.72-4.54,< 0.001), previous history of GDM (OR = 2.42, 95% CI: 1.06-5.52,= 0.03), primipara mothers (OR = 2.21, 95% CI: 1.38-3.56,= 0.001), previous history of macrosomia (OR = 16.6, 95% CI: 2.16-127.76,< 0.001), history of preterm delivery (OR = 2.78, 95% CI: 1.35-5.69,= 0.004), and history of using steroid medications (OR = 2.42, 95% CI: 1.06-5.52,= 0.03) increased the likelihood of developing GDM in the subsequent pregnancy. Furthermore, GDM was significantly associated with antepartum depression and adverse intrapartum and neonatal outcomes. Women with GDM had significantly higher odds of developing maternal depression (OR = 2.55, 95% CI: 1.45-4.50,= 0.001), cesarean delivery (OR = 2.92, 95% CI: 1.79-4.76,< 0.001), and preterm delivery (OR = 1.94, 95% CI: 1.19-3.15,= 0.00), and the need for induction of labor was significantly higher among women with GDM (OR = 4.11, 95% CI: 2.47-6.85,< 0.001) compared with non-GDM women. With respect to neonatal outcomes, mothers with GDM had significantly higher odds of developing neonatal hyperbilirubinemia (OR = 7.05, 95% CI: 1.56-31.84,= 0.01), neonatal hypoglycemia (OR = 14.00, 95% CI: 4.18-46.85,= 0.001), giving birth to a macrosomia baby (OR = 32.97, 95% CI: 4.30-4235.35,= 0.01), and being admitted to the neonatal intensive care unit (NICU) (OR = 5.68, 95% CI: 3.34-9.64,= 0.001).\n\nIt was shown that maternal preconception lifestyle risk factors and poor obstetric factors were associated with GDM in the subsequent pregnancy and with unfavorable pregnancy-related outcomes. Preconception counseling, along with need-based appropriate management, is highly important for addressing modifiable risk factors and reducing unfavorable birth outcomes associated with GDM.",
+  "pubmed_url": "https://pubmed.ncbi.nlm.nih.gov/42921063/",
+  "doi_url": "https://doi.org/10.7759/cureus.116764"
+ }
+]
