@@ -2224,7 +2224,9 @@ def _expand_defined_acronyms(article: Dict[str, Any], estimates: List[EffectEsti
         if not tokens or len(tokens) > 3:
             continue
         expanded = [f"{definitions[t]} ({t})" if t in definitions else t for t in tokens]
-        if expanded != tokens:
+        if expanded != tokens and rg._display_outcome_name(name) in (rg._UNNAMED_OUTCOME_TR, "") \
+                or expanded != tokens and rg._display_outcome_name(name).endswith("(kaynak terim)"):
+            # Expand only when the short form has no controlled Turkish name ("cancer-associated IIM" already has one).
             est.outcome_name = " ".join(expanded)
         elif name != est.outcome_name:
             est.outcome_name = name

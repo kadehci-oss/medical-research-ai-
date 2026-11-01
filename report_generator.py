@@ -2010,6 +2010,15 @@ def _exact_outcome_span(text: str) -> str:
     return ""
 
 
+# Words that may be dropped around a controlled outcome without changing it ("a significant reduction in stroke").
+_FILLER_WORDS = {
+    "a", "an", "the", "of", "in", "on", "for", "to", "with", "at", "by", "rate", "rates", "risk", "risks", "incidence",
+    "odds", "hazard", "likelihood", "occurrence", "significant", "significantly", "reduction", "reductions", "increase",
+    "increased", "decrease", "decreased", "lower", "higher", "reduced", "new", "onset", "events", "event", "outcome",
+    "outcomes", "patients", "was", "were", "is", "are", "than", "group", "groups", "number", "total", "overall",
+    "proportion", "percentage", "cumulative", "observed", "any",
+}
+
 _QUALIFIER_BEFORE_SPAN_RE = re.compile(
     r"\b(?:isch(?:a)?emic|ha?emorrhagic|major|minor|fatal|non-?fatal|severe|serious|recurrent|symptomatic|"
     r"asymptomatic|clinically\s+relevant|disabling|non-?disabling|in-hospital|perioperative|postoperative|"
@@ -2041,8 +2050,11 @@ def _display_outcome_name(outcome: str) -> str:
         # "ischaemic stroke" must not become "inme", and "worsening heart failure or cardiovascular
         # death" must not become "kardiyovasküler ölüm": a dropped qualifier or composite component
         # changes the outcome, so the source term is shown instead.
+        dropped = re.sub(r"\(\s*[A-Za-z][\w-]{0,10}\s*\)", " ", dropped)  # "(AR)" repeats the name, it adds nothing
+        content = [w for w in re.findall(r"[A-Za-z][\w'-]*", dropped) if w.lower() not in _FILLER_WORDS]
         if _QUALIFIER_BEFORE_SPAN_RE.search(text[: max(0, at)]) or re.search(
-                r"\b(?:or|and|composite|plus)\b", dropped, re.IGNORECASE):
+                r"\b(?:or|and|composite|plus)\b", dropped, re.IGNORECASE) or content:
+            # Any dropped content word changes the outcome: show the source term instead of a shorter name.
             return f"\"{text.strip()}\" (kaynak terim)"
     shown = translate_controlled_outcome(span) if span else ""
     if not shown or outcome_label_rejected(shown) or _orphan_outcome_label(shown):

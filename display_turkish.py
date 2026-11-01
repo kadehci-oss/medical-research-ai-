@@ -23,6 +23,8 @@ _PHRASE_PAIRS = (
     ("severe hypoglycemia", "ciddi hipoglisemi"),
     # Frequent outcomes in the validation sets that had no controlled Turkish name.
     ("major adverse cardiac or cerebral events", "majör advers kardiyak veya serebral olaylar"),
+    ("necrotizing enterocolitis", "nekrotizan enterokolit"),
+    ("late-onset sepsis", "geç başlangıçlı sepsis"),
     ("net adverse clinical events", "net advers klinik olaylar"),
     ("pathological complete response", "patolojik tam yanıt"),
     ("major pathological response", "majör patolojik yanıt"),
