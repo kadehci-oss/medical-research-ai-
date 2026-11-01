@@ -24,7 +24,7 @@ Aşağıdaki referans sayıları kaynakta yer alır, ancak randomize/tahsis edil
 
 ## Üç ayrı doğrulama kategorisi
 
-1. **Yazılım birim/entegrasyon testleri:** `python -m pytest -q` — PASS; 402 passed, 5 skipped, 17 subtests passed in 147.05s (0:02:27).
+1. **Yazılım birim/entegrasyon testleri:** `python -m pytest -q` — PASS; 402 passed, 5 skipped, 17 subtests passed in 133.85s (0:02:13).
 2. **Gerçek PubMed kaynak doğrulaması:** 8/8 kayıt PMID ve sağlanan DOI/başlıkla yeniden alındı/eşleşti; **klinik iddialar bağımsız doğrulanmış sayılmaz**.
 3. **Bağımsız klinik veri doğrulaması:** **NOT_PERFORMED** — Bu benchmark çalıştırmasında bağımsız klinik adjudikasyon yapılmadı; PMID/DOI/başlık kimliği ve abstract kaynak cümlesi kontrolleri klinik doğruluk doğrulaması değildir.
 
