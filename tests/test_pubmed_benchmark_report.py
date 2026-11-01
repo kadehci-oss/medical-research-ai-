@@ -219,6 +219,27 @@ def test_failed_pubmed_fetch_does_not_report_zero_over_zero_safety_checks():
     assert result["causal_language_status"] == "NOT_EVALUATED"
 
 
+def test_derived_values_are_excluded_from_literal_value_denominator_and_counted():
+    study = _study_with_estimates()
+    study.citation_status = "verified"
+    for estimate in study.estimates:
+        estimate.source.verification_status = em.SOURCE_DERIVED
+    case = {
+        "specialty": "Cardiology", "pmid": study.pmid, "required_design": "rct",
+        "total_n": None, "arms": [], "non_arm_groups": [], "outcomes": [],
+    }
+    article = {"pmid": study.pmid, "title": study.title, "abstract": study.estimates[0].source.sentence}
+
+    case_result = compare_case(case, article, study)
+    safety = summarize_safety_checks([case_result])
+
+    assert case_result["source_value_checks_count"] == 0
+    assert case_result["derived_value_checks_skipped"] == case_result["source_claim_count"]
+    assert safety["derived_value_checks_skipped"] == case_result["source_claim_count"]
+    assert safety["claim_denominator"] == case_result["metric_type_check_count"]
+    assert safety["unsupported_claims"] == 0
+
+
 def test_committed_live_report_hashes_match_the_runner_and_reference_data():
     report_path = Path(benchmark.JSON_OUT)
     report = json.loads(report_path.read_text(encoding="utf-8"))

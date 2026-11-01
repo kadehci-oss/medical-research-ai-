@@ -1,14 +1,14 @@
 {
-  "generated_at_utc": "2026-11-01T10:14:30.210190+00:00",
+  "generated_at_utc": "2026-11-01T15:06:15.366247+00:00",
   "run_provenance": {
     "command": "python validation/run_pubmed_benchmark.py",
     "python_version": "3.12.3",
-    "git_head_at_run": "903139a503aba79284570f2ee67f695cf6e4c731",
-    "runner_sha256": "940603a093e9c0d7009743b06b354f65859274945724ff47f92e015b91e96510",
+    "git_head_at_run": "bb844dc9b454b6d1f5fe96fb97eb02ea1be188c3",
+    "runner_sha256": "69e0488ff4dc9dd39a162a0490f927416643f923b460ff39d0a7fce57a7cb9e0",
     "reference_data_sha256": "246793d61354b5fcc5a724d733b2fcd76c5af1292d9c9a5611b497289ccb4fe3",
     "live_source": "NCBI PubMed E-utilities through pubmed_client.verify_citation"
   },
-  "model_version": "1.0.0",
+  "model_version": "1.1.0",
   "reference_dataset_version": "1.1",
   "pubmed_identity_validation": {
     "records_checked": 8,
@@ -131,8 +131,8 @@
     "matched_quotes": 23
   },
   "source_sentence_checks": {
-    "claims_checked": 142,
-    "matched_claims": 142,
+    "claims_checked": 130,
+    "matched_claims": 130,
     "text_presence_rate": 1.0,
     "records_evaluated": 8,
     "records_not_evaluated": 0
@@ -144,10 +144,12 @@
     "unsupported_claims": 0,
     "unsupported_value_claims": 0,
     "unsupported_metric_type_claims": 0,
-    "claim_denominator": 164,
+    "source_value_checks": 130,
+    "derived_value_checks_skipped": 0,
+    "claim_denominator": 148,
     "unsupported_rate": 0.0,
     "causal_language_status": "PASS",
-    "rendered_causal_claims_checked": 30,
+    "rendered_causal_claims_checked": 26,
     "unsupported_causal_language_claims": 0,
     "causal_metadata_mismatches": 0,
     "causal_language_violation_rate": 0.0,
@@ -323,6 +325,8 @@
         }
       ],
       "source_claim_count": 27,
+      "source_value_checks_count": 27,
+      "derived_value_checks_skipped": 0,
       "metric_type_check_count": 2,
       "source_sentence_matches": 27,
       "source_text_presence_rate": 1.0,
@@ -339,7 +343,7 @@
         "source_provenance_complete": true,
         "missing_provenance_fields": [],
         "record_verification_status": "verified",
-        "model_version": "1.0.0",
+        "model_version": "1.1.0",
         "clinical_claim_validation": "not_independently_clinically_validated",
         "formal_grade_status": "not_assessed"
       },
@@ -500,13 +504,15 @@
           "location": "abstract"
         }
       ],
-      "source_claim_count": 70,
-      "metric_type_check_count": 10,
-      "source_sentence_matches": 70,
+      "source_claim_count": 55,
+      "source_value_checks_count": 55,
+      "derived_value_checks_skipped": 0,
+      "metric_type_check_count": 5,
+      "source_sentence_matches": 55,
       "source_text_presence_rate": 1.0,
       "unsupported_value_claims": [],
       "unsupported_metric_type_claims": [],
-      "rendered_claims_checked": 18,
+      "rendered_claims_checked": 13,
       "unsupported_causal_language_claims": [],
       "causal_metadata_mismatch": false,
       "model_validation": {
@@ -517,7 +523,7 @@
         "source_provenance_complete": true,
         "missing_provenance_fields": [],
         "record_verification_status": "verified",
-        "model_version": "1.0.0",
+        "model_version": "1.1.0",
         "clinical_claim_validation": "not_independently_clinically_validated",
         "formal_grade_status": "not_assessed"
       },
@@ -640,6 +646,8 @@
         }
       ],
       "source_claim_count": 6,
+      "source_value_checks_count": 6,
+      "derived_value_checks_skipped": 0,
       "metric_type_check_count": 0,
       "source_sentence_matches": 6,
       "source_text_presence_rate": 1.0,
@@ -656,7 +664,7 @@
         "source_provenance_complete": true,
         "missing_provenance_fields": [],
         "record_verification_status": "verified",
-        "model_version": "1.0.0",
+        "model_version": "1.1.0",
         "clinical_claim_validation": "not_independently_clinically_validated",
         "formal_grade_status": "not_assessed"
       },
@@ -781,13 +789,15 @@
           "location": "abstract"
         }
       ],
-      "source_claim_count": 14,
-      "metric_type_check_count": 3,
-      "source_sentence_matches": 14,
+      "source_claim_count": 17,
+      "source_value_checks_count": 17,
+      "derived_value_checks_skipped": 0,
+      "metric_type_check_count": 4,
+      "source_sentence_matches": 17,
       "source_text_presence_rate": 1.0,
       "unsupported_value_claims": [],
       "unsupported_metric_type_claims": [],
-      "rendered_claims_checked": 3,
+      "rendered_claims_checked": 4,
       "unsupported_causal_language_claims": [],
       "causal_metadata_mismatch": false,
       "model_validation": {
@@ -798,7 +808,7 @@
         "source_provenance_complete": true,
         "missing_provenance_fields": [],
         "record_verification_status": "verified",
-        "model_version": "1.0.0",
+        "model_version": "1.1.0",
         "clinical_claim_validation": "not_independently_clinically_validated",
         "formal_grade_status": "not_assessed"
       },
@@ -904,6 +914,8 @@
         }
       ],
       "source_claim_count": 4,
+      "source_value_checks_count": 4,
+      "derived_value_checks_skipped": 0,
       "metric_type_check_count": 0,
       "source_sentence_matches": 4,
       "source_text_presence_rate": 1.0,
@@ -920,7 +932,7 @@
         "source_provenance_complete": true,
         "missing_provenance_fields": [],
         "record_verification_status": "verified",
-        "model_version": "1.0.0",
+        "model_version": "1.1.0",
         "clinical_claim_validation": "not_independently_clinically_validated",
         "formal_grade_status": "not_assessed"
       },
@@ -1036,6 +1048,8 @@
         }
       ],
       "source_claim_count": 6,
+      "source_value_checks_count": 6,
+      "derived_value_checks_skipped": 0,
       "metric_type_check_count": 4,
       "source_sentence_matches": 6,
       "source_text_presence_rate": 1.0,
@@ -1052,7 +1066,7 @@
         "source_provenance_complete": true,
         "missing_provenance_fields": [],
         "record_verification_status": "verified",
-        "model_version": "1.0.0",
+        "model_version": "1.1.0",
         "clinical_claim_validation": "not_independently_clinically_validated",
         "formal_grade_status": "not_assessed"
       },
@@ -1143,6 +1157,8 @@
         }
       ],
       "source_claim_count": 4,
+      "source_value_checks_count": 4,
+      "derived_value_checks_skipped": 0,
       "metric_type_check_count": 0,
       "source_sentence_matches": 4,
       "source_text_presence_rate": 1.0,
@@ -1159,7 +1175,7 @@
         "source_provenance_complete": true,
         "missing_provenance_fields": [],
         "record_verification_status": "verified",
-        "model_version": "1.0.0",
+        "model_version": "1.1.0",
         "clinical_claim_validation": "not_independently_clinically_validated",
         "formal_grade_status": "not_assessed"
       },
@@ -1286,6 +1302,8 @@
         }
       ],
       "source_claim_count": 11,
+      "source_value_checks_count": 11,
+      "derived_value_checks_skipped": 0,
       "metric_type_check_count": 3,
       "source_sentence_matches": 11,
       "source_text_presence_rate": 1.0,
@@ -1302,7 +1320,7 @@
         "source_provenance_complete": true,
         "missing_provenance_fields": [],
         "record_verification_status": "verified",
-        "model_version": "1.0.0",
+        "model_version": "1.1.0",
         "clinical_claim_validation": "not_independently_clinically_validated",
         "formal_grade_status": "not_assessed"
       },
@@ -1321,5 +1339,5 @@
       }
     }
   ],
-  "report_markdown": "# Çok Branşlı PubMed Kaynaklı Alan Benchmark Raporu\n\nBu rapor, sekiz önceden belirlenmiş PubMed kaydında abstract düzeyindeki yazılım çıkarımını kaynak cümleleri ve referans alanlarıyla karşılaştırır. Bu çalışma bağımsız klinik adjudikasyon, tam metin incelemesi, GRADE veya yanlılık riski değerlendirmesi değildir.\n\n## Sonuç özeti\n\n- Yeniden alınarak PMID/başlık/DOI ile doğrulanan kayıt: **8/8**.\n- Önceden belirlenmiş referans alanı eşleşmesi: **79/79 (100.0%)**.\n- Eksiksiz referans alanı: **8/8**.\n- Önceden belirlenmiş kaynak alıntısı metninin canlı PubMed kaydında bulunması: **23/23**.\n- Model alanlarının kaynak metninin canlı abstract/başlık içinde bulunması: **142/142 (100.0%)**; bu tam cümle eşitliği veya klinik doğruluk değildir.\n- Desteklenmeyen değer/metrik kaynak dizesi kontrolleri: **0/164**.\n- Kanonik renderer’ın yapılandırılmış iddia cümlelerinde phrase-scan ile desteklenmeyen nedensel dil: **0/30**.\n\n## Referans alanı boşlukları\n\nAşağıdaki öncelik, yalnızca sınırlı benchmark referansındaki eşleşmeyen alan sayısını gösterir; klinik risk veya klinik adjudikasyon sıralaması değildir.\n- Bu sınırlı referans kümesinde eşleşmeyen alan yok.\n\n## Kayıt bazında sonuçlar\n\n| Branş | PMID | Tasarım (beklenen / model) | N (beklenen / model) | Alan eşleşmesi | Kaynak metni | Model alan kontrolü |\n|---|---:|---|---:|---:|---:|---|\n| Kardiyoloji | 34449189 | rct / rct | 5988 / 5988 | 18/18 | 27/27 | structurally_valid |\n| Onkoloji | 39416390 | meta_analysis / systematic_review_and_meta_analysis | 2833 / 2833 | 14/14 | 70/70 | structurally_valid |\n| Nöroloji | 32113113 | cohort / cohort | 302 / 302 | 9/9 | 6/6 | structurally_valid |\n| Enfeksiyon hastalıkları | 17540675 | case_control / case_control | 903 / 903 | 10/10 | 14/14 | structurally_valid |\n| Endokrinoloji | 10218744 | systematic_review / systematic_review | — / belirtilmedi | 7/7 | 4/4 | structurally_valid |\n| Pediatri | 37461867 | diagnostic_accuracy / diagnostic_accuracy | 126 / 126 | 8/8 | 6/6 | structurally_valid |\n| Cerrahi | 39071203 | case_series / case_series | 56 / 56 | 5/5 | 4/4 | structurally_valid |\n| Radyoloji | 31732398 | diagnostic_accuracy / diagnostic_accuracy | 48 / 48 | 8/8 | 11/11 | structurally_valid |\n\n## Doğrulama sınırları\n\nPubMed kimlik kontrolü kaynak kaydının yeniden bulunması ve verilen kimlik alanlarının eşleşmesi içindir. Kaynak metni kontrolü normalize edilmiş alıntı metninin canlı abstract/başlık içinde yer almasını denetler; tam cümle eşitliği veya alanın klinik anlamda doğru yorumlandığını kanıtlamaz. Nedensel dil phrase-scan’i yalnızca kanonik renderer’ın yapılandırılmış iddia cümlelerini tarar; semantik veya hekim değerlendirmesi değildir. Benchmark referans kümesi sınırlıdır ve bütün klinik çeşitliliği temsil etmez.\n\nBağımsız klinik doğrulama: **YAPILMADI**. GRADE ve yanlılık riski: **değerlendirilmedi**.\n\nKanonik model sürümü: `1.0.0`. Referans verisi: `pubmed_reference_cases.json` (sürüm 1.1).\n\n## Çalıştırma izi\n\nUTC zamanı: `2026-11-01T10:14:30.210190+00:00`; Python: `3.12.3`; çalıştırıcı SHA-256: `940603a093e9c0d7009743b06b354f65859274945724ff47f92e015b91e96510`; referans verisi SHA-256: `246793d61354b5fcc5a724d733b2fcd76c5af1292d9c9a5611b497289ccb4fe3`; çalıştırma anındaki Git HEAD: `903139a503aba79284570f2ee67f695cf6e4c731`.\nCanlı abstract SHA-256 özeti her doğrulanan kayıt için JSON raporunda saklanır. Kimliği doğrulanamayan kayıtlar bu metriklerin paydasına dahil edilmez; değerlendirilmedikleri ayrıca sayılır.\n"
+  "report_markdown": "# Çok Branşlı PubMed Kaynaklı Alan Benchmark Raporu\n\nBu rapor, sekiz önceden belirlenmiş PubMed kaydında abstract düzeyindeki yazılım çıkarımını kaynak cümleleri ve referans alanlarıyla karşılaştırır. Bu çalışma bağımsız klinik adjudikasyon, tam metin incelemesi, GRADE veya yanlılık riski değerlendirmesi değildir.\n\n## Sonuç özeti\n\n- Yeniden alınarak PMID/başlık/DOI ile doğrulanan kayıt: **8/8**.\n- Önceden belirlenmiş referans alanı eşleşmesi: **79/79 (100.0%)**.\n- Eksiksiz referans alanı: **8/8**.\n- Önceden belirlenmiş kaynak alıntısı metninin canlı PubMed kaydında bulunması: **23/23**.\n- Model alanlarının kaynak metninin canlı abstract/başlık içinde bulunması: **130/130 (100.0%)**; bu tam cümle eşitliği veya klinik doğruluk değildir.\n- Desteklenmeyen literal değer/ölçüt kaynak dizesi kontrolleri: **0/148**; kaynaktan türetilmiş değerlerde literal sayı kontrolü yapılmayan kaynak: **0**.\n- Kanonik renderer’ın yapılandırılmış iddia cümlelerinde phrase-scan ile desteklenmeyen nedensel dil: **0/26**.\n\n## Referans alanı boşlukları\n\nAşağıdaki öncelik, yalnızca sınırlı benchmark referansındaki eşleşmeyen alan sayısını gösterir; klinik risk veya klinik adjudikasyon sıralaması değildir.\n- Bu sınırlı referans kümesinde eşleşmeyen alan yok.\n\n## Kayıt bazında sonuçlar\n\n| Branş | PMID | Tasarım (beklenen / model) | N (beklenen / model) | Alan eşleşmesi | Kaynak metni | Model alan kontrolü |\n|---|---:|---|---:|---:|---:|---|\n| Kardiyoloji | 34449189 | rct / rct | 5988 / 5988 | 18/18 | 27/27 | structurally_valid |\n| Onkoloji | 39416390 | meta_analysis / systematic_review_and_meta_analysis | 2833 / 2833 | 14/14 | 55/55 | structurally_valid |\n| Nöroloji | 32113113 | cohort / cohort | 302 / 302 | 9/9 | 6/6 | structurally_valid |\n| Enfeksiyon hastalıkları | 17540675 | case_control / case_control | 903 / 903 | 10/10 | 17/17 | structurally_valid |\n| Endokrinoloji | 10218744 | systematic_review / systematic_review | — / belirtilmedi | 7/7 | 4/4 | structurally_valid |\n| Pediatri | 37461867 | diagnostic_accuracy / diagnostic_accuracy | 126 / 126 | 8/8 | 6/6 | structurally_valid |\n| Cerrahi | 39071203 | case_series / case_series | 56 / 56 | 5/5 | 4/4 | structurally_valid |\n| Radyoloji | 31732398 | diagnostic_accuracy / diagnostic_accuracy | 48 / 48 | 8/8 | 11/11 | structurally_valid |\n\n## Doğrulama sınırları\n\nPubMed kimlik kontrolü kaynak kaydının yeniden bulunması ve verilen kimlik alanlarının eşleşmesi içindir. Kaynak metni kontrolü normalize edilmiş alıntı metninin canlı abstract/başlık içinde yer almasını denetler; tam cümle eşitliği veya alanın klinik anlamda doğru yorumlandığını kanıtlamaz. Nedensel dil phrase-scan’i yalnızca kanonik renderer’ın yapılandırılmış iddia cümlelerini tarar; semantik veya hekim değerlendirmesi değildir. Benchmark referans kümesi sınırlıdır ve bütün klinik çeşitliliği temsil etmez.\n\nBağımsız klinik doğrulama: **YAPILMADI**. GRADE ve yanlılık riski: **değerlendirilmedi**.\n\nKanonik model sürümü: `1.1.0`. Referans verisi: `pubmed_reference_cases.json` (sürüm 1.1).\n\n## Çalıştırma izi\n\nUTC zamanı: `2026-11-01T15:06:15.366247+00:00`; Python: `3.12.3`; çalıştırıcı SHA-256: `69e0488ff4dc9dd39a162a0490f927416643f923b460ff39d0a7fce57a7cb9e0`; referans verisi SHA-256: `246793d61354b5fcc5a724d733b2fcd76c5af1292d9c9a5611b497289ccb4fe3`; çalıştırma anındaki Git HEAD: `bb844dc9b454b6d1f5fe96fb97eb02ea1be188c3`.\nCanlı abstract SHA-256 özeti her doğrulanan kayıt için JSON raporunda saklanır. Kimliği doğrulanamayan kayıtlar bu metriklerin paydasına dahil edilmez; değerlendirilmedikleri ayrıca sayılır.\n"
 }

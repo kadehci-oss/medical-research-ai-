@@ -245,9 +245,10 @@ class TestStudyRelations(unittest.TestCase):
         self.assertNotIn("34449189", {r.related_pmid for r in by["36129693"].relations})
         self.assertEqual(by["39288781"].report_role, "updated_analysis")
         self.assertIn("37272513", {r.related_pmid for r in by["39288781"].relations})
-        self.assertEqual(by["34694761"].report_role, "extended_follow_up")
-        # Title similarity without a shared explicit identity is not enough.
+        self.assertEqual(by["34694761"].report_role, "undetermined")
+        # PubMed lists both Letter and RCT, but no abstract is available to establish its role.
         self.assertEqual(by["34694761"].relations, [])
+        self.assertFalse(by["34694761"].causal_inference_allowed)
         for derived in ("36129693", "39288781", "34694761", "36041474"):
             self.assertFalse(by[derived].counts_as_independent, derived)
         for primary in ("34449189", "37272513", "33017106"):
@@ -255,6 +256,69 @@ class TestStudyRelations(unittest.TestCase):
         self.assertEqual(summary["independent_primary_units"], 3)
         self.assertEqual(summary["independent_participants"], 5988 + 797 + 1552)
         self.assertTrue(any("36041474" in note and "34449189" in note for note in summary["overlap_notes"]))
+
+    def test_synthesis_background_mention_is_not_reported_as_included_trial(self):
+        primary = _art(
+            "70011", "A randomized trial enrolled adults. ClinicalTrials.gov identifier NCT01234567.",
+            title="A randomized trial", pub_types=["Randomized Controlled Trial"],
+        )
+        synthesis = _art(
+            "70012",
+            "Background: NCT01234567 was an important previous study. "
+            "Methods: We reviewed eligible randomized trials of the intervention.",
+            title="Systematic review and meta-analysis of the intervention",
+            pub_types=["Meta-Analysis"],
+        )
+
+        studies, summary = em.build_studies([primary, synthesis])
+        synthesis_study = next(study for study in studies if study.pmid == "70012")
+        self.assertEqual(synthesis_study.report_role, "evidence_synthesis")
+        self.assertEqual(synthesis_study.relations, [])
+        self.assertEqual(summary["overlap_notes"], [])
+
+    def test_synthesis_explicit_inclusion_statement_links_trial(self):
+        primary = _art(
+            "70021", "A randomized trial enrolled adults. ClinicalTrials.gov identifier NCT01234567.",
+            title="A randomized trial", pub_types=["Randomized Controlled Trial"],
+        )
+        synthesis = _art(
+            "70022",
+            "Methods: Six eligible trials, including NCT01234567, were included in the meta-analysis.",
+            title="Systematic review and meta-analysis of the intervention",
+            pub_types=["Meta-Analysis"],
+        )
+
+        studies, summary = em.build_studies([primary, synthesis])
+        synthesis_study = next(study for study in studies if study.pmid == "70022")
+        self.assertEqual(
+            [(relation.relation_type, relation.related_pmid, relation.confidence)
+             for relation in synthesis_study.relations],
+            [("includes_trial", "70021", "kesin")],
+        )
+        self.assertTrue(any("70022" in note and "70021" in note for note in summary["overlap_notes"]))
+
+    def test_synthesis_excluded_or_uncertain_trial_does_not_create_overlap(self):
+        primary = _art(
+            "70031", "A randomized trial enrolled adults. ClinicalTrials.gov identifier NCT01234567.",
+            title="A randomized trial", pub_types=["Randomized Controlled Trial"],
+        )
+        abstracts = (
+            "Methods: NCT01234567 was excluded from the meta-analysis.",
+            "Methods: NCT01234567 may have been included in the pooled analysis.",
+            "Methods: The review cited NCT01234567 as background; inclusion was uncertain.",
+        )
+
+        for index, abstract in enumerate(abstracts, start=1):
+            with self.subTest(abstract=abstract):
+                synthesis = _art(
+                    f"7003{index + 1}", abstract,
+                    title="Systematic review and meta-analysis of the intervention",
+                    pub_types=["Meta-Analysis"],
+                )
+                studies, summary = em.build_studies([primary, synthesis])
+                synthesis_study = next(study for study in studies if study.report_role == "evidence_synthesis")
+                self.assertFalse(synthesis_study.relations)
+                self.assertFalse(summary["overlap_notes"])
 
     def test_shared_registry_number_is_found(self):
         study = em.build_study(_records()["39288781"])
@@ -387,6 +451,23 @@ class TestReportVerification(unittest.TestCase):
         footer = rv.render_verification_footer(rv.verify_report("", studies), "v9.9.9")
         self.assertIn("v9.9.9", footer)
         self.assertIn("Rapor Doğrulama Durumu", footer)
+
+    def test_derived_sources_are_reported_separately_from_literal_quotes(self):
+        studies = self._studies()
+        sources = [estimate.source for study in studies for estimate in study.estimates]
+        sources += [study.population.source for study in studies if study.population.n_total]
+        self.assertTrue(sources)
+        for source in sources:
+            source.verification_status = em.SOURCE_DERIVED
+
+        result = rv.verify_report("", studies)
+        footer = rv.render_verification_footer(result, "v9.9.9")
+
+        self.assertEqual(result["structured_sources_verified"], 0)
+        self.assertEqual(result["structured_sources_derived"], len(sources))
+        self.assertEqual(result["structured_sources_unverified"], 0)
+        self.assertIn("0 kaynak cümlesi birebir doğrulandı", footer)
+        self.assertIn(f"{len(sources)} değer kaynaktan hesaplandı", footer)
 
 
 if __name__ == "__main__":
