@@ -191,8 +191,8 @@ _PHRASE_PAIRS = (
     ("diabetes mellitus", "diyabet"),
     ("anti-hmgcr antibodies", "anti-HMGCR antikorlar"),
     ("anti-hmgcr antibody", "anti-HMGCR antikoru"),
-    ("necrotizing im", "nekrotizan IM"),
-    ("necrotising im", "nekrotizan IM"),
+    ("necrotizing im", "nekrotizan inflamatuvar miyopati (IM)"),
+    ("necrotising im", "nekrotizan inflamatuvar miyopati (IM)"),
     ("odds ratio", "olasılık oranı (OR)"),
     ("hazard ratio", "tehlike oranı (HR)"),
     ("relative risk", "risk oranı (RR)"),
@@ -717,6 +717,16 @@ _GENERIC_OUTCOME_EN = {
     "their", "its", "also", "not", "no", "more", "less", "most", "such",
     "between", "among", "both", "all", "any", "other", "who", "which", "that",
 }
+
+# Acronyms expanded only when needed: these are used unexpanded in Turkish clinical
+# literature and their meaning is fixed in context, so the controlled maps keep the
+# short form. An acronym outside this set must carry a Turkish expansion, e.g.
+# "nekrotizan inflamatuvar miyopati (IM)" (IM alone also reads as intramuscular).
+# "IGA" is the dermatology Investigator Global Assessment; immunoglobulin A is "IgA".
+ESTABLISHED_CLINICAL_ACRONYMS = frozenset({
+    "ACEI", "ARB", "SGLT2", "IVIG", "NMDA", "HMGCR", "İMNM", "İİM", "NYHA",
+    "NRS", "EASI", "IGA", "GGT",
+})
 
 _CLOSED_OUTCOME_ABBREV = {
     "IIM": "İİM",

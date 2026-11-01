@@ -13,8 +13,9 @@ Verification rules:
 4. Values containing abbreviations/acronyms present the abbreviation inside
    parentheses with a preceding Turkish expansion (e.g. "olasılık oranı (OR)").
 
-Note: Engine code is not modified. Any detected issues are marked as xfail
-so CI stays green while recording dictionary issues for external PR resolution.
+Acronyms are expanded only when needed: display_turkish.ESTABLISHED_CLINICAL_ACRONYMS
+lists the short forms used unexpanded in Turkish clinical writing. Any other acronym
+must carry a Turkish expansion, and every rule fails the test (no xfail).
 """
 
 import re
@@ -75,6 +76,9 @@ def _check_abbreviations_in_parentheses(val: str):
                 uppers.append(part)
 
     for abbr in uppers:
+        # Acronyms are expanded only when needed; established ones stay short.
+        if abbr in display_turkish.ESTABLISHED_CLINICAL_ACRONYMS:
+            continue
         # Check if abbr is enclosed in parentheses in the value: e.g. "(OR)"
         if f"({abbr})" not in val:
             return False, f"Kısaltma '{abbr}' parantez içinde değil"
@@ -162,9 +166,7 @@ ALL_TEST_CASES = _build_test_cases()
 def test_turkish_map_entry_consistency(dict_name, key, value):
     """Verifies that each controlled Turkish map value satisfies the consistency rules."""
     errors = _evaluate_consistency(value)
-    if errors:
-        error_msg = "; ".join(errors)
-        pytest.xfail(f"[{dict_name}] {key}: {repr(value)} -> {error_msg}")
+    assert not errors, f"[{dict_name}] {key}: {repr(value)} -> {'; '.join(errors)}"
 
     # Explicit assertions for rules
     ok_dup, msg_dup = _check_consecutive_duplicates(value)
