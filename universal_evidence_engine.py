@@ -490,6 +490,9 @@ class UniversalEvidenceEngine:
         processed = self.process_and_extract_parameters(articles, query)
         try:  # [mrai-fixes B2] query PICO as a fallback for fields the extractor missed
             self._mrai_query_pico = report_generator.extract_pico(query) if query else None
+            if self._mrai_query_pico is not None and report_generator._is_turkish_query(query):
+                # Abstracts are English: a Turkish query term missing from them is not a mismatch.
+                self._mrai_query_pico = dict(self._mrai_query_pico, _query_language="tr")
         except Exception:
             self._mrai_query_pico = None
 
