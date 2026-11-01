@@ -462,7 +462,11 @@ _TOTAL_PATTERNS: List[Tuple[str, re.Pattern]] = [
 ]
 
 _CASE_CONTROL_TOTAL_RE = re.compile(
-    rf"\b(?P<c>{NUM_RE})\s+(?:[^.;\d]|(?:19|20)\d{{2}}){{0,90}}?\b(?:were\s+)?(?:matched\b(?:\s*\([^)]*\))?[^.;\d]{{0,40}}?\b(?:to|with)|identified\s+and|and)\s+"
+    # The case count must name people ("17 patients who ...", "143 women with GDM"); a time phrase inside
+    # the description ("within 6 months after ...") is skipped instead of being read as the case count.
+    rf"\b(?P<c>{NUM_RE})\s+(?=(?:[\w-]+\s+){{0,2}}(?:patients|cases|participants|women|men|children|subjects|individuals|"
+    rf"infants|neonates|adults|mothers)\b|with\b)"
+    rf"(?:[^.;\d]|(?:19|20)\d{{2}}|\d+\s+(?:days?|weeks?|months?|years?)\b){{0,120}}?\b(?:were\s+)?(?:matched\b(?:\s*\([^)]*\))?[^.;\d]{{0,40}}?\b(?:to|with)|identified\s+and|and)\s+"
     rf"(?P<k>{NUM_RE})\s+(?:[^.;\d]{{0,50}}?)?\bcontrols\b",
     re.IGNORECASE,
 )
@@ -840,6 +844,15 @@ def _acceptable_predictor(label: str) -> bool:
         r"\b(?:with|compared|versus|vs|the|and|of|in|by|followed|respectively|than|was|were)\b|[()\[\]\"=\d]",
         predictor, re.IGNORECASE)
 
+def _is_p_value_only(value: float, sentence: str) -> bool:
+    """True when every occurrence of the value in the sentence is a p-value ("p < 0.001")."""
+    occurrences = [m for m in _LEADING_NUMBER_RE.finditer(sentence or "") if _to_float(m.group(0)) == value]
+    if not occurrences:
+        return False
+    return all(re.search(r"\bp\s*(?:value\s*)?[=<>≤≥]\s*$", sentence[max(0, m.start() - 14):m.start()], re.IGNORECASE)
+               for m in occurrences)
+
+
 def _is_confidence_level(value: float, sentence: str) -> bool:
     """True when every occurrence of the value in the sentence is a CI level ("95% CI")."""
     occurrences = [m for m in _LEADING_NUMBER_RE.finditer(sentence or "") if _to_float(m.group(0)) == value]
@@ -880,12 +893,17 @@ def reconcile_with_grounded_findings(article: Dict[str, Any], estimates: List[Ef
             continue
         if _is_confidence_level(value, sentence):
             continue  # "OR and 95% CI" in a methods sentence: 95 is the CI level, not an estimate
+        if _is_p_value_only(value, sentence):
+            continue  # "(p < 0.001)" is a test result, not an estimate
         if re.search(r"(?:\bCIs?|confidence\s+intervals?)\s+(?:for|of)\s+[^,;()]{0,40},\s*"
                      + re.escape(_fmt_number(value)) + r"\s*(?:-|–|to)\s*\d", sentence, re.IGNORECASE):
             continue  # the lower bound of "CI for mean difference, 0.43-1.01" is not an estimate
         other_name = item.get("outcome") or ""
         named = bool(other_name) and other_name != rg._UNNAMED_OUTCOME_TR and '"' not in other_name and (
             _acceptable_predictor(other_name) if other_name.startswith("öngördürücü") else True)
+        if named and re.search(r"\b(?:patients|participants|those|individuals|women|men|children)\s+(?:with|who\s+had|who\s+developed)\s+"
+                               + re.escape(other_name), sentence, re.IGNORECASE):
+            named = False  # "in patients with tendon rupture than in controls (11.3 vs 11.8 mm)": a group, not the outcome
         low, high = _to_float(item.get("ci_low") or ""), _to_float(item.get("ci_high") or "")
         same = [e for e in by_sentence.get(sentence, []) if e.value is not None and abs(e.value - value) < 1e-9]
         if not same:
@@ -895,7 +913,9 @@ def reconcile_with_grounded_findings(article: Dict[str, Any], estimates: List[Ef
         if same:
             for est in same:
                 counterpart[id(est)] = other_name if named else ""
-                if named and est.outcome_name != other_name and _prefer_other_outcome_name(est.outcome_name, other_name):
+                taken = {e.outcome_name for e in by_sentence.get(sentence, []) if e is not est and e.value != est.value}
+                if named and est.outcome_name != other_name and "sonlanım cümle sonunda adlandırıldı" not in (est.outcome_basis or "") \
+                        and other_name not in taken and _prefer_other_outcome_name(est.outcome_name, other_name):
                     est.outcome_name = other_name
                     est.outcome_basis = "; ".join(b for b in (est.outcome_basis, "sonlanım adı kaynak cümledeki sonlanım ifadesinden") if b)
                 if est.ci_low is None and low is not None and high is not None:
@@ -946,6 +966,8 @@ def reconcile_with_grounded_findings(article: Dict[str, Any], estimates: List[Ef
         for shared, ests in names.items():
             if len({e.value for e in ests}) < 2:
                 continue
+            if all("sonlanım cümle sonunda adlandırıldı" in (e.outcome_basis or "") for e in ests):
+                continue  # one outcome for a list of exposures is the source's own structure
             others = [counterpart.get(id(e), "") for e in ests]
             if all(others) and len(set(others)) == len(others) and all(
                     '"' not in o and (_acceptable_predictor(o) if re.match(r"\s*(?:öngördürücü|predictor)\b", o, re.IGNORECASE)
@@ -961,6 +983,138 @@ def reconcile_with_grounded_findings(article: Dict[str, Any], estimates: List[Ef
 _ENROLMENT_CUE = (r"\s+(?:adult\s+|consecutive\s+|eligible\s+)?(?:patients|participants|adults|children|subjects|"
                   r"women|men|individuals|infants|neonates)\s+(?:were\s+|who\s+were\s+)?"
                   r"(?:randomi[sz]ed|randomly\s+assigned|enrolled|included|recruited)")
+
+
+_PRESENT_ANALYSIS_RE = re.compile(
+    rf"\b(?P<n>{NUM_RE})\s+(?:participants\s+|patients\s+|individuals\s+)?(?:were\s+)?included\s+in\s+the\s+"
+    r"(?:present|current|this)\s+analysis\b",
+    re.IGNORECASE,
+)
+_PARTICIPANTS_ONLY_RE = re.compile(
+    rf"^\s*(?P<n>{NUM_RE})\s+(?:adult\s+|consecutive\s+|eligible\s+)?(?:patients|participants|subjects|individuals|"
+    r"women|men|children|adults)\s+(?:with|who|undergoing|referred|scheduled|admitted)\b[^.;]{0,100}\.?\s*$",
+    re.IGNORECASE,
+)
+
+
+def _refine_population(article: Dict[str, Any], design_key: str, population: Population,
+                       arms: List[StudyArm], events: List[EventCount]) -> None:
+    """Two statements that name the analysed population directly.
+
+    - "The NLST included 26 722 participants in the CT arm, with 21 856 included in the present
+      analysis": this report analysed 21 856, not the parent trial's arm.
+    - "Forty-six patients with suspected coronary artery disease." (the participants section of a
+      structured abstract): the whole sentence is the study population.
+    """
+    if design_key in _SYNTHESIS_KEYS:
+        return
+    for sentence in sentences_of(article.get("abstract") or ""):
+        present = _PRESENT_ANALYSIS_RE.search(sentence)
+        if present and parse_count(present.group("n")):
+            n = parse_count(present.group("n"))
+            if n != population.n_total and n not in {e.events for e in events}:
+                population.n_total = n
+                population.n_kind = "enrolled"
+                population.source = _source(article, sentence, "Bu raporda analiz edilen katılımcılar")
+            return
+    if population.n_total is not None:
+        return
+    for sentence in sentences_of(article.get("abstract") or ""):
+        only = _PARTICIPANTS_ONLY_RE.match(sentence)
+        if only and parse_count(only.group("n")):
+            n = parse_count(only.group("n"))
+            if n in {a.n for a in arms if a.n} or n in {e.events for e in events}:
+                continue
+            population.n_total = n
+            population.n_kind = "enrolled"
+            population.source = _source(article, sentence, "Katılımcı tanım cümlesi")
+            return
+
+
+_STUDY_INTERVENTION_PATTERNS = [
+    # diagnostic index test: "diagnostic accuracy of the COTS calculator in predicting ..."
+    re.compile(r"\b(?:accuracy|performance)\s+of\s+(?:the\s+)?(?P<i>[^,.;:]{3,80}?)\s+(?:in|for|to)\s+"
+               r"(?:predicting|detecting|diagnosing|identifying|the\s+diagnosis|diagnosis|detect|predict|identify)\b", re.IGNORECASE),
+    # evidence synthesis: "meta-analysis of local ablative treatment (LAT) for ..."
+    re.compile(r"\b(?:meta-analysis|systematic\s+review)\s+of\s+(?P<i>[^,.;:]{3,80}?)\s+(?:for|in|among|during|versus)\b", re.IGNORECASE),
+    # "Clinical effects of multi-strain probiotics in extremely preterm infants"
+    re.compile(r"\b(?:effects?|impact|efficacy)\s+of\s+(?P<i>[^,.;:]{3,60}?)\s+(?:in|on|among|for)\b", re.IGNORECASE),
+    # "Survival After Risk-Reducing Mastectomy in Patients With ..."
+    re.compile(r"\b(?i:after|following)\s+(?P<i>[A-Z][^,.;:]{3,60}?)\s+(?i:in\s+(?:patients|adults|children|women|men))\b"),
+    # "5.0 T Coronary MR Angiography in Calcified Coronary Arteries: Diagnostic Performance Compared With CT"
+    re.compile(r"^(?P<i>[^:]{3,80}?)\s+in\s+[^:]{3,80}:\s*Diagnostic\s+(?:Performance|Accuracy)\b", re.IGNORECASE),
+]
+_ALLOCATION_PAIR_RE = re.compile(
+    r"\brandomi[sz]ed\s+to\s+(?P<i>[^,;]{3,60}?)\s*(?:,[^;]{0,120}?)?,?\s+or\s+to\s+(?P<c>[^,.;]{3,60})",
+    re.IGNORECASE,
+)
+_STUDY_COMPARATOR_PATTERNS = [
+    re.compile(r"^\s*(?:Compared|In\s+comparison)\s+(?:with|to)\s+(?P<c>[^,;()]{2,50}),", re.IGNORECASE),
+    re.compile(r"\bcompared\s+with\s+(?P<c>[A-Za-z][^,;()]{2,40}?)\s*\((?:HR|OR|RR)\b", re.IGNORECASE),
+    re.compile(r"\bcompared\s+with\s+(?P<c>[A-Za-z][^,;()]{2,50}?)\s+(?:using|as|in|among)\b", re.IGNORECASE),
+]
+_TITLE_ORDER_RE = re.compile(r"\b(?:comparison\s+of\s+)?(?P<a>[\w-]+)\s+(?:and|versus|vs\.?)\s+(?P<b>[\w-]+)\b", re.IGNORECASE)
+
+
+def _study_level_comparison(article: Dict[str, Any], claim_type: str, interventions: List[Intervention],
+                            comparators: List[Comparator], role_label: str, co_treatments) -> Tuple[List[Intervention], List[Comparator]]:
+    """Fill an empty intervention/comparator from the title or aim sentence, and keep the title's order.
+
+    Every name is a span of the title or a sentence and carries that text as its source. Nothing is filled
+    for a record without results or for a descriptive case series.
+    """
+    if claim_type in ("no_results", "descriptive"):
+        return interventions, comparators
+    title = normalize_text(article.get("title") or "")
+    texts = [title] + sentences_of(article.get("abstract") or "")
+    # Arm names that are clause fragments ("with self-directed exercise in patients") are not arms.
+    fragment = re.compile(r"^(?:with|in|for|to|of|and|or)\b|\b(?:patients|participants)\b|\bundergoing\b", re.IGNORECASE)
+    if any(fragment.search(x.name) for x in interventions + comparators):
+        pair = next(((m, t) for t in texts for m in [_ALLOCATION_PAIR_RE.search(t or "")] if m), None)
+        interventions, comparators = [], []
+        if pair:
+            source = _source(article, pair[1])
+            if source.verification_status == SOURCE_VERIFIED:
+                interventions = [Intervention(name=_core_intervention(pair[0].group("i").strip(), co_treatments),
+                                              role_label=role_label, source=source)]
+                comparators = [Comparator(name=pair[0].group("c").strip(), source=source)]
+    if not interventions:
+        for pattern in _STUDY_INTERVENTION_PATTERNS:
+            hit = next(((m, t) for t in texts for m in [pattern.search(t or "")] if m), None)
+            if hit:
+                name = re.sub(r"^(?:the|a|an)\s+", "", hit[0].group("i").strip(), flags=re.IGNORECASE)
+                if not _MEASURE_RE.search(name) and len(name.split()) <= 10:
+                    source = _source(article, hit[1])
+                    if source.verification_status == SOURCE_VERIFIED:
+                        interventions = [Intervention(name=_core_intervention(name, co_treatments), role_label=role_label,
+                                                      source=source)]
+                        break
+    if not comparators and interventions:
+        for pattern in _STUDY_COMPARATOR_PATTERNS:
+            hit = next(((m, t) for t in texts for m in [pattern.search(t or "")] if m), None)
+            if hit:
+                name = hit[0].group("c").strip()
+                if name and not _kw_overlap(name, interventions[0].name):
+                    source = _source(article, hit[1])
+                    if source.verification_status == SOURCE_VERIFIED:
+                        comparators = [Comparator(name=name, source=source)]
+                        break
+    # "Comparison of laparoscopic and open gastrectomy": an allocation sentence that lists "open or
+    # laparoscopic" does not make open surgery the intervention.
+    if len(interventions) == 1 and len(comparators) == 1:
+        order = _TITLE_ORDER_RE.search(title)
+        if order:
+            first, second = order.group("a").lower(), order.group("b").lower()
+            i_name, c_name = interventions[0].name.lower(), comparators[0].name.lower()
+            if first in c_name and second in i_name and first not in i_name:
+                old_i, old_c = interventions[0], comparators[0]
+                interventions = [Intervention(name=old_c.name, role_label=role_label, source=old_c.source)]
+                comparators = [Comparator(name=old_i.name, source=old_i.source)]
+    return interventions, comparators
+
+
+def _kw_overlap(a: str, b: str) -> bool:
+    return bool({w for w in re.findall(r"[a-z]{4,}", a.lower())} & {w for w in re.findall(r"[a-z]{4,}", b.lower())})
 
 
 def _fallback_total_from_details(article: Dict[str, Any], details: Dict[str, Any], population: Population,
@@ -1123,9 +1277,9 @@ def extract_population(article: Dict[str, Any], design_key: str, arms: List[Stud
 _MEASURES: List[Tuple[str, str, str]] = [
     # (regex, code, family) — longest phrases first
     (r"diagnostic\s+odds\s+ratios?|\bDORs?\b", "DOR", "ratio"),
-    (r"(?:age-adjusted\s+|adjusted\s+|unadjusted\s+)?(?:common\s+)?odds\s+ratios?|\baORs?\b|\bORs?\b", "OR", "ratio"),
-    (r"(?:age-adjusted\s+|adjusted\s+|unadjusted\s+)?(?:subdistribution\s+)?hazard\s+ratios?|\baHRs?\b|\bsHRs?\b|\bHRs?\b", "HR", "ratio"),
-    (r"incidence\s+rate\s+ratios?|\bIRRs?\b", "IRR", "ratio"),
+    (r"(?:age-adjusted\s+|adjusted\s+|unadjusted\s+)?(?:common\s+)?odds\s+ratios?|\b[ac]ORs?\b|\bORs?\b", "OR", "ratio"),
+    (r"(?:age-adjusted\s+|adjusted\s+|unadjusted\s+)?(?:subdistribution\s+)?hazard\s+ratios?|\b[ac]HRs?\b|\bsHRs?\b|\bHRs?\b", "HR", "ratio"),
+    (r"incidence\s+rate\s+ratios?|\b[ac]?IRRs?\b", "IRR", "ratio"),
     (r"(?:age-adjusted\s+|adjusted\s+|unadjusted\s+)?rate\s+ratios?", "RR", "ratio"),
     (r"(?:adjusted\s+)?relative\s+risks?|(?:adjusted\s+)?risk\s+ratios?|\bRRs?\b", "RR", "ratio"),
     (r"positive\s+likelihood\s+ratios?|\bLR\+", "LR+", "ratio"),
@@ -1140,7 +1294,7 @@ _MEASURES: List[Tuple[str, str, str]] = [
     (r"area\s+under\s+the\s+(?:receiver\s+operating\s+characteristic\s+)?(?:\(ROC\)\s+)?curve|\bAUC\b|\bAUROC\b|\bC-statistic\b", "AUC", "diagnostic"),
     (r"positive\s+predictive\s+values?|\bPPV\b", "PPV", "diagnostic"),
     (r"negative\s+predictive\s+values?|\bNPV\b", "NPV", "diagnostic"),
-    (r"(?:overall\s+|diagnostic\s+|detection\s+)accuracy", "accuracy", "diagnostic"),
+    (r"(?:overall\s+|diagnostic\s+|detection\s+)accuracy|\baccuracy(?=\s*\(\s*\d)", "accuracy", "diagnostic"),
     (r"(?<![\w-])difference(?![\w-])", "RD", "difference"),
 ]
 _CASE_SENSITIVE_ACRONYM = re.compile(r"^(?:\\b)?[A-Z]")
@@ -1149,7 +1303,7 @@ _MEASURE_RE = re.compile(
     "|".join(f"(?P<m{i}>{pattern})" for i, (pattern, _c, _f) in enumerate(_MEASURES)),
     re.IGNORECASE,
 )
-_ACRONYM_ONLY = re.compile(r"^(?:a|s)?(?:OR|HR|RR|IRR|SMD|WMD|MD|DOR|AUC|AUROC|PPV|NPV|LR[+-])s?$")
+_ACRONYM_ONLY = re.compile(r"^(?:a|s|c)?(?:OR|HR|RR|IRR|SMD|WMD|MD|DOR|AUC|AUROC|PPV|NPV|LR[+-])s?$")
 
 _NUMBER = r"-?\d+(?:\.\d+)?"
 _VALUE_RE = re.compile(
@@ -1157,8 +1311,8 @@ _VALUE_RE = re.compile(
     rf"(?P<val>{_NUMBER})\s*(?P<pct>%)?"
 )
 _CI_AFTER_RE = re.compile(
-    rf"^\s*(?:%|percentage\s+points?|points?|mg/dl|mmol/l|mmhg|mm|cm|kg/m2|kg|ml|months?|weeks?|days?|years?)?\s*[;,]?\s*[(\[]?\s*"
-    rf"(?:(?P<lvl>\d{{2}})(?:\.\d)?\s*%\s*(?:CI|confidence\s+intervals?)(?:\s*\[CI\])?|CI)?\s*[,:=]?\s*[(\[]?\s*"
+    rf"^\s*(?:%|°|percentage\s+points?|points?|mg/dl|mmol/l|mmhg|mm|cm|kg/m2|kg|ml|months?|weeks?|days?|years?)?\s*[;,]?\s*[(\[]?\s*"
+    rf"(?:(?P<lvl>\d{{2}})(?:\.\d)?\s*%\s*(?:CI|confidence\s+intervals?)(?:\s*[\[(]CI[\])])?|CI)?\s*[,:=]?\s*[(\[]?\s*"
     rf"(?P<lo>{_NUMBER})\s*%?\s*(?:to|-|,)\s*(?P<hi>{_NUMBER})\s*%?\s*[)\]]?",
     re.IGNORECASE,
 )
@@ -1298,6 +1452,36 @@ def _diagnostic_target(sentence: str, article: Dict[str, Any]) -> str:
     return ""
 
 
+_STUDY_TARGET_PATTERNS = [
+    re.compile(r"\bfor\s+(?:the\s+)?(?:diagnosis|detection|prediction|identification)\s+of\s+(?P<t>[^,.:;()]{3,60})", re.IGNORECASE),
+    re.compile(r"\b(?:in|for)\s+(?:predicting|detecting|diagnosing|identifying)\s+(?P<t>[^,.:;()]{3,60})", re.IGNORECASE),
+    re.compile(r"\b(?:ability|performance|accuracy)\s+to\s+(?:predict|detect|identify|diagnose)\s+(?P<t>[^,.:;()]{3,60})", re.IGNORECASE),
+    re.compile(r"(?:^|[.;]\s*)(?P<t>[A-Z][\w\s-]{2,40}?)\s+was\s+defined\s+(?:as|by)\b"),
+]
+_TARGET_CUT_RE = re.compile(
+    r"\s+(?:by|among|compared|versus|vs\.?|using|with|at|in\s+(?:\w+\s+){0,2}(?:patients|adults|children|women|men|individuals|"
+    r"participants|cohort|population))\b.*$",
+    re.IGNORECASE,
+)
+
+
+def study_diagnostic_target(article: Dict[str, Any]) -> Tuple[str, str]:
+    """(target condition, source sentence) from the title, then the aim/methods sentences."""
+    title = article.get("title") or ""
+    candidates = [title] + sentences_of(article.get("abstract") or "")[:8]
+    for pattern in _STUDY_TARGET_PATTERNS:
+        for text in candidates:
+            # "(IVIG)" inside the target must not end it: "intravenous immunoglobulin (IVIG) resistance".
+            match = pattern.search(re.sub(r"\s*\([A-Za-z][\w-]{0,10}\)", "", text or ""))
+            if match:
+                target = _TARGET_CUT_RE.sub("", match.group("t")).strip(" ,;:")
+                if re.search(r"\band\s+(?:predict|detect|diagnos|identif)", target, re.IGNORECASE):
+                    continue  # two targets ("PAS and predicting adverse outcomes"): not one condition
+                if 3 <= len(target) <= 60 and not _MEASURE_RE.search(target):
+                    return target, _collapse(text)
+    return "", ""
+
+
 DIAGNOSTIC_MEASURES = {"DOR", "LR+", "LR-", "sensitivity", "specificity", "AUC", "PPV", "NPV", "accuracy"}
 
 _BAD_OUTCOME_START_RE = re.compile(
@@ -1327,6 +1511,8 @@ def _clean_outcome(text: str) -> str:
     # "the IRR for combined new/worsening allergies" names the outcome after the measure.
     outcome = re.sub(r"^(?:the\s+)?(?:IRRs?|HRs?|ORs?|RRs?|(?:incidence\s+rate|hazard|odds|risk)\s+ratios?)\s+for\s+",
                      "", outcome, flags=re.IGNORECASE)
+    outcome = re.sub(r"\s+(?:after|with|following)\s+adjust\w*\b.*$|\s+adjusted\s+for\b.*$", "", outcome,
+                     flags=re.IGNORECASE)  # "tendon rupture after adjustment for age, sex and BMI"
     outcome = _CUT_RE.sub("", outcome).strip(" ,;:")
     outcome = re.sub(r"(?:[,\s]+(?:and|with|or))+$", "", outcome).strip(" ,;:")
     outcome = re.sub(r"\s+estimates?$", "", outcome).strip()
@@ -1357,7 +1543,7 @@ _BEFORE_PATTERNS = [
     re.compile(r"\b(?:risks?|incidence|rates?|odds|hazard|likelihood|occurrence|number|frequency|proportion|reductions?|"
                r"increases?|decreases?)\s+(?:in\s+(?:the\s+)?rate\s+)?of\s+(?P<o>[^;(),]+?)\s*(?:,?\s*with)?\s*$", re.IGNORECASE),
     re.compile(r"\b(?:reductions?|increases?|decreases?|differences?|changes?)\s+in\s+(?P<o>[^;(),]+?)\s*$", re.IGNORECASE),
-    re.compile(r"(?:^|,\s+)(?:and\s+)?(?:an?\s+|the\s+)?(?P<o>[A-Za-z][^,;()]{2,70}?)\s+(?:were|was)\s+(?:lower|higher|more\s+common|"
+    re.compile(r"(?:^|,\s+)(?:and\s+)?(?:an?\s+|the\s+)?(?P<o>[A-Za-z][^,;()]{2,70}?)\s+(?:were|was)\s+(?:significantly\s+)?(?:lower|higher|more\s+common|"
                r"less\s+common|reduced|increased)\b", re.IGNORECASE),
     re.compile(r"^(?:the\s+)?(?P<o>[\w-]+(?:\s+[\w-]+){0,5}?)\s+(?:estimates?\s+)?(?:was|were)\s+-?\d", re.IGNORECASE),
     re.compile(r"\b(?:associated\s+with|reduced|decreased|increased|improved|lowered|lower|higher)\s+(?P<o>[^;()]+?)\s*$", re.IGNORECASE),
@@ -1424,11 +1610,75 @@ _AFTER_PAREN_RE = re.compile(
 )
 
 
+_AFTER_PAREN_RISK_RE = re.compile(
+    r"^\s*(?:,?\s*(?:and\s+)?[^.;()]{0,60}?\([^)]*\)\s*)*,?\s*(?:was|were)?\s*(?:significantly\s+)?"
+    r"(?:associated\s+with\s+(?:significantly\s+)?(?:lower|higher|reduced|increased|decreased)\s+(?:risks?|odds|incidence)\s+of\s+"
+    r"(?P<o>[^,.;()]{2,60}?)(?=\s*(?:[,.;(]|$|\s+(?:compared|than|in|among)\b))"
+    r"|(?:reduced|lowered|increased|decreased)\s+the\s+(?P<o2>[A-Za-z][\w\s-]{2,40}?)\s+risks?\b)",
+    re.IGNORECASE,
+)
+
+
 def _inside_parens(sentence: str, index: int) -> bool:
     return rg._depth_at(sentence, index) > 0
 
 
+# "or" is not a list separator here: it joins the parts of one outcome ("normoalbuminuria or microalbuminuria").
+_LIST_SEPARATOR_RE = re.compile(r",|;|:|\band\b|\bsuch\s+as\b|\bincluding\b|\bof\s+developing\b|\bodds\s+of\b")
+_NOT_A_LABEL = {"respectively", "overall", "both", "each", "alone", "together", "separately", "combined", "similarly"}
+_LABEL_VERB_RE = re.compile(r"\b(?:was|were|is|are|had|has|have|showed|resulted|reduced|increased|decreased|compared|"
+                            r"associated|lower|higher|than|versus|vs)\b", re.IGNORECASE)
+
+
+def _label_before_paren(sentence: str, mention_start: int) -> str:
+    """'..., cesarean delivery (OR = 2.92, ...)' -> 'cesarean delivery'.
+
+    Only for a bracket that opens with the measure itself, and only when the words
+    between the previous list separator and the bracket form a short noun phrase
+    (no verb, no number). A short acronym bracket such as '(NICU)' is skipped.
+    """
+    open_idx = sentence.rfind("(", 0, mention_start)
+    if open_idx < 0 or not re.fullmatch(r"\s*(?:the\s+)?(?:adjusted\s+|crude\s+)?", sentence[open_idx + 1:mention_start], re.IGNORECASE):
+        return ""
+    prefix = sentence[:open_idx].rstrip()
+    acronym = re.search(r"\(\s*[A-Za-z][\w-]{0,10}\s*\)\s*$", prefix)
+    if acronym:
+        prefix = prefix[:acronym.start()].rstrip()
+    pieces = _LIST_SEPARATOR_RE.split(prefix)
+    label = (pieces[-1] if pieces else "").strip(" ,;:")
+    lead_in = prefix[: max(0, len(prefix) - len(pieces[-1]) if pieces else 0)]
+    # A list after "adjusted for" names covariates; a list after "compared with" names comparators.
+    if re.search(r"\b(?:adjust\w*\s+for|controll\w*\s+for|matched\s+(?:for|on)|compared\s+(?:with|to)|versus|vs\.?|than)\b"
+                 r"[^.;()]*$", _strip_parens(lead_in), re.IGNORECASE):
+        return ""
+    label = re.sub(r"^(?:(?:particularly|especially|notably|mainly|mostly|only)\s+)?(?:at\s+)?(?:the|a|an|being|having|developing)?\s*",
+                   "", label, flags=re.IGNORECASE)
+    if re.fullmatch(r"(?:both\s+)?(?:men|women|males?|females?|boys|girls|children|adults|elderly|older\s+adults|"
+                    r"younger\s+(?:patients|adults)|patients|participants)", label, re.IGNORECASE):
+        return ""  # "in both men (HR ...) and women (HR ...)": a subgroup, not an outcome
+    if not label or len(label.split()) > 8 or re.search(r"\d", label) or _LABEL_VERB_RE.search(label) \
+            or label.lower() in _NOT_A_LABEL:
+        return ""
+    if not re.search(r"(?:,|;|\band\b|\bsuch\s+as\b|\bincluding\b|\bof\s+developing\b|\bodds\s+of\b)\s*"
+                     r"(?:(?:the|a|an|being|having|developing)\s+)?" + re.escape(label),
+                     sentence[:open_idx], re.IGNORECASE):
+        return ""  # a list item follows a separator; a sentence subject does not
+    return _clean_outcome(label)
+
+
+_SUBJECT_RISK_RE = re.compile(
+    r"^\s*(?P<o>[A-Z][\w-]*(?:\s+[\w-]+){0,3}?)\s+(?:risk|rate|incidence|odds)\b[^.;]*?\b(?:was|were)\s+"
+    r"(?:significantly\s+|independently\s+)?associated\s+with\b"
+)
+
+
 def _resolve_outcome(sentence: str, mention: Dict[str, Any], value_end: int) -> str:
+    subject = _SUBJECT_RISK_RE.match(_strip_parens(sentence[: mention["start"]]))
+    if subject:
+        # "Mortality risk (...) was associated with osteoporotic vBMD in men (HR 1.24)": the subject is the outcome.
+        outcome = _clean_outcome(subject.group("o"))
+        if outcome:
+            return outcome
     if _inside_parens(sentence, mention["start"]):
         close = _enclosing_close(sentence, mention["start"])
         after = _AFTER_PAREN_RE.match(sentence[close + 1:]) if close >= 0 else None
@@ -1436,7 +1686,15 @@ def _resolve_outcome(sentence: str, mention: Dict[str, Any], value_end: int) -> 
             outcome = _clean_outcome(after.group("o"))
             if outcome:
                 return outcome
-    direct = re.match(r"^\s*for\s+(?P<o>[^,;().]{3,60})", sentence[value_end:])
+        risk = _AFTER_PAREN_RISK_RE.match(sentence[close + 1:]) if close >= 0 else None
+        if risk:
+            outcome = _clean_outcome(risk.group("o") or risk.group("o2") or "")
+            if outcome:
+                return outcome
+        listed = _label_before_paren(sentence, mention["start"])
+        if listed:
+            return listed
+    direct = re.match(r"^\s*\)?\s*for\s+(?P<o>[^,;().]{3,60})", sentence[value_end:])
     if direct:
         outcome = _clean_outcome(direct.group("o"))
         if outcome:
@@ -1482,7 +1740,7 @@ def extract_effect_estimates(article: Dict[str, Any]) -> List[EffectEstimate]:
             j = index + 1
             while j < len(mentions):
                 gap = sentence[run[-1]["end"]:mentions[j]["start"]]
-                if _LIST_SEP_RE.match(gap) or re.fullmatch(r"\s*,\s*", gap):
+                if _LIST_SEP_RE.match(gap) or re.fullmatch(r"\s*[,/]\s*", gap):
                     run.append(mentions[j])
                     j += 1
                 else:
@@ -1500,7 +1758,7 @@ def extract_effect_estimates(article: Dict[str, Any]) -> List[EffectEstimate]:
                         group["abs_start"] = cursor
                         groups.append(group)
                         cursor += group["end"]
-                        sep = re.match(r"^\s*(?:,\s*and|,|and)\s+(?:a\s+|an\s+)?", sentence[cursor:])
+                        sep = re.match(r"^\s*(?:,\s*and|,|and)\s+(?:a\s+|an\s+)?|^\s*/\s*", sentence[cursor:])
                         if sep:
                             cursor += sep.end()
                 if len(groups) == len(run):
@@ -1544,9 +1802,12 @@ def extract_effect_estimates(article: Dict[str, Any]) -> List[EffectEstimate]:
         _reverse_order_estimates(article, sentence, estimates)
         _legend_estimates(article, sentence, estimates)
         _shared_measure_estimates(article, sentence, estimates)
+        _unlabeled_interval_estimates(article, sentence, estimates)
+        _trailing_outcome_for_listed_exposures(sentence, estimates)
     estimates = _dedupe_estimates(estimates)
     _inherit_subgroup_outcomes(estimates)
     _bind_primary_outcome(article, estimates)
+    _expand_defined_acronyms(article, estimates)
     return estimates
 
 
@@ -1715,6 +1976,17 @@ def _build_estimate(article, sentence, mention, group, mentions, lead_outcome: s
         stratum=_sentence_stratum(sentence),
         source=_source(article, sentence),
     )
+    if est.family == "diagnostic" and not est.outcome_name:
+        target, target_sentence = study_diagnostic_target(article)
+        if target:
+            est.outcome_name = target
+            est.outcome_basis = f"hedef durum çalışma başlığı/amaç cümlesinden: \"{target_sentence[:160]}\""
+    if est.measure == "RD" and not re.search(r"risk|absolute|proportion|percentage", est.measure_text, re.IGNORECASE):
+        at = sentence.find(est.value_text, mention["start"])
+        if at >= 0 and re.match(r"\s*(?:°|mm\b|cm\b|kg\b|mmhg\b|mg/dl\b|mmol/l\b|points?\b|score\b)",
+                                sentence[at + len(est.value_text):], re.IGNORECASE):
+            # "between-group difference -3.23° (95% CI ...)": a difference in a continuous unit is a mean difference.
+            est.measure, est.family = "MD", "difference"
     if ci and group.get("ci_level") is None:
         level = re.search(r"(\d{2})\s*%\s*(?:CI|confidence)", sentence[mention["start"]:])
         if level:
@@ -1766,6 +2038,13 @@ _SHARED_MEASURE_GROUP_RE = re.compile(
 )
 
 
+_SEMICOLON_GROUP_RE = re.compile(
+    r";\s*(?:and\s+)?(?P<v>\d+(?:\.\d+)?)\s*\(\s*(?P<lo>\d+(?:\.\d+)?)\s*(?:-|–|to)\s*(?P<hi>\d+(?:\.\d+)?)"
+    r"\s*(?:;\s*(?P<p>p\s*[=<>]\s*[\d.]+))?\s*\)\s*for\s+(?P<o>[^;,.()]{2,60})",
+    re.IGNORECASE,
+)
+
+
 def _shared_measure_estimates(article, sentence: str, estimates: List[EffectEstimate]) -> None:
     """'ischaemic stroke (hazard ratio, 95% CI: 0.81, 0.68-0.96) and all-cause death (0.91, 0.86-0.96)':
     later groups without a measure word reuse the measure named once, if each interval contains its value."""
@@ -1777,6 +2056,22 @@ def _shared_measure_estimates(article, sentence: str, estimates: List[EffectEsti
     if anchor < 0:
         return
     known = {(e.value, e.ci_low, e.ci_high) for e in estimates if e.source.sentence == sentence}
+    for match in _SEMICOLON_GROUP_RE.finditer(sentence, anchor):
+        # "the adjusted odds ratio was 0.49 (0.25-0.99; p = 0.049) for NEC; 0.87 (0.59-1.28; p = 0.49) for LOS"
+        value, low, high = float(match.group("v")), float(match.group("lo")), float(match.group("hi"))
+        outcome = _clean_outcome(match.group("o"))
+        if (value, low, high) in known or not (low <= value <= high) or not outcome:
+            continue
+        est = EffectEstimate(
+            measure=first.measure, measure_text=first.measure_text, family=first.family,
+            value=value, value_text=match.group("v"), ci_low=low, ci_high=high, ci_level=first.ci_level,
+            p_value=(match.group("p") or "").replace("  ", " "), outcome_name=outcome, stratum=first.stratum,
+            outcome_basis=f"ölçüt adı aynı cümlede bir kez yazılmış ({first.measure_text.strip()})",
+            source=_source(article, sentence),
+        )
+        _validate_estimate(est)
+        estimates.append(est)
+        known.add((value, low, high))
     for match in _SHARED_MEASURE_GROUP_RE.finditer(sentence, anchor):
         value, low, high = float(match.group("v")), float(match.group("lo")), float(match.group("hi"))
         if (value, low, high) in known or not (low <= value <= high):
@@ -1804,6 +2099,137 @@ def _shared_measure_estimates(article, sentence: str, estimates: List[EffectEsti
         _validate_estimate(est)
         estimates.append(est)
         known.add((value, low, high))
+
+
+_TRAILING_OUTCOME_RE = re.compile(
+    r"\b(?:had|have|has|showed|were|was)\s+(?:a\s+|an\s+)?(?:significantly\s+)?(?:higher|lower|increased|reduced|greater)?\s*"
+    r"(?:odds|risks?|likelihood|hazards?)\s+(?:of|for)\s+(?:developing\s+|having\s+)?(?P<o>[A-Za-z][^,;.()]{1,60}?)"
+    r"(?=\s+(?:compared|than|among|in\s+the|in\s+women|in\s+patients|relative)\b|\s*[,.;]|\s*$)"
+    r"|\b(?:were|was)\s+associated\s+with\s+(?:an?\s+)?(?:significantly\s+)?(?:higher|lower|increased|reduced|greater)\s+"
+    r"(?:incidence\s+rate|incidence|rate|odds|risk|likelihood|hazard)\s+of\s+(?P<o3>[A-Za-z][^,;.()]{1,60}?)"
+    r"(?=\s+(?:compared|than|among|in\s+the)\b|\s*[,.;]|\s*$)"
+    r"|\bincreased\s+the\s+(?:likelihood|odds|risk)\s+of\s+(?:developing\s+)?(?P<o2>[A-Za-z][^,;.()]{1,60}?)"
+    r"(?=\s+(?:in\s+the|compared|among)\b|\s*[,.;]|\s*$)",
+    re.IGNORECASE,
+)
+
+
+def _trailing_outcome_for_listed_exposures(sentence: str, estimates: List[EffectEstimate]) -> None:
+    """'Risk factors such as BMI (OR 3.01 ...), sedentary lifestyle (OR 2.79 ...) had higher odds of developing GDM':
+    the names before the brackets are exposures and GDM is the outcome. When the phrase comes first
+    ('higher odds of developing depression (OR ...), cesarean delivery (OR ...)') the names are the outcomes
+    and nothing changes."""
+    match = _TRAILING_OUTCOME_RE.search(sentence or "")
+    if not match:
+        return
+    outcome = (match.group("o") or match.group("o2") or match.group("o3") or "").strip()
+    outcome = re.sub(r"^(?:the\s+)?", "", outcome)
+    if not outcome or _MEASURE_RE.search(outcome):
+        return
+    for est in estimates:
+        if est.source.sentence != sentence or est.family == "diagnostic":
+            continue
+        at = sentence.find(est.value_text)
+        if at < 0 or at > match.start():
+            continue  # only values written before the outcome phrase are exposures
+        exposure = est.outcome_name
+        est.outcome_name = outcome
+        basis = f"sonlanım cümle sonunda adlandırıldı; maruziyet/risk faktörü: {exposure}" if exposure else \
+            "sonlanım cümle sonunda adlandırıldı"
+        est.outcome_basis = "; ".join(b for b in (basis,) if b)
+
+
+_UNLABELED_GROUP_RE = re.compile(
+    r"\(\s*(?P<v>\d+(?:\.\d+)?)\s*[,;]\s*(?P<lo>\d+(?:\.\d+)?)\s*(?:-|–|to)\s*(?P<hi>\d+(?:\.\d+)?)"
+    r"\s*(?:[;,]\s*(?P<p>p\s*[=<>]\s*[\d.]+))?\s*\)",
+    re.IGNORECASE,
+)
+
+
+def _unlabeled_interval_estimates(article, sentence: str, estimates: List[EffectEstimate]) -> None:
+    """'The risk of the composite renal endpoint was also reduced (0.62, 0.43-0.90; p=0.013)': a value with its
+    interval but no measure name. Kept with the measure marked as not named, never guessed."""
+    if not re.search(r"\b(?:risk|odds|hazard|rate|reduced|increased|lower|higher|associated)\b", sentence, re.IGNORECASE):
+        return
+    known = {(e.value, e.ci_low, e.ci_high) for e in estimates if e.source.sentence == sentence}
+    for match in _UNLABELED_GROUP_RE.finditer(sentence):
+        value, low, high = float(match.group("v")), float(match.group("lo")), float(match.group("hi"))
+        if (value, low, high) in known or not (low <= value <= high) or low == high:
+            continue
+        if _MEASURE_RE.search(sentence[max(0, match.start() - 25):match.start()]):
+            continue  # a measure named just before belongs to the regular parser
+        mention = {"start": match.start(), "end": match.start(), "text": "", "code": "unnamed", "family": "unspecified"}
+        est = EffectEstimate(
+            measure="unnamed", measure_text="", family="unspecified", value=value, value_text=match.group("v"),
+            ci_low=low, ci_high=high, ci_level=None, p_value=(match.group("p") or "").replace("=", " = ").replace("  ", " "),
+            outcome_name=_resolve_outcome(sentence, mention, match.start()),
+            outcome_basis="ölçüt adı kaynak cümlede yazılmamış; değer ve aralık kaynaktan",
+            source=_source(article, sentence),
+        )
+        _validate_estimate(est)
+        estimates.append(est)
+        known.add((value, low, high))
+
+
+_STOP_INITIALS = {"of", "and", "or", "the", "in", "to", "for", "with", "a", "an"}
+
+
+def defined_acronyms(text: str) -> Dict[str, str]:
+    """{'AR': 'allergic rhinitis', 'NEC': 'necrotizing enterocolitis'} from definitions written in the text.
+
+    The phrase is the shortest run of words just before the bracket that starts with the acronym's
+    first letter and contains its letters in order. An acronym defined twice differently is dropped.
+    """
+    found: Dict[str, str] = {}
+    for match in re.finditer(r"([A-Za-z][\w\s'-]{2,80}?)\s*\((?P<a>[A-Z][A-Za-z0-9-]{1,8})\)", text or ""):
+        acronym = match.group("a")
+        words = re.findall(r"[A-Za-z][\w'-]*", match.group(1))
+        letters = acronym.replace("-", "").lower()
+
+        def _initials(ws):
+            return "".join(w[0].lower() for w in ws if w.lower() not in _STOP_INITIALS)
+
+        def _subsequence(ws):
+            blob, pos = " ".join(ws).lower(), 0
+            for ch in letters:
+                pos = blob.find(ch, pos)
+                if pos < 0:
+                    return False
+                pos += 1
+            return True
+
+        candidates = [words[-size:] for size in range(1, min(len(words), 7) + 1)]
+        candidates = [ws for ws in candidates if ws[0].lower() not in _STOP_INITIALS and ws[0][0].lower() == letters[0]]
+        # Word initials first ("stroke or systemic embolism" for SSE), then letters in order ("necrotizing enterocolitis").
+        chosen = next((ws for ws in candidates if _initials(ws) == letters), None) or \
+            next((ws for ws in candidates if _subsequence(ws)), None)
+        if not chosen:
+            continue
+        phrase = " ".join(chosen)
+        if acronym in found and found[acronym].lower() != phrase.lower():
+            found[acronym] = ""  # defined two different ways: do not expand
+        else:
+            found[acronym] = phrase
+    return {k: v for k, v in found.items() if v}
+
+
+def _expand_defined_acronyms(article: Dict[str, Any], estimates: List[EffectEstimate]) -> None:
+    """'LOS' -> 'late-onset sepsis (LOS)' when the same abstract defines it; 'individual AR' -> 'allergic rhinitis (AR)'."""
+    definitions = defined_acronyms(f"{article.get('title') or ''}. {article.get('abstract') or ''}")
+    if not definitions:
+        return
+    for est in estimates:
+        name = re.sub(r"^(?:individual|each|separate)\s+", "", est.outcome_name or "", flags=re.IGNORECASE)
+        tokens = name.split()
+        if not tokens or len(tokens) > 3:
+            continue
+        expanded = [f"{definitions[t]} ({t})" if t in definitions else t for t in tokens]
+        if expanded != tokens and rg._display_outcome_name(name) in (rg._UNNAMED_OUTCOME_TR, "") \
+                or expanded != tokens and rg._display_outcome_name(name).endswith("(kaynak terim)"):
+            # Expand only when the short form has no controlled Turkish name ("cancer-associated IIM" already has one).
+            est.outcome_name = " ".join(expanded)
+        elif name != est.outcome_name:
+            est.outcome_name = name
 
 
 def _dedupe_estimates(estimates: List[EffectEstimate]) -> List[EffectEstimate]:
@@ -1847,11 +2273,33 @@ _OBS_POOL_RE = re.compile(r"\b(?:observational|cohort|case-control|cross-section
 _PROTOCOL_RE = re.compile(r"\b(?:study\s+protocol|a\s+protocol\s+for|trial\s+protocol|protocol\s+of)\b", re.IGNORECASE)
 
 
+_NON_RANDOMIZED_SECONDARY_RE = re.compile(
+    r"\b(?:secondary|post[- ]hoc|ancillary|exploratory)\s+analys[ie]s\s+(?:of|from|using|included|in)\b"
+    r"|\b(?:secondary|post[- ]hoc)\s+analys[ie]s\b[^.]{0,80}\b(?:trial|RCT)\b",
+    re.IGNORECASE,
+)
+_ASSOCIATION_AIM_RE = re.compile(
+    r"\bfactors?\s+associated\b|\brisk\s+factors?\b|\bpredict(?:ing|ors?|ive|ed)?\b|\bprognostic\b"
+    r"|\bassociation\s+(?:of|between)\b|\bwas\s+associated\s+with\b",
+    re.IGNORECASE,
+)
+_ARM_COMPARISON_RE = re.compile(
+    r"\bplacebo\b|\b(?:treatment|intervention|control)\s+(?:group|arm)s?\b|\brandomi[sz]ed\s+(?:to|groups?)\b"
+    r"|\bassigned\s+to\b|\btreatment\s+with\b",
+    re.IGNORECASE,
+)
+
+
 def classify_claim_type(design_key: str, title: str, abstract: str, results_reported: bool) -> str:
     text = f"{title} {abstract}"
     if not results_reported:
         return "no_results"
     if design_key in _RANDOMIZED_KEYS:
+        if _NON_RANDOMIZED_SECONDARY_RE.search(text) and _ASSOCIATION_AIM_RE.search(text) \
+                and not _ARM_COMPARISON_RE.search(text):
+            # A secondary analysis of trial data that studies factors nobody was randomized to
+            # ("factors associated with missed sessions", "vBMD predicting fractures") is an association.
+            return "association"
         return "causal_effect"
     if design_key in _SYNTHESIS_KEYS:
         if _DIAG_CUE_RE.search(text):
@@ -1910,6 +2358,10 @@ _COTREATMENT_RES = [
     re.compile(r"\b(?:background|concomitant|concurrent)\s+(?:therapy|therapies|treatment|treatments|medications?)\s+"
                r"(?:with|of|including)\s+(?P<c>[\w-]+(?:\s+[\w-]+)?)", re.IGNORECASE),
     re.compile(r"\bconcomitant\s+(?P<c>[\w-]+)\s+(?:use|therapy|treatment)\b", re.IGNORECASE),
+    # "used as an adjunct to bracing": the treatment every arm receives is a background therapy.
+    re.compile(r"\b(?:as\s+an?\s+)?adjunct\s+to\s+(?P<c>[\w-]+(?:\s+[\w-]+)?)(?=\s+in\b|[.,;)]|$)", re.IGNORECASE),
+    re.compile(r"\bpatients\s+(?:with\s+[\w-]+\s+)?undergoing\s+(?P<c>brace\s+treatment|bracing|hemodialysis|dialysis)\b",
+               re.IGNORECASE),
 ]
 
 
@@ -2322,6 +2774,7 @@ def _build_study_uncached(article: Dict[str, Any], query: str) -> Study:
     fill_arm_sizes_from_results(art, arms)
     events.extend(extract_arm_labelled_event_counts(art, arms, events))
     population = extract_population(art, design_key, arms, events)
+    _refine_population(art, design_key, population, arms, events)
     if population.n_total is None and population.n_planned is None and results_reported and (
             design_key in _DESCRIPTIVE_KEYS or design_key not in _SYNTHESIS_KEYS):
         # Descriptive designs accept any stated total; other primary studies only an explicit
@@ -2387,6 +2840,9 @@ def _build_study_uncached(article: Dict[str, Any], query: str) -> Study:
         # A name whose source sentence cannot be found verbatim is not shown.
         interventions = [i for i in interventions if i.source.verification_status == SOURCE_VERIFIED]
         comparators = [c for c in comparators if c.source.verification_status == SOURCE_VERIFIED]
+
+    interventions, comparators = _study_level_comparison(art, claim_type, interventions, comparators, role_label,
+                                                         co_treatments)
 
     estimates = (extract_effect_estimates(art) + extract_timepoint_proportions(art)) if results_reported else []
     if results_reported:

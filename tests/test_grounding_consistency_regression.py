@@ -122,7 +122,9 @@ class TestQuotesMatchTheExtractedToken(unittest.TestCase):
             [article],
         )
         self.assertNotIn("Özette bildirilmedi", report)
-        self.assertIn("özette bildirilmedi", report)
+        # The interval written as "(95% confidence interval (CI): 0.553-0.698" is now read, so the
+        # lower-case "not reported" phrase no longer has to appear for the AUC.
+        self.assertIn("0.553 ile 0.698", report)
 
 
 class TestOutcomesAreSplitAndNotDuplicated(unittest.TestCase):

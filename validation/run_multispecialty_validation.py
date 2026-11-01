@@ -291,7 +291,9 @@ def source_match_audit(studies: List[em.Study]) -> Dict[str, Any]:
             values_checked += 1
             sentence = em.normalize_text(study.population.source.sentence).replace(",", "").replace(" ", "")
             word_ok = any(w in study.population.source.sentence.lower() for w, n in em._WORD_NUMBERS.items()
-                          if n == study.population.n_total)
+                          if n == study.population.n_total) or any(
+                em.parse_count(token) == study.population.n_total
+                for token in re.findall(em.NUM_RE, study.population.source.sentence, re.IGNORECASE))  # "Sixty-two"
             if str(study.population.n_total) in sentence or word_ok or study.population.n_kind == "cases":
                 value_ok += 1
             else:
@@ -422,6 +424,18 @@ def run(records_path: Optional[str] = None, reference_path: Optional[str] = None
 HOLDOUT2_RECORDS_PATH = os.path.join(HERE, "pubmed_records_holdout2.json")
 HOLDOUT2_REFERENCE_PATH = os.path.join(HERE, "reference_dataset_holdout2.json")
 HOLDOUT2_FROZEN_PATH = os.path.join(HERE, "holdout2_first_run_results.json")
+HOLDOUT3_RECORDS_PATH = os.path.join(HERE, "pubmed_records_holdout3.json")
+HOLDOUT3_REFERENCE_PATH = os.path.join(HERE, "reference_dataset_holdout3.json")
+HOLDOUT3_FROZEN_PATH = os.path.join(HERE, "holdout3_first_run_results.json")
+# Reference entries found to be wrong AFTER the first run was frozen. The frozen file is not edited;
+# the report shows these items next to it so a reader can judge both numbers.
+HOLDOUT3_REFERENCE_ERRATA = [
+    ("42937536", "Referansta 'birincil' yazıldı; özet kendini NLST'nin ikincil analizi olarak tanımlıyor. Motorun 'ikincil analiz' "
+                 "kararı doğrudur. Dondurulmuş sonuçtaki ilgili iki öğe (yayın rolü, bağımsızlık) motor hatası değildir. Güncel "
+                 "çalıştırmalar için referans düzeltildi; ana çalışma sette olmadığından ebeveyn bağlantısı eksik sayılır."),
+    ("42963818", "Referansta 'birincil' yazıldı; özet kendini DOT Selfie RCT verisinin ikincil analizi olarak tanımlıyor. Motorun "
+                 "'ikincil analiz' kararı doğrudur. Güncel çalıştırmalar için referans aynı şekilde düzeltildi."),
+]
 
 
 def _load_frozen(path: str) -> Optional[Dict[str, Any]]:
@@ -438,6 +452,8 @@ def run_all() -> Dict[str, Any]:
         "holdout_first_run": _load_frozen(HOLDOUT_FROZEN_PATH),
         "holdout2_current": run(HOLDOUT2_RECORDS_PATH, HOLDOUT2_REFERENCE_PATH),
         "holdout2_first_run": _load_frozen(HOLDOUT2_FROZEN_PATH),
+        "holdout3_current": run(HOLDOUT3_RECORDS_PATH, HOLDOUT3_REFERENCE_PATH),
+        "holdout3_first_run": _load_frozen(HOLDOUT3_FROZEN_PATH),
     }
 
 
@@ -511,10 +527,11 @@ def render_combined_markdown(all_res: Dict[str, Any]) -> str:
         ("Geliştirme kümesi (ayarlı)", dev, False),
         ("Ayrılmış küme 1, ilk çalıştırma (bağımsız)", all_res.get("holdout_first_run"), True),
         ("Ayrılmış küme 2, ilk çalıştırma (bağımsız)", all_res.get("holdout2_first_run"), True),
-        ("Küme 1 + 2, düzeltme sonrası (bağımsız değil)", None, False),
+        ("Ayrılmış küme 3, ilk çalıştırma (bağımsız)", all_res.get("holdout3_first_run"), True),
+        ("Küme 1 / 2 / 3, düzeltme sonrası (bağımsız değil)", None, False),
     ]
-    h1, h2 = all_res["holdout_current"], all_res["holdout2_current"]
-    total = dev["n_studies"] + h1["n_studies"] + h2["n_studies"]
+    h1, h2, h3 = all_res["holdout_current"], all_res["holdout2_current"], all_res["holdout3_current"]
+    total = dev["n_studies"] + h1["n_studies"] + h2["n_studies"] + h3["n_studies"]
     lines = [
         "# Çok Branşlı Doğrulama Raporu",
         "",
@@ -525,31 +542,35 @@ def render_combined_markdown(all_res: Dict[str, Any]) -> str:
         "## Özet",
         "",
         "- Geliştirme kümesi motor ayarlanırken kullanıldı; sonuçları **iyimserdir**, doğruluk tahmini değildir.",
-        "- **Ayrılmış küme 1** ve **ayrılmış küme 2** için referans değerler motor bu kayıtlarda hiç çalıştırılmadan yazıldı;",
-        "  ilk çalıştırmalar `validation/holdout_first_run_results.json` ve `validation/holdout2_first_run_results.json` içinde donduruldu.",
-        "  Küme 2, küme 1'in ortaya çıkardığı hatalar düzeltildikten sonra kuruldu: düzeltmelerin genellenip genellenmediğini ölçer.",
-        "- **Gerçekçi beklenti, iki bağımsız ilk çalıştırmadır** (aşağıda kalın). Sonraki düzeltmeler bu kümeleri de görmüş olduğundan",
+        "- **Ayrılmış küme 1, 2 ve 3** için referans değerler motor bu kayıtlarda hiç çalıştırılmadan yazıldı; ilk çalıştırmalar",
+        "  `validation/holdout_first_run_results.json`, `validation/holdout2_first_run_results.json` ve",
+        "  `validation/holdout3_first_run_results.json` içinde donduruldu. Her küme, bir öncekinin ortaya çıkardığı hatalar düzeltildikten",
+        "  sonra kuruldu: düzeltmelerin genellenip genellenmediğini ölçer. Küme 3 için seçim kuralı (branş/tasarım başına sabit bir PubMed",
+        "  sorgusu, Haziran 2025 sonrası, sayısal sonuç bildiren ilk kayıt) referans dosyasının `_meta` alanındadır.",
+        "- **Gerçekçi beklenti, üç bağımsız ilk çalıştırmadır** (aşağıda kalın). Sonraki düzeltmeler bu kümeleri de görmüş olduğundan",
         "  güncel sonuçları bağımsız değildir.",
         "",
         "| Ölçüt | " + " | ".join(f"**{c[0]}**" if c[2] else c[0] for c in columns) + " |",
         "|---|" + "---|" * len(columns),
     ]
-    combined_rows = _headline(h1), _headline(h2)
+    combined_rows = _headline(h1), _headline(h2), _headline(h3)
     for i, (name, dev_value) in enumerate(_headline(dev)):
         cells = [dev_value]
-        for _label, res, _bold in columns[1:3]:
+        for _label, res, _bold in columns[1:4]:
             cells.append(f"**{_headline(res)[i][1]}**" if res else "—")
-        cells.append(f"{combined_rows[0][i][1]} / {combined_rows[1][i][1]}")
+        cells.append(" / ".join(row[i][1] for row in combined_rows))
         lines.append(f"| {name} | " + " | ".join(cells) + " |")
     lines += [
         "",
-        f"- Yayın sayısı: geliştirme {dev['n_studies']}, ayrılmış küme 1 {h1['n_studies']}, ayrılmış küme 2 {h2['n_studies']}; "
+        f"- Yayın sayısı: geliştirme {dev['n_studies']}, ayrılmış küme 1 {h1['n_studies']}, ayrılmış küme 2 {h2['n_studies']}, "
+        f"ayrılmış küme 3 {h3['n_studies']}; "
         f"toplam **{total} gerçek PubMed yayını**.",
         "- **Sınırlılık:** Referans tabloları bir yapay zekâ asistanı hazırladı; bağımsız uzman hekim kontrolü yapılmadı. "
         "Yalnızca özetler kullanıldı. Kümeler küçük olduğu için oranların belirsizliği yüksektir.",
         "",
     ]
-    for label, key in (("Ayrılmış küme 1", "holdout_first_run"), ("Ayrılmış küme 2", "holdout2_first_run")):
+    for label, key in (("Ayrılmış küme 1", "holdout_first_run"), ("Ayrılmış küme 2", "holdout2_first_run"),
+                       ("Ayrılmış küme 3", "holdout3_first_run")):
         frozen = all_res.get(key)
         if not frozen:
             continue
@@ -558,10 +579,16 @@ def render_combined_markdown(all_res: Dict[str, Any]) -> str:
             if details:
                 lines.append(f"- **PMID {pmid}:** " + "; ".join(details))
         lines.append("")
+        if key == "holdout3_first_run":
+            lines += ["#### Ayrılmış küme 3: dondurmadan sonra fark edilen referans hataları", "",
+                      "Dondurulmuş dosya değiştirilmedi. Aşağıdaki öğelerde hatalı olan referanstır, motor değil:", ""]
+            lines += [f"- **PMID {pmid}:** {why}" for pmid, why in HOLDOUT3_REFERENCE_ERRATA]
+            lines.append("")
     lines += render_external_section()
     lines.append(render_markdown(dev, title="## Geliştirme kümesi ayrıntıları", heading_level=3))
     lines.append(render_markdown(h1, title="## Ayrılmış küme 1, güncel çalıştırma ayrıntıları", heading_level=3))
     lines.append(render_markdown(h2, title="## Ayrılmış küme 2, güncel çalıştırma ayrıntıları", heading_level=3))
+    lines.append(render_markdown(h3, title="## Ayrılmış küme 3, güncel çalıştırma ayrıntıları", heading_level=3))
     return "\n".join(lines) + "\n"
 
 

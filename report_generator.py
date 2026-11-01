@@ -721,10 +721,20 @@ def _case_evidence_key(title: str, abstract: str) -> Optional[str]:
     return None
 
 
+# "IPW was applied ... to emulate a RCT", "target trial emulation": an observational design
+# borrowing trial language. The phrase is not the study's own design.
+_TRIAL_EMULATION_RE = re.compile(
+    r"\b(?:emulat\w*|mimic\w*)\s+(?:an?\s+|the\s+)?(?:target\s+)?(?:pragmatic\s+)?"
+    r"(?:randomi[sz]ed\s+(?:controlled\s+|clinical\s+)?trials?|RCTs?)\b"
+    r"|\btarget[- ]trial\s+emulation\b",
+    re.IGNORECASE,
+)
+
+
 def _text_design_key(title: str, abstract: str) -> Optional[str]:
     """Read the study's own design from the title, then from the abstract."""
-    title = title or ""
-    abstract = abstract or ""
+    title = _TRIAL_EMULATION_RE.sub(" ", title or "")
+    abstract = _TRIAL_EMULATION_RE.sub(" ", abstract or "")
     for blob, allow_follow in ((title, False), (abstract, True)):
         meta = _own_design_match(blob, _META_RE)
         systematic = _own_design_match(blob, _SR_RE)
@@ -2000,6 +2010,15 @@ def _exact_outcome_span(text: str) -> str:
     return ""
 
 
+# Words that may be dropped around a controlled outcome without changing it ("a significant reduction in stroke").
+_FILLER_WORDS = {
+    "a", "an", "the", "of", "in", "on", "for", "to", "with", "at", "by", "rate", "rates", "risk", "risks", "incidence",
+    "odds", "hazard", "likelihood", "occurrence", "significant", "significantly", "reduction", "reductions", "increase",
+    "increased", "decrease", "decreased", "lower", "higher", "reduced", "new", "onset", "events", "event", "outcome",
+    "outcomes", "patients", "was", "were", "is", "are", "than", "group", "groups", "number", "total", "overall",
+    "proportion", "percentage", "cumulative", "observed", "any",
+}
+
 _QUALIFIER_BEFORE_SPAN_RE = re.compile(
     r"\b(?:isch(?:a)?emic|ha?emorrhagic|major|minor|fatal|non-?fatal|severe|serious|recurrent|symptomatic|"
     r"asymptomatic|clinically\s+relevant|disabling|non-?disabling|in-hospital|perioperative|postoperative|"
@@ -2011,7 +2030,8 @@ _QUALIFIER_BEFORE_SPAN_RE = re.compile(
 def _display_outcome_name(outcome: str) -> str:
     """Turkish outcome label. Partial word-by-word translation is not used."""
     text = (outcome or "").strip()
-    if text.startswith("öngördürücü:") or text.endswith("(kaynak terim)") or " — analiz grubu: " in text:
+    if text.startswith("öngördürücü:") or text.endswith("(kaynak terim)") or " — analiz grubu: " in text \
+            or text == UNBOUND_COMPARISON_TR:
         return text  # already a display label (an untranslated source term stays as written)
     if text in (
         "değerlendirilemedi",
@@ -2030,8 +2050,11 @@ def _display_outcome_name(outcome: str) -> str:
         # "ischaemic stroke" must not become "inme", and "worsening heart failure or cardiovascular
         # death" must not become "kardiyovasküler ölüm": a dropped qualifier or composite component
         # changes the outcome, so the source term is shown instead.
+        dropped = re.sub(r"\(\s*[A-Za-z][\w-]{0,10}\s*\)", " ", dropped)  # "(AR)" repeats the name, it adds nothing
+        content = [w for w in re.findall(r"[A-Za-z][\w'-]*", dropped) if w.lower() not in _FILLER_WORDS]
         if _QUALIFIER_BEFORE_SPAN_RE.search(text[: max(0, at)]) or re.search(
-                r"\b(?:or|and|composite|plus)\b", dropped, re.IGNORECASE):
+                r"\b(?:or|and|composite|plus)\b", dropped, re.IGNORECASE) or content:
+            # Any dropped content word changes the outcome: show the source term instead of a shorter name.
             return f"\"{text.strip()}\" (kaynak terim)"
     shown = translate_controlled_outcome(span) if span else ""
     if not shown or outcome_label_rejected(shown) or _orphan_outcome_label(shown):
@@ -2754,6 +2777,7 @@ def extract_article_clinical_details(article: Dict[str, Any], query: str = "", *
             "sentence": item.get("sentence") or "",
             "source_sentence": item.get("sentence") or "",
             "pmid": pmid,
+            "diagnostic": bool(item.get("diagnostic")),
         })
 
     outcomes_formatted = []
@@ -2894,6 +2918,10 @@ def _format_bound_claims(details: Dict[str, Any], include_implausible: bool = Tr
         # Turkish name into "özette adlandırılmadı".
         shown_outcome = om.get("outcome") or _UNNAMED_OUTCOME_TR
         lead = ("Sonlanım/" + shown_outcome) if shown_outcome.startswith("öngördürücü:") else f"Sonlanım: {shown_outcome}"
+        if om.get("diagnostic"):
+            lead = f"Hedef durum: {shown_outcome}"  # sensitivity/specificity describe a test, not an outcome
+        if shown_outcome == UNBOUND_COMPARISON_TR:
+            lead = "Sonlanım bağlanamadı (kaynak cümleye bakın)"
         value_key = re.sub(r"\s+", " ", f"{lead}|{metric_text}|{sentence}").strip().lower()
         if value_key in seen_outcome:
             continue
@@ -3857,6 +3885,11 @@ def _source_number_text(value, sentence: str, fallback: str = "") -> str:
     return fallback or (f"{value:g}" if isinstance(value, float) else str(value))
 
 
+# A value pair with neither a measure name nor an outcome the rules can bind with confidence. Guessing a
+# name from the clause was tried and bound too many values wrongly, so the reader is sent to the sentence.
+UNBOUND_COMPARISON_TR = "sonlanım bağlanamadı (kaynak cümleye bakın)"
+
+
 def structured_findings(article: Dict[str, Any]) -> List[Dict[str, Any]]:
     """Findings for sections 5, 6 and 12, built from the shared Study object.
 
@@ -3876,6 +3909,9 @@ def structured_findings(article: Dict[str, Any]) -> List[Dict[str, Any]]:
         if est.family != "proportion" and (est.value_text or "").strip().endswith("%") and not value.endswith("%"):
             value += "%"
         measure_word = est.measure_text or est.measure
+        if est.measure == "unnamed" or re.fullmatch(r"\s*kaynak\s+değer:?\s*", measure_word or ""):
+            # No measure name in the source: say so instead of showing a code or a bare "kaynak değer".
+            measure_word = "grup değerleri:" if est.contrast_value is not None else "değer (ölçüt adı ayrıştırılamadı):"
         if est.family == "diagnostic" or est.measure in evidence_model.DIAGNOSTIC_MEASURES:
             # Diagnostic measures in Turkish, the same label as the study cards ("Duyarlılık", "Özgüllük").
             label = evidence_model._MEASURE_TR.get(est.measure)
@@ -3892,7 +3928,7 @@ def structured_findings(article: Dict[str, Any]) -> List[Dict[str, Any]]:
         low = _source_number_text(est.ci_low, sentence) if est.ci_low is not None else ""
         high = _source_number_text(est.ci_high, sentence) if est.ci_high is not None else ""
         ci = f"{low} ile {high}" if low and high else "özette bildirilmedi"
-        name = est.outcome_name or _UNNAMED_OUTCOME_TR
+        name = est.outcome_name or (UNBOUND_COMPARISON_TR if est.measure == "unnamed" else _UNNAMED_OUTCOME_TR)
         if est.outcome_name and _display_outcome_name(est.outcome_name) == _UNNAMED_OUTCOME_TR:
             # The source names this outcome but no controlled translation exists: show the term, never "not named".
             name = f"\"{est.outcome_name}\" (kaynak terim)"
@@ -3901,9 +3937,22 @@ def structured_findings(article: Dict[str, Any]) -> List[Dict[str, Any]]:
             shown_name = _display_outcome_name(name) if name != _UNNAMED_OUTCOME_TR else name
             name = f"{shown_name} — analiz grubu: {est.stratum}"
         item = _make_finding(name, effect, ci, est.p_value or "", sentence, low, high)
+        item["diagnostic"] = est.family == "diagnostic"
         if not est.usable:
             item["implausible"] = True
         findings.append(item)
+    # "failed to show a reduction in muscle pain scores (p=0.42)": an outcome with only a p-value. It is
+    # not an estimate, so the model holds no value for it; the finding is shown with its p-value alone.
+    seen = {(f.get("sentence"), f.get("p")) for f in findings}
+    for legacy in extract_grounded_clinical_findings(article.get("abstract") or ""):
+        effect = (legacy.get("effect") or "").strip()
+        if legacy.get("estimate") or not re.fullmatch(r"p\s*[=<>≤≥]\s*[\d.]+", effect, re.IGNORECASE):
+            continue
+        if not _finding_is_displayable(legacy) or (legacy.get("sentence"), effect) in seen:
+            continue
+        item = dict(legacy, p=legacy.get("p") or effect, p_only=True)
+        findings.append(item)
+        seen.add((legacy.get("sentence"), effect))
     return findings
 
 
@@ -4861,6 +4910,10 @@ def format_klinik_bulgular_cell(article: Dict[str, Any]) -> str:
         outcome_label = _display_outcome_name(item.get("outcome") or "")
         effect_label = format_effect_measure(item.get("effect") or "")
         outcome_head = _outcome_lead(item.get("outcome") or "")
+        if item.get("diagnostic") and outcome_head.startswith("Sonlanım: "):
+            outcome_head = "Hedef durum: " + outcome_head[len("Sonlanım: "):]
+        if (item.get("outcome") or "") == UNBOUND_COMPARISON_TR:
+            outcome_head = "Sonlanım bağlanamadı (kaynak cümleye bakın)"
         if outcome_label == _UNNAMED_OUTCOME_TR and _unlabeled_number_effect(effect_label):
             if item.get("sentence") and item["sentence"] not in buckets:
                 buckets[item["sentence"]] = {"profile": [], "effects": []}
