@@ -1,10 +1,10 @@
 {
  "summary": {
   "scored": 43,
-  "matched": 42,
+  "matched": 43,
   "wrong": 0,
-  "missed": 1,
-  "complete_cases": 7,
+  "missed": 0,
+  "complete_cases": 8,
   "cases": 8
  },
  "cases": [
@@ -269,8 +269,8 @@
     {
      "field": "total_n",
      "expected": 903,
-     "got": null,
-     "status": "eksik"
+     "got": 903,
+     "status": "eşleşti"
     },
     {
      "field": "estimate:OR 3.91 (ampicillin-resistant E. coli infection a)",
@@ -310,7 +310,7 @@
     }
    ],
    "qualitative_not_scored": [],
-   "complete": false
+   "complete": true
   },
   {
    "pmid": "10218744",

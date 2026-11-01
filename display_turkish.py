@@ -10,6 +10,17 @@ import re
 # Longer phrases first. The replacement is the display string, not a guess
 # beyond the words the source actually used.
 _PHRASE_PAIRS = (
+    # Qualified outcomes: the qualifier changes the clinical meaning and must not be dropped.
+    ("ischaemic stroke", "iskemik inme"),
+    ("ischemic stroke", "iskemik inme"),
+    ("haemorrhagic stroke", "hemorajik inme"),
+    ("hemorrhagic stroke", "hemorajik inme"),
+    ("intracranial haemorrhage", "intrakraniyal kanama"),
+    ("intracranial hemorrhage", "intrakraniyal kanama"),
+    ("major bleeding", "majör kanama"),
+    ("clinically relevant non-major bleeding", "klinik olarak anlamlı majör olmayan kanama"),
+    ("severe hypoglycaemia", "ciddi hipoglisemi"),
+    ("severe hypoglycemia", "ciddi hipoglisemi"),
     ("cardiovascular death or first hospitalization for heart failure", "kardiyovasküler ölüm veya kalp yetersizliği nedeniyle ilk hastaneye yatış"),
     ("cardiovascular death or first hospitalisation for heart failure", "kardiyovasküler ölüm veya kalp yetersizliği nedeniyle ilk hastaneye yatış"),
     ("cardiovascular death or hospitalization for heart failure", "kardiyovasküler ölüm veya kalp yetersizliği nedeniyle hastaneye yatış"),

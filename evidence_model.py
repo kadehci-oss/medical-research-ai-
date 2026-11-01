@@ -132,6 +132,7 @@ class EffectEstimate:
     outcome_name: str = ""
     outcome_basis: str = ""
     subgroup: bool = False
+    stratum: str = ""  # "HBR stratum": the analysis population the sentence opens with
     validation: str = "gecerli"
     validation_note: str = ""
     source: EvidenceSource = field(default_factory=EvidenceSource)
@@ -813,14 +814,31 @@ def _prefer_other_outcome_name(model_name: str, other_name: str) -> bool:
     a translatable endpoint name from the other extractor is used instead.
     "öngördürücü" labels and quoted fragments are never used.
     """
-    if re.match(r"\s*(?:öngördürücü|predictor)\b", other_name or "", re.IGNORECASE) or '"' in (other_name or ""):
+    if '"' in (other_name or ""):
         return False
-    if not _translates(other_name):
+    if re.match(r"\s*(?:öngördürücü|predictor)\b", other_name or "", re.IGNORECASE):
+        if not _acceptable_predictor(other_name):
+            return False
+    elif not _translates(other_name):
         return False
     if not (model_name or "").strip():
         return True
-    bare_acronym = re.fullmatch(r"[A-Za-z0-9-]{2,8}", model_name.strip()) and sum(c.isupper() for c in model_name) >= 2
+    name = model_name.strip()
+    bare_acronym = re.fullmatch(r"[A-Za-z0-9-]{2,8}", name) and sum(c.isupper() for c in name) >= 2
     return bool(bare_acronym)
+
+
+def _acceptable_predictor(label: str) -> bool:
+    """'öngördürücü: trombosit sayısı' (translated by the controlled map) is a usable label;
+    'öngördürücü: Compared with placebo' (untranslated English clause) is not."""
+    match = re.match(r"\s*öngördürücü:\s*(?P<p>.+)$", label or "")
+    if not match:
+        return False
+    predictor = match.group("p").strip()
+    # Reject untranslated English clause fragments and anything carrying numbers or brackets.
+    return bool(predictor) and not re.search(
+        r"\b(?:with|compared|versus|vs|the|and|of|in|by|followed|respectively|than|was|were)\b|[()\[\]\"=\d]",
+        predictor, re.IGNORECASE)
 
 def _is_confidence_level(value: float, sentence: str) -> bool:
     """True when every occurrence of the value in the sentence is a CI level ("95% CI")."""
@@ -828,6 +846,11 @@ def _is_confidence_level(value: float, sentence: str) -> bool:
     if not occurrences:
         return False
     return all(re.match(r"\s*%\s*(?:\(\s*)?(?:CI|CIs|confidence)", sentence[m.end():], re.IGNORECASE) for m in occurrences)
+
+
+def _fmt_number(value: float) -> str:
+    """0.43 -> '0.43', 2.0 -> '2' (used to find a number as written)."""
+    return f"{value:g}"
 
 
 def reconcile_with_grounded_findings(article: Dict[str, Any], estimates: List[EffectEstimate]) -> List[EffectEstimate]:
@@ -857,10 +880,18 @@ def reconcile_with_grounded_findings(article: Dict[str, Any], estimates: List[Ef
             continue
         if _is_confidence_level(value, sentence):
             continue  # "OR and 95% CI" in a methods sentence: 95 is the CI level, not an estimate
+        if re.search(r"(?:\bCIs?|confidence\s+intervals?)\s+(?:for|of)\s+[^,;()]{0,40},\s*"
+                     + re.escape(_fmt_number(value)) + r"\s*(?:-|–|to)\s*\d", sentence, re.IGNORECASE):
+            continue  # the lower bound of "CI for mean difference, 0.43-1.01" is not an estimate
         other_name = item.get("outcome") or ""
-        named = bool(other_name) and other_name != rg._UNNAMED_OUTCOME_TR
+        named = bool(other_name) and other_name != rg._UNNAMED_OUTCOME_TR and '"' not in other_name and (
+            _acceptable_predictor(other_name) if other_name.startswith("öngördürücü") else True)
         low, high = _to_float(item.get("ci_low") or ""), _to_float(item.get("ci_high") or "")
         same = [e for e in by_sentence.get(sentence, []) if e.value is not None and abs(e.value - value) < 1e-9]
+        if not same:
+            # The two extractors may cut sentences differently around "vs." or "e.g.".
+            same = [e for key, group in by_sentence.items() if key and (key in sentence or sentence in key)
+                    for e in group if e.value is not None and abs(e.value - value) < 1e-9]
         if same:
             for est in same:
                 counterpart[id(est)] = other_name if named else ""
@@ -875,12 +906,27 @@ def reconcile_with_grounded_findings(article: Dict[str, Any], estimates: List[Ef
         family = ("ratio" if code in _RATIO_CODES else "difference" if code in _DIFFERENCE_CODES
                   else "diagnostic" if code in _DIAGNOSTIC_CODES else "unspecified")
         effect_text = item.get("effect") or ""
-        measure_text = re.sub(r"\s*[-−]?\d+(?:[.,]\d+)?\s*%?\s*$", "", effect_text).strip()
+        contrast_value = None
+        pair = re.search(r"(?P<a>[-−]?\d+(?:[.,]\d+)?\s*%?)\s+karşı\s+(?P<b>[-−]?\d+(?:[.,]\d+)?)\s*%?", effect_text)
+        if pair:
+            # "kaynak değer: 5.3% karşı 1.6%" is a two-group comparison: keep both numbers.
+            contrast_value = _to_float(pair.group("b"))
+            measure_text = effect_text[:pair.start()].strip()
+            value_text = pair.group("a").strip()
+        else:
+            measure_text = re.sub(r"\s*[-−]?\d+(?:[.,]\d+)?\s*%?\s*$", "", effect_text).strip()
+            value_text = (re.search(r"[-−]?\d+(?:[.,]\d+)?\s*%?", effect_text) or re.search(r".+", str(value))).group(0).strip()
+        p_value = item.get("p") or ""
+        p_number = re.search(r"(\d*\.\d+|\d+)", p_value)
+        if p_value and low is None and p_number and any(
+                p_number.group(1) in (e.p_value or "") for e in by_sentence.get(sentence, []) if e.ci_low is not None):
+            # The p-value belongs to the estimate with an interval in this sentence, not to these raw counts.
+            p_value = ""
         est = EffectEstimate(
             measure=code or "unnamed", measure_text=measure_text, family=family, value=value,
-            value_text=(re.search(r"[-−]?\d+(?:[.,]\d+)?\s*%?", effect_text) or re.search(r".+", str(value))).group(0).strip(),
+            value_text=value_text, contrast_value=contrast_value,
             ci_low=low, ci_high=high, ci_level=95 if low is not None and high is not None else None,
-            p_value=item.get("p") or "", outcome_name=other_name if named else "",
+            p_value=p_value, outcome_name=other_name if named else "",
             outcome_basis="rapor üreticisinin kaynak cümleye bağlı bulgusundan eklendi",
             source=_source(article, item.get("sentence") or ""),
         )
@@ -902,7 +948,8 @@ def reconcile_with_grounded_findings(article: Dict[str, Any], estimates: List[Ef
                 continue
             others = [counterpart.get(id(e), "") for e in ests]
             if all(others) and len(set(others)) == len(others) and all(
-                    _translates(o) and not re.match(r"\s*(?:öngördürücü|predictor)\b", o, re.IGNORECASE) and '"' not in o
+                    '"' not in o and (_acceptable_predictor(o) if re.match(r"\s*(?:öngördürücü|predictor)\b", o, re.IGNORECASE)
+                                      else _translates(o))
                     for o in others):
                 for est, other in zip(ests, others):
                     if other != est.outcome_name:
@@ -911,8 +958,14 @@ def reconcile_with_grounded_findings(article: Dict[str, Any], estimates: List[Ef
     return estimates + added
 
 
+_ENROLMENT_CUE = (r"\s+(?:adult\s+|consecutive\s+|eligible\s+)?(?:patients|participants|adults|children|subjects|"
+                  r"women|men|individuals|infants|neonates)\s+(?:were\s+|who\s+were\s+)?"
+                  r"(?:randomi[sz]ed|randomly\s+assigned|enrolled|included|recruited)")
+
+
 def _fallback_total_from_details(article: Dict[str, Any], details: Dict[str, Any], population: Population,
-                                 arms: List[StudyArm], events: List[EventCount]) -> None:
+                                 arms: List[StudyArm], events: List[EventCount],
+                                 enrolment_cue_required: bool = False) -> None:
     """Use the report generator's stated total when this module found none.
 
     Accepted only for "n = N" with a source sentence that holds N as written
@@ -932,6 +985,13 @@ def _fallback_total_from_details(article: Dict[str, Any], details: Dict[str, Any
             return
     n = int(match.group(1))
     if n in {a.n for a in arms if a.n} or n in {e.events for e in events}:
+        return
+    if enrolment_cue_required and not (
+            re.search(rf"(?<![\d.,]){n}{_ENROLMENT_CUE}", sentence, re.IGNORECASE)
+            or re.search(rf"\bn\s*=\s*{n}(?![\d.,]\d)", sentence, re.IGNORECASE)
+            or re.search(rf"\b(?:trial|study|cohort|sample)\s+(?:of|with|including|involving|enrolling)\s+{n}\s+"
+                         r"(?:adult\s+)?(?:patients|participants|adults|children|subjects|women|men|individuals)\b",
+                         sentence, re.IGNORECASE)):
         return
     words = {v: k for k, v in getattr(rg, "_NUMBER_WORDS", {}).items()}
     if not re.search(rf"(?<![\d.,]){n}(?![\d.,]\d)", sentence) and not (
@@ -1127,6 +1187,8 @@ def _measure_mentions(sentence: str) -> List[Dict[str, Any]]:
         if _ACRONYM_ONLY.match(bare.replace(" ", "")) is None and re.fullmatch(r"(?i)(?:a|s)?(?:or|hr|rr|irr|smd|wmd|md|dor|auc|auroc|ppv|npv)s?", bare):
             continue
         code, family = _measure_code(match)
+        if re.search(r"(?:\bCIs?|confidence\s+intervals?)\s+(?:for|of)\s+(?:the\s+)?$", sentence[: match.start()], re.IGNORECASE):
+            continue  # "95% CI for mean difference, 0.43-1.01": an interval label, not a point estimate
         if mentions and mentions[-1]["code"] == code and re.fullmatch(r"\s*[\[(]\s*", sentence[mentions[-1]["end"]:match.start()]):
             continue
         if code == "RD" and bare.lower() == "difference":
@@ -1146,6 +1208,8 @@ def _parse_value_group(text: str) -> Optional[Dict[str, Any]]:
         r"(?:was|were|is|of|at|reached|showed|yielded|corresponding\s+to)", match.group("lead"), re.IGNORECASE
     ):
         return None
+    if not match.group("pct") and re.match(r"^\s?[-–]\s?[A-Za-z]", text[match.end():]):
+        return None  # "12-lead ECG", "6-month follow-up": part of a compound word, not an estimate
     group: Dict[str, Any] = {
         "value": float(match.group("val")),
         "value_text": match.group("val") + (match.group("pct") or ""),
@@ -1174,7 +1238,15 @@ def _parse_value_group(text: str) -> Optional[Dict[str, Any]]:
     if p_match:
         group["p"] = f"p {p_match.group('op')} {p_match.group('p')}"
         group["end"] += p_match.end()
+        test = re.match(r"^\s*for\s+(?P<t>non-?inferiority|equivalence)\b", text[group["end"]:], re.IGNORECASE)
+        if test:
+            # A non-inferiority p-value is not a test of superiority; it is labelled and never read as one.
+            group["p"] += NONINFERIORITY_P_TR if "inferior" in test.group("t").lower() else EQUIVALENCE_P_TR
     return group
+
+
+NONINFERIORITY_P_TR = " (non-inferiority testi)"
+EQUIVALENCE_P_TR = " (eşdeğerlik testi)"
 
 
 def _validate_estimate(est: EffectEstimate) -> None:
@@ -1252,6 +1324,9 @@ _LEAD_QUAL_RE = re.compile(
 
 def _clean_outcome(text: str) -> str:
     outcome = re.sub(r"\s+", " ", text or "").strip(" ,;:.(")
+    # "the IRR for combined new/worsening allergies" names the outcome after the measure.
+    outcome = re.sub(r"^(?:the\s+)?(?:IRRs?|HRs?|ORs?|RRs?|(?:incidence\s+rate|hazard|odds|risk)\s+ratios?)\s+for\s+",
+                     "", outcome, flags=re.IGNORECASE)
     outcome = _CUT_RE.sub("", outcome).strip(" ,;:")
     outcome = re.sub(r"(?:[,\s]+(?:and|with|or))+$", "", outcome).strip(" ,;:")
     outcome = re.sub(r"\s+estimates?$", "", outcome).strip()
@@ -1274,6 +1349,7 @@ def _clean_outcome(text: str) -> str:
 
 _BEFORE_PATTERNS = [
     re.compile(r"\brisk\s+factors?\s+for\s+(?P<o>[^,;()]+?)\s+(?:was|were)\b", re.IGNORECASE),
+    re.compile(r"\b(?:independent\s+)?(?:risk\s+factors?|predictors?)\s+(?:for|of)\s+(?P<o>[^,;()]+?)\s*$", re.IGNORECASE),
     re.compile(r"\b(?:non-?inferiority|superiority|non-?inferior|superior)\s+(?:to\s+[\w-]+(?:\s+[\w-]+)?\s+)?(?:for|regarding)\s+"
                r"(?P<o>[^,;()]+?)\s*$", re.IGNORECASE),
     re.compile(r"\bbetween\s+.+?\s+and\s+(?P<o>[^,;()]*?\b(?:risk|incidence|mortality|death|cancer|disease|events?)\b[^,;()]*?)(?:\s+with)?\s*$", re.IGNORECASE),
@@ -1467,6 +1543,7 @@ def extract_effect_estimates(article: Dict[str, Any]) -> List[EffectEstimate]:
             index += 1
         _reverse_order_estimates(article, sentence, estimates)
         _legend_estimates(article, sentence, estimates)
+        _shared_measure_estimates(article, sentence, estimates)
     estimates = _dedupe_estimates(estimates)
     _inherit_subgroup_outcomes(estimates)
     _bind_primary_outcome(article, estimates)
@@ -1632,9 +1709,10 @@ def _build_estimate(article, sentence, mention, group, mentions, lead_outcome: s
         ci_level=group.get("ci_level") or (95 if ci and re.search(r"95\s*%|\bCI\b", sentence) else None),
         p_value=group.get("p") or "",
         contrast_value=group.get("contrast"),
-        outcome_name=outcome,
+        outcome_name=_contiguous_outcome(outcome, sentence),
         subgroup=bool(re.search(r"\b(?:among|subgroup|in patients (?:receiving|with)|for those)\b",
                                 sentence[: mention["start"]], re.IGNORECASE)),
+        stratum=_sentence_stratum(sentence),
         source=_source(article, sentence),
     )
     if ci and group.get("ci_level") is None:
@@ -1643,6 +1721,89 @@ def _build_estimate(article, sentence, mention, group, mentions, lead_outcome: s
             est.ci_level = int(level.group(1))
     _validate_estimate(est)
     return est
+
+
+_STRATUM_RE = re.compile(
+    r"^\s*(?:In|Among|Within)\s+(?:the\s+)?(?P<s>[\w\s-]{2,40}?\s+(?:stratum|strata|subgroup|cohort|subpopulation))\s*,",
+    re.IGNORECASE,
+)
+
+
+def _sentence_stratum(sentence: str) -> str:
+    """'In the HBR stratum, ...' -> 'HBR stratum'. Only an explicit opening phrase counts."""
+    match = _STRATUM_RE.match(sentence or "")
+    return re.sub(r"\s+", " ", match.group("s")).strip() if match else ""
+
+
+def _contiguous_outcome(outcome: str, sentence: str) -> str:
+    """Keep the conjunct that stands next to the value.
+
+    'regarding net adverse clinical events (47 of 1649 ...) and major adverse cardiac
+    or cerebral events (... HR 0.984 ...)': with the parenthesis removed the clause
+    reads 'X and Y', but the value belongs to Y alone. When the joined name does not
+    occur in the sentence and its last conjunct does, the last conjunct is used.
+    """
+    if not outcome or " and " not in outcome:
+        return outcome
+    flat = re.sub(r"\s+", " ", sentence or "")
+    if outcome.lower() in flat.lower():
+        return outcome
+    first, last = (part.strip() for part in outcome.rsplit(" and ", 1))
+    # Only split when the source puts a numeric parenthesis between the two conjuncts:
+    # "X (47 of 1649 ...) and Y". "respiratory and renal systems" stays one outcome.
+    tail = first.split()[-1] if first.split() else ""
+    if tail and last and re.search(re.escape(tail) + r"\s*\([^)]*\d[^)]*\)\s*,?\s*and\s+" + re.escape(last),
+                                   flat, re.IGNORECASE):
+        return last
+    return outcome
+
+
+_SHARED_MEASURE_GROUP_RE = re.compile(
+    r"(?:,\s*|\s+)and\s+(?:an?\s+(?:higher|lower|increased|reduced)\s+risk\s+of\s+|the\s+)?"
+    r"(?P<o>[A-Za-z][\w-]*(?:\s+[\w-]+){0,5}?)\s*\(\s*(?P<v>\d+(?:\.\d+)?)\s*[,;]\s*"
+    r"(?P<lo>\d+(?:\.\d+)?)\s*(?:-|–|to)\s*(?P<hi>\d+(?:\.\d+)?)\s*\)",
+    re.IGNORECASE,
+)
+
+
+def _shared_measure_estimates(article, sentence: str, estimates: List[EffectEstimate]) -> None:
+    """'ischaemic stroke (hazard ratio, 95% CI: 0.81, 0.68-0.96) and all-cause death (0.91, 0.86-0.96)':
+    later groups without a measure word reuse the measure named once, if each interval contains its value."""
+    first = next((e for e in estimates if e.source.sentence == sentence and e.family == "ratio"
+                  and e.ci_low is not None), None)
+    if first is None:
+        return
+    anchor = sentence.find(first.value_text)
+    if anchor < 0:
+        return
+    known = {(e.value, e.ci_low, e.ci_high) for e in estimates if e.source.sentence == sentence}
+    for match in _SHARED_MEASURE_GROUP_RE.finditer(sentence, anchor):
+        value, low, high = float(match.group("v")), float(match.group("lo")), float(match.group("hi"))
+        if (value, low, high) in known or not (low <= value <= high):
+            continue
+        label = re.sub(r"\s+", " ", match.group("o")).strip()
+        basis = f"ölçüt adı aynı cümlede bir kez yazılmış ({first.measure_text.strip()})"
+        if re.match(r"(?:previous|prior|preceding|past|recent|first|last|\d|during|before|after|within|more\s+than|less\s+than)\b",
+                    label, re.IGNORECASE):
+            # "... in the previous 1 month (OR 3.91 ...) and previous 2-3 months (2.29, ...)": an exposure window,
+            # the outcome is the one the first estimate names.
+            if not first.outcome_name:
+                continue
+            outcome, basis = first.outcome_name, f"{basis}; maruziyet/zaman penceresi: {label}"
+        else:
+            outcome = _clean_outcome(label)
+        if not outcome:
+            continue
+        est = EffectEstimate(
+            measure=first.measure, measure_text=first.measure_text, family=first.family,
+            value=value, value_text=match.group("v"), ci_low=low, ci_high=high, ci_level=first.ci_level,
+            outcome_name=outcome, stratum=first.stratum,
+            outcome_basis=basis,
+            source=_source(article, sentence),
+        )
+        _validate_estimate(est)
+        estimates.append(est)
+        known.add((value, low, high))
 
 
 def _dedupe_estimates(estimates: List[EffectEstimate]) -> List[EffectEstimate]:
@@ -2153,7 +2314,7 @@ def _build_study_uncached(article: Dict[str, Any], query: str) -> Study:
         design_label = f"{design_label} — çalışma protokolü (sonuç yok)"
     results_reported = bool(abstract.strip()) and not protocol
 
-    details = rg.extract_article_clinical_details(art, query)
+    details = rg.extract_article_clinical_details(art, query, structured=False)
     rob_legacy = rg.assess_risk_of_bias(art)
 
     arms = extract_arms(art, randomized=design_key in ("rct", "clinical_trial"))
@@ -2161,8 +2322,12 @@ def _build_study_uncached(article: Dict[str, Any], query: str) -> Study:
     fill_arm_sizes_from_results(art, arms)
     events.extend(extract_arm_labelled_event_counts(art, arms, events))
     population = extract_population(art, design_key, arms, events)
-    if population.n_total is None and population.n_planned is None and results_reported and design_key in _DESCRIPTIVE_KEYS:
-        _fallback_total_from_details(art, details, population, arms, events)
+    if population.n_total is None and population.n_planned is None and results_reported and (
+            design_key in _DESCRIPTIVE_KEYS or design_key not in _SYNTHESIS_KEYS):
+        # Descriptive designs accept any stated total; other primary studies only an explicit
+        # "N patients randomized / enrolled / included" (never a pooled review count).
+        _fallback_total_from_details(art, details, population, arms, events,
+                                     enrolment_cue_required=design_key not in _DESCRIPTIVE_KEYS)
     pop_prov = (details.get("provenance") or {}).get("population") or {}
     population.description = details.get("patient_group") if details.get("patient_group") not in ("Belirtilmedi", "") else ""
     if population.description and pop_prov.get("source_sentence") and population.source.location == "none":
@@ -2493,7 +2658,7 @@ _MEASURE_TR = {
     "proportion": "Oran (yüzde)",
     "unnamed": "Ölçüt adı özette yok (kaynak değer)",
     "WIN": "Kazanma oranı (win ratio)",
-    "HR": "HR (risk oranı)", "OR": "OR (olasılık oranı)", "RR": "RR (göreli risk/oran oranı)",
+    "HR": "HR (tehlike oranı)", "OR": "OR (olasılık oranı)", "RR": "RR (risk oranı)",
     "IRR": "IRR (insidans hızı oranı)", "RD": "Fark", "MD": "Ortalama fark", "SMD": "Standardize ortalama fark",
     "WMD": "Ağırlıklı ortalama fark", "DOR": "Tanısal olasılık oranı", "sensitivity": "Duyarlılık",
     "specificity": "Özgüllük", "AUC": "AUC", "PPV": "Pozitif kestirim değeri", "NPV": "Negatif kestirim değeri",
