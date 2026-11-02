@@ -2379,10 +2379,12 @@ def _explicit_comparator(abstract: str, pub_types: Optional[List[str]] = None) -
 
 
 def _recognized_study_interventions(abstract: str, title: str) -> List[str]:
-    """Drug and procedure names that name the study intervention.
+    """Drug and procedure names supported by the abstract as interventions.
 
-    The title and sentences that state an effect, an allocation, or a
-    versus-comparison are scanned. A bare mention elsewhere is not an arm.
+    Sentences that state an effect, an allocation, or a versus-comparison
+    are scanned. Title candidates are accepted only when the same drug is
+    also present in the abstract. Matrix/PICO and section 6 thus share the
+    same rule without losing existing recognition of abstract-supported names.
     """
     names = []
 
@@ -2394,7 +2396,11 @@ def _recognized_study_interventions(abstract: str, title: str) -> List[str]:
     arm_drug, _arm_comp = _allocation_arms(abstract)
     if arm_drug:
         names.append(arm_drug)
-    _add(title or "")
+    abstract_labels = _drug_labels_in(abstract or "")
+    for label in _drug_labels_in(title or ""):
+        if (_label_already_listed(label, abstract_labels)
+                and not _label_already_listed(label, names)):
+            names.append(label)
     for sentence in _finding_sentences(abstract or ""):
         # General advice ("treatment with X is often necessary") is not this study's arm.
         if _background_sentence(sentence):
@@ -6132,8 +6138,7 @@ def _intervention_comparison_cell(
     """Reported intervention names from the abstract for section 6.
 
     Include recognized drugs across reported treatment sentences, without
-    adding names supported only by the title. The title argument is retained
-    for compatibility but does not supply section 6 treatments.
+    adding names supported only by the title.
     """
     arms = _trial_arm_label(abstract)
     if arms:
@@ -6147,7 +6152,7 @@ def _intervention_comparison_cell(
             drug = part.strip()
             if drug and not _label_already_listed(drug, drugs):
                 drugs.append(drug)
-    for name in _recognized_study_interventions(abstract, ""):
+    for name in _recognized_study_interventions(abstract, title):
         if not _label_already_listed(name, drugs):
             drugs.append(name)
     comparator = _explicit_comparator(abstract)
@@ -6182,6 +6187,7 @@ def _format_cross_study_comparison(articles: List[Dict[str, Any]], pico: Optiona
         profile = extract_clinical_profile(art.get("abstract") or "")
         intervention_cell = _intervention_comparison_cell(
             profile, art.get("abstract") or "",
+            art.get("title") or "",
         )
         findings = structured_findings(art) if art.get("abstract") else []
         finding_bits = []
