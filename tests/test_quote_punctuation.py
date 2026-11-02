@@ -25,7 +25,7 @@ def test_source_quote_punctuation(ending, expected):
     with patch("report_generator.extract_methodological_limitations", return_value=[{
         "kind": "explicit", "source_sentence": sentence,
     }]):
-        limitation = format_methodological_limitation({"pmid": "MOCK-PMID"})
+        limitation = format_methodological_limitation({"pmid": "MOCK-PMID", "abstract": sentence})
     with patch("report_generator.structured_findings", return_value=[]), patch(
         "report_generator.extract_clinical_profile",
         return_value=[{"category": "mock", "sentence": sentence, "line": "Mock profile"}],
