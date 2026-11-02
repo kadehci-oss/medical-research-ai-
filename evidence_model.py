@@ -3261,7 +3261,7 @@ def claim_sentence_tr(study: Study, est: EffectEstimate) -> str:
 
 def _source_note_tr(source: EvidenceSource, pmid: str) -> str:
     if source.sentence:
-        return f' — Kaynak cümle: "{source.sentence}" (PMID: {pmid})'
+        return f' — Kaynak cümle: "{rg._quote_sentence(source.sentence)}" (PMID: {pmid})'
     return f" — Kaynak cümlesi yok (PMID: {pmid})"
 
 
@@ -3323,7 +3323,7 @@ def render_study_card_lines(study: Study) -> List[str]:
             for est in group:
                 basis = f" Sonlanım bağlama: {est.outcome_basis}." if est.outcome_basis else ""
                 lines.append(f"- {claim_sentence_tr(study, est)}{basis}")
-            lines.append(f"- Kaynak cümle: \"{sentence}\" (PMID: {pmid})")
+            lines.append(f"- Kaynak cümle: \"{rg._quote_sentence(sentence)}\" (PMID: {pmid})")
     elif study.results_reported:
         lines.append(f"**Sonlanıma bağlı etki tahminleri:** özette ayrıştırılabilir etki ölçütü yok (PMID: {pmid})")
     else:
@@ -3334,7 +3334,7 @@ def render_study_card_lines(study: Study) -> List[str]:
             detail = f"{item['outcome'] or 'sonlanım adı yok'} ({', '.join(item['metrics'])})"
             source = item.get("source")
             if isinstance(source, EvidenceSource) and source.sentence:
-                detail += f" — Kaynak cümle: \"{source.sentence}\" (PMID: {pmid})"
+                detail += f" — Kaynak cümle: \"{rg._quote_sentence(source.sentence)}\" (PMID: {pmid})"
             else:
                 detail += f" (PMID: {pmid}; kaynak cümlesi yok)"
             lines.append(f"- {detail}")
