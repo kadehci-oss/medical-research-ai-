@@ -1,6 +1,6 @@
 {
  "development": {
-  "generated": "2026-11-01",
+  "generated": "2026-11-02",
   "app_version": "v1.5.0",
   "evidence_model_version": "1.1.0",
   "n_studies": 35,
@@ -244,7 +244,7 @@
   "causal_permission_errors": [],
   "report_verification_by_specialty": {
    "Kardiyoloji": {
-    "status": "Doğrulandı",
+    "status": "Uyarılarla doğrulandı",
     "unknown_pmids": [],
     "quotes_checked": 83,
     "quotes_failed": 0,
@@ -254,7 +254,7 @@
    "Onkoloji": {
     "status": "Doğrulandı",
     "unknown_pmids": [],
-    "quotes_checked": 81,
+    "quotes_checked": 80,
     "quotes_failed": 0,
     "rob_rating_claims": 0,
     "grade_rating_claims": 0
@@ -278,7 +278,7 @@
    "Endokrinoloji": {
     "status": "Doğrulandı",
     "unknown_pmids": [],
-    "quotes_checked": 57,
+    "quotes_checked": 56,
     "quotes_failed": 0,
     "rob_rating_claims": 0,
     "grade_rating_claims": 0
@@ -479,7 +479,7 @@
   }
  },
  "holdout_current": {
-  "generated": "2026-11-01",
+  "generated": "2026-11-02",
   "app_version": "v1.5.0",
   "evidence_model_version": "1.1.0",
   "n_studies": 16,
@@ -710,7 +710,7 @@
    "Enfeksiyon": {
     "status": "Doğrulandı",
     "unknown_pmids": [],
-    "quotes_checked": 57,
+    "quotes_checked": 59,
     "quotes_failed": 0,
     "rob_rating_claims": 0,
     "grade_rating_claims": 0
@@ -1173,7 +1173,7 @@
   "_note": "Ayrılmış kümenin İLK ve ayarsız çalıştırması. Motor bu sonuçlardan sonra değiştirildiği için bu dosya donduruldu; sonraki çalıştırmalar ayrılmış küme sayılmaz."
  },
  "holdout2_current": {
-  "generated": "2026-11-01",
+  "generated": "2026-11-02",
   "app_version": "v1.5.0",
   "evidence_model_version": "1.1.0",
   "n_studies": 17,
@@ -1397,9 +1397,9 @@
     "grade_rating_claims": 0
    },
    "Enfeksiyon": {
-    "status": "Doğrulandı",
+    "status": "Uyarılarla doğrulandı",
     "unknown_pmids": [],
-    "quotes_checked": 7,
+    "quotes_checked": 5,
     "quotes_failed": 0,
     "rob_rating_claims": 0,
     "grade_rating_claims": 0
@@ -1407,7 +1407,7 @@
    "Endokrinoloji": {
     "status": "Doğrulandı",
     "unknown_pmids": [],
-    "quotes_checked": 43,
+    "quotes_checked": 42,
     "quotes_failed": 0,
     "rob_rating_claims": 0,
     "grade_rating_claims": 0
@@ -1843,7 +1843,7 @@
   "_note": "İkinci ayrılmış kümenin İLK ve ayarsız çalıştırması (birinci kümedeki düzeltmelerden sonra). Donduruldu."
  },
  "holdout3_current": {
-  "generated": "2026-11-01",
+  "generated": "2026-11-02",
   "app_version": "v1.5.0",
   "evidence_model_version": "1.1.0",
   "n_studies": 17,

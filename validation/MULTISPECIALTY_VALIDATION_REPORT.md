@@ -1,6 +1,6 @@
 # Çok Branşlı Doğrulama Raporu
 
-Oluşturulma: 2026-11-01 · Yazılım: `v1.5.0` · Kanıt veri modeli: `1.1.0`
+Oluşturulma: 2026-11-02 · Yazılım: `v1.5.0` · Kanıt veri modeli: `1.1.0`
 
 Bu rapor `python validation/run_multispecialty_validation.py` ile üretilir; elle düzenlenmez.
 
@@ -174,11 +174,11 @@ Puanlama `python validation/run_external_reference_check.py` ile yapılır ve ya
 
 | Branş | Durum | Alıntı kontrolü | Kümede olmayan PMID | RoB/GRADE derece iddiası |
 |---|---|---|---|---|
-| Kardiyoloji | Doğrulandı | 83/83 | 0 | 0 |
-| Onkoloji | Doğrulandı | 81/81 | 0 | 0 |
+| Kardiyoloji | Uyarılarla doğrulandı | 83/83 | 0 | 0 |
+| Onkoloji | Doğrulandı | 80/80 | 0 | 0 |
 | Nöroloji | Doğrulandı | 68/68 | 0 | 0 |
 | Enfeksiyon | Doğrulandı | 49/49 | 0 | 0 |
-| Endokrinoloji | Doğrulandı | 57/57 | 0 | 0 |
+| Endokrinoloji | Doğrulandı | 56/56 | 0 | 0 |
 | Pediatri | Doğrulandı | 57/57 | 0 | 0 |
 | Cerrahi | Doğrulandı | 48/48 | 0 | 0 |
 | Radyoloji | Doğrulandı | 48/48 | 0 | 0 |
@@ -284,7 +284,7 @@ Puanlama `python validation/run_external_reference_check.py` ile yapılır ve ya
 | Kardiyoloji | Doğrulandı | 33/33 | 0 | 0 |
 | Onkoloji | Doğrulandı | 31/31 | 0 | 0 |
 | Nöroloji | Doğrulandı | 36/36 | 0 | 0 |
-| Enfeksiyon | Doğrulandı | 57/57 | 0 | 0 |
+| Enfeksiyon | Doğrulandı | 59/59 | 0 | 0 |
 | Endokrinoloji | Doğrulandı | 11/11 | 0 | 0 |
 | Pediatri | Doğrulandı | 10/10 | 0 | 0 |
 | Cerrahi | Doğrulandı | 42/42 | 0 | 0 |
@@ -383,8 +383,8 @@ Puanlama `python validation/run_external_reference_check.py` ile yapılır ve ya
 | Kardiyoloji | Doğrulandı | 33/33 | 0 | 0 |
 | Onkoloji | Doğrulandı | 26/26 | 0 | 0 |
 | Nöroloji | Doğrulandı | 12/12 | 0 | 0 |
-| Enfeksiyon | Doğrulandı | 7/7 | 0 | 0 |
-| Endokrinoloji | Doğrulandı | 43/43 | 0 | 0 |
+| Enfeksiyon | Uyarılarla doğrulandı | 5/5 | 0 | 0 |
+| Endokrinoloji | Doğrulandı | 42/42 | 0 | 0 |
 | Pediatri | Doğrulandı | 36/36 | 0 | 0 |
 | Cerrahi | Doğrulandı | 22/22 | 0 | 0 |
 | Radyoloji | Doğrulandı | 24/24 | 0 | 0 |
