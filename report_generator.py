@@ -5751,9 +5751,9 @@ def _explicit_limit_label(sentence: str) -> str:
 
 
 def _quote_sentence(sentence: str) -> str:
-    """Normalize whitespace and a terminal double period, preserving ellipses."""
+    """Normalize whitespace and terminal double periods before closers; preserve ellipses."""
     shown = re.sub(r"\s+", " ", sentence or "").strip()
-    return re.sub(r"(?<!\.)\.\.$", ".", shown)
+    return re.sub(r"(?<!\.)\.\.(?=[)\]\"'”’]*$)", ".", shown)
 
 
 _NO_CONTROL_DESIGNS = {"case_report", "case_series", "retrospective_case_series"}

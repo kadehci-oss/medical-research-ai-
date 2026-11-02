@@ -446,9 +446,9 @@ def format_preliminary_grade_markdown(query: str, articles: List[Dict[str, Any]]
             for key, label in labels.items():
                 item = outcome["domains"][key]
                 bits.append(f"{label}: {item['status']}")
-            sentence = outcome.get("source_sentence") or ""
+            from report_generator import _display_outcome_name, _quote_sentence
+            sentence = _quote_sentence(outcome.get("source_sentence") or "")
             sentence_bit = f" Kaynak cümle: \"{sentence}\"." if sentence else " Kaynak cümle: değerlendirilemedi."
-            from report_generator import _display_outcome_name
             raw_outcome = outcome.get("outcome") or ""
             outcome_label = _display_outcome_name(raw_outcome)
             if _AUTHOR_CLAIM_RE.search(raw_outcome):
