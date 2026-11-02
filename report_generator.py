@@ -30,8 +30,10 @@ EXPERT_PHYSICIAN_REVIEW_LINE = f"Uzman Hekim Değerlendirmesi: {EXPERT_PHYSICIAN
 MISSING_ABSTRACT_LABEL = "Özet PubMed'de mevcut değil; bulgu çıkarılmadı"
 
 
-def _has_real_abstract(art: Dict[str, Any]) -> bool:
+def _has_real_abstract(art: Any) -> bool:
     """Distinguish source abstracts from empty values and PubMed placeholders."""
+    if not isinstance(art, dict):
+        return False
     abstract = (art.get("abstract") or "").strip()
     return bool(abstract) and abstract not in {
         "Özet bulunamadı.", "Özet bilgisi bulunamadı.",
@@ -5849,7 +5851,18 @@ def format_methodological_limitation(article: Dict[str, Any]) -> str:
     """Turkish limitation text. Derived items are labelled and cite the PMID."""
     pmid = str((article or {}).get("pmid") or "").strip() or "yok"
     if not _has_real_abstract(article):
-        return MISSING_ABSTRACT_LABEL
+        # Exclude placeholders from extraction; only the title can ground a limit.
+        title_only_article = dict(article or {}, abstract="")
+        items = extract_methodological_limitations(title_only_article)
+        parts = [MISSING_ABSTRACT_LABEL]
+        for item in items:
+            if item["kind"] == "derived":
+                title = _quote_sentence(item["source_sentence"])
+                parts.append(
+                    f'Başlıktan türetilen sınırlılık (PMID: {pmid}): {item["label"]}. '
+                    f'Kaynak başlık: "{title}".'
+                )
+        return " ".join(parts)
     items = extract_methodological_limitations(article)
     if not items:
         return "Özette spesifik metodolojik sınırlılık bildirilmedi"
