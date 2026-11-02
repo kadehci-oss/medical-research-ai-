@@ -222,11 +222,11 @@ _PHRASE_PAIRS = (
     ("left atrial appendage", "sol atriyal apendiks"),
     ("atrial fibrillation", "atriyal fibrilasyon"),
     ("direct oral anticoagulant", "direkt oral antikoagülan (DOAC)"),
-    ("direct oral anticoagulants", "direkt oral antikoagülanlar (DOAC'lar)"),
-    ("patients in the doac group had a lower rate of drt", "DOAC grubundaki hastalarda daha düşük aygıt ilişkili trombüs (DRT) oranı"),
-    ("patients in doac group had lower rate of drt", "DOAC grubundaki hastalarda daha düşük aygıt ilişkili trombüs (DRT) oranı"),
-    ("patients doac group lower rate drt", "DOAC grubundaki hastalarda daha düşük aygıt ilişkili trombüs (DRT) oranı"),
-    ("doac group", "DOAC grubu"),
+    ("direct oral anticoagulants", "direkt oral antikoagülanlar (DOAC)"),
+    ("patients in the doac group had a lower rate of drt", "direkt oral antikoagülan (DOAC) grubundaki hastalarda daha düşük aygıt ilişkili trombüs (DRT) oranı"),
+    ("patients in doac group had lower rate of drt", "direkt oral antikoagülan (DOAC) grubundaki hastalarda daha düşük aygıt ilişkili trombüs (DRT) oranı"),
+    ("patients doac group lower rate drt", "direkt oral antikoagülan (DOAC) grubundaki hastalarda daha düşük aygıt ilişkili trombüs (DRT) oranı"),
+    ("doac group", "direkt oral antikoagülan (DOAC) grubu"),
     ("warfarin group", "varfarin grubu"),
     ("control group", "kontrol grubu"),
     ("major adverse cardiac events", "majör advers kardiyak olaylar (MACE)"),
@@ -238,11 +238,11 @@ _PHRASE_PAIRS = (
     ("ischemic stroke", "iskemik inme"),
     ("hemorrhagic stroke", "hemorajik inme"),
     ("systemic embolism", "sistemik emboli"),
-    ("lower rate of drt", "daha düşük DRT oranı"),
-    ("higher rate of drt", "daha yüksek DRT oranı"),
+    ("lower rate of drt", "daha düşük aygıt ilişkili trombüs (DRT) oranı"),
+    ("higher rate of drt", "daha yüksek aygıt ilişkili trombüs (DRT) oranı"),
     ("lower rate of", "daha düşük"),
     ("higher rate of", "daha yüksek"),
-    ("rate of drt", "DRT oranı"),
+    ("rate of drt", "aygıt ilişkili trombüs (DRT) oranı"),
 )
 
 _PHRASES = tuple(sorted(_PHRASE_PAIRS, key=lambda item: len(item[0]), reverse=True))
@@ -968,7 +968,7 @@ def localize_clinical_display(text: str, drop_unknown: bool = True) -> str:
     working = re.sub(r"\s{2,}", " ", working).strip(" ,;:")
 
     # Clean up fragmented/awkward Turkish translation patterns
-    working = re.sub(r"(?i)\bhastalar\s+DOAC\s+grup\s+daha\s+düşük\s+oran\s+DRT\b", "DOAC grubundaki hastalarda daha düşük aygıt ilişkili trombüs (DRT) oranı", working)
+    working = re.sub(r"(?i)\bhastalar\s+DOAC\s+grup\s+daha\s+düşük\s+oran\s+DRT\b", "direkt oral antikoagülan (DOAC) grubundaki hastalarda daha düşük aygıt ilişkili trombüs (DRT) oranı", working)
     working = re.sub(r"(?i)\bhastalar\s+([A-Za-z0-9\-]+)\s+grup\b", r"\1 grubundaki hastalar", working)
 
     if not working or not re.search(r"[0-9A-Za-zÇĞİÖŞÜçğıöşüıİ]", working):
