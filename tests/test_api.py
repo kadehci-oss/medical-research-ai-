@@ -41,6 +41,35 @@ class TestFastAPIApp(unittest.TestCase):
         self.assertEqual(len(data["articles"]), 1)
         self.assertEqual(data["articles"][0]["pmid"], "12345")
 
+    @patch("api.search_pubmed")
+    def test_api_search_author_uses_pubmed_full_author_name_field(self, mock_search):
+        mock_search.return_value = {
+            "articles": [],
+            "total_count": 0,
+            "query": '"Jane Doe"[FAU]',
+        }
+
+        response = client.get(
+            "/api/search/author?first_name=Jane&last_name=Doe&max_results=3&start_year=2000"
+        )
+
+        self.assertEqual(response.status_code, 200)
+        mock_search.assert_called_once_with(
+            query='"Jane Doe"[FAU]',
+            max_results=3,
+            retstart=0,
+            sort="relevance",
+            publication_type="Tümü",
+            start_year=2000,
+            end_year=None,
+        )
+
+    @patch("api.search_pubmed")
+    def test_api_search_author_rejects_query_syntax_in_names(self, mock_search):
+        response = client.get("/api/search/author?first_name=Jane%5BAU%5D&last_name=Doe")
+        self.assertEqual(response.status_code, 422)
+        mock_search.assert_not_called()
+
     @patch("requests.get")
     def test_api_search_pagination_end_to_end(self, mock_get):
         def response():

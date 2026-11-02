@@ -143,6 +143,71 @@ class TestAppRegression(unittest.TestCase):
         has_version_caption = any("Sürüm:" in cap and "Commit:" in cap for cap in sidebar_captions)
         self.assertTrue(has_version_caption, f"Expected version/commit caption in sidebar, got: {sidebar_captions}")
 
+    @patch("pubmed_client.search_pubmed")
+    def test_author_search_ui_queries_by_full_researcher_name(self, mock_search):
+        mock_search.return_value = {
+            "articles": [],
+            "total_count": 0,
+            "query": "Jane Doe[FAU]",
+            "search_date": "2026-11-02",
+        }
+        at = AppTest.from_file(os.path.abspath("app.py"), default_timeout=15)
+        at.run()
+        at.radio[0].set_value("Araştırmacı adı-soyadı").run()
+        inputs_by_label = {item.label: item for item in at.text_input}
+        inputs_by_label["Araştırmacının adı"].input("Jane")
+        inputs_by_label["Araştırmacının soyadı"].input("Doe")
+        next(button for button in at.button if "Ara" in button.label).click().run()
+
+        self.assertEqual(mock_search.call_args.kwargs["query"], '"Jane Doe"[FAU]')
+        self.assertEqual(at.session_state["active_search_label"], "Jane Doe")
+        self.assertEqual(at.session_state["active_search_mode"], "author")
+
+    @patch("app.evidence_model.build_studies", return_value=([], {}))
+    @patch("app.perform_red_team_audit")
+    @patch("app.UniversalEvidenceEngine")
+    def test_author_search_results_are_not_offered_for_clinical_report(
+        self, mock_engine_cls, mock_audit, mock_build_studies
+    ):
+        mock_engine_cls.return_value.search_and_verify.return_value = {
+            "articles": [{
+                "pmid": "12345",
+                "title": "Jane Doe study",
+                "authors": ["Jane Doe"],
+                "journal": "Test Journal",
+                "pub_year": "2024",
+                "publication_types": ["Journal Article"],
+                "abstract": "A study abstract.",
+                "doi": "10.1000/test",
+                "pubmed_url": "https://pubmed.ncbi.nlm.nih.gov/12345/",
+                "doi_url": "https://doi.org/10.1000/test",
+            }],
+            "total_count": 1,
+            "query": '"Jane Doe"[FAU]',
+            "search_date": "2026-11-02",
+        }
+        mock_audit.return_value = {
+            "citation_integrity": {"verified_citations": 1},
+            "grade_rating_policy": {"notice": "GRADE değerlendirilmedi."},
+            "expert_physician_review": "Yapılmadı",
+            "verification_results": [],
+        }
+
+        at = AppTest.from_file(os.path.abspath("app.py"), default_timeout=15)
+        at.run()
+        at.radio[0].set_value("Araştırmacı adı-soyadı").run()
+        inputs_by_label = {item.label: item for item in at.text_input}
+        inputs_by_label["Araştırmacının adı"].input("Jane")
+        inputs_by_label["Araştırmacının soyadı"].input("Doe")
+        next(button for button in at.button if "Ara" in button.label).click().run()
+
+        self.assertTrue(
+            any("Araştırmacı sonuçlarından klinik kanıt raporu üretilmez" in item.value for item in at.info)
+        )
+        self.assertFalse(any("Türkçe Kanıt Raporunu" in item.label for item in at.button))
+        mock_audit.assert_not_called()
+        mock_engine_cls.return_value.generate_synthesis_report.assert_not_called()
+
     def test_openai_data_transfer_is_disabled_by_default(self):
         with patch.dict(os.environ, {"OPENAI_API_KEY": "test-key"}):
             at = AppTest.from_file(os.path.abspath("app.py"), default_timeout=10)

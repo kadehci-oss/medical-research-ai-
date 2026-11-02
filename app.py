@@ -2,7 +2,7 @@ import os
 import re
 import streamlit as st
 import pandas as pd
-from pubmed_client import verify_pmid, verify_doi, verify_citation
+from pubmed_client import build_author_search_query, verify_pmid, verify_doi, verify_citation
 from universal_evidence_engine import UniversalEvidenceEngine
 import evidence_model
 import report_verification
@@ -201,17 +201,50 @@ def main():
     with tab1:
         st.subheader("PubMed Gerçek Zamanlı Literatür Arama (Evrensel Motor)")
 
-        col_search, col_type, col_count = st.columns([3, 1.5, 1])
-        with col_search:
-            search_query = st.text_input("Klinik Sorgu veya Tıbbi Terimler (İngilizce/Latince)", placeholder="örneğin, SGLT2 inhibitors in heart failure with preserved ejection fraction")
-        with col_type:
-            pub_type_filter = st.selectbox(
-                "Yayın Türü Filtresi",
-                ["Tümü", "Clinical Trial", "Randomized Controlled Trial", "Systematic Review", "Meta-Analysis", "Review"]
+        search_mode = st.radio(
+            "Arama türü",
+            ["Klinik konu / terimler", "Araştırmacı adı-soyadı"],
+            horizontal=True,
+            key="search_mode",
+        )
+        author_search_mode = search_mode == "Araştırmacı adı-soyadı"
+        author_first_name = ""
+        author_last_name = ""
+        if not author_search_mode:
+            col_search, col_type, col_count = st.columns([3, 1.5, 1])
+            with col_search:
+                search_query = st.text_input("Klinik Sorgu veya Tıbbi Terimler (İngilizce/Latince)", placeholder="örneğin, SGLT2 inhibitors in heart failure with preserved ejection fraction")
+            with col_type:
+                pub_type_filter = st.selectbox(
+                    "Yayın Türü Filtresi",
+                    ["Tümü", "Clinical Trial", "Randomized Controlled Trial", "Systematic Review", "Meta-Analysis", "Review"]
+                )
+            with col_count:
+                max_results = st.number_input("Sonuç Sayısı", min_value=1, max_value=50, value=10)
+            search_label = search_query
+        else:
+            col_first, col_last, col_type, col_count = st.columns([1.5, 1.5, 1.5, 1])
+            with col_first:
+                author_first_name = st.text_input("Araştırmacının adı", placeholder="Örn. John")
+            with col_last:
+                author_last_name = st.text_input("Araştırmacının soyadı", placeholder="Örn. Smith")
+            with col_type:
+                pub_type_filter = st.selectbox(
+                    "Yayın Türü Filtresi",
+                    ["Tümü", "Clinical Trial", "Randomized Controlled Trial", "Systematic Review", "Meta-Analysis", "Review"]
+                )
+            with col_count:
+                max_results = st.number_input("Sonuç Sayısı", min_value=1, max_value=50, value=10)
+            search_label = " ".join((author_first_name.strip(), author_last_name.strip())).strip()
+            try:
+                search_query = build_author_search_query(author_first_name, author_last_name)
+            except ValueError:
+                search_query = ""
+            st.caption(
+                "Ad-soyad araması PubMed'in tam yazar adı alanını kullanır; tam ad bilgisi özellikle 2002 sonrası "
+                "kayıtların yalnızca bir bölümünde bulunduğundan sonuçlar eksiksiz olmayabilir."
             )
-        with col_count:
-            max_results = st.number_input("Sonuç Sayısı", min_value=1, max_value=50, value=10)
-        if search_query and _is_turkish_query(search_query):
+        if not author_search_mode and search_query and _is_turkish_query(search_query):
             st.info(
                 "Sorgu Türkçe görünüyor. PubMed İngilizce terimlerle arar; Türkçe sorgu az sonuç verebilir veya hiç "
                 "sonuç vermeyebilir. Arama terimlerini İngilizce yazın (örn. 'SGLT2 inhibitors heart failure mortality')."
@@ -229,6 +262,8 @@ def main():
             st.markdown("<div style='margin-top: 28px;'></div>", unsafe_allow_html=True)
             search_submitted = st.button("🔍 Ara", use_container_width=True)
 
+        if search_submitted and author_search_mode and not search_query:
+            st.warning("PubMed'de araştırmacı aramak için geçerli bir ad ve soyad girin.")
         if search_submitted and search_query:
             st.session_state.pop("generated_report", None)
             st.session_state.pop("generated_html_report", None)
@@ -247,10 +282,14 @@ def main():
                     sort=sort_by,
                     publication_type=pub_type_filter,
                     start_year=start_yr,
-                    end_year=end_yr
+                    end_year=end_yr,
+                    enhance_with_specialty=not author_search_mode,
+                    prefer_high_level_evidence=not author_search_mode,
                 )
                 st.session_state["search_results"] = search_res
                 st.session_state["active_query"] = search_query
+                st.session_state["active_search_mode"] = "author" if author_search_mode else "clinical"
+                st.session_state["active_search_label"] = search_label
 
         if "search_results" in st.session_state:
             res = st.session_state["search_results"]
@@ -266,11 +305,17 @@ def main():
                 st.markdown(f"**Bulunan Toplam Kayıt:** {total_count} | **Gösterilen:** {len(articles)}")
                 _render_specialty_caption(res)
                 active_query = st.session_state.get("active_query", "")
-                framework = select_question_framework(active_query)
-                st.caption(
-                    f"Soru türü: {framework['question_type_tr']} — çerçeve: {framework['framework']}. "
-                    "Kartlar, rapor bölüm 5/6 ve dışa aktarılan raporla aynı yapılandırılmış veri nesnesinden üretilir."
-                )
+                if st.session_state.get("active_search_mode") == "author":
+                    st.caption(
+                        f"Araştırmacı: {st.session_state.get('active_search_label', '')}. "
+                        "Yazar adı, PubMed'in tam ad alanında arandı."
+                    )
+                else:
+                    framework = select_question_framework(active_query)
+                    st.caption(
+                        f"Soru türü: {framework['question_type_tr']} — çerçeve: {framework['framework']}. "
+                        "Kartlar, rapor bölüm 5/6 ve dışa aktarılan raporla aynı yapılandırılmış veri nesnesinden üretilir."
+                    )
                 studies, relation_summary = evidence_model.build_studies(articles, active_query)
                 for idx, (art, study) in enumerate(zip(articles, studies), 1):
                     rob = study.legacy["rob"]
@@ -369,7 +414,12 @@ def main():
         st.subheader("Türkçe Klinik Kanıt Raporu ve Yapılandırılmış Kanıt Tablosu Engine")
         st.write("PubMed arama sonuçlarından çalışma tasarımları, ön kanıt notları, güvenlik denetimi ve indirilebilir araştırma raporları üretin.")
 
-        if "search_results" in st.session_state and st.session_state["search_results"].get("articles"):
+        if st.session_state.get("active_search_mode") == "author":
+            st.info(
+                "Araştırmacı sonuçlarından klinik kanıt raporu üretilmez. "
+                "Klinik rapor için konu/terim araması yapın."
+            )
+        elif "search_results" in st.session_state and st.session_state["search_results"].get("articles"):
             articles = st.session_state["search_results"]["articles"]
             query = st.session_state.get("active_query", "Klinik Araştırma")
 
