@@ -2378,13 +2378,21 @@ def _explicit_comparator(abstract: str, pub_types: Optional[List[str]] = None) -
     return ""
 
 
+def _eligible_intervention_sentence(sentence: str) -> bool:
+    """Exclude background advice and eligibility criteria as treatment evidence."""
+    return bool(sentence) and not _background_sentence(sentence) and not re.search(
+        r"\b(?:exclud(?:e[ds]?|ing)|exclusion|ineligible)\b", sentence, re.IGNORECASE
+    )
+
+
 def _recognized_study_interventions(abstract: str, title: str) -> List[str]:
     """Drug and procedure names supported by the abstract as interventions.
 
     Sentences that state an effect, an allocation, or a versus-comparison
-    are scanned. Title candidates are accepted only when the same drug is
-    also present in the abstract. Matrix/PICO and section 6 thus share the
-    same rule without losing existing recognition of abstract-supported names.
+    are scanned, excluding background and eligibility criteria. The title is
+    deliberately not a candidate source: matching title labels against abstract
+    labels can mistake a substring or an incidental mention for study treatment.
+    Matrix/PICO and section 6 share this abstract-only rule.
     """
     names = []
 
@@ -2393,17 +2401,20 @@ def _recognized_study_interventions(abstract: str, title: str) -> List[str]:
             if not _label_already_listed(label, names):
                 names.append(label)
 
-    arm_drug, _arm_comp = _allocation_arms(abstract)
+    sentences = [sentence for sentence in _finding_sentences(abstract or "")
+                 if _eligible_intervention_sentence(sentence)]
+    arm_drug, _arm_comp = _allocation_arms(" ".join(sentences))
     if arm_drug:
         names.append(arm_drug)
-    abstract_labels = _drug_labels_in(abstract or "")
-    for label in _drug_labels_in(title or ""):
-        if (_label_already_listed(label, abstract_labels)
-                and not _label_already_listed(label, names)):
-            names.append(label)
-    for sentence in _finding_sentences(abstract or ""):
-        # General advice ("treatment with X is often necessary") is not this study's arm.
-        if _background_sentence(sentence):
+    for sentence in sentences:
+        # Observed treatment response/resistance also grounds the drug in the
+        # abstract, even when no administration verb is repeated in the results.
+        if re.search(
+            r"\b(?:had|developed|diagnosed with|experienced|showed)\b"
+            r"[^.]*\b(?:resistance|response)\b",
+            sentence, re.IGNORECASE,
+        ):
+            _add(sentence)
             continue
         if re.search(r"\b(?:effect|efficacy|safety|impact|role)\s+of\b", sentence, re.IGNORECASE):
             _add(sentence)
@@ -2734,6 +2745,8 @@ def extract_article_clinical_details(article: Dict[str, Any], query: str = "", *
     profile_drugs = []
     for item in profile:
         if item.get("category") != "treatment":
+            continue
+        if item.get("sentence") and not _eligible_intervention_sentence(item["sentence"]):
             continue
         body = re.sub(r"^Tedavi:\s*", "", item.get("line") or "").strip().rstrip(".")
         for part in body.split(","):
@@ -5940,7 +5953,7 @@ def _ground_intervention(bits: List[str], abstract: str, title: str):
     best_n = 0
     best_treated = False
     for sentence in _finding_sentences(abstract or ""):
-        if _background_sentence(sentence):
+        if not _eligible_intervention_sentence(sentence):
             continue
         supported = [bit for bit in bits if _bit_supported(bit, sentence)]
         treated = bool(_treatment_is_reported(sentence) or _ALLOCATION_CUE_RE.search(sentence))
@@ -6140,12 +6153,18 @@ def _intervention_comparison_cell(
     Include recognized drugs across reported treatment sentences, without
     adding names supported only by the title.
     """
-    arms = _trial_arm_label(abstract)
+    eligible_abstract = " ".join(
+        sentence for sentence in _finding_sentences(abstract or "")
+        if _eligible_intervention_sentence(sentence)
+    )
+    arms = _trial_arm_label(eligible_abstract)
     if arms:
         return arms
     drugs = []
     for item in profile:
         if item.get("category") != "treatment":
+            continue
+        if item.get("sentence") and not _eligible_intervention_sentence(item["sentence"]):
             continue
         body = re.sub(r"^Tedavi:\s*", "", item.get("line") or "").strip().rstrip(".")
         for part in body.split(","):
@@ -6501,7 +6520,7 @@ Lütfen arama terimlerini veya filtreleri genişleterek tekrar deneyiniz.
             report.append("- **Çıkarılan Sayısal / İstatistiksel Parametreler:** Özette spesifik n, HR/OR veya p değeri bildirilmemiştir (Eksik veriler uydurulmamıştır).")
 
         if metrics.get("concomitant_treatments"):
-            report.append(f"- **Saptanan Eşzamanlı / Ek Tedaviler:** {', '.join(metrics['concomitant_treatments'])}")
+            report.append(f"- **Saptanan Eşzamanlı / Ek Tedaviler:** {_raise_initial(', '.join(metrics['concomitant_treatments']))}")
         else:
             report.append("- **Saptanan Eşzamanlı / Ek Tedaviler:** Özette spesifik eşzamanlı ilaç bildirilmemiştir.")
 
