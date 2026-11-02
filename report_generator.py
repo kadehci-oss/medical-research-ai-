@@ -2885,7 +2885,7 @@ def _outcome_lead(outcome: str) -> str:
 def _claim_source_phrase(item: Dict[str, Any], pmid: str, seen_quotes: set) -> str:
     """Quote the extraction sentence once. A title source is labeled, not quoted."""
     source = (item or {}).get("source") or ""
-    sentence = re.sub(r"\s+", " ", (item or {}).get("source_sentence") or "").strip()
+    sentence = _quote_sentence((item or {}).get("source_sentence") or "")
     if source == "title":
         return f"Kaynak: makale başlığı (PMID: {pmid})"
     if sentence and not _has_real_abstract({"abstract": sentence}):
@@ -4950,7 +4950,7 @@ def format_klinik_bulgular_cell(article: Dict[str, Any]) -> str:
 
     parts = [f"PMID: {pmid}."]
     for sentence in order:
-        shown = sentence.replace("|", "/").replace("\n", " ")
+        shown = _quote_sentence(sentence).replace("|", "/")
         block = [f'Kaynak cümle: "{shown}".']
         block.extend(buckets[sentence]["profile"])
         block.extend(buckets[sentence]["effects"])
@@ -5730,8 +5730,9 @@ def _explicit_limit_label(sentence: str) -> str:
 
 
 def _quote_sentence(sentence: str) -> str:
-    """Keep attributed source sentences verbatim apart from whitespace."""
-    return re.sub(r"\s+", " ", sentence or "").strip()
+    """Normalize whitespace and a terminal double period, preserving ellipses."""
+    shown = re.sub(r"\s+", " ", sentence or "").strip()
+    return re.sub(r"(?<!\.)\.\.$", ".", shown)
 
 
 _NO_CONTROL_DESIGNS = {"case_report", "case_series", "retrospective_case_series"}
@@ -6344,7 +6345,7 @@ Lütfen arama terimlerini veya filtreleri genişleterek tekrar deneyiniz.
         pmid_link = f"[PMID: {pmid}]({art.get('pubmed_url', '#')})" if pmid else ""
         cd = classify_study_design(art.get("publication_types", []), art.get("title", ""), abs_text)
 
-        opening = _sentence_around(abs_text, 0, 1) if _has_real_abstract(art) else ""
+        opening = _quote_sentence(_sentence_around(abs_text, 0, 1)) if _has_real_abstract(art) else ""
         source_bit = (
             f" Kaynak cümle: \"{opening}\" (PMID: {pmid})."
             if opening
