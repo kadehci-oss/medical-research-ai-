@@ -137,6 +137,38 @@ class TestSignificanceContradictionsRule(unittest.TestCase):
         findings2 = check_significance_contradictions(text2)
         self.assertEqual(len(findings2), 0)
 
+    def test_regression_p_008_not_a_contradiction(self):
+        """(1) 'anlamlı fark saptanmamıştır (p = 0.08)' -> bulgu yok"""
+        text = "İki grup arasında anlamlı fark saptanmamıştır (p = 0.08)."
+        findings = check_significance_contradictions(text)
+        self.assertEqual(len(findings), 0)
+
+    def test_regression_p_gt_005_not_a_contradiction(self):
+        """(2) 'anlamlı fark saptanmamıştır (p > 0.05)' -> bulgu yok"""
+        text = "İki grup arasında anlamlı fark saptanmamıştır (p > 0.05)."
+        findings = check_significance_contradictions(text)
+        self.assertEqual(len(findings), 0)
+
+    def test_regression_significant_p_with_no_difference_is_contradiction(self):
+        """(3) 'anlamlı fark saptanmamıştır (p = 0.03)' ve '(p < 0.05)' -> CRITICAL bulgu var"""
+        text1 = "İki grup arasında anlamlı fark saptanmamıştır (p = 0.03)."
+        findings1 = check_significance_contradictions(text1)
+        self.assertEqual(len(findings1), 1)
+        self.assertTrue(findings1[0]["critical"])
+        self.assertEqual(findings1[0]["type"], "not_significant_with_low_p")
+
+        text2 = "İki grup arasında anlamlı fark saptanmamıştır (p < 0.05)."
+        findings2 = check_significance_contradictions(text2)
+        self.assertEqual(len(findings2), 1)
+        self.assertTrue(findings2[0]["critical"])
+        self.assertEqual(findings2[0]["type"], "not_significant_with_low_p")
+
+    def test_regression_p_0050_not_significant(self):
+        """(4) 'p = 0.050' anlamlı sayılmasın (anlamlı fark saptanmamıştır ile çelişki üretmemeli)"""
+        text = "İki grup arasında anlamlı fark saptanmamıştır (p = 0.050)."
+        findings = check_significance_contradictions(text)
+        self.assertEqual(len(findings), 0)
+
 
 class TestRawEnglishCIRule(unittest.TestCase):
     def test_positive_raw_confidence_interval_detected(self):
