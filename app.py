@@ -325,10 +325,7 @@ def main():
                         st.markdown(f"**Çalışma Tasarımı:** `{study.design_label}`")
                         st.markdown(f"**Kanıt düzeyi:** `{study.evidence_level}`")
                         st.caption(study.evidence_level_note or "")
-                        st.markdown(
-                            f"**Yanlılık aracı ({display_bias_tool(study.risk_of_bias.tool)}):** "
-                            f"`{display_bias_rating(rob['overall_rating'])}`"
-                        )
+                        st.markdown(f"**Yanlılık aracı ({display_bias_tool(study.risk_of_bias.tool)}):** `{display_bias_rating(rob['overall_rating'])}`")
                         st.caption(rob.get("rating_policy") or "Değerlendirme yapılmadan risk derecesi verilmez.")
                         source_validation = evidence_model.validate_study(study, art)
                         source_status = "Yapısal olarak uygun" if source_validation.get("valid") else "Kaynak incelemesi gerekli"

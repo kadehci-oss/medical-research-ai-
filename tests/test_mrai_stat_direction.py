@@ -191,6 +191,32 @@ class Direction(unittest.TestCase):
         self.assertEqual(sd.determine_direction({}), sd.LABEL_UNCERTAIN)
         self.assertEqual(sd.determine_direction(None), sd.LABEL_UNCERTAIN)
 
+    def test_relative_risk_reduction_is_not_a_ratio_with_null_one(self):
+        for reduction in ("30%", "0.30"):
+            with self.subTest(reduction=reduction):
+                sentence = f"Mortality: RRR {reduction}, p = 0.001"
+                self.assertIsNone(sd.parse_ratio(sentence))
+                self.assertEqual(self.label(sentence, "mortality"), sd.LABEL_SIG_UNCLEAR)
+
+    def test_estimate_outside_its_interval_stays_uncertain(self):
+        for sentence in (
+            "Mortality HR 0.7, 95% CI 1.2 to 1.8",
+            "Mortality HR 0.7, 95% CI 0.2 to 0.6, p = 0.001",
+            "Pain MD -0.8, 95% CI 0.2 to 0.6, p = 0.001",
+        ):
+            with self.subTest(sentence=sentence):
+                result = sd.assess_direction(sentence, outcome="mortality")
+                self.assertEqual(result["label"], sd.LABEL_UNCERTAIN)
+                self.assertIsNone(result["significant"])
+
+    def test_nonpositive_ratio_bounds_are_not_interpreted(self):
+        for sentence in (
+            "Mortality HR 0, p = 0.001",
+            "Mortality HR 0.7, 95% CI -0.2 to 0.8, p = 0.001",
+        ):
+            with self.subTest(sentence=sentence):
+                self.assertEqual(self.label(sentence, "mortality"), sd.LABEL_UNCERTAIN)
+
 
 if __name__ == "__main__":
     unittest.main()

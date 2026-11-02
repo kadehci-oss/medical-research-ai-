@@ -1653,6 +1653,11 @@ def extract_outcome_metrics(abstract: str) -> List[Dict[str, Any]]:
     outcome_keywords = [
         "cardiovascular death", "cv death", "all-cause mortality", "mortality", "death",
         "hospitalization", "heart failure hospitalization", "readmission", "events",
+        "major adverse cardiac events", "major adverse cardiovascular events", "mace",
+        "major bleeding", "minor bleeding", "bleeding", "hemorrhage",
+        "device-related thrombus", "device-related thrombosis", "device related thrombus", "drt",
+        "thromboembolism", "systemic embolism", "ischemic stroke", "hemorrhagic stroke",
+        "thrombus", "thrombosis",
         "remission", "relapse", "progression-free survival", "overall survival",
         "myopathy", "muscle pain", "muscle symptoms", "ck elevation", "anti-hmgcr",
         "adverse events", "side effects", "infection rate", "cure rate", "response rate",
@@ -3104,7 +3109,8 @@ def _number_after(text: str, start: int, max_gap: int):
             return None
         if _is_calendar_year(match.group(0)):
             continue
-        tail = window[match.end():]
+        # The numeric search stays bounded; its unit can extend past that window.
+        tail = text[start + match.end():]
         # "1-year" and "1-," are time frames, not effect estimates. "0.70-0.92" is.
         if re.match(r"\s*-\s*(?!\d)", tail):
             continue
@@ -5707,11 +5713,9 @@ def _explicit_limit_label(sentence: str) -> str:
     return "özette metodolojik sınırlılık belirtildi"
 
 
-def _quote_sentence(sentence: str, limit: int = 220) -> str:
-    text = re.sub(r"\s+", " ", sentence or "").strip().replace('"', "'")
-    if len(text) > limit:
-        text = text[: limit - 1].rstrip() + "…"
-    return text
+def _quote_sentence(sentence: str) -> str:
+    """Keep attributed source sentences verbatim apart from whitespace."""
+    return re.sub(r"\s+", " ", sentence or "").strip()
 
 
 _NO_CONTROL_DESIGNS = {"case_report", "case_series", "retrospective_case_series"}
@@ -6347,6 +6351,8 @@ Lütfen arama terimlerini veya filtreleri genişleterek tekrar deneyiniz.
         "güven aralığı, sonlanım veya hasta özelliği üretilmez.\n"
     )
     report.append(generate_evidence_table_markdown(articles))
+    report.append("\n\n### 🔬 GRADE ve RoB 2 Değerlendirme Durumu")
+    report.append(build_evidence_table(articles))
     report.append("\n")
 
     # Cross-article comparison calculation via engine
@@ -6397,9 +6403,12 @@ Lütfen arama terimlerini veya filtreleri genişleterek tekrar deneyiniz.
             o_str = "Özette bağlı nicel sonlanım ölçütü bildirilmedi"
 
         bound = _format_bound_claims(apply_structured_sample_size(extract_article_clinical_details(art, query), art))
+        # Abstract extraction is not a completed GRADE appraisal.
+        grade_display = "Değerlendirilemedi"
+
         comp_lines.append(
             f"- **{first_author} ({year})** ({pmid_link}):\n"
-            f"  - **Yöntem ve tasarım:** {cd['design']} | **Kanıt düzeyi:** {cd['level']}\n"
+            f"  - **Yöntem ve tasarım:** {cd['design']} | **Kanıt düzeyi:** {cd['level']} | **GRADE:** {grade_display}\n"
             f"  - **Yanlılık aracı:** {display_bias_tool(rob['tool'])} | **Risk derecesi:** {display_bias_rating(rob['overall_rating'])}\n"
             f"  - **Hasta / Örneklem Sayısı:** {n_str}\n"
             f"  - **Klinik Sonlanımlar ve Etki Ölçütleri:** {o_str}\n"
@@ -6442,6 +6451,7 @@ Lütfen arama terimlerini veya filtreleri genişleterek tekrar deneyiniz.
         report.append(f"#### {idx}. {first_author} ({year}) — *{title}*")
         report.append(f"- **Çalışma tasarımı:** {cd['design']}")
         report.append(f"- **Kanıt düzeyi:** {cd['level']}. {cd.get('evidence_level_note', EVIDENCE_LEVEL_NOTE)}")
+        report.append("- **GRADE Kesinlik Düzeyi:** Değerlendirilemedi (tam değerlendirme yapılmadı)")
         report.append(
             f"- **Yanlılık aracı:** {display_bias_tool(rob['tool'])} | "
             f"**Risk derecesi:** {display_bias_rating(rob['overall_rating'])}"
@@ -6598,9 +6608,24 @@ def generate_llm_turkish_report(
     context_blocks = []
     for idx, art in enumerate(articles, 1):
         cd = classify_study_design(art.get("publication_types", []), art.get("title", ""), art.get("abstract", ""))
+        art_grade = art.get("grade")
+        art_rob2 = art.get("rob2")
+        if not art_grade or not art_rob2:
+            try:
+                from universal_evidence_engine import enrich_record
+                _enr = enrich_record(dict(art))
+                art_grade = art_grade or _enr.get("grade")
+                art_rob2 = art_rob2 or _enr.get("rob2")
+            except Exception:
+                pass
+        grade_final = (art_grade or {}).get("final") or "Belirtilmedi"
+        rob2_overall = (art_rob2 or {}).get("overall") or "N/A"
+
         context_blocks.append(
             f"--- MAKALE [{idx}] ---\n"
             f"PMID: {art.get('pmid')}\n"
+            f"GRADE Kesinlik (grade.final): {grade_final}\n"
+            f"RoB 2 Yanlılık Riski (rob2.overall): {rob2_overall}\n"
             f"DOI: {art.get('doi', 'Yok')}\n"
             f"Başlık: {art.get('title')}\n"
             f"Yazarlar: {', '.join(art.get('authors', []))}\n"
@@ -6610,7 +6635,7 @@ def generate_llm_turkish_report(
         )
 
     context_str = "\n".join(context_blocks)
-    evidence_table_md = generate_evidence_table_markdown(articles)
+    evidence_table_md = generate_evidence_table_markdown(articles) + "\n\n### 🔬 GRADE ve RoB 2 Değerlendirme Durumu\n" + build_evidence_table(articles)
 
     system_prompt = (
         "Sen, sağlanan PubMed makale kayıt ve özetlerini Türkçe olarak düzenleyen bir araştırma asistanısın; "
@@ -6888,30 +6913,26 @@ def generate_html_report(
 
 # [EVIDENCE_LAYER] auto-function
 def build_evidence_table(records):
-    """GRADE ve RoB 2 sütunlu kanıt tablosu."""
+    """Render appraisal status from the same validated Study model as the report."""
+    from evidence_model import format_estimate_tr
+
     header = (
-        "| PMID | Tasarım | Birincil Etki (95% CI) | n | GRADE | RoB 2 |\n"
-        "|------|---------|------------------------|---|-------|-------|\n"
+        "| PMID | Tasarım | Kaynağa bağlı etki ve GA | n | GRADE | Yanlılık riski |\n"
+        "|------|---------|--------------------------|---|-------|---------------|\n"
     )
     rows = []
-    for r in records:
-        es = (r.get("effect_summary") or {}).get("primary") or {}
-        if es.get("ci_low") is not None and es.get("ci_high") is not None:
-            ci = "(%s-%s)" % (round(es["ci_low"], 2), round(es["ci_high"], 2))
-        else:
-            ci = "-"
-        grade = (r.get("grade") or {}).get("final", "-")
-        rob = (r.get("rob2") or {}).get("overall_tr") or "Değerlendirilmedi"
-        des = r.get("study_design", "-")
-        if isinstance(des, dict):
-            des = des.get("design", "-")
-        rows.append(
-            "| %s | %s | %s %s %s | %s | %s | %s |" % (
-                r.get("pmid", "-"), des,
-                es.get("type", "-"), es.get("value", "-"), ci,
-                es.get("n", "-"), grade, rob
-            )
+    for article in records:
+        study = _study_for(article)
+        effects = "; ".join(format_estimate_tr(est) for est in study.estimates if est.usable)
+        cells = (
+            study.pmid or "-",
+            study.design_label,
+            effects or "Özette kullanılabilir etki tahmini yok",
+            str(study.population.n_total) if study.population.n_total is not None else "Bildirilmedi",
+            "Değerlendirilemedi (tam değerlendirme yapılmadı)",
+            display_bias_rating(study.legacy["rob"]["overall_rating"]),
         )
+        rows.append("| " + " | ".join(_cell(value, limit=1600) for value in cells) + " |")
     return header + "\n".join(rows)
 
 

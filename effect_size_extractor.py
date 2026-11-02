@@ -14,7 +14,23 @@ EFFECT_PATTERNS = {
 }
 CI_PATTERN = r"(?:CI|confidence\s*interval)[^\d\-]{0,10}[\[\(]?\s*(-?\d+\.?\d*)\s*[-–,to]+\s*(-?\d+\.?\d*)"
 P_PATTERN = r"p\s*[=<>]\s*(0?\.\d+|\d+\.?\d*e?-?\d*)"
-N_PATTERN = r"(?:n\s*=\s*|total of\s+|included\s+)(\d{2,6})"
+N_PATTERN = (
+    r"(?<![\w:.,])(?:(?:n\s*=\s*|total of\s+|included\s+|sample of\s+|enrolled\s+)(?=\d)|"
+    r"(?=\d[\d,]*\s+(?:patients|subjects|participants|cases|individuals|adults|children)\b))"
+    r"(\d{1,3}(?:,\d{3})+|\d+)(?!\d|[,.]\d|\s*:\s*\d)"
+)
+
+
+def _sample_size(text: str) -> Optional[int]:
+    """Read whole participant counts without treating ratio terms as counts."""
+    for match in re.finditer(N_PATTERN, text, flags=re.IGNORECASE):
+        # A spaced allocation ratio may otherwise match its right-hand number.
+        if re.search(r":\s*$", text[:match.start(1)]):
+            continue
+        value = int(match.group(1).replace(",", ""))
+        if value > 0:
+            return value
+    return None
 
 @dataclass
 class EffectSize:
@@ -47,13 +63,13 @@ def extract_effect_sizes(text: str) -> List[EffectSize]:
                 continue
             ci = re.search(CI_PATTERN, low, flags=re.IGNORECASE)
             p = re.search(P_PATTERN, low, flags=re.IGNORECASE)
-            n = re.search(N_PATTERN, low, flags=re.IGNORECASE)
+            n = _sample_size(low)
             results.append(EffectSize(
                 type=etype, value=value,
                 ci_low=float(ci.group(1)) if ci else None,
                 ci_high=float(ci.group(2)) if ci else None,
                 p_value=p.group(1) if p else None,
-                n=int(n.group(1)) if n else None,
+                n=n,
                 source_sentence=sent[:300],
             ))
     return results

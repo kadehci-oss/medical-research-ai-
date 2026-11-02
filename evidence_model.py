@@ -1416,10 +1416,11 @@ def _validate_estimate(est: EffectEstimate) -> None:
             est.validation_note = "Oran ölçütü sıfır veya negatif olamaz."
             return
     if est.family == "diagnostic":
-        scale = 100.0 if v > 1.0 else 1.0
-        if est.measure in ("AUC",) and v > 1.0 and v <= 100:
-            scale = 100.0
-        if v < 0 or v > scale or (hi is not None and hi > scale + tol):
+        # A value above one is not evidence of percentage units. Only an
+        # explicitly reported percent marker allows the 0-100 scale.
+        scale = 100.0 if "%" in est.value_text else 1.0
+        values = (v, lo, hi, est.contrast_value)
+        if any(value is not None and not 0 <= value <= scale for value in values):
             est.validation = "tutarsiz"
             est.validation_note = "Tanısal ölçüt 0-1 (veya %0-100) aralığı dışında."
             return
@@ -3339,8 +3340,8 @@ def render_study_card_lines(study: Study) -> List[str]:
             lines.append(f"- {detail}")
     if rejected:
         lines.append(f"**Reddedilen eşleştirmeler:** {len(rejected)} (tutarsız güven aralığı veya geçersiz aralık; sentezde kullanılmadı)")
-    tool = rg.display_bias_tool(study.risk_of_bias.tool) if study.risk_of_bias.tool else "araç seçilemedi"
-    lines.append(f"**Yanlılık riski:** {tool} — {NOT_ASSESSED_TR} (derece verilmedi)")
+    bias_tool = rg.display_bias_tool(study.risk_of_bias.tool) if study.risk_of_bias.tool else "araç seçilemedi"
+    lines.append(f"**Yanlılık riski:** {bias_tool} — {NOT_ASSESSED_TR} (derece verilmedi)")
     lines.append(f"**GRADE:** {NOT_ASSESSED_TR}")
     if study.relations:
         rel = "; ".join(

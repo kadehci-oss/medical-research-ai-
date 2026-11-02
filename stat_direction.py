@@ -151,7 +151,7 @@ def parse_ci_strings(strings: Iterable[str]) -> Optional[Tuple[float, float]]:
 
 
 _RATIO_RE = re.compile(
-    r"(?:\b(?P<abbr>(?-i:aHR|HR|aOR|OR|aRR|RR|IRR|RRR))"
+    r"(?:\b(?P<abbr>(?-i:aHR|HR|aOR|OR|aRR|RR|IRR))"
     r"|\b(?P<long>hazard\s+ratio|odds\s+ratio|relative\s+risk|risk\s+ratio|rate\s+ratio))"
     r"\s*(?:\([^)]{0,20}\))?\s*(?:of|was)?\s*[:=,]?\s*(?P<v>\d*\.?\d+)",
     re.IGNORECASE,
@@ -167,7 +167,11 @@ _LONG_KIND = {
 
 
 def parse_ratio(text: str) -> Optional[Tuple[str, float]]:
-    """First ratio estimate as (kind, value), kind in HR/OR/RR/IRR/RRR."""
+    """First ratio estimate as (kind, value), kind in HR/OR/RR/IRR.
+
+    Relative risk reduction (RRR) is not a ratio with a null value of one.
+    Leave it unparsed until its scale and null value can be handled explicitly.
+    """
     match = _RATIO_RE.search(text or "")
     if not match:
         return None
@@ -343,16 +347,26 @@ def assess_direction(
     md = None if ratio else parse_mean_difference(text)
     ci = parse_ci(text)
 
+    # A mismatched interval may belong to another outcome or reflect an
+    # extraction error. Never turn it into an interpretable treatment effect.
+    invalid_estimate = bool(ratio and ratio[1] <= 0)
+    if ratio and ci:
+        invalid_estimate = invalid_estimate or ci[0] <= 0 or not (ci[0] <= ratio[1] <= ci[1])
+    elif md is not None and ci:
+        invalid_estimate = not (ci[0] <= md <= ci[1])
+    if invalid_estimate:
+        notes.append("Etki tahmini veya güven aralığı tutarsız; etki yönü değerlendirilemedi.")
+
     sig_ci: Optional[bool] = None
-    if ci and ratio:
+    if ci and ratio and not invalid_estimate:
         sig_ci = not (ci[0] <= 1.0 <= ci[1])
-    elif ci and md is not None:
+    elif ci and md is not None and not invalid_estimate:
         sig_ci = not (ci[0] <= 0.0 <= ci[1])
 
     flags = [s for s in (sig_p, sig_ci) if s is not None]
-    conflict = mixed
+    conflict = mixed or invalid_estimate
     significant: Optional[bool] = None
-    if flags:
+    if flags and not invalid_estimate:
         if len(set(flags)) == 1:
             significant = flags[0]
         else:

@@ -290,16 +290,21 @@ def _evidence_conflict(p1: Dict[str, Any], p2: Dict[str, Any], v1: Any, v2: Any)
 def _side_matches_query(value: Any, study: Dict[str, Any], query_value: str) -> Optional[bool]:
     """Does one study fit the query's term for this field?
 
-    True when the extracted value matches the query term, or when every
-    content word of the query term appears in the study's own title or
-    outcome sentences. The second test also covers values the extractor has
-    translated (an English query "Drug X" vs an extracted "ila\u00e7 X").
+    A known extracted value must match the query term. An unknown value may
+    fall back to the study's title or outcome sentences, where every query
+    content word must appear. Mentioning a comparator elsewhere must never
+    override an explicitly different intervention.
     """
     wanted = content_tokens(query_value)
     if not wanted:
         return None
-    if content_tokens(value) and compare_terms(value, query_value)[0]:
-        return True
+    if content_tokens(value):
+        # Preserve controlled lexical equivalents without guessing the role
+        # of a known intervention from a comparator mentioned elsewhere.
+        def normalize_drug_word(text: str) -> str:
+            return re.sub(r"\b(?:ilaç|ilac)\b", "drug", _norm(text))
+
+        return compare_terms(normalize_drug_word(value), normalize_drug_word(query_value))[0]
     return wanted <= _evidence_tokens(study)
 
 

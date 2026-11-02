@@ -136,6 +136,22 @@ class TestEffectEstimates(unittest.TestCase):
         self.assertEqual(study.estimates[0].ci_level, 90)
         self.assertIn("%90 GA", em.format_estimate_tr(study.estimates[0]))
 
+    def test_diagnostic_values_need_explicit_percentage_units(self):
+        for measure in ("AUC", "Sensitivity", "Specificity"):
+            with self.subTest(measure=measure):
+                study = em.build_study(_art("12345678", f"{measure} was 1.2 (95% CI 1.1-1.3)."))
+                self.assertFalse(study.estimates[0].usable)
+                percent = em.build_study(_art("12345678", f"{measure} was 92% (95% CI 88-96)."))
+                self.assertTrue(percent.estimates[0].usable)
+
+    def test_diagnostic_confidence_bounds_must_match_reported_scale(self):
+        for abstract in ("Sensitivity was 0.9 (95% CI -0.1-0.95).",
+                         "Sensitivity was 0.9 (95% CI 0.8-1.2).",
+                         "Sensitivity was 92% (95% CI 88-106)."):
+            with self.subTest(abstract=abstract):
+                study = em.build_study(_art("12345678", abstract))
+                self.assertFalse(study.estimates[0].usable)
+
     def test_lowercase_or_is_not_an_odds_ratio(self):
         abstract = "Patients with diabetes or hypertension (n = 50) were included; no ratio was computed."
         study = em.build_study(_art("16", abstract))
@@ -440,6 +456,23 @@ class TestReportVerification(unittest.TestCase):
         self.assertEqual(result["status"], rv.STATUS_FAIL)
         self.assertTrue(result["rob_rating_claims"])
         self.assertTrue(result["grade_rating_claims"])
+
+    def test_markdown_grade_rating_fails(self):
+        for label in ("**GRADE:** **Yüksek**", "__GRADE:__ __Düşük__"):
+            with self.subTest(label=label):
+                result = rv.verify_report(label, self._studies())
+                self.assertEqual(result["status"], rv.STATUS_FAIL)
+                self.assertTrue(result["grade_rating_claims"])
+
+    def test_bracketed_citation_and_curly_quotes_are_checked(self):
+        quote = "Empagliflozin doubled survival in every patient with heart failure."
+        for report in (f'Kaynak cümle: "{quote}" [PMID: 34449189]',
+                       f'Kaynak cümle: “{quote}” [PMID: 34449189](https://pubmed.ncbi.nlm.nih.gov/34449189/)'):
+            with self.subTest(report=report):
+                result = rv.verify_report(report, self._studies())
+                self.assertEqual(result["status"], rv.STATUS_FAIL)
+                self.assertEqual(result["quotes_checked"], 1)
+                self.assertEqual(len(result["quotes_failed"]), 1)
 
     def test_causal_wording_on_observational_line_warns(self):
         result = rv.verify_report("Metformin mortaliteyi azalttı (PMID: 41208045).", self._studies())

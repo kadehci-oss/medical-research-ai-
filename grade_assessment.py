@@ -449,13 +449,10 @@ def format_preliminary_grade_markdown(query: str, articles: List[Dict[str, Any]]
             sentence = outcome.get("source_sentence") or ""
             sentence_bit = f" Kaynak cümle: \"{sentence}\"." if sentence else " Kaynak cümle: değerlendirilemedi."
             from report_generator import _display_outcome_name
-            raw_label = outcome.get("outcome") or ""
-            # A clause that carries the authors' interpretation ("X outperformed Y",
-            # "protective effect") is not an endpoint name and is not repeated as one.
-            if _AUTHOR_CLAIM_RE.search(raw_label):
+            raw_outcome = outcome.get("outcome") or ""
+            outcome_label = _display_outcome_name(raw_outcome)
+            if _AUTHOR_CLAIM_RE.search(raw_outcome):
                 outcome_label = "sonlanım adı güvenle ayrıştırılamadı (cümlede yazar yorumu var)"
-            else:
-                outcome_label = _display_outcome_name(raw_label)
             lines.append(
                 f"  - Sonlanım: {outcome_label}; otomatik metin sinyalleri (GRADE değildir): "
                 + "; ".join(bits)

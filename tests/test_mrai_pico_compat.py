@@ -168,6 +168,15 @@ class Compatibility(unittest.TestCase):
         r = pc.evaluate_pico_compatibility(a, b, {"intervention": "Drug X"})
         self.assertIs(r["int_match"], True, r["unmatched_reasons"])
 
+    def test_query_mention_cannot_override_known_different_intervention(self):
+        a = study(intervention="Belirtilmedi")
+        a["title"] = "Insulin for type 2 diabetes"
+        b = study(intervention="metformin")
+        b["title"] = "Metformin compared with insulin in type 2 diabetes"
+        result = pc.evaluate_pico_compatibility(a, b, {"intervention": "insulin"})
+        self.assertFalse(result["compatible"])
+        self.assertIs(result["int_match"], False)
+
     def test_query_fallback_does_not_hide_a_subtype_clash(self):
         a = study(pop="Belirtilmedi", outcomes=[{"outcome": "all-cause mortality",
                   "sentence": "In patients with type 1 diabetes, drug reduced all-cause mortality"}])
