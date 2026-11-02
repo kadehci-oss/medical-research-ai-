@@ -7,7 +7,7 @@ permissions:
   contents: read
 jobs:
   verify:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     env:
       # Public repository: contact details come from Actions secrets only.
@@ -15,8 +15,8 @@ jobs:
       NCBI_API_KEY: ${{ secrets.NCBI_API_KEY }}
       NCBI_TOOL: ${{ secrets.NCBI_TOOL }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: '3.12'
       - name: Install dependencies
@@ -29,11 +29,11 @@ jobs:
         run: |
           email="${NCBI_EMAIL//[[:space:]]/}"
           if [ -z "$email" ]; then
-            echo "::warning title=Missing NCBI_EMAIL::Repository secret NCBI_EMAIL is not set. Add it under Settings > Secrets and variables > Actions so NCBI E-utilities requests include a monitored contact email. This job continues with the non-personal default contact."
+            echo "::warning title=Missing NCBI_EMAIL::Repository secret NCBI_EMAIL is not set. Add a monitored contact under Settings > Secrets and variables > Actions. This job continues without sending a placeholder email address."
           fi
       - name: Query real NCBI ESearch and EFetch
         run: python live_ncbi_validation.py
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         if: always()
         with:
           name: ncbi-live-validation

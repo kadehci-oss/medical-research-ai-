@@ -34,3 +34,13 @@ Uzman adı, kurum, uzmanlık alanı, imza: ____
 - Canlı API ve üretimden alınmış raporların test sırasında değişmeden arşivlenmesi.
 
 **Bu form boş bir protokoldür. Bağımsız hekim incelemesi veya onayı yapılmış değildir.**
+
+## Değer düzeyinde doğrulama kiti (test kategorisi 3)
+
+`validation/clinician_verification/` klasörü, motorun 75 PubMed özetinden (10 branş) çıkardığı her değer için bir satır içerir: tasarım, toplam n, kol büyüklükleri, olay sayıları, her etki tahmini (değer, GA, p, sonlanım) ve nedensel dil izni. Her satırda PMID, PubMed bağlantısı ve kaynak cümle vardır.
+
+1. `degerlendirici_A.csv` ve `degerlendirici_B.csv` aynı satırları farklı rastgele sırada içerir; iki hekim birbirinden bağımsız doldurur.
+2. `karar` sütununa yalnızca şu değerlerden biri yazılır: `dogru`, `yanlis`, `eksik_veya_belirsiz`, `kaynakta_yok`. Yanlışsa `dogru_deger` sütununa kaynaktaki değer yazılır.
+3. `python validation/clinician_verification/score_sheets.py` hata oranlarını, ham uyumu ve Cohen kappa değerini hesaplar; uyuşmayan satırları hakem kararına listeler.
+
+Karar sütunları depoda boştur ve boş kalırken puanlayıcı `NOT_PERFORMED` döndürür. Bu kit bir doğrulama sonucu değildir; sonuç ancak hekimler doldurduktan sonra oluşur. Kit motor değiştikçe `build_sheet.py` ile yeniden üretilmelidir.

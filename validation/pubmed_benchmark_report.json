@@ -1,0 +1,1343 @@
+{
+  "generated_at_utc": "2026-11-01T15:06:15.366247+00:00",
+  "run_provenance": {
+    "command": "python validation/run_pubmed_benchmark.py",
+    "python_version": "3.12.3",
+    "git_head_at_run": "bb844dc9b454b6d1f5fe96fb97eb02ea1be188c3",
+    "runner_sha256": "69e0488ff4dc9dd39a162a0490f927416643f923b460ff39d0a7fce57a7cb9e0",
+    "reference_data_sha256": "246793d61354b5fcc5a724d733b2fcd76c5af1292d9c9a5611b497289ccb4fe3",
+    "live_source": "NCBI PubMed E-utilities through pubmed_client.verify_citation"
+  },
+  "model_version": "1.1.0",
+  "reference_dataset_version": "1.1",
+  "pubmed_identity_validation": {
+    "records_checked": 8,
+    "verified_records": 8,
+    "status": "PASS",
+    "records": [
+      {
+        "status": "verified",
+        "verified": true,
+        "pmid": "34449189",
+        "reason": "match",
+        "doi_expected": "10.1056/NEJMoa2107038",
+        "doi_fetched": "10.1056/NEJMoa2107038",
+        "title_fetched": "Empagliflozin in Heart Failure with a Preserved Ejection Fraction.",
+        "abstract_sha256": "98529755c1a756521e32fd0e111b397a46ef15a5dafa09dcfe134635b65ebc26",
+        "pubmed_url": "https://pubmed.ncbi.nlm.nih.gov/34449189/"
+      },
+      {
+        "status": "verified",
+        "verified": true,
+        "pmid": "39416390",
+        "reason": "match",
+        "doi_expected": "10.1016/j.eclinm.2024.102870",
+        "doi_fetched": "10.1016/j.eclinm.2024.102870",
+        "title_fetched": "Effectiveness of immune checkpoint inhibitors and other treatment modalities in patients with advanced mucosal melanomas: a systematic review and individual patient data meta-analysis.",
+        "abstract_sha256": "cdfcb67a0a725b82cc70e122176b89baa57c6b7546930343f0dbf2ab23e7e53d",
+        "pubmed_url": "https://pubmed.ncbi.nlm.nih.gov/39416390/"
+      },
+      {
+        "status": "verified",
+        "verified": true,
+        "pmid": "32113113",
+        "reason": "match",
+        "doi_expected": "10.1016/j.yebeh.2020.106969",
+        "doi_fetched": "10.1016/j.yebeh.2020.106969",
+        "title_fetched": "Course and prognosis of adult-onset epilepsy in Brazil: A cohort study.",
+        "abstract_sha256": "b54bcd34bb9cf54c24f9ed89da83ee61d8cffc932fa7927da03482f14d7d3962",
+        "pubmed_url": "https://pubmed.ncbi.nlm.nih.gov/32113113/"
+      },
+      {
+        "status": "verified",
+        "verified": true,
+        "pmid": "17540675",
+        "reason": "match",
+        "doi_expected": "10.1093/jac/dkm141",
+        "doi_fetched": "10.1093/jac/dkm141",
+        "title_fetched": "Prior antibiotics and risk of antibiotic-resistant community-acquired urinary tract infection: a case-control study.",
+        "abstract_sha256": "d29bdab79511e4eb79fdf1c9282f78dc77b48c92924c6d4c20f85971f3fcc22b",
+        "pubmed_url": "https://pubmed.ncbi.nlm.nih.gov/17540675/"
+      },
+      {
+        "status": "verified",
+        "verified": true,
+        "pmid": "10218744",
+        "reason": "match",
+        "doi_expected": "10.1001/archinte.159.7.658",
+        "doi_fetched": "10.1001/archinte.159.7.658",
+        "title_fetched": "Diagnosis of thyroid disease in hospitalized patients: a systematic review.",
+        "abstract_sha256": "122b08e8510782f74ee1e45f580a4a2b2e3553a8ddffe10048ecaafc81e002dc",
+        "pubmed_url": "https://pubmed.ncbi.nlm.nih.gov/10218744/"
+      },
+      {
+        "status": "verified",
+        "verified": true,
+        "pmid": "37461867",
+        "reason": "match",
+        "doi_expected": "10.1542/peds.2023-061188",
+        "doi_fetched": "10.1542/peds.2023-061188",
+        "title_fetched": "Diagnostic Accuracy of Primary Care Clinicians Across a Statewide System of Autism Evaluation.",
+        "abstract_sha256": "c48d14eed339b2d79b60622fbdf9a720ac1a65e2f691107906c40e9c4af7788d",
+        "pubmed_url": "https://pubmed.ncbi.nlm.nih.gov/37461867/"
+      },
+      {
+        "status": "verified",
+        "verified": true,
+        "pmid": "39071203",
+        "reason": "match",
+        "doi_expected": "10.1002/lio2.1289",
+        "doi_fetched": "10.1002/lio2.1289",
+        "title_fetched": "Eagle syndrome presentation and outcomes in a large surgical case series.",
+        "abstract_sha256": "b04f2dd24dd978ba67b92b2df71c4a990dd4cefb2140baafa8bfa113bfcb69c3",
+        "pubmed_url": "https://pubmed.ncbi.nlm.nih.gov/39071203/"
+      },
+      {
+        "status": "verified",
+        "verified": true,
+        "pmid": "31732398",
+        "reason": "match",
+        "doi_expected": "10.1016/j.otsr.2019.09.020",
+        "doi_fetched": "10.1016/j.otsr.2019.09.020",
+        "title_fetched": "Thoracic Outlet Syndrome: Diagnostic Accuracy of MRI.",
+        "abstract_sha256": "e301d9edecac3108502b5ddd922f8da71370682569f74da138bc009c28d37938",
+        "pubmed_url": "https://pubmed.ncbi.nlm.nih.gov/31732398/"
+      }
+    ]
+  },
+  "canonical_model_validation": {
+    "records_checked": 8,
+    "structurally_valid_records": 8,
+    "status": "PASS",
+    "independent_clinical_validation": "NOT_PERFORMED",
+    "formal_grade_status": "NOT_ASSESSED"
+  },
+  "reference_comparison": {
+    "articles": 8,
+    "records_evaluated": 8,
+    "records_not_evaluated": 0,
+    "complete_articles": 8,
+    "expected_fields": 79,
+    "matched_fields": 79,
+    "field_match_rate": 1.0,
+    "complete_article_rate": 1.0,
+    "field_gap_priorities": []
+  },
+  "reference_quote_provenance": {
+    "status": "PASS",
+    "records_evaluated": 8,
+    "records_not_evaluated": 0,
+    "expected_quotes": 23,
+    "matched_quotes": 23
+  },
+  "source_sentence_checks": {
+    "claims_checked": 130,
+    "matched_claims": 130,
+    "text_presence_rate": 1.0,
+    "records_evaluated": 8,
+    "records_not_evaluated": 0
+  },
+  "extraction_safety_checks": {
+    "status": "PASS",
+    "evaluated_records": 8,
+    "not_evaluated_records": 0,
+    "unsupported_claims": 0,
+    "unsupported_value_claims": 0,
+    "unsupported_metric_type_claims": 0,
+    "source_value_checks": 130,
+    "derived_value_checks_skipped": 0,
+    "claim_denominator": 148,
+    "unsupported_rate": 0.0,
+    "causal_language_status": "PASS",
+    "rendered_causal_claims_checked": 26,
+    "unsupported_causal_language_claims": 0,
+    "causal_metadata_mismatches": 0,
+    "causal_language_violation_rate": 0.0,
+    "interpretation": "Software/source-string checks only. The causal phrase scan covers rendered canonical claim sentences; it is not semantic or independent clinical adjudication."
+  },
+  "independent_clinical_adjudication": {
+    "status": "NOT_PERFORMED",
+    "reason": "PMID/DOI/title and abstract source-sentence checks do not establish clinical correctness."
+  },
+  "cases": [
+    {
+      "specialty": "Kardiyoloji",
+      "pmid": "34449189",
+      "expected_design": "rct",
+      "actual_design": "rct",
+      "design_match": true,
+      "expected_total_n": 5988,
+      "actual_total_n": 5988,
+      "total_n_match": true,
+      "arms": [
+        {
+          "label": "empagliflozin",
+          "expected_n": 2997,
+          "matched": true
+        },
+        {
+          "label": "placebo",
+          "expected_n": 2991,
+          "matched": true
+        }
+      ],
+      "non_arm_groups_not_scored": [],
+      "outcomes": [
+        {
+          "outcome": "composite cardiovascular death or hospitalization for heart failure",
+          "reference_metric": "HR",
+          "reference_estimate": "0.79",
+          "source_sentence_matched": true,
+          "estimate_matched": true,
+          "metric_matched": true,
+          "ci_matched": true,
+          "p_matched": true,
+          "event_counts_matched": [
+            true,
+            true
+          ]
+        },
+        {
+          "outcome": "total number of hospitalizations for heart failure",
+          "reference_metric": "HR",
+          "reference_estimate": "0.73",
+          "source_sentence_matched": true,
+          "estimate_matched": true,
+          "metric_matched": true,
+          "ci_matched": true,
+          "p_matched": true,
+          "event_counts_matched": [
+            true,
+            true
+          ]
+        }
+      ],
+      "reference_fields_matched": 18,
+      "reference_fields_expected": 18,
+      "reference_field_checks": [
+        {
+          "category": "study_total_n",
+          "field": "total_n",
+          "matched": true
+        },
+        {
+          "category": "arm_participant_n",
+          "field": "arm_n:empagliflozin",
+          "matched": true
+        },
+        {
+          "category": "arm_participant_n",
+          "field": "arm_n:placebo",
+          "matched": true
+        },
+        {
+          "category": "outcome_source_sentence",
+          "field": "outcome:1:outcome_source_sentence",
+          "matched": true
+        },
+        {
+          "category": "outcome_estimate",
+          "field": "outcome:1:outcome_estimate",
+          "matched": true
+        },
+        {
+          "category": "outcome_metric",
+          "field": "outcome:1:outcome_metric",
+          "matched": true
+        },
+        {
+          "category": "outcome_confidence_interval",
+          "field": "outcome:1:outcome_confidence_interval",
+          "matched": true
+        },
+        {
+          "category": "outcome_p_value",
+          "field": "outcome:1:outcome_p_value",
+          "matched": true
+        },
+        {
+          "category": "outcome_event_count",
+          "field": "outcome:1:outcome_event_count",
+          "matched": true
+        },
+        {
+          "category": "outcome_event_count",
+          "field": "outcome:1:outcome_event_count",
+          "matched": true
+        },
+        {
+          "category": "outcome_source_sentence",
+          "field": "outcome:2:outcome_source_sentence",
+          "matched": true
+        },
+        {
+          "category": "outcome_estimate",
+          "field": "outcome:2:outcome_estimate",
+          "matched": true
+        },
+        {
+          "category": "outcome_metric",
+          "field": "outcome:2:outcome_metric",
+          "matched": true
+        },
+        {
+          "category": "outcome_confidence_interval",
+          "field": "outcome:2:outcome_confidence_interval",
+          "matched": true
+        },
+        {
+          "category": "outcome_p_value",
+          "field": "outcome:2:outcome_p_value",
+          "matched": true
+        },
+        {
+          "category": "outcome_event_count",
+          "field": "outcome:2:outcome_event_count",
+          "matched": true
+        },
+        {
+          "category": "outcome_event_count",
+          "field": "outcome:2:outcome_event_count",
+          "matched": true
+        },
+        {
+          "category": "study_design",
+          "field": "study_design",
+          "matched": true
+        }
+      ],
+      "complete_reference_extraction": true,
+      "reference_quote_checks": [
+        {
+          "field": "total_n_sentence",
+          "present_in_live_record": true,
+          "location": "abstract"
+        },
+        {
+          "field": "outcomes[0].source_sentence",
+          "present_in_live_record": true,
+          "location": "abstract"
+        },
+        {
+          "field": "outcomes[1].source_sentence",
+          "present_in_live_record": true,
+          "location": "abstract"
+        }
+      ],
+      "source_claim_count": 27,
+      "source_value_checks_count": 27,
+      "derived_value_checks_skipped": 0,
+      "metric_type_check_count": 2,
+      "source_sentence_matches": 27,
+      "source_text_presence_rate": 1.0,
+      "unsupported_value_claims": [],
+      "unsupported_metric_type_claims": [],
+      "rendered_claims_checked": 2,
+      "unsupported_causal_language_claims": [],
+      "causal_metadata_mismatch": false,
+      "model_validation": {
+        "valid": true,
+        "status": "structurally_valid",
+        "errors": [],
+        "warnings": [],
+        "source_provenance_complete": true,
+        "missing_provenance_fields": [],
+        "record_verification_status": "verified",
+        "model_version": "1.1.0",
+        "clinical_claim_validation": "not_independently_clinically_validated",
+        "formal_grade_status": "not_assessed"
+      },
+      "record_verification_status": "verified",
+      "study_relationship": "primary",
+      "pubmed_verification": {
+        "status": "verified",
+        "verified": true,
+        "pmid": "34449189",
+        "reason": "match",
+        "doi_expected": "10.1056/NEJMoa2107038",
+        "doi_fetched": "10.1056/NEJMoa2107038",
+        "title_fetched": "Empagliflozin in Heart Failure with a Preserved Ejection Fraction.",
+        "abstract_sha256": "98529755c1a756521e32fd0e111b397a46ef15a5dafa09dcfe134635b65ebc26",
+        "pubmed_url": "https://pubmed.ncbi.nlm.nih.gov/34449189/"
+      }
+    },
+    {
+      "specialty": "Onkoloji",
+      "pmid": "39416390",
+      "expected_design": "meta_analysis",
+      "actual_design": "systematic_review_and_meta_analysis",
+      "design_match": true,
+      "expected_total_n": 2833,
+      "actual_total_n": 2833,
+      "total_n_match": true,
+      "arms": [],
+      "non_arm_groups_not_scored": [],
+      "outcomes": [
+        {
+          "outcome": "12-month overall survival for combined anti-PD1 and anti-CTLA4",
+          "reference_metric": "proportion",
+          "reference_estimate": "71.8%",
+          "source_sentence_matched": true,
+          "estimate_matched": true,
+          "metric_matched": true,
+          "ci_matched": true,
+          "p_matched": null,
+          "event_counts_matched": []
+        },
+        {
+          "outcome": "12-month progression-free survival for combined anti-PD1 and anti-CTLA4",
+          "reference_metric": "proportion",
+          "reference_estimate": "35.1%",
+          "source_sentence_matched": true,
+          "estimate_matched": true,
+          "metric_matched": true,
+          "ci_matched": true,
+          "p_matched": null,
+          "event_counts_matched": []
+        },
+        {
+          "outcome": "overall survival, anti-PD1 plus anti-CTLA4 versus anti-PD1 alone",
+          "reference_metric": "HR",
+          "reference_estimate": "0.856",
+          "source_sentence_matched": true,
+          "estimate_matched": true,
+          "metric_matched": true,
+          "ci_matched": true,
+          "p_matched": null,
+          "event_counts_matched": []
+        }
+      ],
+      "reference_fields_matched": 14,
+      "reference_fields_expected": 14,
+      "reference_field_checks": [
+        {
+          "category": "study_total_n",
+          "field": "total_n",
+          "matched": true
+        },
+        {
+          "category": "outcome_source_sentence",
+          "field": "outcome:1:outcome_source_sentence",
+          "matched": true
+        },
+        {
+          "category": "outcome_estimate",
+          "field": "outcome:1:outcome_estimate",
+          "matched": true
+        },
+        {
+          "category": "outcome_metric",
+          "field": "outcome:1:outcome_metric",
+          "matched": true
+        },
+        {
+          "category": "outcome_confidence_interval",
+          "field": "outcome:1:outcome_confidence_interval",
+          "matched": true
+        },
+        {
+          "category": "outcome_source_sentence",
+          "field": "outcome:2:outcome_source_sentence",
+          "matched": true
+        },
+        {
+          "category": "outcome_estimate",
+          "field": "outcome:2:outcome_estimate",
+          "matched": true
+        },
+        {
+          "category": "outcome_metric",
+          "field": "outcome:2:outcome_metric",
+          "matched": true
+        },
+        {
+          "category": "outcome_confidence_interval",
+          "field": "outcome:2:outcome_confidence_interval",
+          "matched": true
+        },
+        {
+          "category": "outcome_source_sentence",
+          "field": "outcome:3:outcome_source_sentence",
+          "matched": true
+        },
+        {
+          "category": "outcome_estimate",
+          "field": "outcome:3:outcome_estimate",
+          "matched": true
+        },
+        {
+          "category": "outcome_metric",
+          "field": "outcome:3:outcome_metric",
+          "matched": true
+        },
+        {
+          "category": "outcome_confidence_interval",
+          "field": "outcome:3:outcome_confidence_interval",
+          "matched": true
+        },
+        {
+          "category": "study_design",
+          "field": "study_design",
+          "matched": true
+        }
+      ],
+      "complete_reference_extraction": true,
+      "reference_quote_checks": [
+        {
+          "field": "total_n_sentence",
+          "present_in_live_record": true,
+          "location": "abstract"
+        },
+        {
+          "field": "outcomes[0].source_sentence",
+          "present_in_live_record": true,
+          "location": "abstract"
+        },
+        {
+          "field": "outcomes[1].source_sentence",
+          "present_in_live_record": true,
+          "location": "abstract"
+        },
+        {
+          "field": "outcomes[2].source_sentence",
+          "present_in_live_record": true,
+          "location": "abstract"
+        }
+      ],
+      "source_claim_count": 55,
+      "source_value_checks_count": 55,
+      "derived_value_checks_skipped": 0,
+      "metric_type_check_count": 5,
+      "source_sentence_matches": 55,
+      "source_text_presence_rate": 1.0,
+      "unsupported_value_claims": [],
+      "unsupported_metric_type_claims": [],
+      "rendered_claims_checked": 13,
+      "unsupported_causal_language_claims": [],
+      "causal_metadata_mismatch": false,
+      "model_validation": {
+        "valid": true,
+        "status": "structurally_valid",
+        "errors": [],
+        "warnings": [],
+        "source_provenance_complete": true,
+        "missing_provenance_fields": [],
+        "record_verification_status": "verified",
+        "model_version": "1.1.0",
+        "clinical_claim_validation": "not_independently_clinically_validated",
+        "formal_grade_status": "not_assessed"
+      },
+      "record_verification_status": "verified",
+      "study_relationship": "evidence_synthesis",
+      "pubmed_verification": {
+        "status": "verified",
+        "verified": true,
+        "pmid": "39416390",
+        "reason": "match",
+        "doi_expected": "10.1016/j.eclinm.2024.102870",
+        "doi_fetched": "10.1016/j.eclinm.2024.102870",
+        "title_fetched": "Effectiveness of immune checkpoint inhibitors and other treatment modalities in patients with advanced mucosal melanomas: a systematic review and individual patient data meta-analysis.",
+        "abstract_sha256": "cdfcb67a0a725b82cc70e122176b89baa57c6b7546930343f0dbf2ab23e7e53d",
+        "pubmed_url": "https://pubmed.ncbi.nlm.nih.gov/39416390/"
+      }
+    },
+    {
+      "specialty": "Nöroloji",
+      "pmid": "32113113",
+      "expected_design": "cohort",
+      "actual_design": "cohort",
+      "design_match": true,
+      "expected_total_n": 302,
+      "actual_total_n": 302,
+      "total_n_match": true,
+      "arms": [],
+      "non_arm_groups_not_scored": [],
+      "outcomes": [
+        {
+          "outcome": "drug-resistant epilepsy",
+          "reference_metric": "proportion",
+          "reference_estimate": "15.6%",
+          "source_sentence_matched": true,
+          "estimate_matched": true,
+          "metric_matched": true,
+          "ci_matched": null,
+          "p_matched": null,
+          "event_counts_matched": [
+            true
+          ]
+        },
+        {
+          "outcome": "seizures in individuals with developmental delay",
+          "reference_metric": "qualitative association",
+          "reference_estimate": "two times more likely",
+          "source_sentence_matched": true,
+          "estimate_matched": true,
+          "metric_matched": true,
+          "ci_matched": null,
+          "p_matched": null,
+          "event_counts_matched": []
+        }
+      ],
+      "reference_fields_matched": 9,
+      "reference_fields_expected": 9,
+      "reference_field_checks": [
+        {
+          "category": "study_total_n",
+          "field": "total_n",
+          "matched": true
+        },
+        {
+          "category": "outcome_source_sentence",
+          "field": "outcome:1:outcome_source_sentence",
+          "matched": true
+        },
+        {
+          "category": "outcome_estimate",
+          "field": "outcome:1:outcome_estimate",
+          "matched": true
+        },
+        {
+          "category": "outcome_metric",
+          "field": "outcome:1:outcome_metric",
+          "matched": true
+        },
+        {
+          "category": "outcome_event_count",
+          "field": "outcome:1:outcome_event_count",
+          "matched": true
+        },
+        {
+          "category": "outcome_source_sentence",
+          "field": "outcome:2:outcome_source_sentence",
+          "matched": true
+        },
+        {
+          "category": "outcome_estimate",
+          "field": "outcome:2:outcome_estimate",
+          "matched": true
+        },
+        {
+          "category": "outcome_metric",
+          "field": "outcome:2:outcome_metric",
+          "matched": true
+        },
+        {
+          "category": "study_design",
+          "field": "study_design",
+          "matched": true
+        }
+      ],
+      "complete_reference_extraction": true,
+      "reference_quote_checks": [
+        {
+          "field": "total_n_sentence",
+          "present_in_live_record": true,
+          "location": "abstract"
+        },
+        {
+          "field": "outcomes[0].source_sentence",
+          "present_in_live_record": true,
+          "location": "abstract"
+        },
+        {
+          "field": "outcomes[1].source_sentence",
+          "present_in_live_record": true,
+          "location": "abstract"
+        }
+      ],
+      "source_claim_count": 6,
+      "source_value_checks_count": 6,
+      "derived_value_checks_skipped": 0,
+      "metric_type_check_count": 0,
+      "source_sentence_matches": 6,
+      "source_text_presence_rate": 1.0,
+      "unsupported_value_claims": [],
+      "unsupported_metric_type_claims": [],
+      "rendered_claims_checked": 0,
+      "unsupported_causal_language_claims": [],
+      "causal_metadata_mismatch": false,
+      "model_validation": {
+        "valid": true,
+        "status": "structurally_valid",
+        "errors": [],
+        "warnings": [],
+        "source_provenance_complete": true,
+        "missing_provenance_fields": [],
+        "record_verification_status": "verified",
+        "model_version": "1.1.0",
+        "clinical_claim_validation": "not_independently_clinically_validated",
+        "formal_grade_status": "not_assessed"
+      },
+      "record_verification_status": "verified",
+      "study_relationship": "primary",
+      "pubmed_verification": {
+        "status": "verified",
+        "verified": true,
+        "pmid": "32113113",
+        "reason": "match",
+        "doi_expected": "10.1016/j.yebeh.2020.106969",
+        "doi_fetched": "10.1016/j.yebeh.2020.106969",
+        "title_fetched": "Course and prognosis of adult-onset epilepsy in Brazil: A cohort study.",
+        "abstract_sha256": "b54bcd34bb9cf54c24f9ed89da83ee61d8cffc932fa7927da03482f14d7d3962",
+        "pubmed_url": "https://pubmed.ncbi.nlm.nih.gov/32113113/"
+      }
+    },
+    {
+      "specialty": "Enfeksiyon hastalıkları",
+      "pmid": "17540675",
+      "expected_design": "case_control",
+      "actual_design": "case_control",
+      "design_match": true,
+      "expected_total_n": 903,
+      "actual_total_n": 903,
+      "total_n_match": true,
+      "arms": [],
+      "non_arm_groups_not_scored": [],
+      "outcomes": [
+        {
+          "outcome": "ampicillin-resistant E. coli infection and prior amoxicillin exposure >=7 days in previous month",
+          "reference_metric": "OR",
+          "reference_estimate": "3.91",
+          "source_sentence_matched": true,
+          "estimate_matched": true,
+          "metric_matched": true,
+          "ci_matched": true,
+          "p_matched": null,
+          "event_counts_matched": []
+        },
+        {
+          "outcome": "trimethoprim-resistant E. coli infection and prior trimethoprim exposure >=7 days",
+          "reference_metric": "OR",
+          "reference_estimate": "8.44",
+          "source_sentence_matched": true,
+          "estimate_matched": true,
+          "metric_matched": true,
+          "ci_matched": true,
+          "p_matched": null,
+          "event_counts_matched": []
+        }
+      ],
+      "reference_fields_matched": 10,
+      "reference_fields_expected": 10,
+      "reference_field_checks": [
+        {
+          "category": "study_total_n",
+          "field": "total_n",
+          "matched": true
+        },
+        {
+          "category": "outcome_source_sentence",
+          "field": "outcome:1:outcome_source_sentence",
+          "matched": true
+        },
+        {
+          "category": "outcome_estimate",
+          "field": "outcome:1:outcome_estimate",
+          "matched": true
+        },
+        {
+          "category": "outcome_metric",
+          "field": "outcome:1:outcome_metric",
+          "matched": true
+        },
+        {
+          "category": "outcome_confidence_interval",
+          "field": "outcome:1:outcome_confidence_interval",
+          "matched": true
+        },
+        {
+          "category": "outcome_source_sentence",
+          "field": "outcome:2:outcome_source_sentence",
+          "matched": true
+        },
+        {
+          "category": "outcome_estimate",
+          "field": "outcome:2:outcome_estimate",
+          "matched": true
+        },
+        {
+          "category": "outcome_metric",
+          "field": "outcome:2:outcome_metric",
+          "matched": true
+        },
+        {
+          "category": "outcome_confidence_interval",
+          "field": "outcome:2:outcome_confidence_interval",
+          "matched": true
+        },
+        {
+          "category": "study_design",
+          "field": "study_design",
+          "matched": true
+        }
+      ],
+      "complete_reference_extraction": true,
+      "reference_quote_checks": [
+        {
+          "field": "total_n_sentence",
+          "present_in_live_record": true,
+          "location": "abstract"
+        },
+        {
+          "field": "outcomes[0].source_sentence",
+          "present_in_live_record": true,
+          "location": "abstract"
+        },
+        {
+          "field": "outcomes[1].source_sentence",
+          "present_in_live_record": true,
+          "location": "abstract"
+        }
+      ],
+      "source_claim_count": 17,
+      "source_value_checks_count": 17,
+      "derived_value_checks_skipped": 0,
+      "metric_type_check_count": 4,
+      "source_sentence_matches": 17,
+      "source_text_presence_rate": 1.0,
+      "unsupported_value_claims": [],
+      "unsupported_metric_type_claims": [],
+      "rendered_claims_checked": 4,
+      "unsupported_causal_language_claims": [],
+      "causal_metadata_mismatch": false,
+      "model_validation": {
+        "valid": true,
+        "status": "structurally_valid",
+        "errors": [],
+        "warnings": [],
+        "source_provenance_complete": true,
+        "missing_provenance_fields": [],
+        "record_verification_status": "verified",
+        "model_version": "1.1.0",
+        "clinical_claim_validation": "not_independently_clinically_validated",
+        "formal_grade_status": "not_assessed"
+      },
+      "record_verification_status": "verified",
+      "study_relationship": "primary",
+      "pubmed_verification": {
+        "status": "verified",
+        "verified": true,
+        "pmid": "17540675",
+        "reason": "match",
+        "doi_expected": "10.1093/jac/dkm141",
+        "doi_fetched": "10.1093/jac/dkm141",
+        "title_fetched": "Prior antibiotics and risk of antibiotic-resistant community-acquired urinary tract infection: a case-control study.",
+        "abstract_sha256": "d29bdab79511e4eb79fdf1c9282f78dc77b48c92924c6d4c20f85971f3fcc22b",
+        "pubmed_url": "https://pubmed.ncbi.nlm.nih.gov/17540675/"
+      }
+    },
+    {
+      "specialty": "Endokrinoloji",
+      "pmid": "10218744",
+      "expected_design": "systematic_review",
+      "actual_design": "systematic_review",
+      "design_match": true,
+      "expected_total_n": null,
+      "actual_total_n": null,
+      "total_n_match": null,
+      "arms": [],
+      "non_arm_groups_not_scored": [],
+      "outcomes": [
+        {
+          "outcome": "prevalence of thyroid disease among inpatients",
+          "reference_metric": "prevalence",
+          "reference_estimate": "approximately 1% to 2%",
+          "source_sentence_matched": true,
+          "estimate_matched": true,
+          "metric_matched": true,
+          "ci_matched": null,
+          "p_matched": null,
+          "event_counts_matched": []
+        },
+        {
+          "outcome": "positive likelihood ratio for abnormal sTSH in ill inpatients vs outpatients",
+          "reference_metric": "likelihood ratio",
+          "reference_estimate": "about 10 vs about 100",
+          "source_sentence_matched": true,
+          "estimate_matched": true,
+          "metric_matched": true,
+          "ci_matched": null,
+          "p_matched": null,
+          "event_counts_matched": []
+        }
+      ],
+      "reference_fields_matched": 7,
+      "reference_fields_expected": 7,
+      "reference_field_checks": [
+        {
+          "category": "outcome_source_sentence",
+          "field": "outcome:1:outcome_source_sentence",
+          "matched": true
+        },
+        {
+          "category": "outcome_estimate",
+          "field": "outcome:1:outcome_estimate",
+          "matched": true
+        },
+        {
+          "category": "outcome_metric",
+          "field": "outcome:1:outcome_metric",
+          "matched": true
+        },
+        {
+          "category": "outcome_source_sentence",
+          "field": "outcome:2:outcome_source_sentence",
+          "matched": true
+        },
+        {
+          "category": "outcome_estimate",
+          "field": "outcome:2:outcome_estimate",
+          "matched": true
+        },
+        {
+          "category": "outcome_metric",
+          "field": "outcome:2:outcome_metric",
+          "matched": true
+        },
+        {
+          "category": "study_design",
+          "field": "study_design",
+          "matched": true
+        }
+      ],
+      "complete_reference_extraction": true,
+      "reference_quote_checks": [
+        {
+          "field": "outcomes[0].source_sentence",
+          "present_in_live_record": true,
+          "location": "abstract"
+        },
+        {
+          "field": "outcomes[1].source_sentence",
+          "present_in_live_record": true,
+          "location": "abstract"
+        }
+      ],
+      "source_claim_count": 4,
+      "source_value_checks_count": 4,
+      "derived_value_checks_skipped": 0,
+      "metric_type_check_count": 0,
+      "source_sentence_matches": 4,
+      "source_text_presence_rate": 1.0,
+      "unsupported_value_claims": [],
+      "unsupported_metric_type_claims": [],
+      "rendered_claims_checked": 0,
+      "unsupported_causal_language_claims": [],
+      "causal_metadata_mismatch": false,
+      "model_validation": {
+        "valid": true,
+        "status": "structurally_valid",
+        "errors": [],
+        "warnings": [],
+        "source_provenance_complete": true,
+        "missing_provenance_fields": [],
+        "record_verification_status": "verified",
+        "model_version": "1.1.0",
+        "clinical_claim_validation": "not_independently_clinically_validated",
+        "formal_grade_status": "not_assessed"
+      },
+      "record_verification_status": "verified",
+      "study_relationship": "evidence_synthesis",
+      "pubmed_verification": {
+        "status": "verified",
+        "verified": true,
+        "pmid": "10218744",
+        "reason": "match",
+        "doi_expected": "10.1001/archinte.159.7.658",
+        "doi_fetched": "10.1001/archinte.159.7.658",
+        "title_fetched": "Diagnosis of thyroid disease in hospitalized patients: a systematic review.",
+        "abstract_sha256": "122b08e8510782f74ee1e45f580a4a2b2e3553a8ddffe10048ecaafc81e002dc",
+        "pubmed_url": "https://pubmed.ncbi.nlm.nih.gov/10218744/"
+      }
+    },
+    {
+      "specialty": "Pediatri",
+      "pmid": "37461867",
+      "expected_design": "diagnostic_accuracy",
+      "actual_design": "diagnostic_accuracy",
+      "design_match": true,
+      "expected_total_n": 126,
+      "actual_total_n": 126,
+      "total_n_match": true,
+      "arms": [],
+      "non_arm_groups_not_scored": [],
+      "outcomes": [
+        {
+          "outcome": "sensitivity for categorical ASD diagnosis",
+          "reference_metric": "sensitivity",
+          "reference_estimate": "81.5%",
+          "source_sentence_matched": true,
+          "estimate_matched": true,
+          "metric_matched": true,
+          "ci_matched": null,
+          "p_matched": null,
+          "event_counts_matched": []
+        },
+        {
+          "outcome": "specificity for categorical ASD diagnosis",
+          "reference_metric": "specificity",
+          "reference_estimate": "82.4%",
+          "source_sentence_matched": true,
+          "estimate_matched": true,
+          "metric_matched": true,
+          "ci_matched": null,
+          "p_matched": null,
+          "event_counts_matched": []
+        }
+      ],
+      "reference_fields_matched": 8,
+      "reference_fields_expected": 8,
+      "reference_field_checks": [
+        {
+          "category": "study_total_n",
+          "field": "total_n",
+          "matched": true
+        },
+        {
+          "category": "outcome_source_sentence",
+          "field": "outcome:1:outcome_source_sentence",
+          "matched": true
+        },
+        {
+          "category": "outcome_estimate",
+          "field": "outcome:1:outcome_estimate",
+          "matched": true
+        },
+        {
+          "category": "outcome_metric",
+          "field": "outcome:1:outcome_metric",
+          "matched": true
+        },
+        {
+          "category": "outcome_source_sentence",
+          "field": "outcome:2:outcome_source_sentence",
+          "matched": true
+        },
+        {
+          "category": "outcome_estimate",
+          "field": "outcome:2:outcome_estimate",
+          "matched": true
+        },
+        {
+          "category": "outcome_metric",
+          "field": "outcome:2:outcome_metric",
+          "matched": true
+        },
+        {
+          "category": "study_design",
+          "field": "study_design",
+          "matched": true
+        }
+      ],
+      "complete_reference_extraction": true,
+      "reference_quote_checks": [
+        {
+          "field": "total_n_sentence",
+          "present_in_live_record": true,
+          "location": "abstract"
+        },
+        {
+          "field": "outcomes[0].source_sentence",
+          "present_in_live_record": true,
+          "location": "abstract"
+        },
+        {
+          "field": "outcomes[1].source_sentence",
+          "present_in_live_record": true,
+          "location": "abstract"
+        }
+      ],
+      "source_claim_count": 6,
+      "source_value_checks_count": 6,
+      "derived_value_checks_skipped": 0,
+      "metric_type_check_count": 4,
+      "source_sentence_matches": 6,
+      "source_text_presence_rate": 1.0,
+      "unsupported_value_claims": [],
+      "unsupported_metric_type_claims": [],
+      "rendered_claims_checked": 4,
+      "unsupported_causal_language_claims": [],
+      "causal_metadata_mismatch": false,
+      "model_validation": {
+        "valid": true,
+        "status": "structurally_valid",
+        "errors": [],
+        "warnings": [],
+        "source_provenance_complete": true,
+        "missing_provenance_fields": [],
+        "record_verification_status": "verified",
+        "model_version": "1.1.0",
+        "clinical_claim_validation": "not_independently_clinically_validated",
+        "formal_grade_status": "not_assessed"
+      },
+      "record_verification_status": "verified",
+      "study_relationship": "primary",
+      "pubmed_verification": {
+        "status": "verified",
+        "verified": true,
+        "pmid": "37461867",
+        "reason": "match",
+        "doi_expected": "10.1542/peds.2023-061188",
+        "doi_fetched": "10.1542/peds.2023-061188",
+        "title_fetched": "Diagnostic Accuracy of Primary Care Clinicians Across a Statewide System of Autism Evaluation.",
+        "abstract_sha256": "c48d14eed339b2d79b60622fbdf9a720ac1a65e2f691107906c40e9c4af7788d",
+        "pubmed_url": "https://pubmed.ncbi.nlm.nih.gov/37461867/"
+      }
+    },
+    {
+      "specialty": "Cerrahi",
+      "pmid": "39071203",
+      "expected_design": "case_series",
+      "actual_design": "case_series",
+      "design_match": true,
+      "expected_total_n": 56,
+      "actual_total_n": 56,
+      "total_n_match": true,
+      "arms": [],
+      "non_arm_groups_not_scored": [
+        {
+          "label": "surgical treatment",
+          "participants_n": 51,
+          "not_arm_reason": "Case-series treatment exposure; no comparative allocation arm is reported."
+        }
+      ],
+      "outcomes": [
+        {
+          "outcome": "patient-reported symptom resolution or improvement after surgery",
+          "reference_metric": "proportion",
+          "reference_estimate": "100% of respondents",
+          "source_sentence_matched": true,
+          "estimate_matched": true,
+          "metric_matched": true,
+          "ci_matched": null,
+          "p_matched": null,
+          "event_counts_matched": []
+        }
+      ],
+      "reference_fields_matched": 5,
+      "reference_fields_expected": 5,
+      "reference_field_checks": [
+        {
+          "category": "study_total_n",
+          "field": "total_n",
+          "matched": true
+        },
+        {
+          "category": "outcome_source_sentence",
+          "field": "outcome:1:outcome_source_sentence",
+          "matched": true
+        },
+        {
+          "category": "outcome_estimate",
+          "field": "outcome:1:outcome_estimate",
+          "matched": true
+        },
+        {
+          "category": "outcome_metric",
+          "field": "outcome:1:outcome_metric",
+          "matched": true
+        },
+        {
+          "category": "study_design",
+          "field": "study_design",
+          "matched": true
+        }
+      ],
+      "complete_reference_extraction": true,
+      "reference_quote_checks": [
+        {
+          "field": "total_n_sentence",
+          "present_in_live_record": true,
+          "location": "abstract"
+        },
+        {
+          "field": "outcomes[0].source_sentence",
+          "present_in_live_record": true,
+          "location": "abstract"
+        }
+      ],
+      "source_claim_count": 4,
+      "source_value_checks_count": 4,
+      "derived_value_checks_skipped": 0,
+      "metric_type_check_count": 0,
+      "source_sentence_matches": 4,
+      "source_text_presence_rate": 1.0,
+      "unsupported_value_claims": [],
+      "unsupported_metric_type_claims": [],
+      "rendered_claims_checked": 0,
+      "unsupported_causal_language_claims": [],
+      "causal_metadata_mismatch": false,
+      "model_validation": {
+        "valid": true,
+        "status": "structurally_valid",
+        "errors": [],
+        "warnings": [],
+        "source_provenance_complete": true,
+        "missing_provenance_fields": [],
+        "record_verification_status": "verified",
+        "model_version": "1.1.0",
+        "clinical_claim_validation": "not_independently_clinically_validated",
+        "formal_grade_status": "not_assessed"
+      },
+      "record_verification_status": "verified",
+      "study_relationship": "primary",
+      "pubmed_verification": {
+        "status": "verified",
+        "verified": true,
+        "pmid": "39071203",
+        "reason": "match",
+        "doi_expected": "10.1002/lio2.1289",
+        "doi_fetched": "10.1002/lio2.1289",
+        "title_fetched": "Eagle syndrome presentation and outcomes in a large surgical case series.",
+        "abstract_sha256": "b04f2dd24dd978ba67b92b2df71c4a990dd4cefb2140baafa8bfa113bfcb69c3",
+        "pubmed_url": "https://pubmed.ncbi.nlm.nih.gov/39071203/"
+      }
+    },
+    {
+      "specialty": "Radyoloji",
+      "pmid": "31732398",
+      "expected_design": "diagnostic_accuracy",
+      "actual_design": "diagnostic_accuracy",
+      "design_match": true,
+      "expected_total_n": 48,
+      "actual_total_n": 48,
+      "total_n_match": true,
+      "arms": [],
+      "non_arm_groups_not_scored": [
+        {
+          "label": "1.5-T MRI",
+          "participants_n": 29,
+          "not_arm_reason": "MRI field-strength technical subgroup; not a treatment or allocation arm."
+        },
+        {
+          "label": "3-T MRI",
+          "participants_n": 19,
+          "not_arm_reason": "MRI field-strength technical subgroup; not a treatment or allocation arm."
+        }
+      ],
+      "outcomes": [
+        {
+          "outcome": "cervical rib diagnosis",
+          "reference_metric": "sensitivity",
+          "reference_estimate": "100%",
+          "source_sentence_matched": true,
+          "estimate_matched": true,
+          "metric_matched": true,
+          "ci_matched": null,
+          "p_matched": null,
+          "event_counts_matched": []
+        },
+        {
+          "outcome": "cervical rib diagnosis",
+          "reference_metric": "specificity",
+          "reference_estimate": "100%",
+          "source_sentence_matched": true,
+          "estimate_matched": true,
+          "metric_matched": true,
+          "ci_matched": null,
+          "p_matched": null,
+          "event_counts_matched": []
+        }
+      ],
+      "reference_fields_matched": 8,
+      "reference_fields_expected": 8,
+      "reference_field_checks": [
+        {
+          "category": "study_total_n",
+          "field": "total_n",
+          "matched": true
+        },
+        {
+          "category": "outcome_source_sentence",
+          "field": "outcome:1:outcome_source_sentence",
+          "matched": true
+        },
+        {
+          "category": "outcome_estimate",
+          "field": "outcome:1:outcome_estimate",
+          "matched": true
+        },
+        {
+          "category": "outcome_metric",
+          "field": "outcome:1:outcome_metric",
+          "matched": true
+        },
+        {
+          "category": "outcome_source_sentence",
+          "field": "outcome:2:outcome_source_sentence",
+          "matched": true
+        },
+        {
+          "category": "outcome_estimate",
+          "field": "outcome:2:outcome_estimate",
+          "matched": true
+        },
+        {
+          "category": "outcome_metric",
+          "field": "outcome:2:outcome_metric",
+          "matched": true
+        },
+        {
+          "category": "study_design",
+          "field": "study_design",
+          "matched": true
+        }
+      ],
+      "complete_reference_extraction": true,
+      "reference_quote_checks": [
+        {
+          "field": "total_n_sentence",
+          "present_in_live_record": true,
+          "location": "abstract"
+        },
+        {
+          "field": "outcomes[0].source_sentence",
+          "present_in_live_record": true,
+          "location": "abstract"
+        },
+        {
+          "field": "outcomes[1].source_sentence",
+          "present_in_live_record": true,
+          "location": "abstract"
+        }
+      ],
+      "source_claim_count": 11,
+      "source_value_checks_count": 11,
+      "derived_value_checks_skipped": 0,
+      "metric_type_check_count": 3,
+      "source_sentence_matches": 11,
+      "source_text_presence_rate": 1.0,
+      "unsupported_value_claims": [],
+      "unsupported_metric_type_claims": [],
+      "rendered_claims_checked": 3,
+      "unsupported_causal_language_claims": [],
+      "causal_metadata_mismatch": false,
+      "model_validation": {
+        "valid": true,
+        "status": "structurally_valid",
+        "errors": [],
+        "warnings": [],
+        "source_provenance_complete": true,
+        "missing_provenance_fields": [],
+        "record_verification_status": "verified",
+        "model_version": "1.1.0",
+        "clinical_claim_validation": "not_independently_clinically_validated",
+        "formal_grade_status": "not_assessed"
+      },
+      "record_verification_status": "verified",
+      "study_relationship": "primary",
+      "pubmed_verification": {
+        "status": "verified",
+        "verified": true,
+        "pmid": "31732398",
+        "reason": "match",
+        "doi_expected": "10.1016/j.otsr.2019.09.020",
+        "doi_fetched": "10.1016/j.otsr.2019.09.020",
+        "title_fetched": "Thoracic Outlet Syndrome: Diagnostic Accuracy of MRI.",
+        "abstract_sha256": "e301d9edecac3108502b5ddd922f8da71370682569f74da138bc009c28d37938",
+        "pubmed_url": "https://pubmed.ncbi.nlm.nih.gov/31732398/"
+      }
+    }
+  ],
+  "report_markdown": "# Çok Branşlı PubMed Kaynaklı Alan Benchmark Raporu\n\nBu rapor, sekiz önceden belirlenmiş PubMed kaydında abstract düzeyindeki yazılım çıkarımını kaynak cümleleri ve referans alanlarıyla karşılaştırır. Bu çalışma bağımsız klinik adjudikasyon, tam metin incelemesi, GRADE veya yanlılık riski değerlendirmesi değildir.\n\n## Sonuç özeti\n\n- Yeniden alınarak PMID/başlık/DOI ile doğrulanan kayıt: **8/8**.\n- Önceden belirlenmiş referans alanı eşleşmesi: **79/79 (100.0%)**.\n- Eksiksiz referans alanı: **8/8**.\n- Önceden belirlenmiş kaynak alıntısı metninin canlı PubMed kaydında bulunması: **23/23**.\n- Model alanlarının kaynak metninin canlı abstract/başlık içinde bulunması: **130/130 (100.0%)**; bu tam cümle eşitliği veya klinik doğruluk değildir.\n- Desteklenmeyen literal değer/ölçüt kaynak dizesi kontrolleri: **0/148**; kaynaktan türetilmiş değerlerde literal sayı kontrolü yapılmayan kaynak: **0**.\n- Kanonik renderer’ın yapılandırılmış iddia cümlelerinde phrase-scan ile desteklenmeyen nedensel dil: **0/26**.\n\n## Referans alanı boşlukları\n\nAşağıdaki öncelik, yalnızca sınırlı benchmark referansındaki eşleşmeyen alan sayısını gösterir; klinik risk veya klinik adjudikasyon sıralaması değildir.\n- Bu sınırlı referans kümesinde eşleşmeyen alan yok.\n\n## Kayıt bazında sonuçlar\n\n| Branş | PMID | Tasarım (beklenen / model) | N (beklenen / model) | Alan eşleşmesi | Kaynak metni | Model alan kontrolü |\n|---|---:|---|---:|---:|---:|---|\n| Kardiyoloji | 34449189 | rct / rct | 5988 / 5988 | 18/18 | 27/27 | structurally_valid |\n| Onkoloji | 39416390 | meta_analysis / systematic_review_and_meta_analysis | 2833 / 2833 | 14/14 | 55/55 | structurally_valid |\n| Nöroloji | 32113113 | cohort / cohort | 302 / 302 | 9/9 | 6/6 | structurally_valid |\n| Enfeksiyon hastalıkları | 17540675 | case_control / case_control | 903 / 903 | 10/10 | 17/17 | structurally_valid |\n| Endokrinoloji | 10218744 | systematic_review / systematic_review | — / belirtilmedi | 7/7 | 4/4 | structurally_valid |\n| Pediatri | 37461867 | diagnostic_accuracy / diagnostic_accuracy | 126 / 126 | 8/8 | 6/6 | structurally_valid |\n| Cerrahi | 39071203 | case_series / case_series | 56 / 56 | 5/5 | 4/4 | structurally_valid |\n| Radyoloji | 31732398 | diagnostic_accuracy / diagnostic_accuracy | 48 / 48 | 8/8 | 11/11 | structurally_valid |\n\n## Doğrulama sınırları\n\nPubMed kimlik kontrolü kaynak kaydının yeniden bulunması ve verilen kimlik alanlarının eşleşmesi içindir. Kaynak metni kontrolü normalize edilmiş alıntı metninin canlı abstract/başlık içinde yer almasını denetler; tam cümle eşitliği veya alanın klinik anlamda doğru yorumlandığını kanıtlamaz. Nedensel dil phrase-scan’i yalnızca kanonik renderer’ın yapılandırılmış iddia cümlelerini tarar; semantik veya hekim değerlendirmesi değildir. Benchmark referans kümesi sınırlıdır ve bütün klinik çeşitliliği temsil etmez.\n\nBağımsız klinik doğrulama: **YAPILMADI**. GRADE ve yanlılık riski: **değerlendirilmedi**.\n\nKanonik model sürümü: `1.1.0`. Referans verisi: `pubmed_reference_cases.json` (sürüm 1.1).\n\n## Çalıştırma izi\n\nUTC zamanı: `2026-11-01T15:06:15.366247+00:00`; Python: `3.12.3`; çalıştırıcı SHA-256: `69e0488ff4dc9dd39a162a0490f927416643f923b460ff39d0a7fce57a7cb9e0`; referans verisi SHA-256: `246793d61354b5fcc5a724d733b2fcd76c5af1292d9c9a5611b497289ccb4fe3`; çalıştırma anındaki Git HEAD: `bb844dc9b454b6d1f5fe96fb97eb02ea1be188c3`.\nCanlı abstract SHA-256 özeti her doğrulanan kayıt için JSON raporunda saklanır. Kimliği doğrulanamayan kayıtlar bu metriklerin paydasına dahil edilmez; değerlendirilmedikleri ayrıca sayılır.\n"
+}

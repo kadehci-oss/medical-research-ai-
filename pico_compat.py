@@ -336,6 +336,9 @@ def evaluate_pico_compatibility(
     unknown: List[str] = []
     verdicts: List[bool] = []
     query_pico = query_pico or {}
+    # A Turkish query term can confirm a match (drug names are spelt alike) but its absence from
+    # English abstracts says nothing, so it never marks a pair as mismatched.
+    query_is_turkish = query_pico.get("_query_language") == "tr"
 
     for field, out_key, title, query_key in _FIELDS:
         v1, v2 = p1.get(field), p2.get(field)
@@ -352,7 +355,7 @@ def evaluate_pico_compatibility(
                     match = True
                     notes.append(f"{title} \u00f6zetten \u00e7\u0131kar\u0131lamad\u0131; sorgudaki '{query_value}' "
                                  f"terimi her iki \u00e7al\u0131\u015fman\u0131n ba\u015fl\u0131\u011f\u0131nda veya sonu\u00e7 c\u00fcmlesinde ge\u00e7iyor.")
-                elif s1 is False or s2 is False:
+                elif (s1 is False or s2 is False) and not query_is_turkish:
                     match = False
                     why = "query_mismatch"
         result[out_key] = match

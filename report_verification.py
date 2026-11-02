@@ -96,9 +96,11 @@ def verify_report(report_md: str, studies: List[em.Study]) -> Dict[str, Any]:
         warnings.append(f"Tutarsız {len(inconsistent)} etki tahmini sentezden çıkarıldı.")
 
     sources = [e.source for s in studies for e in s.estimates] + [s.population.source for s in studies if s.population.n_total]
-    verified_sources = sum(1 for src in sources if src.verification_status in (em.SOURCE_VERIFIED, em.SOURCE_DERIVED))
-    if sources and verified_sources < len(sources):
-        problems.append(f"Kaynak cümlesi doğrulanamayan çıkarım: {len(sources) - verified_sources}")
+    verified_sources = sum(1 for src in sources if src.verification_status == em.SOURCE_VERIFIED)
+    derived_sources = sum(1 for src in sources if src.verification_status == em.SOURCE_DERIVED)
+    unverified_sources = len(sources) - verified_sources - derived_sources
+    if unverified_sources:
+        problems.append(f"Kaynakla desteklenemeyen çıkarım: {unverified_sources}")
 
     if problems:
         status = STATUS_FAIL
@@ -115,6 +117,8 @@ def verify_report(report_md: str, studies: List[em.Study]) -> Dict[str, Any]:
         "quotes_failed": quotes_failed,
         "structured_sources": len(sources),
         "structured_sources_verified": verified_sources,
+        "structured_sources_derived": derived_sources,
+        "structured_sources_unverified": unverified_sources,
         "rob_rating_claims": rob_claims,
         "grade_rating_claims": grade_claims,
         "causal_language_hits": causal_hits,
@@ -133,8 +137,9 @@ def render_verification_footer(result: Dict[str, Any], app_version: str) -> str:
         f"- **Atıf yapılan PMID:** {result.get('cited_pmids')} (kümede olmayan: {len(result.get('unknown_pmids') or [])})",
         f"- **Kaynak cümle alıntısı kontrolü:** {result.get('quotes_checked')} alıntı, "
         f"{len(result.get('quotes_failed') or [])} başarısız",
-        f"- **Yapılandırılmış çıkarım kaynağı:** {result.get('structured_sources_verified')}/"
-        f"{result.get('structured_sources')} kaynakta birebir doğrulandı",
+        f"- **Yapılandırılmış kaynaklar:** {result.get('structured_sources_verified', 0)} kaynak cümlesi birebir doğrulandı; "
+        f"{result.get('structured_sources_derived', 0)} değer kaynaktan hesaplandı; "
+        f"{result.get('structured_sources_unverified', 0)} kaynak doğrulanamadı",
         f"- **Randomize olmayan çalışmada nedensel ifade:** {len(result.get('causal_language_hits') or [])}",
         "- Bu otomatik denetim kaynak sadakatini kontrol eder; klinik doğruluğu veya uzman hekim onayını göstermez.",
     ]

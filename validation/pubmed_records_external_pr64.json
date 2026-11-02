@@ -1,0 +1,216 @@
+{
+ "source": "PubMed records fetched through the PubMed connector on 2026-11-01 (title, abstract, DOI, authors, year). Publication types are copied from PR #64's reference table because the connector returned only 'Journal Article'.",
+ "records": [
+  {
+   "pmid": "39416390",
+   "doi": "10.1016/j.eclinm.2024.102870",
+   "title": "Effectiveness of immune checkpoint inhibitors and other treatment modalities in patients with advanced mucosal melanomas: a systematic review and individual patient data meta-analysis.",
+   "authors": [
+    "Andrea York Tiang Teo",
+    "Chun En Yau",
+    "Chen Ee Low",
+    "Jarett Vanz-Brian Pereira",
+    "Julia Yu Xin Ng",
+    "Tse Kiat Soong",
+    "Jack Yu Tung Lo",
+    "Valerie Shiwen Yang"
+   ],
+   "journal": "EClinicalMedicine",
+   "pub_year": "2024",
+   "publication_types": [],
+   "abstract": "Mucosal melanomas (MM) are an aggressive subtype of melanoma. Given the rarity of this disease, the conduct of clinical trials is challenging and has been limited. Current treatment options have been extrapolated from the more common cutaneous melanoma even though MM is distinct in pathogenesis, etiology and prognosis. This is the first meta-analysis to comprehensively assess the efficacy of immune checkpoint inhibitors (anti-PD1 and anti-CTLA4) and other treatment modalities (targeted therapy such as KIT inhibitors and VEGF inhibitors, as well as radiotherapy) on survival outcomes in MM to develop clinical guidelines for evidence-based management.\n\nThe protocol was prospectively registered on PROSPERO (PROSPERO ID: CRD42023411195). PubMed, Embase, Cochrane Central Register of Controlled Trials (CENTRAL), Web of Science and Google Scholar were searched from inception until 25 July 2024, for all cohort and observational studies. Eligible studies included those with five or more participants with locally advanced or metastatic MM treated with anti-PD1, anti-CTLA4, VEGF inhibitors and/or KIT inhibitors. Titles and abstracts of potential articles were screened and full texts of all potentially eligible studies were retrieved and reviewed by two independent reviewers. Individual patient data (IPD) from published Kaplan-Meier curves were reconstructed using a graphical reconstruction method and pooled as a one-stage meta-analysis. A sensitivity analysis using a two-stage meta-analysis approach was conducted. Extracted outcomes included overall survival (OS) and progression-free survival (PFS). For each treatment arm, median survival time and 12-month survival proportion were estimated. Data from double-arm trials was pooled to estimate hazard ratios (HRs), ratios of restricted mean time lost (RMTL) and restricted mean survival time (RMST).\n\nFrom a total of 7402 studies, 35 eligible studies comprising a total of 2833 participants were included. Combined anti-PD1 and anti-CTLA4 therapy had the highest 12-month OS and 12-month PFS at 71.8% (95% CI: 67.6%, 76.2%, n = 476) and 35.1% (95% CI: 30.5%, 40.4%, n = 401) respectively, followed by anti-PD1 therapy alone (OS: 64.0% (95% CI: 61.4%, 66.7%, n = 1399); PFS: was 28.3% (95% CI: 25.8%, 31.2%, n = 1142), anti-PD1 and VEGF inhibitor combination therapy (OS: 57.1% (95% CI: 51.0%, 63.9%)), KIT inhibitors (OS: 48.2% (95% CI: 37.6%, 61.8%); PFS: 8.3% (95% CI: 3.7%, 18.7%)) and anti-CTLA4 therapy alone (OS: 33.3% (95% CI: 28.4%, 39.1%); PFS: 9.8% (95% CI: 5.9%, 16.5%)). In the double-arm studies, combination therapy with anti-PD1 and anti-CTLA4 had similar OS and PFS with anti-PD1 alone (OS: HR 0.856 (95% CI: 0.704, 1.04); RMTL ratio 0.932 (95% CI: 0.832, 1.044, P = 0.225); RMST ratio 1.102 (95% CI: 0.948, 1.281, P = 0.204); PFS: HR 0.919 (95% CI: 0.788, 1.07); RMTL ratio 0.936 (95% CI: 0.866, 1.013, P = 0.100); RMST ratio 1.21 (95% CI: 0.979, 1.496, P = 0.078)), however, anti-PD1 therapy alone had significantly better PFS than anti-CTLA4 alone (HR 0.548 (95% CI: 0.376, 0.799); RMTL ratio 0.715 (95% CI: 0.606, 0.844, P < 0.001); RMST ratio 1.659 (95% CI: 1.316, 2.092, P < 0.001)). Anti-PD1 therapy with radiotherapy versus anti-PD1 alone showed no significant difference (OS: HR 0.854 (95% CI: 0.567, 1.29); RMTL ratio 0.855 (95% CI: 0.675, 1.083, P = 0.193); RMST ratio 1.194 (95% CI: 0.928, 1.536, P = 0.168; PFS: HR 0.994 (95% CI: 0.710, 1.39); RMTL ratio 1.006 (95% CI: 0.87, 1.162, P = 0.939); RMST ratio 0.984 (95% CI: 0.658, 1.472, P = 0.939)).\n\nFor the systemic treatment of MM, anti-PD1 is the best monotherapy. While combining anti-PD1 with other treatment options such as anti-CTLA4, VEGF inhibitors or radiotherapy might achieve better outcomes, these improvements did not reach statistical significance when evaluated by HR, RMTL and RMST ratios.\n\nThis work was supported by the National Medical Research Council Transition Award (TA20nov-0020), SingHealth Duke-NUS Oncology Academic Clinical Programme (08/FY2020/EX/67-A143 and 08/FY2021/EX/17-A47), the Khoo Pilot Collaborative Award (Duke-NUS-KP(Coll)/2022/0020A), the National Medical Research Council Clinician Scientist-Individual Research Grant-New Investigator Grant (CNIGnov-0025), the Terry Fox Grant (I1056) and the Khoo Bridge Funding Award (Duke-NUS-KBrFA/2024/0083I).",
+   "pubmed_url": "https://pubmed.ncbi.nlm.nih.gov/39416390/",
+   "source": "PubMed (connector), publication types from PR #64 reference"
+  },
+  {
+   "pmid": "32113113",
+   "doi": "10.1016/j.yebeh.2020.106969",
+   "title": "Course and prognosis of adult-onset epilepsy in Brazil: A cohort study.",
+   "authors": [
+    "Ana Letícia F Caprara",
+    "Jamir P Rissardo",
+    "Martim T B Leite",
+    "Juliana O F Silveira",
+    "Paulo G M Jauris",
+    "Josi Arend",
+    "Aline Kegler",
+    "Luiz Fernando Freire Royes",
+    "Michele Rechia Fighera"
+   ],
+   "journal": "Epilepsy & behavior : E&B",
+   "pub_year": "2020",
+   "publication_types": [
+    "Journal Article"
+   ],
+   "abstract": "Most of the epilepsy longitudinal studies have analyzed children. However, in endemic regions, such as Brazil, neurocysticercosis accounts for many adult-onset epilepsy cases. So, the main objective of this study was to identify the clinical predictors associated with drug-resistant adult-onset epilepsy in Brazil during a long-term follow-up.\n\nWe followed 302 individuals with adult-onset epilepsy for 9.8 years in our University Hospital. Structured questionnaires about drug-resistant epilepsy were applied. The presence of drug-resistant epilepsy was the primary outcome. We used multilevel linear modeling in our data analysis.\n\nOverall 47 (15.6%) individuals presented drug-resistant epilepsy and the etiology was structural in 70.2% of them, while infectious etiology was present in 8.5% of this group. Infectious etiology occurred in 25.9% (n = 66) of the patients from the nondrug-resistant group. Those with developmental delay were two times more likely to present seizures. Structural epilepsy etiology was associated with an increased chance of relapsing. Poor school performance and abnormal electroencephalogram were also associated with an increased chance of seizures.\n\nThe course of epilepsy was favorable in the majority of our patients, and drug-resistant epilepsy rates were similar to those found in other studies, although we evaluated older individuals with higher levels of infectious etiology. Also, we found that neurocysticercosis was associated with well-controlled epilepsy, while structural epilepsy was directly related to the occurrence of seizures. We also hypothesized that the smaller size of lesions found in neurocysticercosis could contribute to better treatment response.",
+   "pubmed_url": "https://pubmed.ncbi.nlm.nih.gov/32113113/",
+   "source": "PubMed (connector), publication types from PR #64 reference"
+  },
+  {
+   "pmid": "17540675",
+   "doi": "10.1093/jac/dkm141",
+   "title": "Prior antibiotics and risk of antibiotic-resistant community-acquired urinary tract infection: a case-control study.",
+   "authors": [
+    "Sharon Hillier",
+    "Zoe Roberts",
+    "Frank Dunstan",
+    "Chris Butler",
+    "Anthony Howard",
+    "Stephen Palmer"
+   ],
+   "journal": "The Journal of antimicrobial chemotherapy",
+   "pub_year": "2007",
+   "publication_types": [
+    "Research Support, Non-U.S. Gov't"
+   ],
+   "abstract": "To assess the effect of previous antibiotic use on the risk of a resistant Escherichia coli urinary tract infection (UTI), we undertook a case-control study with prospective measurement of outcomes in 10 general practices in the UK.\n\nUrinary samples from all patients with symptoms suggestive of UTIs were sought, and those with a laboratory-proven E. coli infection were interviewed and their medical records examined. Case patients were those with ampicillin- or trimethoprim-resistant infections and control patients had infections that were susceptible to antibiotics, including ampicillin and trimethoprim.\n\nRisk of ampicillin-resistant E. coli infection in 903 patients was associated with amoxicillin prescriptions of >or=7 days duration in the previous 1 month [odds ratio (OR)=3.91, 95% CI 1.64-9.34] and previous 2-3 months (2.29, 1.12-4.70) before illness onset. For prescriptions <7 days duration, there was no statistically significant association. Higher doses of amoxicillin were associated with lower risk of ampicillin resistance. For trimethoprim-resistant E. coli infections, the OR was 8.44 (3.12-22.86) for prescriptions of trimethoprim of >or=7 days in the previous month and 13.91 (3.32-58.31) for the previous 2-3 months. For trimethoprim prescriptions of <7 days, the OR was 4.03 (1.69-9.59) for the previous month but prescribing in earlier periods was not significantly associated with resistance.\n\nWithin the community setting, exposure to antibiotics is a strong risk factor for a resistant E. coli UTI. High-dose, shorter-duration antibiotic regimens may reduce the pressure on the emergence of antibiotic resistance.",
+   "pubmed_url": "https://pubmed.ncbi.nlm.nih.gov/17540675/",
+   "source": "PubMed (connector), publication types from PR #64 reference"
+  },
+  {
+   "pmid": "10218744",
+   "doi": "10.1001/archinte.159.7.658",
+   "title": "Diagnosis of thyroid disease in hospitalized patients: a systematic review.",
+   "authors": [
+    "J Attia",
+    "P Margetts",
+    "G Guyatt"
+   ],
+   "journal": "Archives of internal medicine",
+   "pub_year": "1999",
+   "publication_types": [
+    "Journal Article",
+    "Systematic Review"
+   ],
+   "abstract": "The optimal approach for the diagnosis of hypothyroidism and hyperthyroidism in hospitalized patients is controversial.\n\nTo estimate the prevalence of undiagnosed thyroid disease among inpatients, review the usefulness of clinical signs and symptoms, and elucidate the characteristics of the sensitive thyrotropin (thyroid-stimulating hormone) (sTSH) test in this population.\n\nWe undertook a systematic review of the literature by conducting a MEDLINE search covering January 1966 through December 1996. Searching was conducted in duplicate and independently. Specific inclusion and exclusion criteria were predetermined.\n\nPrevalence of thyroid disease among inpatients is approximately 1% to 2% and is similar to the outpatient population. Absence of clinical features of thyroid disease lowers the pretest likelihood and makes screening even less useful. Presence of clinical features, especially those specific for thyroid disease (eg, goiter), may increase the pretest likelihood and increase the yield of testing. Acute illness reduces the specificity of second-generation sTSH tests for thyroid disease. The positive likelihood ratio associated with an abnormal sTSH test result in ill inpatients is about 10 compared with about 100 in outpatients.\n\nIn unselected general medical, geriatric, or psychiatric inpatient populations, sTSH testing provides a low yield of true-positive and many false-positive results.",
+   "pubmed_url": "https://pubmed.ncbi.nlm.nih.gov/10218744/",
+   "source": "PubMed (connector), publication types from PR #64 reference"
+  },
+  {
+   "pmid": "37461867",
+   "doi": "10.1542/peds.2023-061188",
+   "title": "Diagnostic Accuracy of Primary Care Clinicians Across a Statewide System of Autism Evaluation.",
+   "authors": [
+    "Rebecca McNally Keehn",
+    "Nancy Swigonski",
+    "Brett Enneking",
+    "Tybytha Ryan",
+    "Patrick Monahan",
+    "Ann Marie Martin",
+    "Lisa Hamrick",
+    "Girija Kadlaskar",
+    "Angela Paxton",
+    "Mary Ciccarelli",
+    "Brandon Keehn"
+   ],
+   "journal": "Pediatrics",
+   "pub_year": "2023",
+   "publication_types": [
+    "Research Support, Non-U.S. Gov't",
+    "Research Support, N.I.H., Extramural"
+   ],
+   "abstract": "To evaluate the diagnostic accuracy of the Early Autism Evaluation (EAE) Hub system, a statewide network that provides specialized training and collaborative support to community primary care providers in the diagnosis of young children at risk for autism spectrum disorder (ASD).\n\nEAE Hub clinicians referred children, aged 14 to 48 months, to this prospective diagnostic study for blinded follow-up expert evaluation including assessment of developmental level, adaptive behavior, and ASD symptom severity. The primary outcome was agreement on categorical ASD diagnosis between EAE Hub clinician (index diagnosis) and ASD expert (reference standard).\n\nAmong 126 children (mean age: 2.6 years; 77% male; 14% Latinx; 66% non-Latinx white), 82% (n = 103) had consistent ASD outcomes between the index and reference evaluation. Sensitivity was 81.5%, specificity was 82.4%, positive predictive value was 92.6%, and negative predictive value was 62.2%. There was no difference in accuracy by EAE Hub clinician or site. Across measures of development, there were significant differences between true positive and false negative (FN) cases (all Ps < .001; Cohen's d = 1.1-1.4), with true positive cases evidencing greater impairment.\n\nCommunity-based primary care clinicians who receive specialty training can make accurate ASD diagnoses in most cases. Diagnostic disagreements were predominately FN cases in which EAE Hub clinicians had difficulty differentiating ASD and global developmental delay. FN cases were associated with a differential diagnostic and phenotypic profile. This research has significant implications for the development of future population health solutions that address ASD diagnostic delays.",
+   "pubmed_url": "https://pubmed.ncbi.nlm.nih.gov/37461867/",
+   "source": "PubMed (connector), publication types from PR #64 reference"
+  },
+  {
+   "pmid": "39071203",
+   "doi": "10.1002/lio2.1289",
+   "title": "Eagle syndrome presentation and outcomes in a large surgical case series.",
+   "authors": [
+    "Michael E Held",
+    "Soroush Farsi",
+    "Erin R Weatherford Creighton",
+    "Kyle P Davis",
+    "Deanne L King",
+    "James Y Suen"
+   ],
+   "journal": "Laryngoscope investigative otolaryngology",
+   "pub_year": "2024",
+   "publication_types": [],
+   "abstract": "The purpose of this study is to describe both the common and uncommon symptoms associated with Eagle syndrome and share our experience treating a large group of patients with surgical intervention, primarily intraoral excision of the calcified stylohyoid ligament.\n\nThis retrospective case series included 56 patients at least 18 years of age or older with a diagnosis of Eagle syndrome. All operations were conducted by a single surgeon at a tertiary medical center from 2015 to 2022. Charts were reviewed for demographics, prior medical/surgical history, symptoms, imaging results, operative details, and follow-up history. A phone survey inquired about presenting symptoms and symptom resolution following surgery.\n\nThe most common areas of pain were the ear (64.3%), underneath the angle of the mandible (50%), throat (46.4%), and neck (30.4%). Over 70% of patients reported tinnitus, dysphagia, and pain that were exacerbated by head rotation. Fifty-one of the 56 patients underwent surgical treatment, 92.2% via intraoral and 7.8% via cervical approaches. All patients (100%) reached in a phone survey stated that their symptoms resolved or improved after surgery.\n\nEagle syndrome typically presents with common symptoms. However, healthcare providers must also be vigilant for less common manifestations, such as seizures or episodes of dizziness/fainting. These may be caused by calcification of the stylohyoid ligament. Intraoral surgical resection of the calcified ligament is a safe and effective treatment for most patients.\n\nLevel 4.",
+   "pubmed_url": "https://pubmed.ncbi.nlm.nih.gov/39071203/",
+   "source": "PubMed (connector), publication types from PR #64 reference"
+  },
+  {
+   "pmid": "31732398",
+   "doi": "10.1016/j.otsr.2019.09.020",
+   "title": "Thoracic Outlet Syndrome: Diagnostic Accuracy of MRI.",
+   "authors": [
+    "Alexandre Hardy",
+    "Cécile Pougès",
+    "Guillaume Wavreille",
+    "Hélène Behal",
+    "Xavier Demondion",
+    "Guillaume Lefebvre"
+   ],
+   "journal": "Orthopaedics & traumatology, surgery & research : OTSR",
+   "pub_year": "2019",
+   "publication_types": [
+    "Journal Article"
+   ],
+   "abstract": "Thoracic outlet syndrome (TOS) is challenging to diagnose, as the physical findings and investigations lack sensitivity and/or specificity. Magnetic resonance imaging (MRI) with dynamic manoeuvres can rule out a tumour and detect anatomical abnormalities potentially responsible for compression. The objective of this study was to assess the sensitivity and specificity of MRI for identifying anatomical structures responsible for compression in TOS, using intra-operative findings as the diagnostic reference standard.\n\nMRI is effective in diagnosing the source of compression in TOS, notably within the scalene triangle and at the pleural apex.\n\nWe retrospectively included 48 patients who underwent surgery for TOS after a work-up that included MRI (1.5-T, n=29 and 3-T, n=19). The MRI scans were reviewed for the study by a specialised radiologist who was unaware of the intra-operative findings. The sensitivity and specificity of MRI for diagnosing TOS were estimated using the intra-operative findings as the reference standard.\n\nMRI identified a structure potentially responsible for TOS in 34 (71%) patients; thus, the false-negative rate was 14/48 (29%). The sensitivity of MRI was 28% for compression at the suspensory ligament of the pleural dome, 81% for hypertrophy of the anterior scalene muscle, and 50% for an accessory scalene muscle. For diagnosing a cervical rib, MRI had 100% sensitivity and 100% specificity.\n\nMRI can contribute to the diagnosis of TOS. Specificity is sufficiently high to provide guidance for planning the surgical procedure. Sensitivity, however, is too low for MRI to be useful as a screening test. MRI should be used in combination with the clinical assessment and other investigations to assist in the diagnosis of TOS.\n\nIV, retrospective cohort study.",
+   "pubmed_url": "https://pubmed.ncbi.nlm.nih.gov/31732398/",
+   "source": "PubMed (connector), publication types from PR #64 reference"
+  },
+  {
+   "pmid": "34449189",
+   "doi": "10.1056/NEJMoa2107038",
+   "title": "Empagliflozin in Heart Failure with a Preserved Ejection Fraction.",
+   "authors": [
+    "Stefan D Anker",
+    "Javed Butler",
+    "Gerasimos Filippatos",
+    "João P Ferreira",
+    "Edimar Bocchi",
+    "Michael Böhm",
+    "Hans-Peter Brunner-La Rocca",
+    "Dong-Ju Choi",
+    "Vijay Chopra",
+    "Eduardo Chuquiure-Valenzuela",
+    "Nadia Giannetti",
+    "Juan Esteban Gomez-Mesa",
+    "Stefan Janssens",
+    "James L Januzzi",
+    "Jose R Gonzalez-Juanatey",
+    "Bela Merkely",
+    "Stephen J Nicholls",
+    "Sergio V Perrone",
+    "Ileana L Piña",
+    "Piotr Ponikowski",
+    "Michele Senni",
+    "David Sim",
+    "Jindrich Spinar",
+    "Iain Squire",
+    "Stefano Taddei",
+    "Hiroyuki Tsutsui",
+    "Subodh Verma",
+    "Dragos Vinereanu",
+    "Jian Zhang",
+    "Peter Carson",
+    "Carolyn Su Ping Lam",
+    "Nikolaus Marx",
+    "Cordula Zeller",
+    "Naveed Sattar",
+    "Waheed Jamal",
+    "Sven Schnaidt",
+    "Janet M Schnee",
+    "Martina Brueckmann",
+    "Stuart J Pocock",
+    "Faiez Zannad",
+    "Milton Packer",
+    ""
+   ],
+   "journal": "The New England journal of medicine",
+   "pub_year": "2021",
+   "publication_types": [
+    "Multicenter Study",
+    "Randomized Controlled Trial",
+    "Research Support, Non-U.S. Gov't"
+   ],
+   "abstract": "Sodium-glucose cotransporter 2 inhibitors reduce the risk of hospitalization for heart failure in patients with heart failure and a reduced ejection fraction, but their effects in patients with heart failure and a preserved ejection fraction are uncertain.\n\nIn this double-blind trial, we randomly assigned 5988 patients with class II-IV heart failure and an ejection fraction of more than 40% to receive empagliflozin (10 mg once daily) or placebo, in addition to usual therapy. The primary outcome was a composite of cardiovascular death or hospitalization for heart failure.\n\nOver a median of 26.2 months, a primary outcome event occurred in 415 of 2997 patients (13.8%) in the empagliflozin group and in 511 of 2991 patients (17.1%) in the placebo group (hazard ratio, 0.79; 95% confidence interval [CI], 0.69 to 0.90; P<0.001). This effect was mainly related to a lower risk of hospitalization for heart failure in the empagliflozin group. The effects of empagliflozin appeared consistent in patients with or without diabetes. The total number of hospitalizations for heart failure was lower in the empagliflozin group than in the placebo group (407 with empagliflozin and 541 with placebo; hazard ratio, 0.73; 95% CI, 0.61 to 0.88; P<0.001). Uncomplicated genital and urinary tract infections and hypotension were reported more frequently with empagliflozin.\n\nEmpagliflozin reduced the combined risk of cardiovascular death or hospitalization for heart failure in patients with heart failure and a preserved ejection fraction, regardless of the presence or absence of diabetes. (Funded by Boehringer Ingelheim and Eli Lilly; EMPEROR-Preserved ClinicalTrials.gov number, NCT03057951).",
+   "pubmed_url": "https://pubmed.ncbi.nlm.nih.gov/34449189/",
+   "source": "PubMed (connector), publication types from PR #64 reference"
+  }
+ ]
+}

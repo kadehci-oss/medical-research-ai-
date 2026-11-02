@@ -8,6 +8,10 @@ import evidence_model
 import report_verification
 from question_framework import select_question_framework
 from version import APP_VERSION, APP_VERSION_NOTE
+import datetime
+from report_generator import _is_turkish_query
+
+_CURRENT_YEAR = datetime.date.today().year
 from report_generator import (
     generate_turkish_evidence_report,
     generate_evidence_table_html,
@@ -207,12 +211,18 @@ def main():
             )
         with col_count:
             max_results = st.number_input("Sonuç Sayısı", min_value=1, max_value=50, value=10)
+        if search_query and _is_turkish_query(search_query):
+            st.info(
+                "Sorgu Türkçe görünüyor. PubMed İngilizce terimlerle arar; Türkçe sorgu az sonuç verebilir veya hiç "
+                "sonuç vermeyebilir. Arama terimlerini İngilizce yazın (örn. 'SGLT2 inhibitors heart failure mortality')."
+            )
 
         col_y1, col_y2, col_sort, col_btn = st.columns([1, 1, 1.5, 1])
         with col_y1:
-            start_year = st.number_input("Başlangıç Yılı", min_value=1950, max_value=2026, value=None, placeholder="Örn: 2018")
+            start_year = st.number_input("Başlangıç Yılı", min_value=1950, max_value=_CURRENT_YEAR, value=None, placeholder="Örn: 2018")
         with col_y2:
-            end_year = st.number_input("Bitiş Yılı", min_value=1950, max_value=2026, value=None, placeholder="Örn: 2026")
+            end_year = st.number_input("Bitiş Yılı", min_value=1950, max_value=_CURRENT_YEAR, value=None,
+                                       placeholder=f"Örn: {_CURRENT_YEAR}")
         with col_sort:
             sort_by = st.selectbox("Sıralama", ["relevance", "pub_date"])
         with col_btn:
@@ -272,6 +282,11 @@ def main():
                         st.caption(study.evidence_level_note or "")
                         st.markdown(f"**Yanlılık aracı ({display_bias_tool(study.risk_of_bias.tool)}):** `{display_bias_rating(rob['overall_rating'])}`")
                         st.caption(rob.get("rating_policy") or "Değerlendirme yapılmadan risk derecesi verilmez.")
+                        source_validation = evidence_model.validate_study(study, art)
+                        source_status = "Yapısal olarak uygun" if source_validation.get("valid") else "Kaynak incelemesi gerekli"
+                        st.caption(
+                            f"Kaynak alanı kontrolü: {source_status}; bu yapısal kontrol klinik doğrulama/GRADE değildir."
+                        )
                         for line in evidence_model.render_study_card_lines(study)[2:]:
                             st.markdown(line)
 
@@ -364,6 +379,12 @@ def main():
                 st.session_state.pop("generated_report_export", None)
 
             audit_res = perform_red_team_audit(query, articles)
+            model_studies, _ = evidence_model.build_studies(articles, query)
+            model_checks = [
+                evidence_model.validate_study(study, article)
+                for study, article in zip(model_studies, articles)
+            ]
+            structurally_valid = sum(1 for check in model_checks if check.get("valid"))
 
             # Audit Summary Cards
             col_a1, col_a2, col_a3, col_a4, col_a5 = st.columns(5)
@@ -378,6 +399,10 @@ def main():
             with col_a5:
                 st.metric("Uzman Hekim Değerlendirmesi", audit_res.get("expert_physician_review", "Yapılmadı"))
             st.caption("Eşleşme; PMID'nin yeniden alınmasını ve yalnızca sağlanmış başlık/DOI alanlarının kontrolünü ifade eder.")
+            st.caption(
+                f"Kaynak alanı yapısal kontrolü: {structurally_valid}/{len(articles)} uygun; "
+                "bu kontrol bağımsız klinik doğrulama veya GRADE değildir."
+            )
 
             st.markdown(
                 f"""<div class="grade-notice-card">
@@ -412,16 +437,20 @@ def main():
                         search_metadata=search_meta,
                         verification_results=audit_res.get("verification_results", []),
                     )
-                    report_md = synth_res.get("report_markdown", "")
-                    st.session_state["generated_report_verification"] = synth_res.get("report_verification") or {}
-                    st.session_state["generated_structured_json"] = synth_res.get("structured_evidence_json") or ""
-                    st.session_state["generated_report_export"] = synth_res.get("report_markdown_export") or report_md
-                    html_report = synth_res.get("report_html", "")
-                    cross_comp = synth_res.get("cross_comparison", {})
-                    st.session_state["generated_report"] = report_md
-                    st.session_state["generated_html_report"] = html_report
-                    st.session_state["generated_cross_comp"] = cross_comp
-                    st.session_state["generated_report_query"] = query
+                    if not isinstance(synth_res, dict) or synth_res.get("status") != "success":
+                        error_message = synth_res.get("error") if isinstance(synth_res, dict) else None
+                        st.error(error_message or "Sentez tamamlanamadı. Lütfen daha sonra tekrar deneyin.")
+                    else:
+                        report_md = synth_res.get("report_markdown", "")
+                        st.session_state["generated_report_verification"] = synth_res.get("report_verification") or {}
+                        st.session_state["generated_structured_json"] = synth_res.get("structured_evidence_json") or ""
+                        st.session_state["generated_report_export"] = synth_res.get("report_markdown_export") or report_md
+                        html_report = synth_res.get("report_html", "")
+                        cross_comp = synth_res.get("cross_comparison", {})
+                        st.session_state["generated_report"] = report_md
+                        st.session_state["generated_html_report"] = html_report
+                        st.session_state["generated_cross_comp"] = cross_comp
+                        st.session_state["generated_report_query"] = query
 
             if "generated_report" in st.session_state:
                 st.markdown("---")

@@ -2,7 +2,7 @@
 import json, sys, time, datetime, traceback
 from pathlib import Path
 import requests
-from xml.etree import ElementTree as ET
+from defusedxml import ElementTree as ET
 
 from pubmed_client import eutils_identity_params, ncbi_request_headers
 
@@ -14,7 +14,7 @@ EXPECTED={
  '31535829': ('10.1056/nejmoa1911303','dapagliflozin in patients with heart failure and reduced ejection fraction'),
 }
 def build_eutils_params(params):
-    """Copy caller params and attach tool, email, and api_key when NCBI_API_KEY is set."""
+    """Copy caller params and attach the tool and any configured contact/key."""
     merged = dict(params or {})
     merged.update(eutils_identity_params())
     return merged

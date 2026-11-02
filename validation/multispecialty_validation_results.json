@@ -2,23 +2,23 @@
  "development": {
   "generated": "2026-11-01",
   "app_version": "v1.5.0",
-  "evidence_model_version": "1.0.0",
+  "evidence_model_version": "1.1.0",
   "n_studies": 35,
   "n_specialties": 8,
   "overall": {
-   "reference_items": 153,
-   "complete": 153,
+   "reference_items": 151,
+   "complete": 151,
    "complete_rate": 1.0,
-   "extracted": 153,
+   "extracted": 151,
    "false": 0,
    "false_rate": 0.0
   },
   "per_specialty": {
    "Cerrahi": {
-    "reference_items": 15,
-    "complete": 15,
+    "reference_items": 14,
+    "complete": 14,
     "complete_rate": 1.0,
-    "extracted": 15,
+    "extracted": 14,
     "false": 0,
     "false_rate": 0.0,
     "studies": 4,
@@ -57,10 +57,10 @@
     ]
    },
    "Kardiyoloji": {
-    "reference_items": 30,
-    "complete": 30,
+    "reference_items": 29,
+    "complete": 29,
     "complete_rate": 1.0,
-    "extracted": 30,
+    "extracted": 29,
     "false": 0,
     "false_rate": 0.0,
     "studies": 5,
@@ -164,10 +164,10 @@
     "studies": 3
    },
    "Mektup (özet yok)": {
-    "reference_items": 3,
-    "complete": 3,
+    "reference_items": 2,
+    "complete": 2,
     "complete_rate": 1.0,
-    "extracted": 3,
+    "extracted": 2,
     "false": 0,
     "false_rate": 0.0,
     "studies": 1
@@ -191,10 +191,10 @@
     "studies": 1
    },
    "RCT": {
-    "reference_items": 66,
-    "complete": 66,
+    "reference_items": 65,
+    "complete": 65,
     "complete_rate": 1.0,
-    "extracted": 66,
+    "extracted": 65,
     "false": 0,
     "false_rate": 0.0,
     "studies": 10
@@ -220,29 +220,22 @@
   "relations_summary": {
    "independent_primary_units": 24,
    "clusters_with_multiple_reports": {
-    "34449189": [
-     "34449189",
-     "36129693"
-    ],
-    "37272513": [
+    "39288781": [
      "37272513",
      "39288781"
-    ],
-    "33017106": [
-     "33017106",
-     "34694761"
     ]
    },
    "overlap_notes": [
-    "PMID 36041474 (kanıt sentezi), PMID 34449189, 36129693 ile aynı katılımcıları içeriyor; bu katılımcılar bağımsız kanıt toplamına iki kez eklenmedi."
+    "PMID 36041474 (kanıt sentezi), PMID 34449189 ile aynı katılımcıları içeriyor; bu katılımcılar bağımsız kanıt toplamına iki kez eklenmedi.",
+    "PMID 36041474 (kanıt sentezi), PMID 36129693 ile aynı katılımcıları içeriyor; bu katılımcılar bağımsız kanıt toplamına iki kez eklenmedi."
    ]
   },
   "source_match": {
-   "sources_total": 179,
-   "sources_verified": 179,
+   "sources_total": 213,
+   "sources_verified": 213,
    "source_match_accuracy": 1.0,
-   "values_checked": 129,
-   "values_in_source": 129,
+   "values_checked": 154,
+   "values_in_source": 154,
    "value_match_accuracy": 1.0,
    "failures": []
   },
@@ -251,9 +244,9 @@
   "causal_permission_errors": [],
   "report_verification_by_specialty": {
    "Kardiyoloji": {
-    "status": "Uyarılarla doğrulandı",
+    "status": "Doğrulandı",
     "unknown_pmids": [],
-    "quotes_checked": 68,
+    "quotes_checked": 83,
     "quotes_failed": 0,
     "rob_rating_claims": 0,
     "grade_rating_claims": 0
@@ -261,7 +254,7 @@
    "Onkoloji": {
     "status": "Doğrulandı",
     "unknown_pmids": [],
-    "quotes_checked": 66,
+    "quotes_checked": 81,
     "quotes_failed": 0,
     "rob_rating_claims": 0,
     "grade_rating_claims": 0
@@ -269,7 +262,7 @@
    "Nöroloji": {
     "status": "Doğrulandı",
     "unknown_pmids": [],
-    "quotes_checked": 58,
+    "quotes_checked": 68,
     "quotes_failed": 0,
     "rob_rating_claims": 0,
     "grade_rating_claims": 0
@@ -277,7 +270,7 @@
    "Enfeksiyon": {
     "status": "Doğrulandı",
     "unknown_pmids": [],
-    "quotes_checked": 35,
+    "quotes_checked": 49,
     "quotes_failed": 0,
     "rob_rating_claims": 0,
     "grade_rating_claims": 0
@@ -285,7 +278,7 @@
    "Endokrinoloji": {
     "status": "Doğrulandı",
     "unknown_pmids": [],
-    "quotes_checked": 50,
+    "quotes_checked": 57,
     "quotes_failed": 0,
     "rob_rating_claims": 0,
     "grade_rating_claims": 0
@@ -293,7 +286,7 @@
    "Pediatri": {
     "status": "Doğrulandı",
     "unknown_pmids": [],
-    "quotes_checked": 45,
+    "quotes_checked": 57,
     "quotes_failed": 0,
     "rob_rating_claims": 0,
     "grade_rating_claims": 0
@@ -301,7 +294,7 @@
    "Cerrahi": {
     "status": "Doğrulandı",
     "unknown_pmids": [],
-    "quotes_checked": 41,
+    "quotes_checked": 48,
     "quotes_failed": 0,
     "rob_rating_claims": 0,
     "grade_rating_claims": 0
@@ -309,7 +302,7 @@
    "Radyoloji": {
     "status": "Doğrulandı",
     "unknown_pmids": [],
-    "quotes_checked": 34,
+    "quotes_checked": 48,
     "quotes_failed": 0,
     "rob_rating_claims": 0,
     "grade_rating_claims": 0
@@ -488,7 +481,7 @@
  "holdout_current": {
   "generated": "2026-11-01",
   "app_version": "v1.5.0",
-  "evidence_model_version": "1.0.0",
+  "evidence_model_version": "1.1.0",
   "n_studies": 16,
   "n_specialties": 8,
   "overall": {
@@ -678,11 +671,11 @@
    "overlap_notes": []
   },
   "source_match": {
-   "sources_total": 82,
-   "sources_verified": 82,
+   "sources_total": 98,
+   "sources_verified": 98,
    "source_match_accuracy": 1.0,
-   "values_checked": 57,
-   "values_in_source": 57,
+   "values_checked": 68,
+   "values_in_source": 68,
    "value_match_accuracy": 1.0,
    "failures": []
   },
@@ -693,7 +686,7 @@
    "Kardiyoloji": {
     "status": "Doğrulandı",
     "unknown_pmids": [],
-    "quotes_checked": 25,
+    "quotes_checked": 33,
     "quotes_failed": 0,
     "rob_rating_claims": 0,
     "grade_rating_claims": 0
@@ -701,7 +694,7 @@
    "Onkoloji": {
     "status": "Doğrulandı",
     "unknown_pmids": [],
-    "quotes_checked": 29,
+    "quotes_checked": 31,
     "quotes_failed": 0,
     "rob_rating_claims": 0,
     "grade_rating_claims": 0
@@ -717,7 +710,7 @@
    "Enfeksiyon": {
     "status": "Doğrulandı",
     "unknown_pmids": [],
-    "quotes_checked": 38,
+    "quotes_checked": 57,
     "quotes_failed": 0,
     "rob_rating_claims": 0,
     "grade_rating_claims": 0
@@ -725,7 +718,7 @@
    "Endokrinoloji": {
     "status": "Doğrulandı",
     "unknown_pmids": [],
-    "quotes_checked": 9,
+    "quotes_checked": 11,
     "quotes_failed": 0,
     "rob_rating_claims": 0,
     "grade_rating_claims": 0
@@ -733,7 +726,7 @@
    "Pediatri": {
     "status": "Doğrulandı",
     "unknown_pmids": [],
-    "quotes_checked": 6,
+    "quotes_checked": 10,
     "quotes_failed": 0,
     "rob_rating_claims": 0,
     "grade_rating_claims": 0
@@ -741,7 +734,7 @@
    "Cerrahi": {
     "status": "Doğrulandı",
     "unknown_pmids": [],
-    "quotes_checked": 34,
+    "quotes_checked": 42,
     "quotes_failed": 0,
     "rob_rating_claims": 0,
     "grade_rating_claims": 0
@@ -749,7 +742,7 @@
    "Radyoloji": {
     "status": "Doğrulandı",
     "unknown_pmids": [],
-    "quotes_checked": 15,
+    "quotes_checked": 23,
     "quotes_failed": 0,
     "rob_rating_claims": 0,
     "grade_rating_claims": 0
@@ -1182,23 +1175,23 @@
  "holdout2_current": {
   "generated": "2026-11-01",
   "app_version": "v1.5.0",
-  "evidence_model_version": "1.0.0",
+  "evidence_model_version": "1.1.0",
   "n_studies": 17,
   "n_specialties": 9,
   "overall": {
    "reference_items": 66,
-   "complete": 61,
-   "complete_rate": 0.9242,
-   "extracted": 62,
+   "complete": 62,
+   "complete_rate": 0.9394,
+   "extracted": 63,
    "false": 1,
-   "false_rate": 0.0161
+   "false_rate": 0.0159
   },
   "per_specialty": {
    "Cerrahi": {
     "reference_items": 6,
-    "complete": 5,
-    "complete_rate": 0.8333,
-    "extracted": 5,
+    "complete": 6,
+    "complete_rate": 1.0,
+    "extracted": 6,
     "false": 0,
     "false_rate": 0.0,
     "studies": 2,
@@ -1309,9 +1302,9 @@
   "per_design": {
    "Vaka-kontrol": {
     "reference_items": 6,
-    "complete": 5,
-    "complete_rate": 0.8333,
-    "extracted": 5,
+    "complete": 6,
+    "complete_rate": 1.0,
+    "extracted": 6,
     "false": 0,
     "false_rate": 0.0,
     "studies": 2
@@ -1367,11 +1360,11 @@
    "overlap_notes": []
   },
   "source_match": {
-   "sources_total": 78,
-   "sources_verified": 78,
+   "sources_total": 86,
+   "sources_verified": 86,
    "source_match_accuracy": 1.0,
-   "values_checked": 54,
-   "values_in_source": 54,
+   "values_checked": 59,
+   "values_in_source": 59,
    "value_match_accuracy": 1.0,
    "failures": []
   },
@@ -1382,7 +1375,7 @@
    "Kardiyoloji": {
     "status": "Doğrulandı",
     "unknown_pmids": [],
-    "quotes_checked": 32,
+    "quotes_checked": 33,
     "quotes_failed": 0,
     "rob_rating_claims": 0,
     "grade_rating_claims": 0
@@ -1390,7 +1383,7 @@
    "Onkoloji": {
     "status": "Doğrulandı",
     "unknown_pmids": [],
-    "quotes_checked": 20,
+    "quotes_checked": 26,
     "quotes_failed": 0,
     "rob_rating_claims": 0,
     "grade_rating_claims": 0
@@ -1398,15 +1391,15 @@
    "Nöroloji": {
     "status": "Doğrulandı",
     "unknown_pmids": [],
-    "quotes_checked": 6,
+    "quotes_checked": 12,
     "quotes_failed": 0,
     "rob_rating_claims": 0,
     "grade_rating_claims": 0
    },
    "Enfeksiyon": {
-    "status": "Uyarılarla doğrulandı",
+    "status": "Doğrulandı",
     "unknown_pmids": [],
-    "quotes_checked": 4,
+    "quotes_checked": 7,
     "quotes_failed": 0,
     "rob_rating_claims": 0,
     "grade_rating_claims": 0
@@ -1414,7 +1407,7 @@
    "Endokrinoloji": {
     "status": "Doğrulandı",
     "unknown_pmids": [],
-    "quotes_checked": 36,
+    "quotes_checked": 43,
     "quotes_failed": 0,
     "rob_rating_claims": 0,
     "grade_rating_claims": 0
@@ -1422,7 +1415,7 @@
    "Pediatri": {
     "status": "Doğrulandı",
     "unknown_pmids": [],
-    "quotes_checked": 26,
+    "quotes_checked": 36,
     "quotes_failed": 0,
     "rob_rating_claims": 0,
     "grade_rating_claims": 0
@@ -1430,15 +1423,15 @@
    "Cerrahi": {
     "status": "Doğrulandı",
     "unknown_pmids": [],
-    "quotes_checked": 17,
+    "quotes_checked": 22,
     "quotes_failed": 0,
     "rob_rating_claims": 0,
     "grade_rating_claims": 0
    },
    "Radyoloji": {
-    "status": "Uyarılarla doğrulandı",
+    "status": "Doğrulandı",
     "unknown_pmids": [],
-    "quotes_checked": 23,
+    "quotes_checked": 24,
     "quotes_failed": 0,
     "rob_rating_claims": 0,
     "grade_rating_claims": 0
@@ -1446,7 +1439,7 @@
    "Kadın Hastalıkları ve Doğum": {
     "status": "Doğrulandı",
     "unknown_pmids": [],
-    "quotes_checked": 6,
+    "quotes_checked": 10,
     "quotes_failed": 0,
     "rob_rating_claims": 0,
     "grade_rating_claims": 0
@@ -1533,9 +1526,7 @@
    ],
    "41051743": [],
    "41552219": [],
-   "41167592": [
-    "EKSİK: 41167592 örneklem None (beklenen 198)"
-   ],
+   "41167592": [],
    "41410574": [],
    "41410570": [],
    "41354041": [
@@ -1850,5 +1841,796 @@
    ]
   },
   "_note": "İkinci ayrılmış kümenin İLK ve ayarsız çalıştırması (birinci kümedeki düzeltmelerden sonra). Donduruldu."
+ },
+ "holdout3_current": {
+  "generated": "2026-11-01",
+  "app_version": "v1.5.0",
+  "evidence_model_version": "1.1.0",
+  "n_studies": 17,
+  "n_specialties": 8,
+  "overall": {
+   "reference_items": 115,
+   "complete": 113,
+   "complete_rate": 0.9826,
+   "extracted": 113,
+   "false": 0,
+   "false_rate": 0.0
+  },
+  "per_specialty": {
+   "Cerrahi": {
+    "reference_items": 9,
+    "complete": 9,
+    "complete_rate": 1.0,
+    "extracted": 9,
+    "false": 0,
+    "false_rate": 0.0,
+    "studies": 3,
+    "designs": [
+     "Olgu serisi",
+     "RCT",
+     "Vaka-kontrol"
+    ]
+   },
+   "Endokrinoloji": {
+    "reference_items": 24,
+    "complete": 24,
+    "complete_rate": 1.0,
+    "extracted": 24,
+    "false": 0,
+    "false_rate": 0.0,
+    "studies": 2,
+    "designs": [
+     "RCT",
+     "Vaka-kontrol"
+    ]
+   },
+   "Enfeksiyon": {
+    "reference_items": 18,
+    "complete": 18,
+    "complete_rate": 1.0,
+    "extracted": 18,
+    "false": 0,
+    "false_rate": 0.0,
+    "studies": 2,
+    "designs": [
+     "Kohort",
+     "Tanısal doğruluk"
+    ]
+   },
+   "Kardiyoloji": {
+    "reference_items": 11,
+    "complete": 10,
+    "complete_rate": 0.9091,
+    "extracted": 10,
+    "false": 0,
+    "false_rate": 0.0,
+    "studies": 2,
+    "designs": [
+     "Kohort",
+     "RCT"
+    ]
+   },
+   "Nöroloji": {
+    "reference_items": 11,
+    "complete": 10,
+    "complete_rate": 0.9091,
+    "extracted": 10,
+    "false": 0,
+    "false_rate": 0.0,
+    "studies": 2,
+    "designs": [
+     "RCT",
+     "Tanısal doğruluk"
+    ]
+   },
+   "Onkoloji": {
+    "reference_items": 16,
+    "complete": 16,
+    "complete_rate": 1.0,
+    "extracted": 16,
+    "false": 0,
+    "false_rate": 0.0,
+    "studies": 2,
+    "designs": [
+     "Meta-analiz"
+    ]
+   },
+   "Pediatri": {
+    "reference_items": 13,
+    "complete": 13,
+    "complete_rate": 1.0,
+    "extracted": 13,
+    "false": 0,
+    "false_rate": 0.0,
+    "studies": 2,
+    "designs": [
+     "Kohort",
+     "RCT"
+    ]
+   },
+   "Radyoloji": {
+    "reference_items": 13,
+    "complete": 13,
+    "complete_rate": 1.0,
+    "extracted": 13,
+    "false": 0,
+    "false_rate": 0.0,
+    "studies": 2,
+    "designs": [
+     "Kohort",
+     "Tanısal doğruluk"
+    ]
+   }
+  },
+  "per_design": {
+   "Vaka-kontrol": {
+    "reference_items": 23,
+    "complete": 23,
+    "complete_rate": 1.0,
+    "extracted": 23,
+    "false": 0,
+    "false_rate": 0.0,
+    "studies": 2
+   },
+   "Olgu serisi": {
+    "reference_items": 2,
+    "complete": 2,
+    "complete_rate": 1.0,
+    "extracted": 2,
+    "false": 0,
+    "false_rate": 0.0,
+    "studies": 1
+   },
+   "Kohort": {
+    "reference_items": 27,
+    "complete": 27,
+    "complete_rate": 1.0,
+    "extracted": 27,
+    "false": 0,
+    "false_rate": 0.0,
+    "studies": 4
+   },
+   "Tanısal doğruluk": {
+    "reference_items": 24,
+    "complete": 23,
+    "complete_rate": 0.9583,
+    "extracted": 23,
+    "false": 0,
+    "false_rate": 0.0,
+    "studies": 3
+   },
+   "Meta-analiz": {
+    "reference_items": 16,
+    "complete": 16,
+    "complete_rate": 1.0,
+    "extracted": 16,
+    "false": 0,
+    "false_rate": 0.0,
+    "studies": 2
+   },
+   "RCT": {
+    "reference_items": 23,
+    "complete": 22,
+    "complete_rate": 0.9565,
+    "extracted": 22,
+    "false": 0,
+    "false_rate": 0.0,
+    "studies": 5
+   }
+  },
+  "outcome_binding": {
+   "bound": 58,
+   "unbound": 0,
+   "wrong": 0
+  },
+  "sample_size_confused_with_event_or_arm_count": [],
+  "background_therapy_reported_as_intervention": 0,
+  "independence_errors": [],
+  "relations_summary": {
+   "independent_primary_units": 13,
+   "clusters_with_multiple_reports": {},
+   "overlap_notes": []
+  },
+  "source_match": {
+   "sources_total": 118,
+   "sources_verified": 118,
+   "source_match_accuracy": 1.0,
+   "values_checked": 85,
+   "values_in_source": 85,
+   "value_match_accuracy": 1.0,
+   "failures": []
+  },
+  "false_causal_claims": 0,
+  "false_causal_language_hits": [],
+  "causal_permission_errors": [],
+  "report_verification_by_specialty": {
+   "Kardiyoloji": {
+    "status": "Doğrulandı",
+    "unknown_pmids": [],
+    "quotes_checked": 26,
+    "quotes_failed": 0,
+    "rob_rating_claims": 0,
+    "grade_rating_claims": 0
+   },
+   "Radyoloji": {
+    "status": "Doğrulandı",
+    "unknown_pmids": [],
+    "quotes_checked": 37,
+    "quotes_failed": 0,
+    "rob_rating_claims": 0,
+    "grade_rating_claims": 0
+   },
+   "Onkoloji": {
+    "status": "Doğrulandı",
+    "unknown_pmids": [],
+    "quotes_checked": 27,
+    "quotes_failed": 0,
+    "rob_rating_claims": 0,
+    "grade_rating_claims": 0
+   },
+   "Nöroloji": {
+    "status": "Doğrulandı",
+    "unknown_pmids": [],
+    "quotes_checked": 42,
+    "quotes_failed": 0,
+    "rob_rating_claims": 0,
+    "grade_rating_claims": 0
+   },
+   "Enfeksiyon": {
+    "status": "Doğrulandı",
+    "unknown_pmids": [],
+    "quotes_checked": 35,
+    "quotes_failed": 0,
+    "rob_rating_claims": 0,
+    "grade_rating_claims": 0
+   },
+   "Endokrinoloji": {
+    "status": "Doğrulandı",
+    "unknown_pmids": [],
+    "quotes_checked": 70,
+    "quotes_failed": 0,
+    "rob_rating_claims": 0,
+    "grade_rating_claims": 0
+   },
+   "Cerrahi": {
+    "status": "Doğrulandı",
+    "unknown_pmids": [],
+    "quotes_checked": 41,
+    "quotes_failed": 0,
+    "rob_rating_claims": 0,
+    "grade_rating_claims": 0
+   },
+   "Pediatri": {
+    "status": "Doğrulandı",
+    "unknown_pmids": [],
+    "quotes_checked": 28,
+    "quotes_failed": 0,
+    "rob_rating_claims": 0,
+    "grade_rating_claims": 0
+   }
+  },
+  "question_framework": {
+   "correct": 8,
+   "total": 8,
+   "rows": [
+    {
+     "specialty": "Kardiyoloji",
+     "query": "Do direct oral anticoagulants reduce stroke compared with warfarin in atrial fibrillation?",
+     "question_type": "therapy",
+     "engine": "therapy",
+     "correct": true
+    },
+    {
+     "specialty": "Onkoloji",
+     "query": "Does local ablative treatment improve survival in oligoprogressive non-small-cell lung cancer during immunotherapy?",
+     "question_type": "therapy",
+     "engine": "therapy",
+     "correct": true
+    },
+    {
+     "specialty": "Radyoloji",
+     "query": "Diagnostic accuracy of 5.0 T coronary MR angiography for coronary stenosis",
+     "question_type": "diagnosis",
+     "engine": "diagnosis",
+     "correct": true
+    },
+    {
+     "specialty": "Nöroloji",
+     "query": "Plazma p-tau'nun amiloid patolojisi için tanısal doğruluğu nedir?",
+     "question_type": "diagnosis",
+     "engine": "diagnosis",
+     "correct": true
+    },
+    {
+     "specialty": "Enfeksiyon",
+     "query": "Risk factors for missed video directly observed therapy sessions in tuberculosis",
+     "question_type": "etiology",
+     "engine": "etiology",
+     "correct": true
+    },
+    {
+     "specialty": "Endokrinoloji",
+     "query": "Gestasyonel diyabet için gebelik öncesi risk faktörleri nelerdir?",
+     "question_type": "etiology",
+     "engine": "etiology",
+     "correct": true
+    },
+    {
+     "specialty": "Pediatri",
+     "query": "Çok suşlu probiyotikler aşırı prematüre bebeklerde nekrotizan enterokoliti azaltır mı?",
+     "question_type": "therapy",
+     "engine": "therapy",
+     "correct": true
+    },
+    {
+     "specialty": "Cerrahi",
+     "query": "Is laparoscopic gastrectomy as effective as open gastrectomy for gastric cancer?",
+     "question_type": "surgery",
+     "engine": "surgery",
+     "correct": true
+    }
+   ]
+  },
+  "study_details": {
+   "42946676": [
+    "EKSİK: 42946676 örneklem None (beklenen 63)"
+   ],
+   "42965030": [],
+   "42937536": [],
+   "42965526": [],
+   "42961600": [],
+   "42957617": [
+    "EKSİK: 42957617 müdahale '' (beklenen ['tau', 'GFAP'])"
+   ],
+   "42963818": [],
+   "42945222": [],
+   "42964043": [],
+   "42959821": [],
+   "42966369": [],
+   "42963493": [],
+   "42944929": [],
+   "42966793": [],
+   "42965524": [],
+   "42961418": [],
+   "42921063": []
+  }
+ },
+ "holdout3_first_run": {
+  "generated": "2026-11-01",
+  "app_version": "v1.5.0",
+  "evidence_model_version": "1.1.0",
+  "n_studies": 17,
+  "n_specialties": 8,
+  "overall": {
+   "reference_items": 113,
+   "complete": 84,
+   "complete_rate": 0.7434,
+   "extracted": 101,
+   "false": 17,
+   "false_rate": 0.1683
+  },
+  "per_specialty": {
+   "Cerrahi": {
+    "reference_items": 9,
+    "complete": 6,
+    "complete_rate": 0.6667,
+    "extracted": 9,
+    "false": 3,
+    "false_rate": 0.3333,
+    "studies": 3,
+    "designs": [
+     "Olgu serisi",
+     "RCT",
+     "Vaka-kontrol"
+    ]
+   },
+   "Endokrinoloji": {
+    "reference_items": 24,
+    "complete": 23,
+    "complete_rate": 0.9583,
+    "extracted": 29,
+    "false": 6,
+    "false_rate": 0.2069,
+    "studies": 2,
+    "designs": [
+     "RCT",
+     "Vaka-kontrol"
+    ]
+   },
+   "Enfeksiyon": {
+    "reference_items": 17,
+    "complete": 11,
+    "complete_rate": 0.6471,
+    "extracted": 12,
+    "false": 1,
+    "false_rate": 0.0833,
+    "studies": 2,
+    "designs": [
+     "Kohort",
+     "Tanısal doğruluk"
+    ]
+   },
+   "Kardiyoloji": {
+    "reference_items": 11,
+    "complete": 8,
+    "complete_rate": 0.7273,
+    "extracted": 9,
+    "false": 1,
+    "false_rate": 0.1111,
+    "studies": 2,
+    "designs": [
+     "Kohort",
+     "RCT"
+    ]
+   },
+   "Nöroloji": {
+    "reference_items": 11,
+    "complete": 10,
+    "complete_rate": 0.9091,
+    "extracted": 10,
+    "false": 0,
+    "false_rate": 0.0,
+    "studies": 2,
+    "designs": [
+     "RCT",
+     "Tanısal doğruluk"
+    ]
+   },
+   "Onkoloji": {
+    "reference_items": 16,
+    "complete": 13,
+    "complete_rate": 0.8125,
+    "extracted": 13,
+    "false": 0,
+    "false_rate": 0.0,
+    "studies": 2,
+    "designs": [
+     "Meta-analiz"
+    ]
+   },
+   "Pediatri": {
+    "reference_items": 13,
+    "complete": 6,
+    "complete_rate": 0.4615,
+    "extracted": 9,
+    "false": 3,
+    "false_rate": 0.3333,
+    "studies": 2,
+    "designs": [
+     "Kohort",
+     "RCT"
+    ]
+   },
+   "Radyoloji": {
+    "reference_items": 12,
+    "complete": 7,
+    "complete_rate": 0.5833,
+    "extracted": 10,
+    "false": 3,
+    "false_rate": 0.3,
+    "studies": 2,
+    "designs": [
+     "Kohort",
+     "Tanısal doğruluk"
+    ]
+   }
+  },
+  "per_design": {
+   "Vaka-kontrol": {
+    "reference_items": 23,
+    "complete": 21,
+    "complete_rate": 0.913,
+    "extracted": 28,
+    "false": 7,
+    "false_rate": 0.25,
+    "studies": 2
+   },
+   "Olgu serisi": {
+    "reference_items": 2,
+    "complete": 2,
+    "complete_rate": 1.0,
+    "extracted": 2,
+    "false": 0,
+    "false_rate": 0.0,
+    "studies": 1
+   },
+   "Kohort": {
+    "reference_items": 25,
+    "complete": 14,
+    "complete_rate": 0.56,
+    "extracted": 20,
+    "false": 6,
+    "false_rate": 0.3,
+    "studies": 4
+   },
+   "Tanısal doğruluk": {
+    "reference_items": 24,
+    "complete": 18,
+    "complete_rate": 0.75,
+    "extracted": 18,
+    "false": 0,
+    "false_rate": 0.0,
+    "studies": 3
+   },
+   "Meta-analiz": {
+    "reference_items": 16,
+    "complete": 13,
+    "complete_rate": 0.8125,
+    "extracted": 13,
+    "false": 0,
+    "false_rate": 0.0,
+    "studies": 2
+   },
+   "RCT": {
+    "reference_items": 23,
+    "complete": 16,
+    "complete_rate": 0.6957,
+    "extracted": 20,
+    "false": 4,
+    "false_rate": 0.2,
+    "studies": 5
+   }
+  },
+  "outcome_binding": {
+   "bound": 20,
+   "unbound": 20,
+   "wrong": 8
+  },
+  "sample_size_confused_with_event_or_arm_count": [
+   "42937536"
+  ],
+  "background_therapy_reported_as_intervention": 0,
+  "independence_errors": [
+   "42937536",
+   "42963818"
+  ],
+  "relations_summary": {
+   "independent_primary_units": 13,
+   "clusters_with_multiple_reports": {},
+   "overlap_notes": []
+  },
+  "source_match": {
+   "sources_total": 115,
+   "sources_verified": 115,
+   "source_match_accuracy": 1.0,
+   "values_checked": 92,
+   "values_in_source": 90,
+   "value_match_accuracy": 0.9783,
+   "failures": [
+    "42945222 örneklem 62 kaynak cümlede yok",
+    "42964043 örneklem 66 kaynak cümlede yok"
+   ]
+  },
+  "false_causal_claims": 3,
+  "false_causal_language_hits": [],
+  "causal_permission_errors": [
+   "42965030",
+   "42937536",
+   "42963818"
+  ],
+  "report_verification_by_specialty": {
+   "Kardiyoloji": {
+    "status": "Doğrulandı",
+    "unknown_pmids": [],
+    "quotes_checked": 25,
+    "quotes_failed": 0,
+    "rob_rating_claims": 0,
+    "grade_rating_claims": 0
+   },
+   "Radyoloji": {
+    "status": "Doğrulandı",
+    "unknown_pmids": [],
+    "quotes_checked": 33,
+    "quotes_failed": 0,
+    "rob_rating_claims": 0,
+    "grade_rating_claims": 0
+   },
+   "Onkoloji": {
+    "status": "Doğrulandı",
+    "unknown_pmids": [],
+    "quotes_checked": 24,
+    "quotes_failed": 0,
+    "rob_rating_claims": 0,
+    "grade_rating_claims": 0
+   },
+   "Nöroloji": {
+    "status": "Doğrulandı",
+    "unknown_pmids": [],
+    "quotes_checked": 42,
+    "quotes_failed": 0,
+    "rob_rating_claims": 0,
+    "grade_rating_claims": 0
+   },
+   "Enfeksiyon": {
+    "status": "Doğrulandı",
+    "unknown_pmids": [],
+    "quotes_checked": 31,
+    "quotes_failed": 0,
+    "rob_rating_claims": 0,
+    "grade_rating_claims": 0
+   },
+   "Endokrinoloji": {
+    "status": "Doğrulandı",
+    "unknown_pmids": [],
+    "quotes_checked": 68,
+    "quotes_failed": 0,
+    "rob_rating_claims": 0,
+    "grade_rating_claims": 0
+   },
+   "Cerrahi": {
+    "status": "Doğrulandı",
+    "unknown_pmids": [],
+    "quotes_checked": 41,
+    "quotes_failed": 0,
+    "rob_rating_claims": 0,
+    "grade_rating_claims": 0
+   },
+   "Pediatri": {
+    "status": "Doğrulandı",
+    "unknown_pmids": [],
+    "quotes_checked": 25,
+    "quotes_failed": 0,
+    "rob_rating_claims": 0,
+    "grade_rating_claims": 0
+   }
+  },
+  "question_framework": {
+   "correct": 8,
+   "total": 8,
+   "rows": [
+    {
+     "specialty": "Kardiyoloji",
+     "query": "Do direct oral anticoagulants reduce stroke compared with warfarin in atrial fibrillation?",
+     "question_type": "therapy",
+     "engine": "therapy",
+     "correct": true
+    },
+    {
+     "specialty": "Onkoloji",
+     "query": "Does local ablative treatment improve survival in oligoprogressive non-small-cell lung cancer during immunotherapy?",
+     "question_type": "therapy",
+     "engine": "therapy",
+     "correct": true
+    },
+    {
+     "specialty": "Radyoloji",
+     "query": "Diagnostic accuracy of 5.0 T coronary MR angiography for coronary stenosis",
+     "question_type": "diagnosis",
+     "engine": "diagnosis",
+     "correct": true
+    },
+    {
+     "specialty": "Nöroloji",
+     "query": "Plazma p-tau'nun amiloid patolojisi için tanısal doğruluğu nedir?",
+     "question_type": "diagnosis",
+     "engine": "diagnosis",
+     "correct": true
+    },
+    {
+     "specialty": "Enfeksiyon",
+     "query": "Risk factors for missed video directly observed therapy sessions in tuberculosis",
+     "question_type": "etiology",
+     "engine": "etiology",
+     "correct": true
+    },
+    {
+     "specialty": "Endokrinoloji",
+     "query": "Gestasyonel diyabet için gebelik öncesi risk faktörleri nelerdir?",
+     "question_type": "etiology",
+     "engine": "etiology",
+     "correct": true
+    },
+    {
+     "specialty": "Pediatri",
+     "query": "Çok suşlu probiyotikler aşırı prematüre bebeklerde nekrotizan enterokoliti azaltır mı?",
+     "question_type": "therapy",
+     "engine": "therapy",
+     "correct": true
+    },
+    {
+     "specialty": "Cerrahi",
+     "query": "Is laparoscopic gastrectomy as effective as open gastrectomy for gastric cancer?",
+     "question_type": "surgery",
+     "engine": "surgery",
+     "correct": true
+    }
+   ]
+  },
+  "study_details": {
+   "42946676": [
+    "EKSİK: 42946676 örneklem None (beklenen 63)"
+   ],
+   "42965030": [
+    "YANLIŞ: 42965030 tasarım rct (beklenen ['cohort'])",
+    "BAĞLANMADI: 42965030 HR 0.35 [0.18, 0.67] sonlanım adı yok",
+    "BAĞLANMADI: 42965030 HR 0.43 [0.23, 0.81] sonlanım adı yok",
+    "BAĞLANMADI: 42965030 HR 0.47 [0.25, 0.9] sonlanım adı yok",
+    "EKSİK: 42965030 karşılaştırıcı '' (beklenen ['warfarin'])"
+   ],
+   "42937536": [
+    "YANLIŞ: 42937536 örneklem 26722 (beklenen 21856)",
+    "YANLIŞ BAĞLAMA: 42937536 HR 1.24 [1.02, 1.5] → 'osteoporotic vBMD in men'",
+    "YANLIŞ: 42937536 birincil çalışma yanlışlıkla 'secondary_analysis' sayıldı",
+    "BAĞIMSIZLIK: 42937536 bağımsız=False (beklenen True)"
+   ],
+   "42965526": [
+    "EKSİK: 42965526 müdahale '' (beklenen ['ablative', 'LAT'])"
+   ],
+   "42961600": [],
+   "42957617": [
+    "BAĞLANMADI: 42957617 AUC 0.73 None sonlanım adı yok",
+    "BAĞLANMADI: 42957617 AUC 0.75 None sonlanım adı yok",
+    "EKSİK: 42957617 müdahale '' (beklenen ['tau', 'GFAP'])"
+   ],
+   "42963818": [
+    "EKSİK: 42963818 IRR 2.2 [1.2, 4.0]",
+    "EKSİK: 42963818 IRR 2.0 [1.1, 3.6]",
+    "EKSİK: 42963818 IRR 2.3 [1.1, 5.1]",
+    "EKSİK: 42963818 IRR 2.2 [1.1, 4.1]",
+    "EKSİK: 42963818 IRR 1.9 [1.1, 3.3]",
+    "YANLIŞ: 42963818 birincil çalışma yanlışlıkla 'secondary_analysis' sayıldı",
+    "BAĞIMSIZLIK: 42963818 bağımsız=False (beklenen True)"
+   ],
+   "42945222": [
+    "BAĞLANMADI: 42945222 AUC 0.675 [0.544, 0.788] sonlanım adı yok",
+    "BAĞLANMADI: 42945222 specificity 76.5 [52.7, 90.4] sonlanım adı yok",
+    "BAĞLANMADI: 42945222 sensitivity 35.6 [23.2, 50.2] sonlanım adı yok",
+    "BAĞLANMADI: 42945222 sensitivity 100.0 [92.1, 100.0] sonlanım adı yok",
+    "BAĞLANMADI: 42945222 specificity 29.4 [13.3, 53.1] sonlanım adı yok",
+    "BAĞLANMADI: 42945222 sensitivity 68.9 [54.3, 80.5] sonlanım adı yok",
+    "BAĞLANMADI: 42945222 specificity 70.6 [46.9, 86.7] sonlanım adı yok",
+    "EKSİK: 42945222 müdahale '' (beklenen ['COTS'])"
+   ],
+   "42964043": [],
+   "42959821": [
+    "YANLIŞ: 42959821 örneklem 106 (beklenen 117)"
+   ],
+   "42966369": [
+    "EKSİK: 42966369 MD -3.23 [-3.51, -2.96]",
+    "YANLIŞ: 42966369 müdahale 'with self-directed exercise in patients' (beklenen ['Schroth', 'PSSE', 'supervised'])",
+    "YANLIŞ: 42966369 karşılaştırıcı 'AIS undergoing brace treatment' (beklenen ['self-directed'])",
+    "EKSİK: 42966369 eşlik eden tedavi '' (beklenen ['brac'])"
+   ],
+   "42963493": [
+    "YANLIŞ BAĞLAMA: 42963493 OR 0.49 [0.25, 0.99] → 'all-cause mortality'",
+    "EKSİK: 42963493 OR 0.87 [0.59, 1.28]",
+    "EKSİK: 42963493 OR 0.67 [0.35, 1.27]",
+    "EKSİK: 42963493 müdahale '' (beklenen ['probiotic', 'ProPrems'])"
+   ],
+   "42944929": [
+    "YANLIŞ: 42944929 müdahale 'open' (beklenen ['laparoscopic'])",
+    "YANLIŞ: 42944929 karşılaştırıcı 'laparoscopic gastrectomy with standard D2 lymphadenectomy' (beklenen ['open'])"
+   ],
+   "42966793": [],
+   "42965524": [
+    "EKSİK: 42965524 örneklem None (beklenen 46)",
+    "BAĞLANMADI: 42965524 specificity 90.1 None sonlanım adı yok",
+    "EKSİK: 42965524 accuracy 89.4 None",
+    "BAĞLANMADI: 42965524 sensitivity 88.7 None sonlanım adı yok",
+    "EKSİK: 42965524 müdahale '' (beklenen ['CMRA', 'MR angiography', 'magnetic resonance'])",
+    "EKSİK: 42965524 karşılaştırıcı '' (beklenen ['CCTA', 'computed tomography'])"
+   ],
+   "42961418": [
+    "EKSİK: 42961418 müdahale '' (beklenen ['risk-reducing mastectomy', 'RRM'])",
+    "EKSİK: 42961418 karşılaştırıcı '' (beklenen ['MRI', 'mammography'])"
+   ],
+   "42921063": [
+    "EKSİK: 42921063 OR 3.01 [1.78, 5.09]",
+    "BAĞLANMADI: 42921063 OR 2.79 [1.33, 5.88] sonlanım adı yok",
+    "YANLIŞ BAĞLAMA: 42921063 OR 3.72 [1.33, 10.39] → 'diabetes'",
+    "YANLIŞ BAĞLAMA: 42921063 OR 1.94 [1.16, 3.24] → 'diabetes'",
+    "YANLIŞ BAĞLAMA: 42921063 OR 2.14 [1.13, 4.06] → 'diabetes'",
+    "BAĞLANMADI: 42921063 OR 2.79 [1.72, 4.54] sonlanım adı yok",
+    "BAĞLANMADI: 42921063 OR 2.42 [1.06, 5.52] sonlanım adı yok",
+    "BAĞLANMADI: 42921063 OR 2.21 [1.38, 3.56] sonlanım adı yok",
+    "BAĞLANMADI: 42921063 OR 16.6 [2.16, 127.76] sonlanım adı yok",
+    "BAĞLANMADI: 42921063 OR 2.78 [1.35, 5.69] sonlanım adı yok",
+    "YANLIŞ BAĞLAMA: 42921063 OR 1.94 [1.19, 3.15] → 'depression'",
+    "YANLIŞ BAĞLAMA: 42921063 OR 4.11 [2.47, 6.85] → 'depression'",
+    "YANLIŞ BAĞLAMA: 42921063 OR 5.68 [3.34, 9.64] → 'giving birth to a macrosomia baby'"
+   ]
+  },
+  "_note": "Üçüncü ayrılmış kümenin İLK ve ayarsız çalıştırması. Motor: PR #80 (commit a25e5a5). Referans ve sorular motor çalıştırılmadan yazıldı. Donduruldu; sonradan değiştirilmez.",
+  "engine_commit": "a25e5a5"
  }
 }

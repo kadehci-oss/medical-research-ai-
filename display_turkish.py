@@ -10,6 +10,52 @@ import re
 # Longer phrases first. The replacement is the display string, not a guess
 # beyond the words the source actually used.
 _PHRASE_PAIRS = (
+    # Qualified outcomes: the qualifier changes the clinical meaning and must not be dropped.
+    ("ischaemic stroke", "iskemik inme"),
+    ("ischemic stroke", "iskemik inme"),
+    ("haemorrhagic stroke", "hemorajik inme"),
+    ("hemorrhagic stroke", "hemorajik inme"),
+    ("intracranial haemorrhage", "intrakraniyal kanama"),
+    ("intracranial hemorrhage", "intrakraniyal kanama"),
+    ("major bleeding", "majör kanama"),
+    ("clinically relevant non-major bleeding", "klinik olarak anlamlı majör olmayan kanama"),
+    ("severe hypoglycaemia", "ciddi hipoglisemi"),
+    ("severe hypoglycemia", "ciddi hipoglisemi"),
+    # Frequent outcomes in the validation sets that had no controlled Turkish name.
+    ("major adverse cardiac or cerebral events", "majör advers kardiyak veya serebral olaylar"),
+    ("necrotizing enterocolitis", "nekrotizan enterokolit"),
+    ("late-onset sepsis", "geç başlangıçlı sepsis"),
+    ("net adverse clinical events", "net advers klinik olaylar"),
+    ("pathological complete response", "patolojik tam yanıt"),
+    ("major pathological response", "majör patolojik yanıt"),
+    ("prior myocardial infarction", "geçirilmiş miyokard enfarktüsü"),
+    ("respiratory complications", "solunum komplikasyonları"),
+    ("serious adverse events", "ciddi advers olaylar"),
+    ("pulmonary tuberculosis", "akciğer tüberkülozu"),
+    ("ocular tuberculosis", "oküler tüberküloz"),
+    ("obstructive stenosis", "obstrüktif darlık"),
+    ("amyloid pathology", "amiloid patolojisi"),
+    ("amyloid positivity", "amiloid pozitifliği"),
+    ("died from any cause", "tüm nedenlere bağlı ölüm"),
+    ("functional independence", "fonksiyonel bağımsızlık"),
+    ("any mental disorder", "herhangi bir ruhsal bozukluk"),
+    ("new macroalbuminuria", "yeni makroalbüminüri"),
+    ("colorectal cancer", "kolorektal kanser"),
+    ("treatment failure", "tedavi başarısızlığı"),
+    ("febrile seizures", "febril nöbetler"),
+    ("tendon rupture", "tendon rüptürü"),
+    ("incident cancer", "yeni tanı kanser"),
+    ("wound healing", "yara iyileşmesi"),
+    ("colon cancer", "kolon kanseri"),
+    ("rectal cancer", "rektum kanseri"),
+    ("hf worsening", "kalp yetersizliğinin kötüleşmesi"),
+    ("macroalbuminuria", "makroalbüminüri"),
+    ("microalbuminuria", "mikroalbüminüri"),
+    ("normoalbuminuria", "normoalbüminüri"),
+    ("pre-eclampsia", "preeklampsi"),
+    ("complications", "komplikasyonlar"),
+    ("epilepsy", "epilepsi"),
+    ("bleeding", "kanama"),
     ("cardiovascular death or first hospitalization for heart failure", "kardiyovasküler ölüm veya kalp yetersizliği nedeniyle ilk hastaneye yatış"),
     ("cardiovascular death or first hospitalisation for heart failure", "kardiyovasküler ölüm veya kalp yetersizliği nedeniyle ilk hastaneye yatış"),
     ("cardiovascular death or hospitalization for heart failure", "kardiyovasküler ölüm veya kalp yetersizliği nedeniyle hastaneye yatış"),
@@ -145,8 +191,8 @@ _PHRASE_PAIRS = (
     ("diabetes mellitus", "diyabet"),
     ("anti-hmgcr antibodies", "anti-HMGCR antikorlar"),
     ("anti-hmgcr antibody", "anti-HMGCR antikoru"),
-    ("necrotizing im", "nekrotizan IM"),
-    ("necrotising im", "nekrotizan IM"),
+    ("necrotizing im", "nekrotizan inflamatuvar miyopati (IM)"),
+    ("necrotising im", "nekrotizan inflamatuvar miyopati (IM)"),
     ("odds ratio", "olasılık oranı (OR)"),
     ("hazard ratio", "tehlike oranı (HR)"),
     ("relative risk", "risk oranı (RR)"),
@@ -591,6 +637,7 @@ _LEFTOVER_ENGLISH = {
 _PASSTHROUGH_FIELDS = {
     "Belirtilmedi",
     "Özette bildirilmedi",
+    "özette bildirilmedi",
     "Özette nicel etki ölçütü bildirilmedi",
     "değerlendirilemedi",
 }
@@ -716,6 +763,16 @@ _GENERIC_OUTCOME_EN = {
     "their", "its", "also", "not", "no", "more", "less", "most", "such",
     "between", "among", "both", "all", "any", "other", "who", "which", "that",
 }
+
+# Acronyms expanded only when needed: these are used unexpanded in Turkish clinical
+# literature and their meaning is fixed in context, so the controlled maps keep the
+# short form. An acronym outside this set must carry a Turkish expansion, e.g.
+# "nekrotizan inflamatuvar miyopati (IM)" (IM alone also reads as intramuscular).
+# "IGA" is the dermatology Investigator Global Assessment; immunoglobulin A is "IgA".
+ESTABLISHED_CLINICAL_ACRONYMS = frozenset({
+    "ACEI", "ARB", "SGLT2", "IVIG", "NMDA", "HMGCR", "İMNM", "İİM", "NYHA",
+    "NRS", "EASI", "IGA", "GGT",
+})
 
 _CLOSED_OUTCOME_ABBREV = {
     "IIM": "İİM",

@@ -1,0 +1,435 @@
+{
+ "summary": {
+  "scored": 43,
+  "matched": 43,
+  "wrong": 0,
+  "missed": 0,
+  "complete_cases": 8,
+  "cases": 8
+ },
+ "cases": [
+  {
+   "pmid": "34449189",
+   "specialty": "Kardiyoloji",
+   "design": "rct",
+   "fields": [
+    {
+     "field": "design",
+     "expected": "rct",
+     "got": "rct",
+     "status": "eşleşti"
+    },
+    {
+     "field": "total_n",
+     "expected": 5988,
+     "got": 5988,
+     "status": "eşleşti"
+    },
+    {
+     "field": "arm_n:empagliflozin",
+     "expected": 2997,
+     "got": [
+      2997,
+      2991
+     ],
+     "status": "eşleşti"
+    },
+    {
+     "field": "arm_n:placebo",
+     "expected": 2991,
+     "got": [
+      2997,
+      2991
+     ],
+     "status": "eşleşti"
+    },
+    {
+     "field": "estimate:HR 0.79 (composite cardiovascular death or hospit)",
+     "expected": "0.79",
+     "got": "HR 0.79",
+     "status": "eşleşti"
+    },
+    {
+     "field": "ci:HR 0.79 (composite cardiovascular death or hospit)",
+     "expected": [
+      "0.69",
+      "0.90"
+     ],
+     "got": [
+      0.69,
+      0.9
+     ],
+     "status": "eşleşti"
+    },
+    {
+     "field": "p:HR 0.79 (composite cardiovascular death or hospit)",
+     "expected": "<0.001",
+     "got": "p < 0.001",
+     "status": "eşleşti"
+    },
+    {
+     "field": "events:415 (composite cardiovascular death)",
+     "expected": 415,
+     "got": [
+      415,
+      511,
+      407,
+      541
+     ],
+     "status": "eşleşti"
+    },
+    {
+     "field": "events:511 (composite cardiovascular death)",
+     "expected": 511,
+     "got": [
+      415,
+      511,
+      407,
+      541
+     ],
+     "status": "eşleşti"
+    },
+    {
+     "field": "estimate:HR 0.73 (total number of hospitalizations for hea)",
+     "expected": "0.73",
+     "got": "HR 0.73",
+     "status": "eşleşti"
+    },
+    {
+     "field": "ci:HR 0.73 (total number of hospitalizations for hea)",
+     "expected": [
+      "0.61",
+      "0.88"
+     ],
+     "got": [
+      0.61,
+      0.88
+     ],
+     "status": "eşleşti"
+    },
+    {
+     "field": "p:HR 0.73 (total number of hospitalizations for hea)",
+     "expected": "<0.001",
+     "got": "p < 0.001",
+     "status": "eşleşti"
+    },
+    {
+     "field": "events:407 (total number of hospitalizatio)",
+     "expected": 407,
+     "got": [
+      415,
+      511,
+      407,
+      541
+     ],
+     "status": "eşleşti"
+    },
+    {
+     "field": "events:541 (total number of hospitalizatio)",
+     "expected": 541,
+     "got": [
+      415,
+      511,
+      407,
+      541
+     ],
+     "status": "eşleşti"
+    }
+   ],
+   "qualitative_not_scored": [],
+   "complete": true
+  },
+  {
+   "pmid": "39416390",
+   "specialty": "Onkoloji",
+   "design": "meta_analysis",
+   "fields": [
+    {
+     "field": "design",
+     "expected": "meta_analysis",
+     "got": "systematic_review_and_meta_analysis",
+     "status": "eşleşti"
+    },
+    {
+     "field": "total_n",
+     "expected": 2833,
+     "got": 2833,
+     "status": "eşleşti"
+    },
+    {
+     "field": "estimate:proportion 71.8% (12-month overall survival for combined a)",
+     "expected": "71.8%",
+     "got": "proportion 71.8%",
+     "status": "eşleşti"
+    },
+    {
+     "field": "ci:proportion 71.8% (12-month overall survival for combined a)",
+     "expected": [
+      "67.6%",
+      "76.2%"
+     ],
+     "got": [
+      67.6,
+      76.2
+     ],
+     "status": "eşleşti"
+    },
+    {
+     "field": "estimate:proportion 35.1% (12-month progression-free survival for c)",
+     "expected": "35.1%",
+     "got": "proportion 35.1%",
+     "status": "eşleşti"
+    },
+    {
+     "field": "ci:proportion 35.1% (12-month progression-free survival for c)",
+     "expected": [
+      "30.5%",
+      "40.4%"
+     ],
+     "got": [
+      30.5,
+      40.4
+     ],
+     "status": "eşleşti"
+    },
+    {
+     "field": "estimate:HR 0.856 (overall survival, anti-PD1 plus anti-CTL)",
+     "expected": "0.856",
+     "got": "HR 0.856",
+     "status": "eşleşti"
+    },
+    {
+     "field": "ci:HR 0.856 (overall survival, anti-PD1 plus anti-CTL)",
+     "expected": [
+      "0.704",
+      "1.04"
+     ],
+     "got": [
+      0.704,
+      1.04
+     ],
+     "status": "eşleşti"
+    }
+   ],
+   "qualitative_not_scored": [],
+   "complete": true
+  },
+  {
+   "pmid": "32113113",
+   "specialty": "Nöroloji",
+   "design": "cohort",
+   "fields": [
+    {
+     "field": "design",
+     "expected": "cohort",
+     "got": "cohort",
+     "status": "eşleşti"
+    },
+    {
+     "field": "total_n",
+     "expected": 302,
+     "got": 302,
+     "status": "eşleşti"
+    },
+    {
+     "field": "estimate:proportion 15.6% (drug-resistant epilepsy)",
+     "expected": "15.6%",
+     "got": "olay sayısı 47 (15.6%)",
+     "status": "eşleşti"
+    },
+    {
+     "field": "events:47 (drug-resistant epilepsy)",
+     "expected": 47,
+     "got": [
+      47
+     ],
+     "status": "eşleşti"
+    }
+   ],
+   "qualitative_not_scored": [
+    {
+     "outcome": "seizures in individuals with developmental delay",
+     "metric": "qualitative association",
+     "estimate": "two times more likely"
+    }
+   ],
+   "complete": true
+  },
+  {
+   "pmid": "17540675",
+   "specialty": "Enfeksiyon hastalıkları",
+   "design": "case_control",
+   "fields": [
+    {
+     "field": "design",
+     "expected": "case_control",
+     "got": "case_control",
+     "status": "eşleşti"
+    },
+    {
+     "field": "total_n",
+     "expected": 903,
+     "got": 903,
+     "status": "eşleşti"
+    },
+    {
+     "field": "estimate:OR 3.91 (ampicillin-resistant E. coli infection a)",
+     "expected": "3.91",
+     "got": "OR 3.91",
+     "status": "eşleşti"
+    },
+    {
+     "field": "ci:OR 3.91 (ampicillin-resistant E. coli infection a)",
+     "expected": [
+      "1.64",
+      "9.34"
+     ],
+     "got": [
+      1.64,
+      9.34
+     ],
+     "status": "eşleşti"
+    },
+    {
+     "field": "estimate:OR 8.44 (trimethoprim-resistant E. coli infection)",
+     "expected": "8.44",
+     "got": "OR 8.44",
+     "status": "eşleşti"
+    },
+    {
+     "field": "ci:OR 8.44 (trimethoprim-resistant E. coli infection)",
+     "expected": [
+      "3.12",
+      "22.86"
+     ],
+     "got": [
+      3.12,
+      22.86
+     ],
+     "status": "eşleşti"
+    }
+   ],
+   "qualitative_not_scored": [],
+   "complete": true
+  },
+  {
+   "pmid": "10218744",
+   "specialty": "Endokrinoloji",
+   "design": "systematic_review",
+   "fields": [
+    {
+     "field": "design",
+     "expected": "systematic_review",
+     "got": "systematic_review",
+     "status": "eşleşti"
+    }
+   ],
+   "qualitative_not_scored": [
+    {
+     "outcome": "prevalence of thyroid disease among inpatients",
+     "metric": "prevalence",
+     "estimate": "approximately 1% to 2%"
+    },
+    {
+     "outcome": "positive likelihood ratio for abnormal sTSH in ill inpatients vs outpatients",
+     "metric": "likelihood ratio",
+     "estimate": "about 10 vs about 100"
+    }
+   ],
+   "complete": true
+  },
+  {
+   "pmid": "37461867",
+   "specialty": "Pediatri",
+   "design": "diagnostic_accuracy",
+   "fields": [
+    {
+     "field": "design",
+     "expected": "diagnostic_accuracy",
+     "got": "diagnostic_accuracy",
+     "status": "eşleşti"
+    },
+    {
+     "field": "total_n",
+     "expected": 126,
+     "got": 126,
+     "status": "eşleşti"
+    },
+    {
+     "field": "estimate:sensitivity 81.5% (sensitivity for categorical ASD diagnosi)",
+     "expected": "81.5%",
+     "got": "sensitivity 81.5%",
+     "status": "eşleşti"
+    },
+    {
+     "field": "estimate:specificity 82.4% (specificity for categorical ASD diagnosi)",
+     "expected": "82.4%",
+     "got": "specificity 82.4%",
+     "status": "eşleşti"
+    }
+   ],
+   "qualitative_not_scored": [],
+   "complete": true
+  },
+  {
+   "pmid": "39071203",
+   "specialty": "Cerrahi",
+   "design": "case_series",
+   "fields": [
+    {
+     "field": "design",
+     "expected": "case_series",
+     "got": "case_series",
+     "status": "eşleşti"
+    },
+    {
+     "field": "total_n",
+     "expected": 56,
+     "got": 56,
+     "status": "eşleşti"
+    }
+   ],
+   "qualitative_not_scored": [
+    {
+     "outcome": "patient-reported symptom resolution or improvement after surgery",
+     "metric": "proportion",
+     "estimate": "100% of respondents"
+    }
+   ],
+   "complete": true
+  },
+  {
+   "pmid": "31732398",
+   "specialty": "Radyoloji",
+   "design": "diagnostic_accuracy",
+   "fields": [
+    {
+     "field": "design",
+     "expected": "diagnostic_accuracy",
+     "got": "diagnostic_accuracy",
+     "status": "eşleşti"
+    },
+    {
+     "field": "total_n",
+     "expected": 48,
+     "got": 48,
+     "status": "eşleşti"
+    },
+    {
+     "field": "estimate:sensitivity 100% (cervical rib diagnosis)",
+     "expected": "100%",
+     "got": "sensitivity 100%",
+     "status": "eşleşti"
+    },
+    {
+     "field": "estimate:specificity 100% (cervical rib diagnosis)",
+     "expected": "100%",
+     "got": "specificity 100%",
+     "status": "eşleşti"
+    }
+   ],
+   "qualitative_not_scored": [],
+   "complete": true
+  }
+ ]
+}

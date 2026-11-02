@@ -243,7 +243,7 @@ Sağlık bilişimi ve yapay zeka uygulamalarında veri güvenliği, hasta gizlil
 - **Kapsam Sınırı**: Kullanıcı girdilerinden doğrudan URL/IP fetch edilmez; bu, dağıtım katmanındaki ağ yalıtımı veya tüm SSRF risklerinin bağımsız denetimi yerine geçmez.
 
 ### 6.8. Otomatik Testler ve Canlı NCBI Kontrolü
-- **Otomatik Testler**: `tests/` içindeki pytest paketi `.github/workflows/ci.yml` ile `main`/`master` push ve pull request'lerinde Python 3.12 üzerinde çalıştırılır. Bu testler tek başına klinik doğrulama değildir.
+- **Otomatik Testler**: `tests/` içindeki pytest paketi `.github/workflows/ci.yml` ile `main`/`master` push ve pull request'lerinde Python 3.11 ve 3.12 üzerinde çalıştırılır. Bu testler tek başına klinik doğrulama değildir.
 - **Canlı NCBI Kontrolü**: `live_ncbi_validation.py`, sınırlı ESearch/EFetch ve kayıt kimliği smoke testidir; güvenlik denetimi veya klinik doğrulama değildir. GitHub Actions iş akışı haftalık ve elle çalıştırılır, sonuç JSON'unu run artifact'i olarak yükler; depodaki JSON otomatik güncellenmez. İş akışı Python 3.12 kullanır ve bağımlılıkları `requirements.lock` dosyasından kurar. `NCBI_EMAIL` depo sırrı **Settings > Secrets and variables > Actions** altında tanımlanabilir; sır yoksa iş `::warning::` yazar.
 
 ---
@@ -276,12 +276,13 @@ Depo kök dizinindeki `all_specialty_matrix.json`, 88 uzmanlık etiketi ve anaht
 | `StudyArm` | Kol adı, kol sayısı, rolü |
 | `Intervention` / `Comparator` / `CoTreatment` | Müdahale veya maruziyet, karşılaştırıcı, eşlik eden tedavi (müdahale sayılmaz) |
 | `EventCount` | Olay sayısı / payda / yüzde — örneklemle karışmaz |
-| `EffectEstimate` | Ölçüt, nokta tahmini, GA ve düzeyi, p, sonlanım, alt grup, doğrulama durumu |
+| `EffectEstimate` | Ölçüt, nokta tahmini, GA ve düzeyi, p, sonlanım, alt grup, doğrulama durumu ve varsa kaynak cümlesine bağlı takip zaman noktası |
+| `FollowUpTimepoint` | Sayısal değer, standart birim, kaynakta kullanılan ifade ve aynı doğrulanmış kaynak cümlesi; belirsiz/çoklu zaman noktası `null` kalır |
 | `EvidenceSource` | PMID, DOI, birebir kaynak cümle, doğrulama durumu |
 | `RiskOfBiasAssessment` / `CertaintyAssessment` | Araç seçilir; değerlendirme yapılmadıkça `not_assessed` |
 | `StudyRelation` | İkincil analiz, ara/güncel analiz, uzatılmış takip, meta-analizin içerdiği çalışma |
 
-Kurallar: eksik değer atanmaz; güven aralığı nokta tahminini içermiyorsa tahmin reddedilir; nedensel dil yalnızca randomize karşılaştırmalarda kullanılır; aynı kayıt numarasını veya çalışma kısaltmasını paylaşan yayınlar tek kanıt birimi sayılır.
+Kurallar: eksik değer atanmaz; güven aralığı nokta tahminini içermiyorsa tahmin reddedilir; takip zamanı yalnızca tek ve doğrulanmış kaynak cümlesinden çıkarılır; nedensel dil yalnızca randomize karşılaştırmalarda kullanılır. Bir çalışma ailesi ancak rapor rolü, açık ilişkisel ifade, tekil ebeveyn ve ortak kayıt/kısaltma kimliği birlikte varsa bağlanır. Ortak kimlik veya başlık benzerliği tek başına kümeleri birleştirmez; belirsiz türetilmiş yayınlar bağımsız birincil birim sayılmaz.
 
 `question_framework.py` soru türünü (tedavi, tanı, prognoz, tarama, etiyoloji, epidemiyoloji, cerrahi, güvenlilik, sağlık hizmetleri) belirler ve uygun çerçeveyi (PICO, PIRD, PFO, PECO, CoCoPop, SPICE) yalnızca sorgu metninden doldurur.
 
