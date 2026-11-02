@@ -91,13 +91,18 @@ def _is_table_divider(line: str) -> bool:
     return bool(clean and all(c in "-: |" for c in clean))
 
 
-def _extract_auditable_lines(report_text: str) -> List[tuple[int, str, str]]:
-    """Return list of (line_num, line_text, block_name) skipping bibliography."""
+def _extract_auditable_lines(report_text: str) -> List[tuple[int, str, str, bool]]:
+    """Return list of (line_num, line_text, block_name, is_table_header) skipping bibliography.
+
+    A line is marked as a table header (`is_table_header=True`) if it is immediately followed
+    by a markdown table separator line (|---|).
+    """
     lines = report_text.splitlines()
-    auditable: List[tuple[int, str, str]] = []
+    auditable: List[tuple[int, str, str, bool]] = []
     current_block = "Giriş"
     in_bibliography = False
 
+    total_lines = len(lines)
     for idx, raw_line in enumerate(lines, start=1):
         line = raw_line.strip()
         if not line:
@@ -122,7 +127,20 @@ def _extract_auditable_lines(report_text: str) -> List[tuple[int, str, str]]:
         if _is_table_divider(line):
             continue
 
-        auditable.append((idx, raw_line, current_block))
+        # Check if this line is a markdown table header (immediately followed by a table divider)
+        is_header = False
+        if line.startswith("|"):
+            # Check the next non-empty line
+            next_idx = idx  # idx is 1-based, lines[idx] is the next line in 0-based indexing
+            while next_idx < total_lines:
+                next_line = lines[next_idx].strip()
+                if next_line:
+                    if _is_table_divider(next_line):
+                        is_header = True
+                    break
+                next_idx += 1
+
+        auditable.append((idx, raw_line, current_block, is_header))
 
     return auditable
 
@@ -135,20 +153,21 @@ def check_raw_english_sentences(report_text: str) -> List[Dict[str, Any]]:
       - Direct quotes ("> ...", or text in double quotes)
       - Bibliography / references sections
       - Headers (#, ##, ###)
+      - Table header rows (followed by |---| divider)
       - Citation links / author lines in tables if purely metadata
     """
     findings: List[Dict[str, Any]] = []
     auditable_lines = _extract_auditable_lines(report_text)
 
-    for line_num, raw_line, block in auditable_lines:
+    for line_num, raw_line, block, is_table_header in auditable_lines:
         line = raw_line.strip()
 
         # Skip markdown quotes
         if line.startswith(">"):
             continue
 
-        # Skip table headers
-        if line.startswith("|") and any(h in line.lower() for h in ["pmid", "doi", "yazar", "çalışma", "tasarım"]):
+        # Skip table headers (only the row immediately preceding table divider |---|)
+        if is_table_header:
             continue
 
         # Remove "Kaynak cümle: ..." patterns (e.g. Kaynak cümle: "...", Kaynak cümle yok)
@@ -240,7 +259,7 @@ def check_duplicate_lines_in_block(report_text: str) -> List[Dict[str, Any]]:
 
     # Group lines by block
     blocks: Dict[str, List[tuple[int, str]]] = {}
-    for line_num, line_text, block in auditable_lines:
+    for line_num, line_text, block, _ in auditable_lines:
         clean = line_text.strip()
         # Skip empty or very short or generic lines
         if len(clean) < 15 or _is_table_divider(clean):
@@ -356,7 +375,7 @@ def check_raw_english_ci(report_text: str) -> List[Dict[str, Any]]:
         re.IGNORECASE,
     )
 
-    for line_num, raw_line, block in auditable_lines:
+    for line_num, raw_line, block, _ in auditable_lines:
         line = raw_line.strip()
         # Remove quotes
         line_no_quotes = re.sub(r'\"[^\"]*\"', '', line)

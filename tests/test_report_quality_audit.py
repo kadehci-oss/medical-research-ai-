@@ -61,6 +61,34 @@ class TestRawEnglishSentencesRule(unittest.TestCase):
         findings = check_raw_english_sentences(text)
         self.assertEqual(len(findings), 0)
 
+    def test_table_header_not_flagged(self):
+        text = (
+            "| PMID | Hasta grubu | Tasarım |\n"
+            "|---|---|---|\n"
+            "| [PMID: 123](https://pubmed.ncbi.nlm.nih.gov/123/) | Kalp yetersizliği hastaları | Randomize kontrollü çalışma |\n"
+        )
+        findings = check_raw_english_sentences(text)
+        self.assertEqual(len(findings), 0)
+
+    def test_table_data_row_turkish_with_pmid_not_flagged(self):
+        text = (
+            "| PMID | Hasta grubu | Temel Bulgular |\n"
+            "|---|---|---|\n"
+            "| [PMID: 12345678](https://pubmed.ncbi.nlm.nih.gov/12345678/) | Statin ilişkili kas ağrısı olan hastalar | Tedavi sonrası semptomlarda belirgin gerileme izlenmiştir |\n"
+        )
+        findings = check_raw_english_sentences(text)
+        self.assertEqual(len(findings), 0)
+
+    def test_table_data_row_with_pmid_and_raw_english_is_flagged(self):
+        text = (
+            "| PMID | Hasta grubu | Temel Bulgular |\n"
+            "|---|---|---|\n"
+            "| [PMID: 123](https://pubmed.ncbi.nlm.nih.gov/123/) | Kalp hastaları | The treatment was associated with improved outcomes in patients |\n"
+        )
+        findings = check_raw_english_sentences(text)
+        self.assertGreaterEqual(len(findings), 1)
+        self.assertIn("treatment was associated with improved outcomes", findings[0]["text"])
+
 
 class TestConsecutiveDuplicateWordsRule(unittest.TestCase):
     def test_positive_duplicate_words_detected(self):
