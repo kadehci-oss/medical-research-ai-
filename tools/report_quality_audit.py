@@ -24,13 +24,54 @@ ENGLISH_FUNCTION_WORDS: Set[str] = {
     "significantly", "controlled", "randomized", "increase", "decrease"
 }
 
-P_VALUE_REGEX = re.compile(
-    r"\b[pP]\s*([<=<>]|==|değeri)?\s*0?\.0\d+\b|"
-    r"\b[pP]\s*<\s*0\.05\b|"
-    r"\b[pP]\s*=\s*0\.0[0-4]\d*\b|"
-    r"\b[pP]\s*=\s*0\.00\b|"
-    r"\b[pP]\s*<0\.05\b"
+P_SIGNIFICANCE_THRESHOLD: float = 0.05
+
+P_VALUE_PARSE_REGEX = re.compile(
+    r"\b[pP](?:\s*değeri)?\s*(<=|>=|==|<|>|≤|≥|=)\s*(0?\.\d+|\d+(?:\.\d+)?)\b"
 )
+
+
+def parse_p_values(text: str) -> List[tuple[str, float]]:
+    """Extract p-value (operator, numeric_value) tuples from text."""
+    results: List[tuple[str, float]] = []
+    for match in P_VALUE_PARSE_REGEX.finditer(text):
+        op = match.group(1).strip()
+        val_str = match.group(2).strip()
+        try:
+            val = float(val_str)
+            results.append((op, val))
+        except ValueError:
+            continue
+    return results
+
+
+def is_statistically_significant_p(
+    op: str,
+    val: float,
+    threshold: float = P_SIGNIFICANCE_THRESHOLD,
+) -> bool:
+    """Evaluate whether an operator and p-value represent a statistically significant result.
+
+    E.g.
+      - p < 0.05, p <= 0.05, p ≤ 0.05, p = 0.03 -> True
+      - p = 0.050, p = 0.08, p > 0.05, p >= 0.05 -> False
+    """
+    if op in ("<", "<=", "≤"):
+        return val <= threshold
+    if op in ("=", "=="):
+        return val < threshold
+    return False
+
+
+def has_significant_p_value(
+    text: str,
+    threshold: float = P_SIGNIFICANCE_THRESHOLD,
+) -> bool:
+    """Return True if text contains at least one statistically significant p-value."""
+    for op, val in parse_p_values(text):
+        if is_statistically_significant_p(op, val, threshold):
+            return True
+    return False
 
 
 def _strip_markdown_formatting(text: str) -> str:
@@ -263,7 +304,7 @@ def check_significance_contradictions(report_text: str) -> List[Dict[str, Any]]:
     # Contradiction where outcome/significance is stated as unevaluated while low p is provided
     # Avoid false matching 'kanıt düzeyi: Değerlendirilemedi' or 'Yanlılık riski: değerlendirilemedi'
     unevaluated_significance_regex = re.compile(
-        r"(anlamlılık\s+değerlendirilemedi|(?:sonlanım|etki|istatistik)(?:\s+ve\s+istatistik)?:\s*değerlendirilemedi|değerlendirilemedi\s*\([^)]*p\s*[<==]\s*0\.0)",
+        r"(anlamlılık\s+değerlendirilemedi|(?:sonlanım|etki|istatistik)(?:\s+ve\s+istatistik)?:\s*değerlendirilemedi|\bdeğerlendirilemedi\b)",
         re.IGNORECASE,
     )
 
@@ -276,18 +317,21 @@ def check_significance_contradictions(report_text: str) -> List[Dict[str, Any]]:
             if not item_clean:
                 continue
 
-            has_p_sig = bool(P_VALUE_REGEX.search(item_clean))
+            has_p_sig = has_significant_p_value(item_clean)
+            if not has_p_sig:
+                continue
+
             has_not_sig = bool(not_significant_regex.search(item_clean))
             has_unevaluated = bool(unevaluated_significance_regex.search(item_clean))
 
-            if has_p_sig and has_not_sig:
+            if has_not_sig:
                 findings.append({
                     "line_num": idx,
                     "type": "not_significant_with_low_p",
                     "text": item_clean,
                     "critical": True,
                 })
-            elif has_p_sig and has_unevaluated:
+            elif has_unevaluated:
                 findings.append({
                     "line_num": idx,
                     "type": "unevaluated_with_low_p",
