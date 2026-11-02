@@ -68,7 +68,7 @@ class TestPubMedClient(unittest.TestCase):
 
     def test_build_author_search_query_uses_full_author_field(self):
         query = build_author_search_query("  John   Paul ", "O’Neil-Smith ")
-        self.assertEqual(query, "John Paul O’Neil-Smith[FAU]")
+        self.assertEqual(query, '"John Paul O’Neil-Smith"[FAU]')
 
     def test_build_author_search_query_rejects_query_syntax(self):
         for first_name, last_name in (("John[AU]", "Smith"), ("John", "Smith OR cancer"), ("", "Smith")):

@@ -34,7 +34,7 @@ def build_author_search_query(first_name: str, last_name: str) -> str:
                 "Ad ve soyad yalnızca harf, boşluk, kesme işareti veya tire içerebilir."
             )
         parts.append(normalized)
-    return f"{parts[0]} {parts[1]}[FAU]"
+    return f'"{parts[0]} {parts[1]}"[FAU]'
 
 
 # Non-personal fallback for the tool name. Operators should set NCBI_EMAIL.

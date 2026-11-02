@@ -414,7 +414,12 @@ def main():
         st.subheader("Türkçe Klinik Kanıt Raporu ve Yapılandırılmış Kanıt Tablosu Engine")
         st.write("PubMed arama sonuçlarından çalışma tasarımları, ön kanıt notları, güvenlik denetimi ve indirilebilir araştırma raporları üretin.")
 
-        if "search_results" in st.session_state and st.session_state["search_results"].get("articles"):
+        if st.session_state.get("active_search_mode") == "author":
+            st.info(
+                "Araştırmacı sonuçlarından klinik kanıt raporu üretilmez. "
+                "Klinik rapor için konu/terim araması yapın."
+            )
+        elif "search_results" in st.session_state and st.session_state["search_results"].get("articles"):
             articles = st.session_state["search_results"]["articles"]
             query = st.session_state.get("active_query", "Klinik Araştırma")
 

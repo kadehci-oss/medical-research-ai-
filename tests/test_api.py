@@ -46,7 +46,7 @@ class TestFastAPIApp(unittest.TestCase):
         mock_search.return_value = {
             "articles": [],
             "total_count": 0,
-            "query": "Jane Doe[FAU]",
+            "query": '"Jane Doe"[FAU]',
         }
 
         response = client.get(
@@ -55,7 +55,7 @@ class TestFastAPIApp(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         mock_search.assert_called_once_with(
-            query="Jane Doe[FAU]",
+            query='"Jane Doe"[FAU]',
             max_results=3,
             retstart=0,
             sort="relevance",
