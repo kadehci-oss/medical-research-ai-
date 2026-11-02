@@ -143,6 +143,26 @@ class TestAppRegression(unittest.TestCase):
         has_version_caption = any("Sürüm:" in cap and "Commit:" in cap for cap in sidebar_captions)
         self.assertTrue(has_version_caption, f"Expected version/commit caption in sidebar, got: {sidebar_captions}")
 
+    @patch("pubmed_client.search_pubmed")
+    def test_author_search_ui_queries_by_full_researcher_name(self, mock_search):
+        mock_search.return_value = {
+            "articles": [],
+            "total_count": 0,
+            "query": "Jane Doe[FAU]",
+            "search_date": "2026-11-02",
+        }
+        at = AppTest.from_file(os.path.abspath("app.py"), default_timeout=15)
+        at.run()
+        at.radio[0].set_value("Araştırmacı adı-soyadı").run()
+        inputs_by_label = {item.label: item for item in at.text_input}
+        inputs_by_label["Araştırmacının adı"].input("Jane")
+        inputs_by_label["Araştırmacının soyadı"].input("Doe")
+        next(button for button in at.button if "Ara" in button.label).click().run()
+
+        self.assertEqual(mock_search.call_args.kwargs["query"], "Jane Doe[FAU]")
+        self.assertEqual(at.session_state["active_search_label"], "Jane Doe")
+        self.assertEqual(at.session_state["active_search_mode"], "author")
+
     def test_openai_data_transfer_is_disabled_by_default(self):
         with patch.dict(os.environ, {"OPENAI_API_KEY": "test-key"}):
             at = AppTest.from_file(os.path.abspath("app.py"), default_timeout=10)

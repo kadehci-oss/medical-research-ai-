@@ -2,7 +2,13 @@ from fastapi import FastAPI, Query, HTTPException, Body
 from typing import Optional, List, Dict, Any, Literal
 from pydantic import BaseModel, Field
 
-from pubmed_client import search_pubmed, verify_pmid, verify_doi, verify_citation
+from pubmed_client import (
+    build_author_search_query,
+    search_pubmed,
+    verify_pmid,
+    verify_doi,
+    verify_citation,
+)
 from evidence_guards import retraction_status  # [mrai-fixes]
 from universal_evidence_engine import UniversalEvidenceEngine, run_universal_evidence_search, generate_universal_evidence_synthesis
 from report_generator import (
@@ -137,6 +143,41 @@ def api_search_pubmed(
         publication_type=publication_type,
         start_year=start_year,
         end_year=end_year
+    )
+    if "error" in result and not result.get("articles"):
+        raise HTTPException(
+            status_code=502,
+            detail="PubMed araması tamamlanamadı. Sorgu biçimini kontrol edin veya daha sonra tekrar deneyin.",
+        )
+    return result
+
+
+@app.get("/api/search/author")
+def api_search_author(
+    first_name: str = Query(..., min_length=1, max_length=100, description="Researcher's first name"),
+    last_name: str = Query(..., min_length=1, max_length=100, description="Researcher's last name"),
+    max_results: int = Query(10, ge=1, le=50, description="Max results to return"),
+    retstart: int = Query(0, ge=0, le=9999, description="Zero-based PubMed result offset"),
+    sort: Literal["relevance", "pub_date"] = Query("relevance", description="Sort order: relevance or pub_date"),
+    publication_type: Optional[str] = Query("Tümü", max_length=100, description="Filter by publication type"),
+    start_year: Optional[int] = Query(None, ge=1800, le=2100, description="Start publication year"),
+    end_year: Optional[int] = Query(None, ge=1800, le=2100, description="End publication year"),
+):
+    """Search PubMed by a researcher's first and last name using the FAU field."""
+    try:
+        query = build_author_search_query(first_name, last_name)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    if start_year is not None and end_year is not None and start_year > end_year:
+        raise HTTPException(status_code=422, detail="start_year end_year değerinden büyük olamaz.")
+    result = search_pubmed(
+        query=query,
+        max_results=max_results,
+        retstart=retstart,
+        sort=sort,
+        publication_type=publication_type,
+        start_year=start_year,
+        end_year=end_year,
     )
     if "error" in result and not result.get("articles"):
         raise HTTPException(

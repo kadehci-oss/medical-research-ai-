@@ -3,6 +3,7 @@ import unittest
 import requests
 from unittest.mock import patch, MagicMock
 from pubmed_client import (
+    build_author_search_query,
     parse_pubmed_xml,
     PubMedXMLParseError,
     search_pubmed,
@@ -64,6 +65,16 @@ SAMPLE_PUBMED_XML = """<?xml version="1.0" encoding="UTF-8"?>
 """
 
 class TestPubMedClient(unittest.TestCase):
+
+    def test_build_author_search_query_uses_full_author_field(self):
+        query = build_author_search_query("  John   Paul ", "O’Neil-Smith ")
+        self.assertEqual(query, "John Paul O’Neil-Smith[FAU]")
+
+    def test_build_author_search_query_rejects_query_syntax(self):
+        for first_name, last_name in (("John[AU]", "Smith"), ("John", "Smith OR cancer"), ("", "Smith")):
+            with self.subTest(first_name=first_name, last_name=last_name):
+                with self.assertRaises(ValueError):
+                    build_author_search_query(first_name, last_name)
 
     def test_parse_pubmed_xml(self):
         articles = parse_pubmed_xml(SAMPLE_PUBMED_XML)

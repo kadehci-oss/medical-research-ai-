@@ -19,6 +19,24 @@ PUBMED_EFETCH_URL = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi"
 CROSSREF_API_URL = "https://api.crossref.org/works/"
 MAX_ESEARCH_RESULT_WINDOW = 10_000
 
+
+def build_author_search_query(first_name: str, last_name: str) -> str:
+    """Build PubMed's supported natural-order full-author-name query ([FAU])."""
+    parts = []
+    for value in (first_name, last_name):
+        if not isinstance(value, str):
+            raise ValueError("Araştırmacının adı ve soyadı metin olmalıdır.")
+        normalized = " ".join(value.split())
+        if not normalized or not re.fullmatch(
+            r"[^\W\d_]+(?:[ '\u2019-][^\W\d_]+)*", normalized, flags=re.UNICODE
+        ) or any(token.upper() in {"AND", "OR", "NOT"} for token in normalized.split()):
+            raise ValueError(
+                "Ad ve soyad yalnızca harf, boşluk, kesme işareti veya tire içerebilir."
+            )
+        parts.append(normalized)
+    return f"{parts[0]} {parts[1]}[FAU]"
+
+
 # Non-personal fallback for the tool name. Operators should set NCBI_EMAIL.
 DEFAULT_NCBI_TOOL = "MedicalResearchAI"
 
