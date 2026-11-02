@@ -330,23 +330,32 @@ def check_raw_english_ci(report_text: str) -> List[Dict[str, Any]]:
     return findings
 
 
+def _turkish_lower(text: str) -> str:
+    """Case-fold Turkish text handling dotted/dotless I correctly."""
+    return text.replace("İ", "i").replace("I", "ı").lower()
+
+
 def check_expert_review_claim(report_text: str) -> List[Dict[str, Any]]:
     """Detect claims that expert physician evaluation was done/completed.
 
-    The expected statement is 'Yapılmadı' / 'yapılmamıştır'. Any claim of completion
-    ('yapıldı', 'onaylandı', 'tamamlandı' for expert physician review) is a CRITICAL violation.
+    The expected statement is 'Yapılmadı' / 'yapılmamıştır' / 'tamamlanmadı'. Any claim of completion
+    ('yapıldı', 'onaylandı', 'tamamlandı', 'alındı', 'yapılmıştır', 'tamamlanmıştır', 'onaylanmıştır')
+    for expert physician review is a CRITICAL violation.
     """
     findings: List[Dict[str, Any]] = []
     lines = report_text.splitlines()
 
     claim_pattern = re.compile(
-        r"uzman\s+hekim\s+(?:değerlendirmesi|incelemesi|görüşü|onayı)\s*:\s*(?!yapılmadı|yapılmamıştır)(?:yapıldı|tamamlandı|alındı|onaylandı|var)\b|"
-        r"uzman\s+hekim\s+(?:değerlendirmesi|incelemesi|tarafından)\s+(?:yapılmıştır|tamamlanmıştır|onaylanmıştır)\b",
-        re.IGNORECASE,
+        r"uzman\s+hekim\s+(?:değerlendirmesi|incelemesi|görüşü|onayı|tarafından)"
+        r"(?:\s*:\s*|\s+)"
+        r"(?!yapılmadı|yapılmamıştır|tamamlanmadı|tamamlanmamıştır|alınmadı|alınmamıştır|onaylanmadı|onaylanmamıştır|yoktur|yok\b)"
+        r"(?:yapıldı|tamamlandı|alındı|onaylandı|yapılmıştır|tamamlanmıştır|onaylanmıştır|var)\b"
     )
 
     for idx, raw_line in enumerate(lines, start=1):
-        if claim_pattern.search(raw_line):
+        cleaned_line = _strip_markdown_formatting(raw_line)
+        normalized_line = _turkish_lower(cleaned_line)
+        if claim_pattern.search(normalized_line):
             findings.append({
                 "line_num": idx,
                 "line": raw_line.strip(),

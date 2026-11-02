@@ -168,10 +168,33 @@ class TestExpertReviewClaimRule(unittest.TestCase):
         self.assertEqual(len(findings), 1)
         self.assertTrue(findings[0]["critical"])
 
+    def test_positive_expert_review_claimed_without_colon_regression(self):
+        cases = [
+            "Uzman hekim incelemesi tamamlandı.",
+            "Uzman hekim değerlendirmesi yapıldı",
+            "uzman hekim tarafından onaylandı",
+            "UZMAN HEKİM İNCELEMESİ TAMAMLANDI",
+        ]
+        for c in cases:
+            findings = check_expert_review_claim(c)
+            self.assertEqual(len(findings), 1, f"Failed to detect claim in: {c}")
+            self.assertTrue(findings[0]["critical"])
+
     def test_negative_expert_review_not_done(self):
         text = "Uzman Hekim Değerlendirmesi: Yapılmadı. Uzman hekim değerlendirmesi yapılmamıştır."
         findings = check_expert_review_claim(text)
         self.assertEqual(len(findings), 0)
+
+    def test_negative_expert_review_not_done_regression(self):
+        cases = [
+            "Uzman hekim değerlendirmesi: Yapılmadı",
+            "Uzman hekim değerlendirmesi yapılmamıştır",
+            "Uzman hekim değerlendirmesi tamamlanmadı",
+            "Uzman hekim incelemesi yapılmadı",
+        ]
+        for c in cases:
+            findings = check_expert_review_claim(c)
+            self.assertEqual(len(findings), 0, f"False positive detected in: {c}")
 
 
 class TestEngineReportQualityIntegration(unittest.TestCase):
