@@ -6110,11 +6110,11 @@ def _intervention_comparison_cell(
     abstract: str = "",
     title: str = "",
 ) -> str:
-    """Reported intervention names. The same names feed the matrix PICO line.
+    """Reported intervention names from the abstract for section 6.
 
-    A disease name is not an intervention. Recognized drugs in the title or in
-    an effect/allocation sentence are included so the column is not left blank
-    when the matrix names that drug.
+    Include recognized drugs across reported treatment sentences, without
+    adding names supported only by the title. The title argument is retained
+    for compatibility but does not supply section 6 treatments.
     """
     arms = _trial_arm_label(abstract)
     if arms:
@@ -6128,7 +6128,7 @@ def _intervention_comparison_cell(
             drug = part.strip()
             if drug and not _label_already_listed(drug, drugs):
                 drugs.append(drug)
-    for name in _recognized_study_interventions(abstract, title):
+    for name in _recognized_study_interventions(abstract, ""):
         if not _label_already_listed(name, drugs):
             drugs.append(name)
     comparator = _explicit_comparator(abstract)
@@ -6161,6 +6161,9 @@ def _format_cross_study_comparison(articles: List[Dict[str, Any]], pico: Optiona
             art.get("abstract", ""),
         )
         profile = extract_clinical_profile(art.get("abstract") or "")
+        intervention_cell = _intervention_comparison_cell(
+            profile, art.get("abstract") or "",
+        )
         findings = structured_findings(art) if art.get("abstract") else []
         finding_bits = []
         seen_findings = set()
@@ -6188,8 +6191,13 @@ def _format_cross_study_comparison(articles: List[Dict[str, Any]], pico: Optiona
                 bit += f" {INCONSISTENT_SOURCE_FLAG}"
             _remember(bit)
         for item in profile:
+            if item["category"] == "treatment":
+                # Both cells use the complete abstract-grounded treatment list.
+                if intervention_cell != "özette bildirilmedi":
+                    _remember("Tedavi: " + intervention_cell + ".")
+                continue
             if item["category"] in (
-                "ck", "treatment", "course", "qualitative", "biomarker",
+                "ck", "course", "qualitative", "biomarker",
                 "diagnosis", "attribution_unclear",
             ):
                 shown = localize_clinical_display(item["line"], drop_unknown=False)
@@ -6207,11 +6215,7 @@ def _format_cross_study_comparison(articles: List[Dict[str, Any]], pico: Optiona
                 patient=_cell(sample_cell, limit=500),
                 design=_cell(details.get("study_design") or design["design"]),
                 intervention=_cell(
-                    _intervention_comparison_cell(
-                        profile,
-                        art.get("abstract") or "",
-                        art.get("title") or "",
-                    ),
+                    intervention_cell,
                     limit=500,
                 ),
                 findings=_findings_cell("; ".join(finding_bits)),
