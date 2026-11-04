@@ -8,6 +8,17 @@ from report_generator import generate_rule_based_turkish_report, validate_clinic
 
 THERAPY_QUERY = "metformin versus placebo in adults with type 2 diabetes on HbA1c"
 
+
+def _tr_lower(text):
+    """Lowercase with Turkish dotted/dotless I rules (str.lower/casefold get them wrong)."""
+    return text.replace("I", "ı").replace("İ", "i").lower()
+
+
+# Wordings that would promise the reader a verification switch the report does not offer.
+_SWITCH_PROMISES = ("doğrulamayı aç", "doğrulamasını aç", "doğrulamayı etkinleştir",
+                    "doğrulamasını etkinleştir", "doğrulamayı başlat",
+                    "verify_mesh", "mesh_lookup")
+
 ARTICLES = [
     {
         "pmid": "34449189",
@@ -47,6 +58,23 @@ class TestBuildSearchPlan(unittest.TestCase):
         self.assertEqual(plan["mesh_status"], "doğrulanmadı")
         self.assertNotIn("[MeSH Terms]", plan["suggested_query"])
         self.assertTrue(all(not c["mesh_headings"] for c in plan["concepts"]))
+
+    def test_unverified_mesh_note_does_not_promise_a_switch_the_report_lacks(self):
+        # Without a lookup the plan is built offline, so the note may only ask the
+        # reader to check MeSH themselves, never point to a switch to turn on.
+        with patch.object(search_plan, "lookup_mesh_headings",
+                          side_effect=AssertionError("default plan must not look up MeSH")):
+            plan = search_plan.build_search_plan(THERAPY_QUERY)
+        self.assertEqual(plan["mesh_status"], "doğrulanmadı")
+        self.assertIn("doğrulayın", _tr_lower(plan["mesh_note"]))
+        self.assertNoSwitchPromise(plan["mesh_note"])
+        text = search_plan.render_search_plan_markdown(plan, include_executed=False, include_table_template=False)
+        self.assertIn(plan["mesh_note"], text)
+
+    def assertNoSwitchPromise(self, text):
+        lowered = _tr_lower(text)
+        for phrase in _SWITCH_PROMISES:
+            self.assertNotIn(phrase, lowered)
 
     def test_mesh_headings_from_lookup_are_added(self):
         def fake_lookup(term):
@@ -174,6 +202,24 @@ class TestReportIntegration(unittest.TestCase):
         self.assertEqual(quality["missing_sections"], [])
         self.assertEqual(quality["detected_false_claims"], [])
         self.assertTrue(quality["valid"])
+
+    @patch("report_generator.verify_citation")
+    def test_report_builds_plan_offline_with_unverified_mesh_note(self, mock_verify):
+        # The report must not look MeSH up (no network for the plan) and must tell the
+        # reader the headings are unverified, without promising a switch it lacks.
+        mock_verify.return_value = {"status": "verified", "verified": True, "pmid": "34449189", "reason": "match"}
+        with patch("search_plan.lookup_mesh_headings") as mock_lookup, \
+                patch("pubmed_client._get_with_retry") as mock_http:
+            report = generate_rule_based_turkish_report("SGLT2 inhibitors in heart failure", ARTICLES)
+        mock_lookup.assert_not_called()
+        mock_http.assert_not_called()
+        plan_block = report[report.index("### 🔎 Arama Planı"):report.index("## 4. Klinik Arka Plan ve Patofizyoloji")]
+        self.assertIn("**MeSH durumu:** doğrulanmadı.", plan_block)
+        self.assertIn("kendiniz doğrulayın", plan_block)
+        self.assertNotIn("[MeSH Terms]", plan_block)
+        lowered = _tr_lower(plan_block)
+        for phrase in _SWITCH_PROMISES:
+            self.assertNotIn(phrase, lowered)
 
     @patch("report_generator.verify_citation")
     def test_report_survives_plan_failure(self, mock_verify):
