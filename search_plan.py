@@ -216,8 +216,7 @@ def build_search_plan(
 
     if lookup is None:
         mesh_status = "doğrulanmadı"
-        mesh_note = ("MeSH başlıkları tahmin edilmedi. PubMed'in MeSH veri tabanında kendiniz doğrulayın "
-                     "veya doğrulamayı açın.")
+        mesh_note = "MeSH başlıkları tahmin edilmedi; PubMed'in MeSH veri tabanında kendiniz doğrulayın."
     elif any(c["mesh_headings"] for c in searched):
         mesh_status = "PubMed terim eşleştirmesinden alındı"
         mesh_note = "Başlıklar PubMed'in otomatik terim eşleştirmesinden geldi; MeSH veri tabanında yine de kontrol edin."

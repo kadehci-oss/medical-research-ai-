@@ -48,6 +48,15 @@ class TestBuildSearchPlan(unittest.TestCase):
         self.assertNotIn("[MeSH Terms]", plan["suggested_query"])
         self.assertTrue(all(not c["mesh_headings"] for c in plan["concepts"]))
 
+    def test_unverified_mesh_note_does_not_promise_a_switch_the_report_lacks(self):
+        # The report builds the plan offline and has no switch to turn verification on,
+        # so the wording must only tell the reader to check MeSH themselves.
+        plan = search_plan.build_search_plan(THERAPY_QUERY)
+        self.assertNotIn("açın", plan["mesh_note"])
+        self.assertIn("kendiniz doğrulayın", plan["mesh_note"])
+        text = search_plan.render_search_plan_markdown(plan, include_executed=False, include_table_template=False)
+        self.assertNotIn("doğrulamayı aç", text)
+
     def test_mesh_headings_from_lookup_are_added(self):
         def fake_lookup(term):
             return ["Diabetes Mellitus, Type 2"] if "diabetes" in term.lower() else []
