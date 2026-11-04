@@ -82,6 +82,7 @@ NCBI PubMed E-utilities API entegrasyonu iki aşamalı olarak gerçekleştirilir
 
 1. **Arama Aşaması (`esearch.fcgi`)**:
    - Kullanıcının sorgusu PubMed'e gönderilir. Sadece algılanan uzmanlık ve belirli kısaltmalarda sınırlı eş anlamlı genişletmesi yapılır; kapsamlı MeSH/PICO arama stratejisi oluşturulmaz.
+   - `search_plan.py` yalnızca bir **arama planı önerisi** üretir (kavram blokları, önerilen PubMed ifadesi, dahil/dışlama ölçütü önerileri). Öneri çalıştırılmaz ve kayıtlar bu ölçütlere göre elenmez; rapor 3. bölümünde alt başlık olarak görünür. MeSH başlıkları tahmin edilmez, yalnızca PubMed'in terim eşleştirmesi döndürürse eklenir.
    - Yayın Tipi Filtreleme: *Randomized Controlled Trial*, *Systematic Review*, *Meta-Analysis*, *Clinical Trial*, *Review*.
    - Tarih Aralığı Filtreleme: `start_year` ve `end_year` parametreleri ile spesifik zaman pencereleri tanımlanır.
    - Sıralama: Alaka düzeyi (*relevance*) veya yayın tarihine (*pub_date*) göre sıralama yapılır.

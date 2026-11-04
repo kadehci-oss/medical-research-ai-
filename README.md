@@ -16,6 +16,7 @@ It searches live PubMed, checks citation identifiers and available title/DOI fie
 2. **PMID and DOI verification:** PMID lookup on PubMed; DOI lookup on CrossRef with a PubMed cross-check. Citation checks re-fetch the PMID and compare the normalized title and DOI.
 3. **Turkish evidence report:** rule-based synthesis, with optional OpenAI synthesis only after explicit data-transfer confirmation. An API key alone does not enable external synthesis. Citations point at `https://pubmed.ncbi.nlm.nih.gov/<PMID>/`.
 4. **Two interfaces:** a Streamlit dashboard (`app.py`) and a FastAPI service (`api.py`) that also exposes the universal evidence engine (`universal_evidence_engine.py`).
+5. **Search-plan proposal (`search_plan.py`):** the Turkish report adds an "Arama Planı" sub-heading under section 3. It lists the question framework, concept blocks taken from the query wording, a suggested PubMed query (population and intervention/exposure only), proposed inclusion/exclusion criteria, other databases worth checking, and (outside the report) an empty study table template. It is a proposal: it is not run, records are not screened against it, and MeSH headings are never guessed. They appear only when PubMed's own term mapping returns them (`build_search_plan(..., verify_mesh=True)`), otherwise the plan says they are unverified. Terms are not translated; a Turkish query gets a warning to search in English. The API and Streamlit interfaces do not expose it yet.
 
 Search is a PubMed-based preliminary search, not a systematic review or a claim of comprehensive coverage. The report does not screen every retrieved record against a registered inclusion/exclusion protocol. Cross-study matching is abstract-only; family deduplication requires a derived-report cue, an explicit source-text link to one named parent, and a shared trial identity. A common acronym or registry number, or title similarity, alone does not merge records. This is not evidence that studies or cohorts are clinically equivalent.
 
@@ -37,6 +38,7 @@ The intended goal is a Turkish, expert-level report for clinical research questi
 ├── evidence_model.py              # Structured Study model shared by cards, sections 5/6 and exports
 ├── question_framework.py          # Question type -> PICO / PIRD / PFO / PECO / CoCoPop / SPICE
 ├── question_parser.py             # P/I/C/O spans from questions written as sentences (English and Turkish)
+├── search_plan.py                 # Rule-based search-plan proposal (concept blocks, PubMed query, criteria); not executed
 ├── report_verification.py         # Report audit: PMIDs, verbatim quotes, RoB/GRADE, causal wording
 ├── version.py                     # User-visible software version
 ├── validation/                    # Real PubMed records, reference tables, validation runner and report
