@@ -6372,6 +6372,20 @@ Lütfen arama terimlerini veya filtreleri genişleterek tekrar deneyiniz.
     report.append(f"- **Arama İfadesi:** `{query}`")
     report.append(f"- **İncelenen Toplam Makale Sayısı:** {total_articles}")
     report.append("- **Kapsam:** Bu çıktı, belirtilen PubMed sorgusundan seçilen sonuçların özet-temelli araştırma sentezidir; sistematik derleme veya kapsamlı tarama değildir. Tam arama stratejisi ve tüm kayıtların uygunluk taraması yapılmamıştır.\n")
+    # Search-plan proposal as a sub-heading of section 3 (a new numbered section would break the
+    # 13-section contract checked by validate_clinical_report_quality). The executed-search facts
+    # are already listed above, so the plan block leaves them out and the table template stays
+    # out too (section 5 holds the evidence table).
+    try:
+        import search_plan
+        report.append(search_plan.render_search_plan_markdown(
+            search_plan.build_search_plan(query, search_metadata=search_metadata, retrieved_count=total_articles),
+            heading_level=3,
+            include_executed=False,
+            include_table_template=False,
+        ))
+    except Exception:
+        logger.warning("Search plan rendering failed", exc_info=True)
 
     # 4. Klinik Arka Plan ve Patofizyoloji
     report.append("## 4. Klinik Arka Plan ve Patofizyoloji")
