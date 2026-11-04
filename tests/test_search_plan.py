@@ -15,7 +15,8 @@ def _tr_lower(text):
 
 
 # Wordings that would promise the reader a verification switch the report does not offer.
-_SWITCH_PROMISES = ("doğrulamayı aç", "doğrulamayı etkinleştir", "doğrulamayı başlat",
+_SWITCH_PROMISES = ("doğrulamayı aç", "doğrulamasını aç", "doğrulamayı etkinleştir",
+                    "doğrulamasını etkinleştir", "doğrulamayı başlat",
                     "verify_mesh", "mesh_lookup")
 
 ARTICLES = [
