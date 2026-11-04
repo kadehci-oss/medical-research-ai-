@@ -49,13 +49,18 @@ class TestBuildSearchPlan(unittest.TestCase):
         self.assertTrue(all(not c["mesh_headings"] for c in plan["concepts"]))
 
     def test_unverified_mesh_note_does_not_promise_a_switch_the_report_lacks(self):
-        # The report builds the plan offline and has no switch to turn verification on,
-        # so the wording must only tell the reader to check MeSH themselves.
-        plan = search_plan.build_search_plan(THERAPY_QUERY)
-        self.assertNotIn("açın", plan["mesh_note"])
-        self.assertIn("kendiniz doğrulayın", plan["mesh_note"])
+        # The report builds the plan offline (no MeSH lookup) and offers no switch to
+        # turn verification on, so the note must only ask the reader to check MeSH.
+        with patch.object(search_plan, "lookup_mesh_headings",
+                          side_effect=AssertionError("default plan must not look up MeSH")):
+            plan = search_plan.build_search_plan(THERAPY_QUERY)
+        self.assertEqual(plan["mesh_status"], "doğrulanmadı")
+        note = plan["mesh_note"].casefold()
+        self.assertNotIn("doğrulamayı aç", note)
+        self.assertIn("doğrulayın", note)
         text = search_plan.render_search_plan_markdown(plan, include_executed=False, include_table_template=False)
-        self.assertNotIn("doğrulamayı aç", text)
+        self.assertIn(plan["mesh_note"], text)
+        self.assertNotIn("doğrulamayı aç", text.casefold())
 
     def test_mesh_headings_from_lookup_are_added(self):
         def fake_lookup(term):
